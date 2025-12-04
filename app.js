@@ -1550,17 +1550,30 @@ class RhythmSequencer {
     }
     async loadAvailableMidi() {
         try {
-            // Listar arquivos MIDI da pasta assets/midi
-            const response = await fetch('assets/midi/');
-            const text = await response.text();
-            // Parser simples de HTML para extrair links
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(text, 'text/html');
-            const links = Array.from(doc.querySelectorAll('a'));
-            const midiFiles = links
-                .map(link => link.getAttribute('href'))
-                .filter(href => href && (href.endsWith('.wav') || href.endsWith('.mp3') || href.endsWith('.ogg')))
-                .map(href => href);
+            // Lista fixa de arquivos MIDI disponíveis (para funcionar na web hospedada)
+            const allMidiFiles = [
+                'bumbo.wav',
+                'caixa.wav',
+                'chimbal_fechado.wav',
+                'chimbal_aberto.wav',
+                'prato.mp3',
+                'surdo.wav',
+                'tom_1.wav',
+                'tom_2.wav'
+            ];
+            // Verificar quais arquivos existem
+            const midiFiles = [];
+            for (const file of allMidiFiles) {
+                try {
+                    const testResponse = await fetch(`assets/midi/${file}`, { method: 'HEAD' });
+                    if (testResponse.ok) {
+                        midiFiles.push(file);
+                    }
+                }
+                catch (e) {
+                    // Arquivo não existe, ignorar
+                }
+            }
             // Preencher os selects dos canais
             for (let i = 1; i <= 8; i++) {
                 const select = document.getElementById(`midiSelect${i}`);
