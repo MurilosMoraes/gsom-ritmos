@@ -1949,29 +1949,32 @@ class RhythmSequencer {
 
   private async loadAvailableRhythms(): Promise<void> {
     try {
-      const response = await fetch('assets/rhythm/');
-      const text = await response.text();
-
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, 'text/html');
-      const links = Array.from(doc.querySelectorAll('a'));
-
-      const rhythmFiles = links
-        .map(link => link.getAttribute('href'))
-        .filter(href => href && href.endsWith('.json'))
-        .map(href => href!);
+      // Lista fixa de ritmos disponíveis (para funcionar na web hospedada)
+      const rhythmFiles = [
+        'pop.json',
+        'pop-complete.json'
+      ];
 
       const select = document.getElementById('rhythmSelect') as HTMLSelectElement;
       select.innerHTML = '<option value="">Selecione um ritmo...</option>';
 
-      rhythmFiles.forEach(file => {
-        const option = document.createElement('option');
-        option.value = `assets/rhythm/${file}`;
-        option.textContent = file.replace('.json', '');
-        select.appendChild(option);
-      });
+      // Verificar quais arquivos existem
+      for (const file of rhythmFiles) {
+        try {
+          const testResponse = await fetch(`assets/rhythm/${file}`, { method: 'HEAD' });
+          if (testResponse.ok) {
+            const option = document.createElement('option');
+            option.value = `assets/rhythm/${file}`;
+            option.textContent = file.replace('.json', '');
+            select.appendChild(option);
+          }
+        } catch (e) {
+          // Arquivo não existe, ignorar
+          console.log(`Ritmo ${file} não encontrado`);
+        }
+      }
 
-      console.log(`${rhythmFiles.length} ritmos salvos encontrados`);
+      console.log('Ritmos carregados');
 
       // Sincronizar com o select do modo usuário
       this.syncRhythmSelects();
