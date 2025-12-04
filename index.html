@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GSOM - Gold Sound on Music</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header com Switch de Modo -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="logo">
+          <h1>GSOM</h1>
+          <span class="logo-subtitle">Gold Sound on Music</span>
+        </div>
+        <div class="mode-switch">
+          <span class="mode-label" id="modeLabel">Modo Usuário</span>
+          <label class="switch">
+            <input type="checkbox" id="adminModeToggle">
+            <span class="slider"></span>
+          </label>
+          <span class="mode-icon" id="modeIcon"></span>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <!-- ============= MODO USUÁRIO ============= -->
+      <div id="userMode" class="mode-container active">
+        <!-- Seletor de Ritmo -->
+        <section class="user-section rhythm-selector-section">
+          <h2>Escolha seu Ritmo</h2>
+          <div class="rhythm-selector-wrapper">
+            <select id="rhythmSelectUser" class="rhythm-select-modern">
+              <option value="">Selecione um ritmo...</option>
+            </select>
+            <button id="loadRhythmUser" class="btn-modern btn-primary">
+              <span>Carregar Ritmo</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Controles de Reprodução -->
+        <section class="user-section playback-section">
+          <div class="playback-controls">
+            <button id="playStopUser" class="btn-playback btn-play">
+              <span class="label">PLAY</span>
+            </button>
+            <button id="fillUser" class="btn-playback btn-fill">
+              <span class="label">VIRADA</span>
+            </button>
+            <button id="endUser" class="btn-playback btn-end">
+              <span class="label">FINALIZAR</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Controle de Tempo -->
+        <section class="user-section tempo-section">
+          <h3>Andamento (BPM)</h3>
+          <div class="tempo-control-modern">
+            <button id="tempoDownUser" class="tempo-btn-modern">−</button>
+            <div class="tempo-display-large" id="tempoDisplayUser">80</div>
+            <button id="tempoUpUser" class="tempo-btn-modern">+</button>
+          </div>
+          <input type="range" id="tempoSliderUser" class="tempo-slider-modern" min="40" max="240" value="80" step="1">
+        </section>
+
+        <!-- Seleção de Variações -->
+        <section class="user-section variations-user-section">
+          <h3>Ritmos Principais</h3>
+          <div class="variation-buttons-user">
+            <button class="variation-btn-user main-btn active" data-type="main" data-variation="0">
+              <span class="variation-label">Main 1</span>
+            </button>
+            <button class="variation-btn-user main-btn" data-type="main" data-variation="1">
+              <span class="variation-label">Main 2</span>
+            </button>
+            <button class="variation-btn-user main-btn" data-type="main" data-variation="2">
+              <span class="variation-label">Main 3</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="user-section variations-user-section">
+          <h3>Viradas</h3>
+          <div class="variation-buttons-user">
+            <button class="variation-btn-user fill-btn" data-type="fill" data-variation="0">
+              <span class="variation-label">Fill 1</span>
+            </button>
+            <button class="variation-btn-user fill-btn" data-type="fill" data-variation="1">
+              <span class="variation-label">Fill 2</span>
+            </button>
+            <button class="variation-btn-user fill-btn" data-type="fill" data-variation="2">
+              <span class="variation-label">Fill 3</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="user-section variations-user-section">
+          <h3>Finalizações</h3>
+          <div class="variation-buttons-user variation-buttons-end">
+            <button class="variation-btn-user end-btn" data-type="end" data-variation="0">
+              <span class="variation-label">End 1</span>
+            </button>
+            <button class="variation-btn-user end-btn" data-type="end" data-variation="1">
+              <span class="variation-label">End 2</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Status e Visualização -->
+        <section class="user-section status-section">
+          <div class="status-card">
+            <div class="status-item">
+              <span class="status-label">Status:</span>
+              <span class="status-value" id="statusUser">Parado</span>
+            </div>
+            <div class="status-item">
+              <span class="status-label">Posição:</span>
+              <span class="status-value"><span id="currentStepUser">0</span>/16</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============= MODO ADMIN ============= -->
+      <div id="adminMode" class="mode-container">
+        <!-- Tabs de Padrão -->
+        <section class="admin-section pattern-tabs-section">
+          <h2>Editor de Padrões</h2>
+          <div class="pattern-tabs-modern">
+            <button class="pattern-tab active" data-pattern="main">
+              <span class="tab-label">PRINCIPAL</span>
+              <small>Groove base</small>
+            </button>
+            <button class="pattern-tab" data-pattern="fill">
+              <span class="tab-label">VIRADA</span>
+              <small>Fill/Break</small>
+            </button>
+            <button class="pattern-tab" data-pattern="end">
+              <span class="tab-label">FINAL</span>
+              <small>Encerramento</small>
+            </button>
+          </div>
+        </section>
+
+        <!-- Controle de Variações -->
+        <section class="admin-section variations-section">
+          <h3>Variações do Padrão Atual</h3>
+          <div class="variations-controls">
+            <div class="variation-slots">
+              <button class="variation-slot active" data-slot="0">
+                <span class="slot-number">1</span>
+              </button>
+              <button class="variation-slot" data-slot="1">
+                <span class="slot-number">2</span>
+              </button>
+              <button class="variation-slot" data-slot="2">
+                <span class="slot-number">3</span>
+              </button>
+            </div>
+            <div class="variation-actions">
+              <button id="saveVariation" class="btn-admin btn-variation">
+                <span>Salvar Variação</span>
+              </button>
+              <button id="loadVariation" class="btn-admin btn-variation">
+                <span>Carregar Variação</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sequenciador Grid -->
+        <section class="admin-section sequencer-section">
+          <div id="sequencer" class="sequencer-modern">
+            <!-- Canais serão gerados dinamicamente -->
+          </div>
+        </section>
+
+        <!-- Controles Admin -->
+        <div class="admin-controls-wrapper">
+          <!-- Controles de Playback Admin -->
+          <section class="admin-section admin-playback">
+            <h3>Reprodução</h3>
+            <div class="controls-grid">
+              <button id="playStop" class="btn-admin btn-play-admin">
+                <span>PLAY</span>
+              </button>
+              <button id="fill" class="btn-admin btn-secondary-admin">
+                <span>FILL</span>
+              </button>
+              <button id="end" class="btn-admin btn-secondary-admin">
+                <span>END</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- Controle de Tempo Admin -->
+          <section class="admin-section tempo-config">
+            <h3>Configurações de Tempo</h3>
+            <div class="config-row">
+              <label>BPM:</label>
+              <div class="input-group">
+                <button id="tempoDown" class="btn-small">−</button>
+                <input type="number" id="tempo" value="80" min="40" max="240" step="1">
+                <button id="tempoUp" class="btn-small">+</button>
+                <span class="value-display" id="tempoDisplay">80</span>
+              </div>
+              <input type="range" id="tempoSlider" min="40" max="240" value="80" step="1" class="range-input">
+            </div>
+
+            <div class="config-row">
+              <label>Vel. FILL:</label>
+              <div class="input-group">
+                <button id="fillSpeedDown" class="btn-small">−</button>
+                <input type="number" id="fillSpeed" value="1" min="0.25" max="4" step="0.25">
+                <button id="fillSpeedUp" class="btn-small">+</button>
+                <span class="value-display" id="fillSpeedDisplay">1x</span>
+              </div>
+            </div>
+
+            <div class="config-row">
+              <label>Vel. END:</label>
+              <div class="input-group">
+                <button id="endSpeedDown" class="btn-small">−</button>
+                <input type="number" id="endSpeed" value="1" min="0.25" max="4" step="0.25">
+                <button id="endSpeedUp" class="btn-small">+</button>
+                <span class="value-display" id="endSpeedDisplay">1x</span>
+              </div>
+            </div>
+
+            <div class="config-row">
+              <label>Tamanho Virada:</label>
+              <select id="fillSteps" class="select-input">
+                <option value="4">4 steps</option>
+                <option value="8">8 steps</option>
+                <option value="16" selected>16 steps</option>
+                <option value="32">32 steps</option>
+              </select>
+            </div>
+          </section>
+
+          <!-- Configuração de Sons -->
+          <section class="admin-section sound-config">
+            <h3>Sons Especiais</h3>
+
+            <div class="sound-config-item">
+              <label>Som de Início:</label>
+              <div class="file-select-group">
+                <select id="fillStartSelect" class="select-input">
+                  <option value="">Nenhum</option>
+                </select>
+                <input type="file" id="fillStartCustomInput" accept="audio/*" class="file-input-hidden">
+                <button id="fillStartCustomBtn" class="btn-file">
+                  <span>Procurar</span>
+                </button>
+              </div>
+              <span id="fillStartFileName" class="file-name-display"></span>
+            </div>
+
+            <div class="sound-config-item">
+              <label>Som de Retorno:</label>
+              <div class="file-select-group">
+                <select id="fillReturnSelect" class="select-input">
+                  <option value="">Nenhum</option>
+                </select>
+                <input type="file" id="fillReturnCustomInput" accept="audio/*" class="file-input-hidden">
+                <button id="fillReturnCustomBtn" class="btn-file">
+                  <span>Procurar</span>
+                </button>
+              </div>
+              <span id="fillReturnFileName" class="file-name-display"></span>
+            </div>
+          </section>
+
+          <!-- Salvar/Carregar -->
+          <section class="admin-section save-load-section">
+            <h3>Gerenciar Padrões</h3>
+            <div class="button-grid">
+              <button id="savePattern" class="btn-admin btn-save">
+                <span>Salvar Padrão</span>
+              </button>
+              <button id="loadPattern" class="btn-admin btn-load">
+                <span>Carregar Padrão</span>
+              </button>
+              <input type="file" id="loadFile" accept=".json" class="file-input-hidden">
+
+              <button id="saveAll" class="btn-admin btn-save-all">
+                <span>Salvar Projeto</span>
+              </button>
+              <button id="loadAll" class="btn-admin btn-load">
+                <span>Carregar Projeto</span>
+              </button>
+              <input type="file" id="loadAllFile" accept=".json" class="file-input-hidden">
+
+              <button id="clearPattern" class="btn-admin btn-clear">
+                <span>Limpar Padrão</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- Carregar Ritmos Salvos -->
+          <section class="admin-section rhythm-library">
+            <h3>Biblioteca de Ritmos</h3>
+            <div class="rhythm-load-group">
+              <select id="rhythmSelect" class="select-input">
+                <option value="">Selecione um ritmo...</option>
+              </select>
+              <button id="loadRhythm" class="btn-admin">Carregar</button>
+              <button id="refreshRhythms" class="btn-admin btn-refresh">Atualizar</button>
+            </div>
+          </section>
+
+          <!-- Status Admin -->
+          <section class="admin-section admin-status">
+            <div class="status-grid">
+              <div class="status-item-admin">
+                <span class="label">Status:</span>
+                <span class="value" id="status">Parado</span>
+              </div>
+              <div class="status-item-admin">
+                <span class="label">Posição:</span>
+                <span class="value"><span id="currentStep">0</span>/16</span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

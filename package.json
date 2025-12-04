@@ -1,0 +1,22 @@
+{
+  "name": "rhythm-sequencer",
+  "version": "1.0.0",
+  "description": "Sequenciador de ritmos MIDI para web",
+  "main": "app.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "npx http-server . -p 8080 -o"
+  },
+  "keywords": [
+    "midi",
+    "sequencer",
+    "rhythm",
+    "music"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

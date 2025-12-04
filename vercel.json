@@ -1,0 +1,6 @@
+{
+  "buildCommand": "npx tsc",
+  "outputDirectory": ".",
+  "installCommand": "npm install",
+  "devCommand": "npx tsc --watch"
+}
