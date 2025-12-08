@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GSOM - Gold Sound on Music</title>
+  <title>GDrums | Studio</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -29,99 +29,96 @@
     <main class="app-main">
       <!-- ============= MODO USUÁRIO ============= -->
       <div id="userMode" class="mode-container active">
-        <!-- Seletor de Ritmo -->
-        <section class="user-section rhythm-selector-section">
-          <h2>Escolha seu Ritmo</h2>
-          <div class="rhythm-selector-wrapper">
-            <select id="rhythmSelectUser" class="rhythm-select-modern">
-              <option value="">Selecione um ritmo...</option>
-            </select>
-            <button id="loadRhythmUser" class="btn-modern btn-primary">
-              <span>Carregar Ritmo</span>
-            </button>
-          </div>
-        </section>
-
-        <!-- Controles de Reprodução -->
-        <section class="user-section playback-section">
-          <div class="playback-controls">
-            <button id="playStopUser" class="btn-playback btn-play">
-              <span class="label">PLAY</span>
-            </button>
-            <button id="fillUser" class="btn-playback btn-fill">
-              <span class="label">VIRADA</span>
-            </button>
-            <button id="endUser" class="btn-playback btn-end">
-              <span class="label">FINALIZAR</span>
-            </button>
-          </div>
-        </section>
-
-        <!-- Controle de Tempo -->
-        <section class="user-section tempo-section">
-          <h3>Andamento (BPM)</h3>
-          <div class="tempo-control-modern">
-            <button id="tempoDownUser" class="tempo-btn-modern">−</button>
-            <div class="tempo-display-large" id="tempoDisplayUser">80</div>
-            <button id="tempoUpUser" class="tempo-btn-modern">+</button>
-          </div>
-          <input type="range" id="tempoSliderUser" class="tempo-slider-modern" min="40" max="240" value="80" step="1">
-        </section>
-
-        <!-- Seleção de Variações -->
-        <section class="user-section variations-user-section">
-          <h3>Ritmos Principais</h3>
-          <div class="variation-buttons-user">
-            <button class="variation-btn-user main-btn active" data-type="main" data-variation="0">
-              <span class="variation-label">Main 1</span>
-            </button>
-            <button class="variation-btn-user main-btn" data-type="main" data-variation="1">
-              <span class="variation-label">Main 2</span>
-            </button>
-            <button class="variation-btn-user main-btn" data-type="main" data-variation="2">
-              <span class="variation-label">Main 3</span>
-            </button>
-          </div>
-        </section>
-
-        <section class="user-section variations-user-section">
-          <h3>Viradas</h3>
-          <div class="variation-buttons-user">
-            <button class="variation-btn-user fill-btn" data-type="fill" data-variation="0">
-              <span class="variation-label">Fill 1</span>
-            </button>
-            <button class="variation-btn-user fill-btn" data-type="fill" data-variation="1">
-              <span class="variation-label">Fill 2</span>
-            </button>
-            <button class="variation-btn-user fill-btn" data-type="fill" data-variation="2">
-              <span class="variation-label">Fill 3</span>
-            </button>
-          </div>
-        </section>
-
-        <section class="user-section variations-user-section">
-          <h3>Finalizações</h3>
-          <div class="variation-buttons-user variation-buttons-end">
-            <button class="variation-btn-user end-btn" data-type="end" data-variation="0">
-              <span class="variation-label">End 1</span>
-            </button>
-            <button class="variation-btn-user end-btn" data-type="end" data-variation="1">
-              <span class="variation-label">End 2</span>
-            </button>
-          </div>
-        </section>
-
-        <!-- Status e Visualização -->
-        <section class="user-section status-section">
-          <div class="status-card">
-            <div class="status-item">
-              <span class="status-label">Status:</span>
-              <span class="status-value" id="statusUser">Parado</span>
+        <!-- Header com seletor de ritmo e controles -->
+        <section class="user-header-section">
+          <div class="user-header-controls">
+            <div class="rhythm-selector-compact">
+              <select id="rhythmSelectUser" class="rhythm-select-modern">
+                <option value="">Selecione um ritmo...</option>
+              </select>
+              <button id="loadRhythmUser" class="btn-modern btn-primary">
+                <span>Carregar</span>
+              </button>
             </div>
-            <div class="status-item">
-              <span class="status-label">Posição:</span>
-              <span class="status-value"><span id="currentStepUser">0</span>/16</span>
+            <div class="playback-main-controls">
+              <button id="playStopUser" class="btn-playback-main btn-play">
+                <span class="label">PLAY</span>
+              </button>
             </div>
+            <div class="tempo-compact">
+              <button id="tempoDownUser" class="tempo-btn-compact">−</button>
+              <div class="tempo-display-compact" id="tempoDisplayUser">80</div>
+              <button id="tempoUpUser" class="tempo-btn-compact">+</button>
+              <span class="tempo-label">BPM</span>
+            </div>
+            <div class="volume-compact">
+              <span class="volume-icon">🔊</span>
+              <input type="range" id="masterVolumeUser" min="0" max="100" value="70" step="1" class="volume-slider-compact">
+              <span class="volume-display-compact" id="volumeDisplayUser">70%</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Grid Principal: 3 colunas x 3 linhas -->
+        <section class="user-grid-section">
+          <div class="user-performance-grid">
+            <!-- Linha 1: Ritmos Principais -->
+            <div class="grid-cell rhythm-cell" data-type="main" data-variation="0">
+              <span class="cell-label">RITMO 1</span>
+              <div class="cell-indicator"></div>
+            </div>
+            <div class="grid-cell rhythm-cell" data-type="main" data-variation="1">
+              <span class="cell-label">RITMO 2</span>
+              <div class="cell-indicator"></div>
+            </div>
+            <div class="grid-cell rhythm-cell" data-type="main" data-variation="2">
+              <span class="cell-label">RITMO 3</span>
+              <div class="cell-indicator"></div>
+            </div>
+
+            <!-- Linha 2: Viradas -->
+            <div class="grid-cell fill-cell" data-type="fill" data-variation="0">
+              <span class="cell-label">VIRADA 1</span>
+              <div class="cell-indicator"></div>
+            </div>
+            <div class="grid-cell fill-cell" data-type="fill" data-variation="1">
+              <span class="cell-label">VIRADA 2</span>
+              <div class="cell-indicator"></div>
+            </div>
+            <div class="grid-cell fill-cell" data-type="fill" data-variation="2">
+              <span class="cell-label">VIRADA 3</span>
+              <div class="cell-indicator"></div>
+            </div>
+
+            <!-- Linha 3: Finalização e Transições -->
+            <div class="grid-cell end-cell" data-type="end" data-variation="0">
+              <span class="cell-label">FINAL 1</span>
+              <div class="cell-indicator"></div>
+            </div>
+            <div class="grid-cell end-cell" data-type="end" data-variation="1">
+              <span class="cell-label">FINAL 2</span>
+              <div class="cell-indicator"></div>
+            </div>
+            <div class="grid-cell transition-cell" data-type="transition">
+              <span class="cell-label">TRANSIÇÃO</span>
+              <div class="cell-indicator"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Status Bar -->
+        <section class="user-status-bar">
+          <div class="status-info">
+            <span class="status-label">Status:</span>
+            <span class="status-value" id="statusUser">Parado</span>
+          </div>
+          <div class="position-info">
+            <span class="position-label">Posição:</span>
+            <span class="position-value"><span id="currentStepUser">0</span>/16</span>
+          </div>
+          <div class="next-entry-info">
+            <span class="entry-label">Próxima entrada:</span>
+            <span class="entry-value" id="nextEntryUser">-</span>
           </div>
         </section>
       </div>
@@ -132,6 +129,10 @@
         <section class="admin-section pattern-tabs-section">
           <h2>Editor de Padrões</h2>
           <div class="pattern-tabs-modern">
+            <button class="pattern-tab" data-pattern="intro">
+              <span class="tab-label">INTRO</span>
+              <small>Contagem</small>
+            </button>
             <button class="pattern-tab active" data-pattern="main">
               <span class="tab-label">PRINCIPAL</span>
               <small>Groove base</small>
@@ -170,6 +171,33 @@
                 <span>Carregar Variação</span>
               </button>
             </div>
+          </div>
+        </section>
+
+        <!-- Controle de Steps do Padrão -->
+        <section class="admin-section steps-section">
+          <h3>Quantidade de Steps</h3>
+          <div class="steps-controls">
+            <label for="patternStepsSelect">Steps:</label>
+            <select id="patternStepsSelect" class="steps-select">
+              <optgroup label="Múltiplos de 3">
+                <option value="3">3</option>
+                <option value="6">6</option>
+                <option value="12">12</option>
+                <option value="18">18</option>
+                <option value="24">24</option>
+              </optgroup>
+              <optgroup label="Múltiplos de 4">
+                <option value="4">4</option>
+                <option value="8">8</option>
+                <option value="16" selected>16</option>
+                <option value="20">20</option>
+                <option value="24">24</option>
+                <option value="28">28</option>
+                <option value="32">32</option>
+              </optgroup>
+            </select>
+            <span id="currentStepsDisplay" class="steps-display">16 steps</span>
           </div>
         </section>
 
@@ -240,6 +268,14 @@
                 <option value="16" selected>16 steps</option>
                 <option value="32">32 steps</option>
               </select>
+            </div>
+
+            <div class="config-row">
+              <label>Volume Master:</label>
+              <div class="input-group">
+                <input type="range" id="masterVolume" min="0" max="100" value="70" step="1" class="range-input">
+                <span class="value-display" id="masterVolumeDisplay">70%</span>
+              </div>
             </div>
           </section>
 
@@ -332,6 +368,6 @@
     </main>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

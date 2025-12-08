@@ -4,9 +4,9 @@
   "description": "Sequenciador de ritmos MIDI para web",
   "main": "app.js",
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch",
-    "dev": "npx http-server . -p 8080 -o"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "keywords": [
     "midi",
@@ -17,6 +17,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vite": "^7.2.7"
   }
 }

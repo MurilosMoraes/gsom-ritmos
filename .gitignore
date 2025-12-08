@@ -1,4 +1,22 @@
+# Dependencies
 node_modules/
+
+# Build outputs
+app.js
+app.js.map
+*.js.map
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
+
+# Deployment
 .vercel
