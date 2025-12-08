@@ -952,7 +952,7 @@ class RhythmSequencer {
       const midiFiles: string[] = [];
       for (const file of allMidiFiles) {
         try {
-          const testResponse = await fetch(`assets/midi/${file}`, { method: 'HEAD' });
+          const testResponse = await fetch(`/midi/${file}`, { method: 'HEAD' });
           if (testResponse.ok) {
             midiFiles.push(file);
           }
@@ -969,7 +969,7 @@ class RhythmSequencer {
 
           midiFiles.forEach(file => {
             const option = document.createElement('option');
-            const normalizedPath = `assets/midi/${file}`.replace(/^\.\//, '');
+            const normalizedPath = `/midi/${file}`;
             option.value = normalizedPath;
             option.textContent = file;
             select.appendChild(option);
@@ -999,10 +999,10 @@ class RhythmSequencer {
       // Verificar quais arquivos existem
       for (const file of rhythmFiles) {
         try {
-          const testResponse = await fetch(`assets/rhythm/${file}`, { method: 'HEAD' });
+          const testResponse = await fetch(`/rhythm/${file}`, { method: 'HEAD' });
           if (testResponse.ok) {
             const option = document.createElement('option');
-            option.value = `assets/rhythm/${file}`;
+            option.value = `/rhythm/${file}`;
             option.textContent = file.replace('.json', '');
             select.appendChild(option);
           }
