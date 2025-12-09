@@ -32,8 +32,8 @@ export class PatternEngine {
     if (activePattern === 'main' && state.pendingFill) {
       if (currentStep === state.pendingFill.entryPoint) {
         this.stateManager.setActivePattern('fill');
-        // Virada sempre começa do step 0 para tocar apenas 1 vez
-        this.stateManager.setCurrentStep(0);
+        // Virada começa do ponto onde foi agendada para tocar apenas o restante do ciclo
+        this.stateManager.setCurrentStep(state.pendingFill.startStep);
         this.stateManager.setPendingFill(null);
         this.onPatternChange?.('fill');
         return true;
@@ -44,8 +44,8 @@ export class PatternEngine {
     if (activePattern === 'main' && state.pendingEnd) {
       if (currentStep === state.pendingEnd.entryPoint) {
         this.stateManager.setActivePattern('end');
-        // Finalização sempre começa do step 0
-        this.stateManager.setCurrentStep(0);
+        // Finalização começa do ponto onde foi agendada
+        this.stateManager.setCurrentStep(state.pendingEnd.startStep);
         this.stateManager.setPendingEnd(null);
         this.onPatternChange?.('end');
         return true;
@@ -189,6 +189,7 @@ export class PatternEngine {
     this.stateManager.loadVariation('fill', variationIndex);
 
     const entryPoint = this.getNextEntryPoint();
+    // A virada começa do mesmo ponto onde vai entrar, tocando apenas o restante do ciclo
     const fillStartStep = entryPoint;
 
     this.stateManager.setPendingFill({
@@ -216,11 +217,13 @@ export class PatternEngine {
     this.stateManager.loadVariation('end', 0);
 
     const entryPoint = this.getNextEntryPoint();
+    // Finalização começa do mesmo ponto onde vai entrar
+    const endStartStep = entryPoint;
 
     this.stateManager.setPendingEnd({
       variationIndex: 0,
       entryPoint,
-      startStep: 0
+      startStep: endStartStep
     });
   }
 
