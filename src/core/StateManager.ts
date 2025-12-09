@@ -49,11 +49,25 @@ export class StateManager {
       nextPattern: null,
       patternQueue: [],
       variations: {
-        main: [{ pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels() }],
-        fill: [{ pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels() }],
-        end: [{ pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels() }],
-        intro: [{ pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels() }],
-        transition: [{ pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels() }]
+        main: [
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 },
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 },
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 }
+        ],
+        fill: [
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 },
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 },
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 }
+        ],
+        end: [
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 8 }
+        ],
+        intro: [
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 }
+        ],
+        transition: [
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 }
+        ]
       },
       currentMainVariation: 0,
       currentFillVariation: 0,
@@ -108,6 +122,22 @@ export class StateManager {
       return this.state.patternSteps[pattern];
     }
     return 16;
+  }
+
+  // Obter steps da variação atual
+  getCurrentVariationSteps(pattern: PatternType): number {
+    const variationIndex = this.getCurrentVariation(pattern);
+    const variation = this.state.variations[pattern][variationIndex];
+    return variation?.steps || 16;
+  }
+
+  // Definir steps para uma variação específica
+  setVariationSteps(pattern: PatternType, variationIndex: number, steps: number): void {
+    const variation = this.state.variations[pattern][variationIndex];
+    if (variation) {
+      variation.steps = steps;
+      this.notify('variationSteps');
+    }
   }
 
   // Setters
@@ -191,11 +221,13 @@ export class StateManager {
     const patternClone = this.state.patterns[pattern].map(row => [...row]);
     const volumesClone = this.state.volumes[pattern].map(row => [...row]);
     const channelsClone = this.state.channels[pattern].map(ch => ({ ...ch }));
+    const currentSteps = this.getPatternSteps(pattern);
 
     this.state.variations[pattern][index] = {
       pattern: patternClone,
       volumes: volumesClone,
-      channels: channelsClone
+      channels: channelsClone,
+      steps: currentSteps
     };
     this.notify('variations');
   }
@@ -208,9 +240,15 @@ export class StateManager {
     this.state.volumes[pattern] = variation.volumes.map(row => [...row]);
     this.state.channels[pattern] = variation.channels.map(ch => ({ ...ch }));
 
+    // Carregar steps da variação
+    if (pattern === 'main' || pattern === 'fill' || pattern === 'end' || pattern === 'intro') {
+      this.state.patternSteps[pattern] = variation.steps || 16;
+    }
+
     this.notify('patterns');
     this.notify('volumes');
     this.notify('channels');
+    this.notify('patternSteps');
     return true;
   }
 

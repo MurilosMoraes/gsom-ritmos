@@ -120,6 +120,10 @@ class RhythmSequencer {
 
     sequencerContainer.innerHTML = '';
 
+    // Obter número de steps do padrão atual
+    const patternType = this.stateManager.getEditingPattern();
+    const numSteps = this.stateManager.getPatternSteps(patternType);
+
     for (let channel = 0; channel < 8; channel++) {
       const channelDiv = document.createElement('div');
       channelDiv.className = 'channel';
@@ -136,8 +140,8 @@ class RhythmSequencer {
 
       channelDiv.appendChild(channelInfo);
 
-      // Steps (16 steps em grid horizontal)
-      for (let step = 0; step < 16; step++) {
+      // Steps (número variável baseado no padrão)
+      for (let step = 0; step < numSteps; step++) {
         const stepDiv = document.createElement('div');
         stepDiv.className = 'step';
         stepDiv.setAttribute('data-step', step.toString());
@@ -157,6 +161,12 @@ class RhythmSequencer {
 
       sequencerContainer.appendChild(channelDiv);
     }
+
+    // Atualizar CSS grid para acomodar número dinâmico de steps
+    const channels = sequencerContainer.querySelectorAll('.channel');
+    channels.forEach(channel => {
+      (channel as HTMLElement).style.gridTemplateColumns = `120px repeat(${numSteps}, 1fr)`;
+    });
   }
 
   private setupEventListeners(): void {
@@ -219,6 +229,9 @@ class RhythmSequencer {
 
     // MIDI selectors
     this.setupMIDISelectors();
+
+    // Special sounds
+    this.setupSpecialSounds();
 
     // Variations
     this.setupVariations();
@@ -433,9 +446,6 @@ class RhythmSequencer {
   }
 
   private setupKeyboardShortcuts(): void {
-    let arrowRightLastPress = 0;
-    let arrowRightTimeout: number | null = null;
-
     window.addEventListener('keydown', (e) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
@@ -443,7 +453,7 @@ class RhythmSequencer {
       }
 
       // Space = Play/Pause
-      if (e.code === 'Space') {
+      if (e.code === 'Space' && !e.repeat) {
         e.preventDefault();
         this.togglePlayStop();
         return;
@@ -461,36 +471,24 @@ class RhythmSequencer {
         return;
       }
 
-      // ArrowRight = Single: Fill / Double: End + Stop
+      // ArrowRight = Fill without rhythm change
       if ((e.code === 'ArrowRight' || e.key === 'ArrowRight') && !e.repeat) {
         e.preventDefault();
-        const now = Date.now();
-        const timeSinceLastPress = now - arrowRightLastPress;
-
-        if (timeSinceLastPress < 1000 && arrowRightLastPress > 0) {
-          // Double press
-          if (arrowRightTimeout) {
-            clearTimeout(arrowRightTimeout);
-            arrowRightTimeout = null;
-          }
-          if (this.stateManager.isPlaying()) {
-            this.patternEngine.playEndAndStop();
-          }
-          arrowRightLastPress = 0;
-        } else {
-          // Single press
-          arrowRightLastPress = now;
-          if (arrowRightTimeout) clearTimeout(arrowRightTimeout);
-
-          arrowRightTimeout = window.setTimeout(() => {
-            if (this.stateManager.isPlaying()) {
-              this.patternEngine.playRotatingFill();
-            }
-            arrowRightTimeout = null;
-          }, 1000);
+        if (this.stateManager.isPlaying()) {
+          this.patternEngine.playRotatingFill();
         }
+        return;
       }
-    }, true);
+
+      // ArrowDown = End + Stop
+      if ((e.code === 'ArrowDown' || e.key === 'ArrowDown') && !e.repeat) {
+        e.preventDefault();
+        if (this.stateManager.isPlaying()) {
+          this.patternEngine.playEndAndStop();
+        }
+        return;
+      }
+    });
   }
 
   private setupPerformanceGrid(): void {
@@ -664,6 +662,122 @@ class RhythmSequencer {
     }
   }
 
+  private setupSpecialSounds(): void {
+    // Som de início (Fill Start)
+    const fillStartSelect = document.getElementById('fillStartSelect') as HTMLSelectElement;
+    const fillStartCustomInput = document.getElementById('fillStartCustomInput') as HTMLInputElement;
+    const fillStartCustomBtn = document.getElementById('fillStartCustomBtn');
+
+    if (fillStartSelect) {
+      // Carregar MIDIs disponíveis no select
+      this.loadAvailableMidi().then(() => {
+        const midiFiles = [
+          'bumbo.wav', 'caixa.wav', 'chimbal_fechado.wav', 'chimbal_aberto.wav',
+          'prato.mp3', 'surdo.wav', 'tom_1.wav', 'tom_2.wav'
+        ];
+        fillStartSelect.innerHTML = '<option value="">Nenhum</option>';
+        midiFiles.forEach(file => {
+          const option = document.createElement('option');
+          option.value = `/midi/${file}`;
+          option.textContent = file;
+          fillStartSelect.appendChild(option);
+        });
+      });
+
+      fillStartSelect.addEventListener('change', async (e) => {
+        const path = (e.target as HTMLSelectElement).value;
+        if (path) {
+          const buffer = await this.audioManager.loadAudioFromPath(path);
+          this.stateManager.getState().fillStartSound = {
+            buffer,
+            fileName: path.split('/').pop() || '',
+            midiPath: path
+          };
+        } else {
+          this.stateManager.getState().fillStartSound = {
+            buffer: null,
+            fileName: '',
+            midiPath: ''
+          };
+        }
+      });
+    }
+
+    if (fillStartCustomBtn && fillStartCustomInput) {
+      fillStartCustomBtn.addEventListener('click', () => fillStartCustomInput.click());
+      fillStartCustomInput.addEventListener('change', async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+          const audioBuffer = await this.audioManager.loadAudioFromFile(file);
+          this.stateManager.getState().fillStartSound = {
+            buffer: audioBuffer,
+            fileName: file.name,
+            midiPath: ''
+          };
+          const fileNameDisplay = document.getElementById('fillStartFileName');
+          if (fileNameDisplay) fileNameDisplay.textContent = file.name;
+        }
+      });
+    }
+
+    // Som de retorno (Fill Return)
+    const fillReturnSelect = document.getElementById('fillReturnSelect') as HTMLSelectElement;
+    const fillReturnCustomInput = document.getElementById('fillReturnCustomInput') as HTMLInputElement;
+    const fillReturnCustomBtn = document.getElementById('fillReturnCustomBtn');
+
+    if (fillReturnSelect) {
+      // Carregar MIDIs disponíveis no select
+      this.loadAvailableMidi().then(() => {
+        const midiFiles = [
+          'bumbo.wav', 'caixa.wav', 'chimbal_fechado.wav', 'chimbal_aberto.wav',
+          'prato.mp3', 'surdo.wav', 'tom_1.wav', 'tom_2.wav'
+        ];
+        fillReturnSelect.innerHTML = '<option value="">Nenhum</option>';
+        midiFiles.forEach(file => {
+          const option = document.createElement('option');
+          option.value = `/midi/${file}`;
+          option.textContent = file;
+          fillReturnSelect.appendChild(option);
+        });
+      });
+
+      fillReturnSelect.addEventListener('change', async (e) => {
+        const path = (e.target as HTMLSelectElement).value;
+        if (path) {
+          const buffer = await this.audioManager.loadAudioFromPath(path);
+          this.stateManager.getState().fillReturnSound = {
+            buffer,
+            fileName: path.split('/').pop() || '',
+            midiPath: path
+          };
+        } else {
+          this.stateManager.getState().fillReturnSound = {
+            buffer: null,
+            fileName: '',
+            midiPath: ''
+          };
+        }
+      });
+    }
+
+    if (fillReturnCustomBtn && fillReturnCustomInput) {
+      fillReturnCustomBtn.addEventListener('click', () => fillReturnCustomInput.click());
+      fillReturnCustomInput.addEventListener('change', async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+          const audioBuffer = await this.audioManager.loadAudioFromFile(file);
+          this.stateManager.getState().fillReturnSound = {
+            buffer: audioBuffer,
+            fileName: file.name,
+            midiPath: ''
+          };
+          const fileNameDisplay = document.getElementById('fillReturnFileName');
+          if (fileNameDisplay) fileNameDisplay.textContent = file.name;
+        }
+      });
+    }
+  }
+
   private setupVariations(): void {
     // Event listeners para slots de variação
     document.querySelectorAll('.variation-slot').forEach((slot) => {
@@ -685,8 +799,63 @@ class RhythmSequencer {
       loadVariationBtn.addEventListener('click', () => this.loadSelectedVariation());
     }
 
+    // Seletor de steps do padrão
+    const patternStepsSelect = document.getElementById('patternStepsSelect') as HTMLSelectElement;
+    const currentStepsDisplay = document.getElementById('currentStepsDisplay');
+
+    if (patternStepsSelect) {
+      patternStepsSelect.addEventListener('change', (e) => {
+        const steps = parseInt((e.target as HTMLSelectElement).value);
+        const patternType = this.stateManager.getEditingPattern();
+
+        // Atualizar steps do padrão atual
+        this.stateManager.setPatternSteps(patternType, steps);
+
+        // Atualizar display
+        if (currentStepsDisplay) {
+          currentStepsDisplay.textContent = `${steps} steps`;
+        }
+
+        // Regenerar grid com novo número de steps
+        this.generateChannelsHTML();
+
+        // Recarregar MIDIs e reconectar event listeners
+        this.loadAvailableMidi().then(() => {
+          this.setupMIDISelectors();
+        });
+
+        // Atualizar display
+        this.uiManager.refreshGridDisplay();
+      });
+    }
+
+    // Observer para atualizar o seletor quando mudar de padrão ou variação
+    this.stateManager.subscribe('editingPattern', () => {
+      this.updateStepsSelector();
+    });
+
+    this.stateManager.subscribe('patternSteps', () => {
+      this.updateStepsSelector();
+    });
+
     // Atualizar UI inicial
     this.updateVariationSlotsUI();
+    this.updateStepsSelector();
+  }
+
+  private updateStepsSelector(): void {
+    const patternStepsSelect = document.getElementById('patternStepsSelect') as HTMLSelectElement;
+    const currentStepsDisplay = document.getElementById('currentStepsDisplay');
+    const patternType = this.stateManager.getEditingPattern();
+    const steps = this.stateManager.getPatternSteps(patternType);
+
+    if (patternStepsSelect) {
+      patternStepsSelect.value = steps.toString();
+    }
+
+    if (currentStepsDisplay) {
+      currentStepsDisplay.textContent = `${steps} steps`;
+    }
   }
 
   private selectVariationSlot(slotIndex: number): void {
@@ -918,6 +1087,21 @@ class RhythmSequencer {
     const activeTab = document.querySelector(`[data-pattern="${patternType}"]`);
     activeTab?.classList.add('active');
 
+    // Regenerar grid com número correto de steps para o padrão
+    this.generateChannelsHTML();
+
+    // Recarregar MIDIs e reconectar event listeners
+    this.loadAvailableMidi().then(() => {
+      this.setupMIDISelectors();
+    });
+
+    // Atualizar variações UI
+    this.updateVariationSlotsUI();
+
+    // Atualizar seletor de steps
+    this.updateStepsSelector();
+
+    // Atualizar display
     this.uiManager.refreshGridDisplay();
   }
 

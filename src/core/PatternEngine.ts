@@ -159,7 +159,15 @@ export class PatternEngine {
   activateFillWithTiming(variationIndex: number): void {
     if (!this.stateManager.isPlaying()) return;
 
-    const variation = this.stateManager.getState().variations.fill[variationIndex];
+    const state = this.stateManager.getState();
+
+    // Prevenir múltiplos fills pendentes
+    if (state.pendingFill) return;
+
+    // Prevenir fill se já estamos em fill
+    if (state.activePattern === 'fill') return;
+
+    const variation = state.variations.fill[variationIndex];
     if (!variation || !variation.pattern) return;
 
     const hasContent = variation.pattern.some(row => row.some(step => step === true));
@@ -196,8 +204,10 @@ export class PatternEngine {
 
   private getNextEntryPoint(): number {
     const currentStep = this.stateManager.getCurrentStep();
+    const activePattern = this.stateManager.getActivePattern();
+    const numSteps = this.stateManager.getPatternSteps(activePattern);
     // Entra imediatamente no próximo step para transição fluida
-    const nextEntry = (currentStep + 1) % 16;
+    const nextEntry = (currentStep + 1) % numSteps;
     return nextEntry;
   }
 }

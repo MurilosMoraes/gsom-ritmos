@@ -115,8 +115,12 @@ export class UIManager {
   }
 
   refreshGridDisplay(): void {
+    const state = this.stateManager.getState();
+    const pattern = state.editingPattern;
+    const numSteps = this.stateManager.getPatternSteps(pattern);
+
     for (let channel = 0; channel < 8; channel++) {
-      for (let step = 0; step < 16; step++) {
+      for (let step = 0; step < numSteps; step++) {
         this.updateStepVisual(channel, step);
       }
     }

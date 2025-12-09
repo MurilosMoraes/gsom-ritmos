@@ -21,6 +21,13 @@ export interface PatternSteps {
   intro: number;
 }
 
+export interface PatternVariation {
+  pattern: boolean[][];
+  volumes: number[][];
+  channels: AudioChannel[];
+  steps: number;
+}
+
 export interface SequencerState {
   isPlaying: boolean;
   currentStep: number;
@@ -37,11 +44,11 @@ export interface SequencerState {
   nextPattern: PatternType | null;
   patternQueue: PatternType[];
   variations: {
-    main: Array<{pattern: boolean[][], volumes: number[][], channels: AudioChannel[]}>;
-    fill: Array<{pattern: boolean[][], volumes: number[][], channels: AudioChannel[]}>;
-    end: Array<{pattern: boolean[][], volumes: number[][], channels: AudioChannel[]}>;
-    intro: Array<{pattern: boolean[][], volumes: number[][], channels: AudioChannel[]}>;
-    transition: Array<{pattern: boolean[][], volumes: number[][], channels: AudioChannel[]}>;
+    main: PatternVariation[];
+    fill: PatternVariation[];
+    end: PatternVariation[];
+    intro: PatternVariation[];
+    transition: PatternVariation[];
   };
   currentMainVariation: number;
   currentFillVariation: number;
