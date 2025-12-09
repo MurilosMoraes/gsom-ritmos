@@ -372,13 +372,13 @@ class RhythmSequencer {
       masterVolumeUser.addEventListener('input', (e) => {
         const value = parseInt((e.target as HTMLInputElement).value) / 100;
         this.stateManager.setMasterVolume(value);
-        volumeDisplayUser.textContent = `${Math.round(value * 100)}%`;
+        volumeDisplayUser.textContent = `${Math.round(value)}%`;
 
         // Sincronizar com o controle do modo admin
         const masterVolumeAdmin = document.getElementById('masterVolume') as HTMLInputElement;
         const volumeDisplayAdmin = document.getElementById('masterVolumeDisplay');
-        if (masterVolumeAdmin) masterVolumeAdmin.value = (value * 100).toString();
-        if (volumeDisplayAdmin) volumeDisplayAdmin.textContent = `${Math.round(value * 100)}%`;
+        if (masterVolumeAdmin) masterVolumeAdmin.value = value.toString();
+        if (volumeDisplayAdmin) volumeDisplayAdmin.textContent = `${Math.round(value)}%`;
       });
     }
 
@@ -390,11 +390,11 @@ class RhythmSequencer {
       masterVolume.addEventListener('input', (e) => {
         const value = parseInt((e.target as HTMLInputElement).value) / 100;
         this.stateManager.setMasterVolume(value);
-        masterVolumeDisplay.textContent = `${Math.round(value * 100)}%`;
+        masterVolumeDisplay.textContent = `${Math.round(value)}%`;
 
         // Sincronizar com o controle do modo usuário
-        if (masterVolumeUser) masterVolumeUser.value = (value * 100).toString();
-        if (volumeDisplayUser) volumeDisplayUser.textContent = `${Math.round(value * 100)}%`;
+        if (masterVolumeUser) masterVolumeUser.value = value.toString();
+        if (volumeDisplayUser) volumeDisplayUser.textContent = `${Math.round(value)}%`;
       });
     }
 

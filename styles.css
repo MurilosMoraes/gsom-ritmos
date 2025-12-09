@@ -217,8 +217,8 @@ input:checked + .slider:before {
 .user-header-section {
   background: var(--bg-card);
   backdrop-filter: blur(20px);
-  padding: 1.5rem;
-  border-radius: 20px;
+  padding: 1rem;
+  border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: var(--shadow);
 }
@@ -226,7 +226,7 @@ input:checked + .slider:before {
 .user-header-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
+  gap: 1rem;
   align-items: center;
   justify-content: center;
 }
@@ -308,15 +308,15 @@ input:checked + .slider:before {
 }
 
 .btn-playback-main {
-  padding: 1rem 2.5rem;
-  font-size: 1.125rem;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
   border: none;
   border-radius: 12px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   transition: var(--transition);
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   position: relative;
   overflow: hidden;
 }
@@ -348,14 +348,14 @@ input:checked + .slider:before {
 }
 
 .tempo-btn-compact {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: none;
   background: var(--gradient-main);
   color: white;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -369,10 +369,10 @@ input:checked + .slider:before {
 }
 
 .tempo-display-compact {
-  font-size: 1.5rem;
-  font-weight: 800;
+  font-size: 1.25rem;
+  font-weight: 700;
   color: var(--text-primary);
-  min-width: 60px;
+  min-width: 50px;
   text-align: center;
 }
 

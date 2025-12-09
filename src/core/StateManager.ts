@@ -22,7 +22,7 @@ export class StateManager {
       tempo: 80,
       fillSpeed: 1,
       endSpeed: 1,
-      masterVolume: 0.7,
+      masterVolume: 1.0,
       patternSteps: {
         main: 16,
         fill: 16,
@@ -122,7 +122,7 @@ export class StateManager {
   }
 
   setMasterVolume(volume: number): void {
-    this.state.masterVolume = Math.max(0, Math.min(1, volume));
+    this.state.masterVolume = Math.max(0, Math.min(2, volume));
     this.notify('masterVolume');
   }
 
