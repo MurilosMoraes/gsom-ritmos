@@ -1227,11 +1227,45 @@ class RhythmSequencer {
 
   private async loadAvailableRhythms(): Promise<void> {
     try {
-      // Lista fixa de ritmos disponíveis (para funcionar na web hospedada)
-      const rhythmFiles = [
-        'pop.json',
-        'pop-complete.json'
-      ];
+      // Tentar carregar lista de ritmos do manifest ou fazer fallback para tentativa dinâmica
+      let rhythmFiles: string[] = [];
+
+      // Tentar carregar manifest.json que lista todos os ritmos
+      try {
+        const manifestResponse = await fetch('/rhythm/manifest.json');
+        if (manifestResponse.ok) {
+          const manifest = await manifestResponse.json();
+          rhythmFiles = manifest.rhythms || [];
+        }
+      } catch (e) {
+        // Manifest não existe, usar lista de tentativa
+      }
+
+      // Se não tiver manifest, tentar uma lista conhecida de possíveis ritmos
+      if (rhythmFiles.length === 0) {
+        const possibleRhythms = [
+          'pop.json',
+          'pop-complete.json',
+          'guarania.json',
+          'samba.json',
+          'bossa.json',
+          'rock.json',
+          'funk.json',
+          'jazz.json'
+        ];
+
+        // Verificar quais existem
+        for (const file of possibleRhythms) {
+          try {
+            const testResponse = await fetch(`/rhythm/${file}`, { method: 'HEAD' });
+            if (testResponse.ok) {
+              rhythmFiles.push(file);
+            }
+          } catch (e) {
+            // Arquivo não existe
+          }
+        }
+      }
 
       // Atualizar select do modo admin
       const select = document.getElementById('rhythmSelect') as HTMLSelectElement;
