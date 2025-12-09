@@ -128,24 +128,66 @@ export class PatternEngine {
   playFillToNextRhythm(): void {
     const state = this.stateManager.getState();
 
-    // Contar quantos ritmos têm conteúdo
-    const availableRhythms = state.variations.main.filter(v =>
-      v.pattern.some(row => row.some(step => step === true))
-    ).length;
+    // Obter ritmos disponíveis com seus índices
+    const availableRhythms = state.variations.main
+      .map((v, index) => ({
+        index,
+        hasContent: v.pattern.some(row => row.some(step => step === true))
+      }))
+      .filter(r => r.hasContent);
 
     // Se só tem 1 ritmo, não faz nada
-    if (availableRhythms <= 1) return;
+    if (availableRhythms.length <= 1) return;
 
-    const nextMainVariation = (this.stateManager.getCurrentVariation('main') + 1) % 3;
+    // Encontrar próximo ritmo com conteúdo
+    const currentIndex = this.stateManager.getCurrentVariation('main');
+    const currentPosition = availableRhythms.findIndex(r => r.index === currentIndex);
+    const nextPosition = (currentPosition + 1) % availableRhythms.length;
+    const nextMainVariation = availableRhythms[nextPosition].index;
+
     this.pendingMainVariation = nextMainVariation;
     this.shouldChangeRhythmAfterFill = true;
     this.playRotatingFill();
   }
 
   playRotatingFill(): void {
-    const fillVariation = this.currentFillRotation;
-    this.activateFillWithTiming(fillVariation);
-    this.currentFillRotation = (this.currentFillRotation + 1) % 3;
+    const state = this.stateManager.getState();
+
+    // Obter viradas disponíveis com seus índices
+    const availableFills = state.variations.fill
+      .map((v, index) => ({
+        index,
+        hasContent: v.pattern.some(row => row.some(step => step === true))
+      }))
+      .filter(f => f.hasContent);
+
+    // Se não tem nenhuma virada, não faz nada
+    if (availableFills.length === 0) return;
+
+    // Encontrar próxima virada com conteúdo a partir da rotação atual
+    let fillIndex = this.currentFillRotation;
+    let attempts = 0;
+
+    // Tentar encontrar uma virada com conteúdo
+    while (attempts < 3) {
+      const variation = state.variations.fill[fillIndex];
+      const hasContent = variation?.pattern.some(row => row.some(step => step === true));
+
+      if (hasContent) {
+        this.activateFillWithTiming(fillIndex);
+        this.currentFillRotation = (fillIndex + 1) % 3;
+        return;
+      }
+
+      fillIndex = (fillIndex + 1) % 3;
+      attempts++;
+    }
+
+    // Se chegou aqui, usar a primeira virada disponível
+    if (availableFills.length > 0) {
+      this.activateFillWithTiming(availableFills[0].index);
+      this.currentFillRotation = (availableFills[0].index + 1) % 3;
+    }
   }
 
   playEndAndStop(): void {
@@ -165,6 +207,8 @@ export class PatternEngine {
     if (this.stateManager.isPlaying()) {
       this.stateManager.setActivePattern('main');
       this.stateManager.clearQueue();
+      // Notificar UI da mudança de pattern
+      this.onPatternChange?.('main');
     }
   }
 
