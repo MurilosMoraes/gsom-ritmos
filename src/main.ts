@@ -6,7 +6,7 @@ import { Scheduler } from './core/Scheduler';
 import { PatternEngine } from './core/PatternEngine';
 import { FileManager } from './io/FileManager';
 import { UIManager } from './ui/UIManager';
-import type { PatternType } from './types';
+import type { PatternType, SequencerState } from './types';
 
 class RhythmSequencer {
   private audioContext: AudioContext;
@@ -56,6 +56,7 @@ class RhythmSequencer {
     // StateManager -> UI observers
     this.stateManager.subscribe('playState', (state) => {
       this.uiManager.updatePlayStopUI(state.isPlaying);
+      this.updateUserStatusBar(state);
     });
 
     this.stateManager.subscribe('tempo', (state) => {
@@ -70,6 +71,40 @@ class RhythmSequencer {
       this.uiManager.updateVariationButtons();
       this.uiManager.updatePerformanceGrid();
     });
+
+    // Subscribe para atualizar o step atual
+    this.stateManager.subscribe('currentStep', (state) => {
+      this.updateUserStatusBar(state);
+    });
+  }
+
+  private updateUserStatusBar(state: SequencerState): void {
+    // Atualizar status
+    const statusUser = document.getElementById('statusUser');
+    if (statusUser) {
+      statusUser.textContent = state.isPlaying ? 'Tocando' : 'Parado';
+    }
+
+    // Atualizar posição atual
+    const currentStepUser = document.getElementById('currentStepUser');
+    if (currentStepUser) {
+      const activePattern = state.activePattern as 'intro' | 'main' | 'fill' | 'end';
+      const totalSteps = state.patternSteps[activePattern] || 16;
+      currentStepUser.textContent = `${state.currentStep + 1}/${totalSteps}`;
+    }
+
+    // Atualizar próxima entrada (sempre mostra o padrão ativo)
+    const nextEntryUser = document.getElementById('nextEntryUser');
+    if (nextEntryUser) {
+      const patternNames: Record<PatternType, string> = {
+        intro: 'Intro',
+        main: 'Principal',
+        fill: 'Virada',
+        end: 'Final',
+        transition: 'Transição'
+      };
+      nextEntryUser.textContent = patternNames[state.activePattern] || '-';
+    }
   }
 
   private init(): void {
