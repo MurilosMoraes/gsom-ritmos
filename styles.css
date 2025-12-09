@@ -105,12 +105,25 @@ body::before {
 
 .logo {
   display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo-img {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0, 212, 255, 0.3));
+}
+
+.logo-text {
+  display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
 .logo h1 {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 800;
   background: var(--gradient-main);
   -webkit-background-clip: text;
@@ -120,9 +133,9 @@ body::before {
 }
 
 .logo-subtitle {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
   font-weight: 500;
 }
@@ -1282,8 +1295,17 @@ input[type="number"]:focus {
 }
 
 @media (max-width: 480px) {
+  .logo-img {
+    height: 36px;
+  }
+
   .logo h1 {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
+  }
+
+  .logo-subtitle {
+    font-size: 0.6rem;
+    letter-spacing: 1px;
   }
 
   .app-main {
