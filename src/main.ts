@@ -474,6 +474,8 @@ class RhythmSequencer {
       if ((e.code === 'ArrowLeft' || e.key === 'ArrowLeft') && !e.repeat) {
         e.preventDefault();
         if (!this.stateManager.isPlaying()) {
+          // Sempre começar do ritmo 1 (índice 0) quando parado
+          this.patternEngine.activateRhythm(0);
           this.patternEngine.playIntroAndStart();
           this.play();
         } else {

@@ -73,18 +73,27 @@ export class Scheduler {
 
     const secondsPerStep = (secondsPerBeat / 2) / speedMultiplier;
     this.nextStepTime += secondsPerStep;
-    this.stateManager.incrementStep();
 
-    // Verificar padrões pendentes
+    // Incrementar step temporariamente para calcular o próximo
+    const currentStep = this.stateManager.getCurrentStep();
+    const maxSteps = this.stateManager.getPatternSteps(activePattern);
+    const nextStep = (currentStep + 1) % maxSteps;
+
+    // Atualizar o step
+    this.stateManager.setCurrentStep(nextStep);
+
+    // Verificar padrões pendentes APÓS incrementar o step
     if (this.patternEngine.checkPendingPatterns()) {
+      // Atualizar UI antes de retornar
+      if (this.updateStepCallback) {
+        const delay = (this.nextStepTime - this.audioManager.getCurrentTime()) * 1000;
+        setTimeout(() => this.updateStepCallback!(), Math.max(0, delay));
+      }
       return;
     }
 
-    // Verificar fim do padrão
-    const maxSteps = this.stateManager.getPatternSteps(activePattern);
-
-    if (this.stateManager.getCurrentStep() >= maxSteps) {
-      this.stateManager.resetStep();
+    // Verificar fim do padrão (quando volta ao step 0)
+    if (nextStep === 0) {
       this.patternEngine.handlePatternCompletion();
     }
 
