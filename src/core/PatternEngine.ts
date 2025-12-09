@@ -32,7 +32,8 @@ export class PatternEngine {
     if (activePattern === 'main' && state.pendingFill) {
       if (currentStep === state.pendingFill.entryPoint) {
         this.stateManager.setActivePattern('fill');
-        this.stateManager.setCurrentStep(state.pendingFill.startStep);
+        // Virada sempre começa do step 0 para tocar apenas 1 vez
+        this.stateManager.setCurrentStep(0);
         this.stateManager.setPendingFill(null);
         this.onPatternChange?.('fill');
         return true;
@@ -43,7 +44,8 @@ export class PatternEngine {
     if (activePattern === 'main' && state.pendingEnd) {
       if (currentStep === state.pendingEnd.entryPoint) {
         this.stateManager.setActivePattern('end');
-        this.stateManager.setCurrentStep(state.pendingEnd.startStep);
+        // Finalização sempre começa do step 0
+        this.stateManager.setCurrentStep(0);
         this.stateManager.setPendingEnd(null);
         this.onPatternChange?.('end');
         return true;
@@ -124,6 +126,16 @@ export class PatternEngine {
   }
 
   playFillToNextRhythm(): void {
+    const state = this.stateManager.getState();
+
+    // Contar quantos ritmos têm conteúdo
+    const availableRhythms = state.variations.main.filter(v =>
+      v.pattern.some(row => row.some(step => step === true))
+    ).length;
+
+    // Se só tem 1 ritmo, não faz nada
+    if (availableRhythms <= 1) return;
+
     const nextMainVariation = (this.stateManager.getCurrentVariation('main') + 1) % 3;
     this.pendingMainVariation = nextMainVariation;
     this.shouldChangeRhythmAfterFill = true;
@@ -189,7 +201,12 @@ export class PatternEngine {
   activateEndWithTiming(variationIndex: number): void {
     if (!this.stateManager.isPlaying()) return;
 
-    const variation = this.stateManager.getState().variations.end[0];
+    const state = this.stateManager.getState();
+
+    // Prevenir end se já estamos em end
+    if (state.activePattern === 'end') return;
+
+    const variation = state.variations.end[0];
     if (!variation || !variation.pattern) return;
 
     const hasContent = variation.pattern.some(row => row.some(step => step === true));
@@ -197,9 +214,14 @@ export class PatternEngine {
 
     this.stateManager.setCurrentVariation('end', 0);
     this.stateManager.loadVariation('end', 0);
-    this.stateManager.setActivePattern('end');
-    this.stateManager.resetStep();
-    this.onPatternChange?.('end');
+
+    const entryPoint = this.getNextEntryPoint();
+
+    this.stateManager.setPendingEnd({
+      variationIndex: 0,
+      entryPoint,
+      startStep: 0
+    });
   }
 
   private getNextEntryPoint(): number {

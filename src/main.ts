@@ -446,6 +446,9 @@ class RhythmSequencer {
   }
 
   private setupKeyboardShortcuts(): void {
+    let arrowRightLastPress = 0;
+    let arrowRightTimeout: number | null = null;
+
     window.addEventListener('keydown', (e) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
@@ -471,20 +474,33 @@ class RhythmSequencer {
         return;
       }
 
-      // ArrowRight = Fill without rhythm change
+      // ArrowRight = Single: Fill / Double: End + Stop
       if ((e.code === 'ArrowRight' || e.key === 'ArrowRight') && !e.repeat) {
         e.preventDefault();
-        if (this.stateManager.isPlaying()) {
-          this.patternEngine.playRotatingFill();
-        }
-        return;
-      }
+        if (!this.stateManager.isPlaying()) return;
 
-      // ArrowDown = End + Stop
-      if ((e.code === 'ArrowDown' || e.key === 'ArrowDown') && !e.repeat) {
-        e.preventDefault();
-        if (this.stateManager.isPlaying()) {
+        const now = Date.now();
+        const timeSinceLastPress = now - arrowRightLastPress;
+
+        // Double click detectado (menos de 500ms entre cliques)
+        if (timeSinceLastPress < 500 && arrowRightLastPress > 0) {
+          if (arrowRightTimeout) {
+            clearTimeout(arrowRightTimeout);
+            arrowRightTimeout = null;
+          }
+          // Double click: Finalização + Stop
           this.patternEngine.playEndAndStop();
+          arrowRightLastPress = 0;
+        } else {
+          // Single click: aguarda para ver se haverá double click
+          arrowRightLastPress = now;
+          if (arrowRightTimeout) clearTimeout(arrowRightTimeout);
+
+          arrowRightTimeout = window.setTimeout(() => {
+            // Single click confirmado: apenas virada
+            this.patternEngine.playRotatingFill();
+            arrowRightTimeout = null;
+          }, 500);
         }
         return;
       }
