@@ -72,6 +72,14 @@ class RhythmSequencer {
       this.uiManager.updatePerformanceGrid();
     });
 
+    this.stateManager.subscribe('pendingFill', () => {
+      this.uiManager.updatePerformanceGrid();
+    });
+
+    this.stateManager.subscribe('pendingEnd', () => {
+      this.uiManager.updatePerformanceGrid();
+    });
+
     // Subscribe para atualizar o step atual
     this.stateManager.subscribe('currentStep', (state) => {
       this.updateUserStatusBar(state);

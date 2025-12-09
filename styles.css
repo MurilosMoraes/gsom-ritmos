@@ -640,6 +640,40 @@ input:checked + .slider:before {
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
 }
 
+.grid-cell.queued {
+  border-color: rgba(255, 193, 7, 0.8);
+  background: rgba(255, 193, 7, 0.15);
+  animation: queuedPulse 1s ease-in-out infinite;
+}
+
+.grid-cell.queued .cell-indicator {
+  background: rgba(255, 193, 7, 0.8);
+  box-shadow: 0 0 15px rgba(255, 193, 7, 0.6);
+  animation: queuedIndicatorPulse 1s ease-in-out infinite;
+}
+
+@keyframes queuedPulse {
+  0%, 100% {
+    border-color: rgba(255, 193, 7, 0.8);
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.4);
+  }
+  50% {
+    border-color: rgba(255, 193, 7, 1);
+    box-shadow: 0 0 30px rgba(255, 193, 7, 0.6);
+  }
+}
+
+@keyframes queuedIndicatorPulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
 /* User Status Bar */
 .user-status-bar {
   background: var(--bg-card);

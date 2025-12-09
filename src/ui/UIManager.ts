@@ -196,7 +196,7 @@ export class UIManager {
       const variation = state.variations.main[index];
       const hasContent = variation?.pattern?.some(row => row.some(step => step === true));
 
-      cellElement.classList.remove('active', 'disabled');
+      cellElement.classList.remove('active', 'disabled', 'queued');
 
       if (!hasContent) {
         cellElement.classList.add('disabled');
@@ -213,7 +213,7 @@ export class UIManager {
       const variation = state.variations.fill[index];
       const hasContent = variation?.pattern?.some(row => row.some(step => step === true));
 
-      cellElement.classList.remove('active', 'disabled');
+      cellElement.classList.remove('active', 'disabled', 'queued');
 
       if (!hasContent) {
         cellElement.classList.add('disabled');
@@ -221,7 +221,9 @@ export class UIManager {
                  state.activePattern === 'fill' &&
                  index === state.currentFillVariation) {
         cellElement.classList.add('active');
-        cellElement.classList.remove('queued');
+      } else if (state.pendingFill && index === state.pendingFill.variationIndex) {
+        // Mostrar que está agendado
+        cellElement.classList.add('queued');
       }
     });
 
@@ -231,7 +233,7 @@ export class UIManager {
       const variation = state.variations.end[index];
       const hasContent = variation?.pattern?.some(row => row.some(step => step === true));
 
-      cellElement.classList.remove('active', 'disabled');
+      cellElement.classList.remove('active', 'disabled', 'queued');
 
       if (!hasContent) {
         cellElement.classList.add('disabled');
@@ -239,9 +241,29 @@ export class UIManager {
                  state.activePattern === 'end' &&
                  index === state.currentEndVariation) {
         cellElement.classList.add('active');
-        cellElement.classList.remove('queued');
+      } else if (state.pendingEnd && index === state.pendingEnd.variationIndex) {
+        // Mostrar que está agendado
+        cellElement.classList.add('queued');
       }
     });
+
+    // Atualizar indicador de próximo entry point
+    this.updateNextEntryDisplay();
+  }
+
+  private updateNextEntryDisplay(): void {
+    const state = this.stateManager.getState();
+    const nextEntryUser = document.getElementById('nextEntryUser');
+
+    if (nextEntryUser) {
+      if (state.pendingFill) {
+        nextEntryUser.textContent = `Step ${state.pendingFill.entryPoint}`;
+      } else if (state.pendingEnd) {
+        nextEntryUser.textContent = `Step ${state.pendingEnd.entryPoint}`;
+      } else {
+        nextEntryUser.textContent = '-';
+      }
+    }
   }
 
   clearQueuedCells(): void {
