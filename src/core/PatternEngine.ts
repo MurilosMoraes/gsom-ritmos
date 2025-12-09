@@ -228,20 +228,8 @@ export class PatternEngine {
     const currentStep = this.stateManager.getCurrentStep();
     const activePattern = this.stateManager.getActivePattern();
     const numSteps = this.stateManager.getPatternSteps(activePattern);
-
-    // Determinar divisor baseado no número de steps
-    // 16 steps = divisões de 4 (0, 4, 8, 12)
-    // 12 steps = divisões de 3 (0, 3, 6, 9)
-    // 8 steps = divisões de 4 (0, 4)
-    let divisor = 4;
-    if (numSteps === 12 || numSteps === 6) {
-      divisor = 3;
-    }
-
-    // Calcular próximo ponto de entrada que seja múltiplo do divisor
-    const nextMultiple = Math.ceil((currentStep + 1) / divisor) * divisor;
-    const entryPoint = nextMultiple % numSteps;
-
-    return entryPoint;
+    // Entra imediatamente no próximo step para transição fluida
+    const nextEntry = (currentStep + 1) % numSteps;
+    return nextEntry;
   }
 }
