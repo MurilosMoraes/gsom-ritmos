@@ -28,32 +28,42 @@
     <main class="app-main">
       <!-- ============= MODO USUÁRIO ============= -->
       <div id="userMode" class="mode-container active">
-        <!-- Header com seletor de ritmo e controles -->
-        <section class="user-header-section">
-          <div class="user-header-controls">
-            <div class="rhythm-selector-compact">
-              <select id="rhythmSelectUser" class="rhythm-select-modern">
-                <option value="">Selecione um ritmo...</option>
-              </select>
-              <button id="loadRhythmUser" class="btn-modern btn-primary">
-                <span>Carregar</span>
-              </button>
+        <!-- Seletor de Ritmos Visual -->
+        <section class="rhythm-selector-visual">
+          <h3 class="section-title-user">Selecionar Ritmo</h3>
+          <div class="rhythm-cards-container" id="rhythmCardsContainer">
+            <!-- Cards serão gerados dinamicamente -->
+            <div class="rhythm-card-placeholder">
+              <span>Carregando ritmos...</span>
             </div>
-            <div class="playback-main-controls">
-              <button id="playStopUser" class="btn-playback-main btn-play">
-                <span class="label">PLAY</span>
-              </button>
+          </div>
+        </section>
+
+        <!-- Controles de Playback -->
+        <section class="playback-controls-section">
+          <button id="playStopUser" class="btn-play-large">
+            <span class="play-icon">▶</span>
+            <span class="play-label">PLAY</span>
+          </button>
+
+          <div class="controls-row">
+            <div class="control-item">
+              <label class="control-label">Tempo</label>
+              <div class="control-content">
+                <button id="tempoDownUser" class="control-btn">−</button>
+                <div class="control-display" id="tempoDisplayUser">80</div>
+                <button id="tempoUpUser" class="control-btn">+</button>
+                <span class="control-unit">BPM</span>
+              </div>
             </div>
-            <div class="tempo-compact">
-              <button id="tempoDownUser" class="tempo-btn-compact">−</button>
-              <div class="tempo-display-compact" id="tempoDisplayUser">80</div>
-              <button id="tempoUpUser" class="tempo-btn-compact">+</button>
-              <span class="tempo-label">BPM</span>
-            </div>
-            <div class="volume-compact">
-              <span class="volume-icon">🔊</span>
-              <input type="range" id="masterVolumeUser" min="0" max="200" value="100" step="5" class="volume-slider-compact">
-              <span class="volume-display-compact" id="volumeDisplayUser">100%</span>
+
+            <div class="control-item">
+              <label class="control-label">Volume</label>
+              <div class="control-content">
+                <span class="volume-icon-new">🔊</span>
+                <input type="range" id="masterVolumeUser" min="0" max="200" value="100" step="5" class="volume-slider-new">
+                <span class="volume-display-new" id="volumeDisplayUser">100%</span>
+              </div>
             </div>
           </div>
         </section>

@@ -80,11 +80,12 @@ export class UIManager {
   updateStepVisual(channel: number, step: number): void {
     const state = this.stateManager.getState();
     const pattern = state.editingPattern;
-    const tracks = document.querySelectorAll('.track');
-    const track = tracks[channel];
-    if (!track) return;
 
-    const stepElement = track.querySelector(`[data-step="${step}"]`) as HTMLElement;
+    // Buscar o step correto usando data-channel e data-step
+    const stepElement = document.querySelector(
+      `.step[data-channel="${channel}"][data-step="${step}"]`
+    ) as HTMLElement;
+
     if (!stepElement) return;
 
     const isActive = state.patterns[pattern][channel][step];
@@ -92,18 +93,23 @@ export class UIManager {
 
     if (isActive) {
       stepElement.classList.add('active');
-      const volumeIndicator = stepElement.querySelector('.volume-indicator') as HTMLElement;
-      if (volumeIndicator) {
-        volumeIndicator.style.height = `${volume * 100}%`;
-        volumeIndicator.style.background = '#FFD700';
-        volumeIndicator.style.opacity = '1';
-        volumeIndicator.style.boxShadow = '0 0 8px rgba(255, 215, 0, 0.9)';
+
+      // Adicionar indicador visual de volume se não existir
+      let volumeIndicator = stepElement.querySelector('.volume-indicator') as HTMLElement;
+      if (!volumeIndicator) {
+        volumeIndicator = document.createElement('div');
+        volumeIndicator.className = 'volume-indicator';
+        stepElement.appendChild(volumeIndicator);
       }
+
+      volumeIndicator.style.height = `${volume * 100}%`;
+      volumeIndicator.style.opacity = '1';
     } else {
       stepElement.classList.remove('active');
       const volumeIndicator = stepElement.querySelector('.volume-indicator') as HTMLElement;
       if (volumeIndicator) {
         volumeIndicator.style.height = '0%';
+        volumeIndicator.style.opacity = '0';
       }
     }
   }
@@ -120,14 +126,20 @@ export class UIManager {
     const state = this.stateManager.getState();
     const currentStep = state.currentStep;
 
-    document.querySelectorAll('.step').forEach((step, index) => {
-      const stepIndex = index % 16;
-      if (stepIndex === currentStep) {
-        step.classList.add('current');
-      } else {
-        step.classList.remove('current');
-      }
+    // Remover 'current' de todos os steps
+    document.querySelectorAll('.step').forEach(step => {
+      step.classList.remove('current');
     });
+
+    // Adicionar 'current' apenas nos steps da posição atual (um por canal)
+    for (let channel = 0; channel < 8; channel++) {
+      const stepElement = document.querySelector(
+        `.step[data-channel="${channel}"][data-step="${currentStep}"]`
+      );
+      if (stepElement) {
+        stepElement.classList.add('current');
+      }
+    }
   }
 
   updateVariationButtons(): void {

@@ -196,7 +196,8 @@ export class PatternEngine {
 
   private getNextEntryPoint(): number {
     const currentStep = this.stateManager.getCurrentStep();
-    const nextEntry = Math.ceil((currentStep + 1) / 4) * 4;
-    return nextEntry >= 16 ? 0 : nextEntry;
+    // Entra imediatamente no próximo step para transição fluida
+    const nextEntry = (currentStep + 1) % 16;
+    return nextEntry;
   }
 }

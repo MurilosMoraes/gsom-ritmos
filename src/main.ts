@@ -124,35 +124,24 @@ class RhythmSequencer {
       const channelDiv = document.createElement('div');
       channelDiv.className = 'channel';
 
-      channelDiv.innerHTML = `
-        <div class="channel-header">
-          <div class="channel-controls">
-            <label for="midiSelect${channel + 1}">Canal ${channel + 1}:</label>
-            <select id="midiSelect${channel + 1}" class="midi-select">
-              <option value="">Selecione um arquivo...</option>
-            </select>
-            <input type="file" id="customMidiInput${channel + 1}" accept="audio/*" class="file-input">
-            <button class="btn btn-custom-midi" data-channel="${channel + 1}">
-              <span class="icon">📁</span>
-              <span>Arquivo Customizado</span>
-            </button>
-            <span id="customFileName${channel + 1}" class="custom-file-name"></span>
-          </div>
-        </div>
+      // Informações do canal
+      const channelInfo = document.createElement('div');
+      channelInfo.className = 'channel-info';
+      channelInfo.innerHTML = `
+        <div class="channel-number">Canal ${channel + 1}</div>
+        <select id="midiSelect${channel + 1}" class="channel-sound">
+          <option value="">Selecione...</option>
+        </select>
       `;
 
-      const track = document.createElement('div');
-      track.className = 'track';
-      track.setAttribute('data-channel', (channel + 1).toString());
+      channelDiv.appendChild(channelInfo);
 
+      // Steps (16 steps em grid horizontal)
       for (let step = 0; step < 16; step++) {
         const stepDiv = document.createElement('div');
         stepDiv.className = 'step';
         stepDiv.setAttribute('data-step', step.toString());
-
-        const volumeIndicator = document.createElement('div');
-        volumeIndicator.className = 'volume-indicator';
-        stepDiv.appendChild(volumeIndicator);
+        stepDiv.setAttribute('data-channel', channel.toString());
 
         stepDiv.addEventListener('click', () => {
           this.toggleStep(channel, step);
@@ -163,10 +152,9 @@ class RhythmSequencer {
           this.showVolumeControl(channel, step, stepDiv);
         });
 
-        track.appendChild(stepDiv);
+        channelDiv.appendChild(stepDiv);
       }
 
-      channelDiv.appendChild(track);
       sequencerContainer.appendChild(channelDiv);
     }
   }
@@ -255,8 +243,6 @@ class RhythmSequencer {
       });
     }
 
-    // Sincronizar lista de ritmos do modo usuário com admin
-    this.syncRhythmSelects();
 
     // Botões de Variação no Modo Usuário
     document.querySelectorAll('.variation-btn-user').forEach((btn) => {
@@ -405,15 +391,16 @@ class RhythmSequencer {
 
     if (masterVolumeUser && volumeDisplayUser) {
       masterVolumeUser.addEventListener('input', (e) => {
-        const value = parseInt((e.target as HTMLInputElement).value) / 100;
+        const valuePercent = parseInt((e.target as HTMLInputElement).value);
+        const value = valuePercent / 100;
         this.stateManager.setMasterVolume(value);
-        volumeDisplayUser.textContent = `${Math.round(value)}%`;
+        volumeDisplayUser.textContent = `${valuePercent}%`;
 
         // Sincronizar com o controle do modo admin
         const masterVolumeAdmin = document.getElementById('masterVolume') as HTMLInputElement;
         const volumeDisplayAdmin = document.getElementById('masterVolumeDisplay');
-        if (masterVolumeAdmin) masterVolumeAdmin.value = value.toString();
-        if (volumeDisplayAdmin) volumeDisplayAdmin.textContent = `${Math.round(value)}%`;
+        if (masterVolumeAdmin) masterVolumeAdmin.value = valuePercent.toString();
+        if (volumeDisplayAdmin) volumeDisplayAdmin.textContent = `${valuePercent}%`;
       });
     }
 
@@ -423,13 +410,14 @@ class RhythmSequencer {
 
     if (masterVolume && masterVolumeDisplay) {
       masterVolume.addEventListener('input', (e) => {
-        const value = parseInt((e.target as HTMLInputElement).value) / 100;
+        const valuePercent = parseInt((e.target as HTMLInputElement).value);
+        const value = valuePercent / 100;
         this.stateManager.setMasterVolume(value);
-        masterVolumeDisplay.textContent = `${Math.round(value)}%`;
+        masterVolumeDisplay.textContent = `${valuePercent}%`;
 
         // Sincronizar com o controle do modo usuário
-        if (masterVolumeUser) masterVolumeUser.value = value.toString();
-        if (volumeDisplayUser) volumeDisplayUser.textContent = `${Math.round(value)}%`;
+        if (masterVolumeUser) masterVolumeUser.value = valuePercent.toString();
+        if (volumeDisplayUser) volumeDisplayUser.textContent = `${valuePercent}%`;
       });
     }
 
@@ -868,6 +856,12 @@ class RhythmSequencer {
     popup.innerHTML = `
       <div class="volume-popup-content">
         <label>Volume: <span id="volumeValue">${Math.round(currentVolume * 100)}%</span></label>
+        <div class="volume-presets">
+          <button class="preset-btn" data-volume="20">Ghost</button>
+          <button class="preset-btn" data-volume="50">Médio</button>
+          <button class="preset-btn" data-volume="80">Alto</button>
+          <button class="preset-btn" data-volume="100">Max</button>
+        </div>
         <input type="range" id="volumeSlider" min="0" max="100" value="${currentVolume * 100}" step="1">
         <button class="volume-close">Fechar</button>
       </div>
@@ -882,11 +876,24 @@ class RhythmSequencer {
     const slider = popup.querySelector('#volumeSlider') as HTMLInputElement;
     const valueDisplay = popup.querySelector('#volumeValue') as HTMLElement;
 
-    slider.addEventListener('input', (e) => {
-      const value = parseInt((e.target as HTMLInputElement).value) / 100;
+    const updateVolume = (value: number) => {
       this.stateManager.setStepVolume(pattern, channel, step, value);
       valueDisplay.textContent = `${Math.round(value * 100)}%`;
+      slider.value = (value * 100).toString();
       this.uiManager.updateStepVisual(channel, step);
+    };
+
+    slider.addEventListener('input', (e) => {
+      const value = parseInt((e.target as HTMLInputElement).value) / 100;
+      updateVolume(value);
+    });
+
+    // Preset buttons
+    popup.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const presetValue = parseInt((e.target as HTMLElement).getAttribute('data-volume')!) / 100;
+        updateVolume(presetValue);
+      });
     });
 
     const closeBtn = popup.querySelector('.volume-close') as HTMLButtonElement;
@@ -1026,20 +1033,64 @@ class RhythmSequencer {
         'pop-complete.json'
       ];
 
+      // Atualizar select do modo admin
       const select = document.getElementById('rhythmSelect') as HTMLSelectElement;
-      if (!select) return;
+      if (select) {
+        select.innerHTML = '<option value="">Selecione um ritmo...</option>';
+      }
 
-      select.innerHTML = '<option value="">Selecione um ritmo...</option>';
+      // Atualizar cards do modo usuário
+      const cardsContainer = document.getElementById('rhythmCardsContainer');
+      if (cardsContainer) {
+        cardsContainer.innerHTML = '';
+      }
 
-      // Verificar quais arquivos existem
+      // Verificar quais arquivos existem e criar cards
       for (const file of rhythmFiles) {
         try {
           const testResponse = await fetch(`/rhythm/${file}`, { method: 'HEAD' });
           if (testResponse.ok) {
-            const option = document.createElement('option');
-            option.value = `/rhythm/${file}`;
-            option.textContent = file.replace('.json', '');
-            select.appendChild(option);
+            const rhythmPath = `/rhythm/${file}`;
+            const rhythmName = file.replace('.json', '').replace(/-/g, ' ');
+
+            // Adicionar opção no select do admin
+            if (select) {
+              const option = document.createElement('option');
+              option.value = rhythmPath;
+              option.textContent = rhythmName;
+              select.appendChild(option);
+            }
+
+            // Criar card no modo usuário
+            if (cardsContainer) {
+              const card = document.createElement('div');
+              card.className = 'rhythm-card';
+              card.dataset.rhythmPath = rhythmPath;
+
+              card.innerHTML = `
+                <div class="rhythm-card-name">${rhythmName}</div>
+                <div class="rhythm-card-icon">🥁</div>
+              `;
+
+              card.addEventListener('click', async () => {
+                // Remover active de todos os cards
+                cardsContainer.querySelectorAll('.rhythm-card').forEach(c => c.classList.remove('active'));
+                // Adicionar active no card clicado
+                card.classList.add('active');
+
+                // Carregar o ritmo
+                try {
+                  await this.fileManager.loadProjectFromPath(rhythmPath);
+                  this.uiManager.refreshGridDisplay();
+                  this.uiManager.updateVariationButtons();
+                  console.log(`Rhythm ${rhythmName} loaded`);
+                } catch (error) {
+                  console.error(`Error loading rhythm ${rhythmName}:`, error);
+                }
+              });
+
+              cardsContainer.appendChild(card);
+            }
           }
         } catch (e) {
           console.log(`Rhythm ${file} not found`);
@@ -1047,20 +1098,8 @@ class RhythmSequencer {
       }
 
       console.log('Rhythms loaded');
-
-      // Sincronizar com o select do modo usuário
-      this.syncRhythmSelects();
     } catch (error) {
       console.log('Could not list rhythms automatically');
-    }
-  }
-
-  private syncRhythmSelects(): void {
-    const rhythmSelect = document.getElementById('rhythmSelect') as HTMLSelectElement;
-    const rhythmSelectUser = document.getElementById('rhythmSelectUser') as HTMLSelectElement;
-
-    if (rhythmSelect && rhythmSelectUser) {
-      rhythmSelectUser.innerHTML = rhythmSelect.innerHTML;
     }
   }
 }

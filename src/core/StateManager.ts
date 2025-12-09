@@ -27,7 +27,7 @@ export class StateManager {
         main: 16,
         fill: 16,
         end: 8,
-        intro: 4
+        intro: 16
       },
       fillSteps: 16,
       patterns: {
