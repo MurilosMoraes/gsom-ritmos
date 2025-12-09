@@ -137,7 +137,8 @@ export class FileManager {
       state.variations.main[v] = {
         pattern: state.patterns.main.map(row => [...row]),
         volumes: state.volumes.main.map(row => [...row]),
-        channels: state.channels.main.map(ch => ({ ...ch }))
+        channels: state.channels.main.map(ch => ({ ...ch })),
+        steps: state.patternSteps.main || 16
       };
     }
 
@@ -145,14 +146,16 @@ export class FileManager {
       state.variations.fill[v] = {
         pattern: state.patterns.fill.map(row => [...row]),
         volumes: state.volumes.fill.map(row => [...row]),
-        channels: state.channels.fill.map(ch => ({ ...ch }))
+        channels: state.channels.fill.map(ch => ({ ...ch })),
+        steps: state.patternSteps.fill || 16
       };
     }
 
     state.variations.end[0] = {
       pattern: state.patterns.end.map(row => [...row]),
       volumes: state.volumes.end.map(row => [...row]),
-      channels: state.channels.end.map(ch => ({ ...ch }))
+      channels: state.channels.end.map(ch => ({ ...ch })),
+      steps: state.patternSteps.end || 8
     };
   }
 
