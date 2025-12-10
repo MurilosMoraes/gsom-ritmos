@@ -487,7 +487,11 @@ class RhythmSequencer {
       // ArrowRight = Single: Fill / Double: End + Stop
       if ((e.code === 'ArrowRight' || e.key === 'ArrowRight') && !e.repeat) {
         e.preventDefault();
-        if (!this.stateManager.isPlaying()) return;
+        if (!this.stateManager.isPlaying()) {
+          // Tocar prato se não estiver tocando
+          this.playCymbal();
+          return;
+        }
 
         const now = Date.now();
         const timeSinceLastPress = now - arrowRightLastPress;
@@ -1030,6 +1034,24 @@ class RhythmSequencer {
 
     this.uiManager.clearQueuedCells();
     this.uiManager.updatePerformanceGrid();
+  }
+
+  private async playCymbal(): Promise<void> {
+    // Carregar e tocar o som do prato
+    const cymbalBuffer = await this.audioManager.loadAudioFromPath('/midi/prato.mp3');
+    if (cymbalBuffer) {
+      const currentTime = this.audioManager.getCurrentTime();
+      this.audioManager.playSound(cymbalBuffer, currentTime, 1.0);
+
+      // Feedback visual
+      const cymbalBtn = document.getElementById('cymbalBtn');
+      if (cymbalBtn) {
+        cymbalBtn.classList.add('active');
+        setTimeout(() => {
+          cymbalBtn.classList.remove('active');
+        }, 300);
+      }
+    }
   }
 
   private toggleStep(channel: number, step: number): void {

@@ -594,6 +594,29 @@ input:checked + .slider:before {
   box-shadow: 0 0 30px rgba(236, 72, 153, 0.6);
 }
 
+/* Cymbal Cell */
+.cymbal-cell {
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.cymbal-cell::before {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.cymbal-cell:hover {
+  border-color: rgba(251, 191, 36, 0.6);
+}
+
+.cymbal-cell:hover::before {
+  opacity: 0.1;
+}
+
+.cymbal-cell.active {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-color: transparent;
+  box-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
+}
+
 /* Transition Cell */
 .transition-cell {
   border-color: rgba(249, 115, 22, 0.3);
