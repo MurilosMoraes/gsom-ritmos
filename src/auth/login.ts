@@ -49,7 +49,7 @@ class LoginPage {
     });
   }
 
-  private async handleSubmit(e: Event): void {
+  private async handleSubmit(e: Event): Promise<void> {
     e.preventDefault();
 
     // Validação básica

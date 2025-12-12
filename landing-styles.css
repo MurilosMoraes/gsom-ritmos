@@ -167,12 +167,33 @@ body {
   color: var(--cyan);
 }
 
+.btn-nav-secondary {
+  padding: 0.5rem 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white !important;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-nav-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.5);
+}
+
 .btn-nav {
   padding: 0.5rem 1.5rem;
   background: var(--gradient-main);
   color: white !important;
   border-radius: 8px;
   font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-nav:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 212, 255, 0.4);
 }
 
 /* Hero Content */
