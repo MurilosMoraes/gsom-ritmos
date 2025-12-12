@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GSOM Ritmos</string>
+    <string name="title_activity_main">GSOM Ritmos</string>
+    <string name="package_name">com.gsom.ritmos</string>
+    <string name="custom_url_scheme">com.gsom.ritmos</string>
+</resources>
