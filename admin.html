@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard - GDrums</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="admin-styles.css" />
+  </head>
+  <body class="admin-body">
+    <!-- Header Admin -->
+    <header class="admin-header">
+      <div class="admin-header-content">
+        <div class="logo">
+          <img src="/assets/logo.png" alt="GDrums" class="logo-img" />
+          <h1>GDrums Admin</h1>
+        </div>
+        <div class="admin-user">
+          <span class="admin-user-name" id="adminUserName">Admin</span>
+          <button class="btn-logout" id="logoutBtn">Sair</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="admin-layout">
+      <!-- Sidebar -->
+      <aside class="admin-sidebar">
+        <nav class="admin-nav">
+          <a href="#dashboard" class="nav-item active" data-section="dashboard">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Dashboard</span>
+          </a>
+          <a href="#users" class="nav-item" data-section="users">
+            <span class="nav-icon">👥</span>
+            <span class="nav-label">Usuários</span>
+          </a>
+          <a href="#subscriptions" class="nav-item" data-section="subscriptions">
+            <span class="nav-icon">💳</span>
+            <span class="nav-label">Assinaturas</span>
+          </a>
+          <a href="#settings" class="nav-item" data-section="settings">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">Configurações</span>
+          </a>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="admin-main">
+        <!-- Dashboard Section -->
+        <section id="dashboardSection" class="admin-section active">
+          <h2 class="section-title-admin">Dashboard</h2>
+
+          <!-- Stats Cards -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon users-icon">👥</div>
+              <div class="stat-info">
+                <span class="stat-value" id="totalUsers">0</span>
+                <span class="stat-label">Usuários Totais</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon active-icon">✓</div>
+              <div class="stat-info">
+                <span class="stat-value" id="activeSubscriptions">0</span>
+                <span class="stat-label">Assinaturas Ativas</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon revenue-icon">💰</div>
+              <div class="stat-info">
+                <span class="stat-value" id="totalRevenue">R$ 0</span>
+                <span class="stat-label">Receita Mensal</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon growth-icon">📈</div>
+              <div class="stat-info">
+                <span class="stat-value" id="growthRate">0%</span>
+                <span class="stat-label">Crescimento</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts -->
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>Novos Usuários (Últimos 7 dias)</h3>
+              <div class="chart-container" id="usersChart"></div>
+            </div>
+
+            <div class="chart-card">
+              <h3>Status das Assinaturas</h3>
+              <div class="chart-container" id="subscriptionsChart"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Users Section -->
+        <section id="usersSection" class="admin-section">
+          <div class="section-header">
+            <h2 class="section-title-admin">Gerenciar Usuários</h2>
+            <button class="btn-add" id="addUserBtn">+ Novo Usuário</button>
+          </div>
+
+          <div class="filters-bar">
+            <input
+              type="text"
+              class="search-input-admin"
+              id="userSearchInput"
+              placeholder="Buscar usuários..."
+            />
+            <select class="filter-select" id="userStatusFilter">
+              <option value="all">Todos</option>
+              <option value="active">Ativos</option>
+              <option value="inactive">Inativos</option>
+              <option value="blocked">Bloqueados</option>
+            </select>
+          </div>
+
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th>Assinatura</th>
+                  <th>Último Acesso</th>
+                  <th>Dispositivos</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination" id="usersPagination"></div>
+        </section>
+
+        <!-- Subscriptions Section -->
+        <section id="subscriptionsSection" class="admin-section">
+          <div class="section-header">
+            <h2 class="section-title-admin">Gerenciar Assinaturas</h2>
+          </div>
+
+          <div class="filters-bar">
+            <input
+              type="text"
+              class="search-input-admin"
+              id="subscriptionSearchInput"
+              placeholder="Buscar assinaturas..."
+            />
+            <select class="filter-select" id="subscriptionStatusFilter">
+              <option value="all">Todas</option>
+              <option value="active">Ativas</option>
+              <option value="expired">Expiradas</option>
+              <option value="canceled">Canceladas</option>
+            </select>
+          </div>
+
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Usuário</th>
+                  <th>Plano</th>
+                  <th>Status</th>
+                  <th>Início</th>
+                  <th>Vencimento</th>
+                  <th>Valor</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="subscriptionsTableBody">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination" id="subscriptionsPagination"></div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Modal: Edit User -->
+    <div class="modal" id="editUserModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Editar Usuário</h3>
+          <button class="modal-close" data-modal="editUserModal">×</button>
+        </div>
+        <form id="editUserForm">
+          <div class="modal-body">
+            <input type="hidden" id="editUserId" />
+
+            <div class="form-group">
+              <label>Nome</label>
+              <input type="text" id="editUserName" required />
+            </div>
+
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="editUserEmail" required />
+            </div>
+
+            <div class="form-group">
+              <label>Status</label>
+              <select id="editUserStatus">
+                <option value="active">Ativo</option>
+                <option value="inactive">Inativo</option>
+                <option value="blocked">Bloqueado</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Máximo de Dispositivos</label>
+              <input type="number" id="editUserMaxDevices" min="1" max="5" value="2" />
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" data-modal="editUserModal">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primary">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Edit Subscription -->
+    <div class="modal" id="editSubscriptionModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Editar Assinatura</h3>
+          <button class="modal-close" data-modal="editSubscriptionModal">×</button>
+        </div>
+        <form id="editSubscriptionForm">
+          <div class="modal-body">
+            <input type="hidden" id="editSubscriptionId" />
+
+            <div class="form-group">
+              <label>Status</label>
+              <select id="editSubscriptionStatus">
+                <option value="active">Ativa</option>
+                <option value="expired">Expirada</option>
+                <option value="canceled">Cancelada</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Data de Vencimento</label>
+              <input type="date" id="editSubscriptionExpiry" required />
+            </div>
+
+            <div class="form-group">
+              <label>Renovar Automaticamente</label>
+              <select id="editSubscriptionAutoRenew">
+                <option value="true">Sim</option>
+                <option value="false">Não</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" data-modal="editSubscriptionModal">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primary">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Delete Confirmation -->
+    <div class="modal" id="deleteModal">
+      <div class="modal-content modal-small">
+        <div class="modal-header">
+          <h3>Confirmar Exclusão</h3>
+          <button class="modal-close" data-modal="deleteModal">×</button>
+        </div>
+        <div class="modal-body">
+          <p id="deleteMessage">Tem certeza que deseja excluir este item?</p>
+          <p class="warning-text">Esta ação não pode ser desfeita.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-modal="deleteModal">
+            Cancelar
+          </button>
+          <button type="button" class="btn-danger" id="confirmDeleteBtn">
+            Excluir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/auth/admin.ts"></script>
+  </body>
+</html>

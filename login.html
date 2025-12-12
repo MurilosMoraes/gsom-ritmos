@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - GDrums</title>
+    <link rel="stylesheet" href="auth-styles.css" />
+  </head>
+  <body>
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="logo-auth">
+            <img src="/assets/logo.png" alt="GDrums" class="logo-img-auth" />
+            <h1>GDrums</h1>
+          </div>
+          <p class="auth-subtitle">Bem-vindo de volta!</p>
+        </div>
+
+        <form id="loginForm" class="auth-form">
+          <div class="form-group">
+            <label for="email">E-mail</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              placeholder="seu@email.com"
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">Senha</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              placeholder="••••••••"
+              autocomplete="current-password"
+            />
+          </div>
+
+          <div class="form-options">
+            <label class="checkbox-label">
+              <input type="checkbox" id="rememberMe" />
+              <span>Lembrar de mim</span>
+            </label>
+            <a href="#" class="forgot-link">Esqueceu a senha?</a>
+          </div>
+
+          <button type="submit" class="btn-primary-auth" id="loginBtn">
+            <span class="btn-text">Entrar</span>
+            <span class="btn-loader" style="display: none;">
+              <svg class="spinner" viewBox="0 0 50 50">
+                <circle cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+              </svg>
+            </span>
+          </button>
+
+          <div class="auth-divider">
+            <span>ou</span>
+          </div>
+
+          <p class="auth-footer">
+            Não tem uma conta?
+            <a href="register.html">Criar conta</a>
+          </p>
+        </form>
+
+        <div class="alert-message" id="alertMessage" style="display: none;"></div>
+      </div>
+
+      <div class="auth-illustration">
+        <div class="illustration-content">
+          <h2>Crie ritmos profissionais</h2>
+          <p>Acesse agora a melhor ferramenta de sequenciamento de ritmos do Brasil</p>
+          <ul class="features-list">
+            <li>✓ 150+ ritmos prontos</li>
+            <li>✓ Editor avançado de padrões</li>
+            <li>✓ Sistema de variações</li>
+            <li>✓ Exportação MIDI</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/auth/login.ts"></script>
+  </body>
+</html>

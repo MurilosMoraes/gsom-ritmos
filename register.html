@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Criar Conta - GDrums</title>
+    <link rel="stylesheet" href="auth-styles.css" />
+  </head>
+  <body>
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="logo-auth">
+            <img src="/assets/logo.png" alt="GDrums" class="logo-img-auth" />
+            <h1>GDrums</h1>
+          </div>
+          <p class="auth-subtitle">Crie sua conta e comece agora!</p>
+        </div>
+
+        <form id="registerForm" class="auth-form">
+          <div class="form-group">
+            <label for="name">Nome completo</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              required
+              placeholder="Seu nome completo"
+              autocomplete="name"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="email">E-mail</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              placeholder="seu@email.com"
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">Senha</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              placeholder="Mínimo 8 caracteres"
+              autocomplete="new-password"
+            />
+            <div class="password-strength" id="passwordStrength">
+              <div class="strength-bar"></div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="confirmPassword">Confirmar senha</label>
+            <input
+              type="password"
+              id="confirmPassword"
+              name="confirmPassword"
+              required
+              placeholder="Digite a senha novamente"
+              autocomplete="new-password"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="acceptTerms" required />
+              <span>
+                Aceito os <a href="#" target="_blank">termos de uso</a> e
+                <a href="#" target="_blank">política de privacidade</a>
+              </span>
+            </label>
+          </div>
+
+          <button type="submit" class="btn-primary-auth" id="registerBtn">
+            <span class="btn-text">Criar conta</span>
+            <span class="btn-loader" style="display: none;">
+              <svg class="spinner" viewBox="0 0 50 50">
+                <circle cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+              </svg>
+            </span>
+          </button>
+
+          <div class="auth-divider">
+            <span>ou</span>
+          </div>
+
+          <p class="auth-footer">
+            Já tem uma conta?
+            <a href="login.html">Fazer login</a>
+          </p>
+        </form>
+
+        <div class="alert-message" id="alertMessage" style="display: none;"></div>
+      </div>
+
+      <div class="auth-illustration">
+        <div class="illustration-content">
+          <h2>Plano Profissional</h2>
+          <p>Acesso completo a todas as funcionalidades</p>
+          <div class="pricing-card">
+            <div class="price">
+              <span class="currency">R$</span>
+              <span class="amount">49</span>
+              <span class="period">/mês</span>
+            </div>
+            <ul class="features-list">
+              <li>✓ 150+ ritmos profissionais</li>
+              <li>✓ Editor completo de padrões</li>
+              <li>✓ Sistema de variações avançado</li>
+              <li>✓ Exportação MIDI ilimitada</li>
+              <li>✓ Suporte prioritário</li>
+              <li>✓ Atualizações constantes</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/auth/register.ts"></script>
+  </body>
+</html>
