@@ -1199,12 +1199,49 @@ class RhythmSequencer {
   private async loadRhythmFromPath(filePath: string): Promise<void> {
     try {
       await this.fileManager.loadProjectFromPath(filePath);
+      this.updateMIDISelectorsFromState();
+      this.updateSpecialSoundsSelectors();
       this.uiManager.refreshGridDisplay();
       this.uiManager.updateVariationButtons();
       this.uiManager.showAlert('Ritmo carregado com sucesso!');
     } catch (error) {
       console.error('Error loading rhythm:', error);
       this.uiManager.showAlert('Erro ao carregar ritmo');
+    }
+  }
+
+  private updateMIDISelectorsFromState(): void {
+    const patternType = this.stateManager.getEditingPattern();
+    const currentVariation = this.stateManager.getCurrentVariation(patternType);
+    const state = this.stateManager.getState();
+    const channels = state.variations[patternType][currentVariation].channels;
+
+    for (let i = 0; i < 8; i++) {
+      const midiSelect = document.getElementById(`midiSelect${i + 1}`) as HTMLSelectElement;
+      if (midiSelect && channels[i]) {
+        const midiPath = channels[i].midiPath;
+        if (midiPath) {
+          midiSelect.value = midiPath;
+        } else {
+          midiSelect.value = '';
+        }
+      }
+    }
+  }
+
+  private updateSpecialSoundsSelectors(): void {
+    const state = this.stateManager.getState();
+
+    // Atualizar selector de som de início
+    const fillStartSelect = document.getElementById('fillStartSelect') as HTMLSelectElement;
+    if (fillStartSelect && state.fillStartSound.midiPath) {
+      fillStartSelect.value = state.fillStartSound.midiPath;
+    }
+
+    // Atualizar selector de som de retorno
+    const fillReturnSelect = document.getElementById('fillReturnSelect') as HTMLSelectElement;
+    if (fillReturnSelect && state.fillReturnSound.midiPath) {
+      fillReturnSelect.value = state.fillReturnSound.midiPath;
     }
   }
 

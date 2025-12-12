@@ -17,42 +17,58 @@ export class FileManager {
   async saveProject(): Promise<void> {
     const state = this.stateManager.getState();
     const project: SavedProject = {
-      version: '1.3',
+      version: '1.4',
       tempo: state.tempo,
       patternSteps: state.patternSteps,
-      patterns: {
-        main: state.patterns.main,
-        fill: state.patterns.fill,
-        end: state.patterns.end,
-        intro: state.patterns.intro
-      },
-      volumes: {
-        main: state.volumes.main,
-        fill: state.volumes.fill,
-        end: state.volumes.end,
-        intro: state.volumes.intro
-      },
-      audioFiles: {
-        main: state.channels.main.map(ch => ({
-          fileName: ch.fileName,
-          audioData: '',
-          midiPath: ch.midiPath
+      variations: {
+        main: state.variations.main.map(v => ({
+          pattern: v.pattern,
+          volumes: v.volumes,
+          audioFiles: v.channels.map(ch => ({
+            fileName: ch.fileName,
+            audioData: '',
+            midiPath: ch.midiPath
+          })),
+          steps: v.steps
         })),
-        fill: state.channels.fill.map(ch => ({
-          fileName: ch.fileName,
-          audioData: '',
-          midiPath: ch.midiPath
+        fill: state.variations.fill.map(v => ({
+          pattern: v.pattern,
+          volumes: v.volumes,
+          audioFiles: v.channels.map(ch => ({
+            fileName: ch.fileName,
+            audioData: '',
+            midiPath: ch.midiPath
+          })),
+          steps: v.steps
         })),
-        end: state.channels.end.map(ch => ({
-          fileName: ch.fileName,
-          audioData: '',
-          midiPath: ch.midiPath
+        end: state.variations.end.map(v => ({
+          pattern: v.pattern,
+          volumes: v.volumes,
+          audioFiles: v.channels.map(ch => ({
+            fileName: ch.fileName,
+            audioData: '',
+            midiPath: ch.midiPath
+          })),
+          steps: v.steps
         })),
-        intro: state.channels.intro.map(ch => ({
-          fileName: ch.fileName,
-          audioData: '',
-          midiPath: ch.midiPath
+        intro: state.variations.intro.map(v => ({
+          pattern: v.pattern,
+          volumes: v.volumes,
+          audioFiles: v.channels.map(ch => ({
+            fileName: ch.fileName,
+            audioData: '',
+            midiPath: ch.midiPath
+          })),
+          steps: v.steps
         }))
+      },
+      fillStartSound: {
+        fileName: state.fillStartSound.fileName,
+        midiPath: state.fillStartSound.midiPath
+      },
+      fillReturnSound: {
+        fileName: state.fillReturnSound.fileName,
+        midiPath: state.fillReturnSound.midiPath
       },
       timestamp: new Date().toISOString()
     };
@@ -64,27 +80,7 @@ export class FileManager {
   async loadProject(data: SavedProject): Promise<void> {
     const state = this.stateManager.getState();
 
-    // Carregar padrões
-    if (data.patterns.main) {
-      state.patterns.main = expandPattern(data.patterns.main);
-    }
-    if (data.patterns.fill) {
-      state.patterns.fill = expandPattern(data.patterns.fill);
-    }
-    if (data.patterns.end) {
-      state.patterns.end = expandPattern(data.patterns.end);
-    }
-    if (data.patterns.intro) {
-      state.patterns.intro = expandPattern(data.patterns.intro);
-    }
-
-    // Carregar volumes
-    if (data.volumes) {
-      if (data.volumes.main) state.volumes.main = expandVolumes(data.volumes.main);
-      if (data.volumes.fill) state.volumes.fill = expandVolumes(data.volumes.fill);
-      if (data.volumes.end) state.volumes.end = expandVolumes(data.volumes.end);
-      if (data.volumes.intro) state.volumes.intro = expandVolumes(data.volumes.intro);
-    }
+    this.stateManager.setTempo(data.tempo || 80);
 
     // Carregar patternSteps
     if (data.patternSteps) {
@@ -96,67 +92,272 @@ export class FileManager {
       };
     }
 
-    this.stateManager.setTempo(data.tempo || 80);
+    // Novo formato com variações
+    if (data.variations) {
+      // Carregar variações de main
+      for (let v = 0; v < 3; v++) {
+        if (data.variations.main && data.variations.main[v]) {
+          const variation = data.variations.main[v];
+          state.variations.main[v] = {
+            pattern: expandPattern(variation.pattern),
+            volumes: expandVolumes(variation.volumes),
+            channels: state.channels.main.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
+            steps: variation.steps || state.patternSteps.main
+          };
 
-    // Carregar áudio
-    if (data.audioFiles) {
-      const patterns: PatternType[] = ['main', 'fill', 'end', 'intro'];
-
-      for (const patternType of patterns) {
-        const audioFiles = data.audioFiles[patternType];
-        if (audioFiles && audioFiles.length > 0) {
-          for (let i = 0; i < audioFiles.length && i < 8; i++) {
-            const audioFile = audioFiles[i];
-
+          // Carregar áudios da variação
+          for (let i = 0; i < variation.audioFiles.length && i < 8; i++) {
+            const audioFile = variation.audioFiles[i];
             if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
               continue;
             }
 
             const midiPath = normalizeMidiPath(audioFile.midiPath || '');
-            state.channels[patternType][i].midiPath = midiPath;
-            state.channels[patternType][i].fileName = audioFile.fileName;
+            state.variations.main[v].channels[i].midiPath = midiPath;
+            state.variations.main[v].channels[i].fileName = audioFile.fileName;
 
             try {
               if (midiPath) {
                 const buffer = await this.audioManager.loadAudioFromPath(midiPath);
-                state.channels[patternType][i].buffer = buffer;
+                state.variations.main[v].channels[i].buffer = buffer;
               } else if (audioFile.audioData) {
                 const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
-                state.channels[patternType][i].buffer = buffer;
+                state.variations.main[v].channels[i].buffer = buffer;
               }
             } catch (error) {
-              console.error(`Erro ao carregar áudio para ${patternType} canal ${i}:`, error);
+              console.error(`Erro ao carregar áudio para main variação ${v} canal ${i}:`, error);
             }
           }
         }
       }
-    }
 
-    // Salvar padrões em variações
-    for (let v = 0; v < 3; v++) {
-      state.variations.main[v] = {
-        pattern: state.patterns.main.map(row => [...row]),
-        volumes: state.volumes.main.map(row => [...row]),
-        channels: state.channels.main.map(ch => ({ ...ch })),
-        steps: state.patternSteps.main || 16
+      // Carregar variações de fill
+      for (let v = 0; v < 3; v++) {
+        if (data.variations.fill && data.variations.fill[v]) {
+          const variation = data.variations.fill[v];
+          state.variations.fill[v] = {
+            pattern: expandPattern(variation.pattern),
+            volumes: expandVolumes(variation.volumes),
+            channels: state.channels.fill.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
+            steps: variation.steps || state.patternSteps.fill
+          };
+
+          // Carregar áudios da variação
+          for (let i = 0; i < variation.audioFiles.length && i < 8; i++) {
+            const audioFile = variation.audioFiles[i];
+            if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
+              continue;
+            }
+
+            const midiPath = normalizeMidiPath(audioFile.midiPath || '');
+            state.variations.fill[v].channels[i].midiPath = midiPath;
+            state.variations.fill[v].channels[i].fileName = audioFile.fileName;
+
+            try {
+              if (midiPath) {
+                const buffer = await this.audioManager.loadAudioFromPath(midiPath);
+                state.variations.fill[v].channels[i].buffer = buffer;
+              } else if (audioFile.audioData) {
+                const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
+                state.variations.fill[v].channels[i].buffer = buffer;
+              }
+            } catch (error) {
+              console.error(`Erro ao carregar áudio para fill variação ${v} canal ${i}:`, error);
+            }
+          }
+        }
+      }
+
+      // Carregar variações de end
+      for (let v = 0; v < 3; v++) {
+        if (data.variations.end && data.variations.end[v]) {
+          const variation = data.variations.end[v];
+          state.variations.end[v] = {
+            pattern: expandPattern(variation.pattern),
+            volumes: expandVolumes(variation.volumes),
+            channels: state.channels.end.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
+            steps: variation.steps || state.patternSteps.end
+          };
+
+          // Carregar áudios da variação
+          for (let i = 0; i < variation.audioFiles.length && i < 8; i++) {
+            const audioFile = variation.audioFiles[i];
+            if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
+              continue;
+            }
+
+            const midiPath = normalizeMidiPath(audioFile.midiPath || '');
+            state.variations.end[v].channels[i].midiPath = midiPath;
+            state.variations.end[v].channels[i].fileName = audioFile.fileName;
+
+            try {
+              if (midiPath) {
+                const buffer = await this.audioManager.loadAudioFromPath(midiPath);
+                state.variations.end[v].channels[i].buffer = buffer;
+              } else if (audioFile.audioData) {
+                const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
+                state.variations.end[v].channels[i].buffer = buffer;
+              }
+            } catch (error) {
+              console.error(`Erro ao carregar áudio para end variação ${v} canal ${i}:`, error);
+            }
+          }
+        }
+      }
+
+      // Carregar variações de intro
+      if (data.variations.intro && data.variations.intro[0]) {
+        const variation = data.variations.intro[0];
+        state.variations.intro[0] = {
+          pattern: expandPattern(variation.pattern),
+          volumes: expandVolumes(variation.volumes),
+          channels: state.channels.intro.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
+          steps: variation.steps || state.patternSteps.intro
+        };
+
+        // Carregar áudios da variação
+        for (let i = 0; i < variation.audioFiles.length && i < 8; i++) {
+          const audioFile = variation.audioFiles[i];
+          if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
+            continue;
+          }
+
+          const midiPath = normalizeMidiPath(audioFile.midiPath || '');
+          state.variations.intro[0].channels[i].midiPath = midiPath;
+          state.variations.intro[0].channels[i].fileName = audioFile.fileName;
+
+          try {
+            if (midiPath) {
+              const buffer = await this.audioManager.loadAudioFromPath(midiPath);
+              state.variations.intro[0].channels[i].buffer = buffer;
+            } else if (audioFile.audioData) {
+              const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
+              state.variations.intro[0].channels[i].buffer = buffer;
+            }
+          } catch (error) {
+            console.error(`Erro ao carregar áudio para intro canal ${i}:`, error);
+          }
+        }
+      }
+
+      // Carregar sons de início e retorno
+      if (data.fillStartSound) {
+        state.fillStartSound.fileName = data.fillStartSound.fileName;
+        state.fillStartSound.midiPath = data.fillStartSound.midiPath;
+        if (data.fillStartSound.midiPath) {
+          try {
+            const buffer = await this.audioManager.loadAudioFromPath(data.fillStartSound.midiPath);
+            state.fillStartSound.buffer = buffer;
+          } catch (error) {
+            console.error('Erro ao carregar som de início:', error);
+          }
+        }
+      }
+
+      if (data.fillReturnSound) {
+        state.fillReturnSound.fileName = data.fillReturnSound.fileName;
+        state.fillReturnSound.midiPath = data.fillReturnSound.midiPath;
+        if (data.fillReturnSound.midiPath) {
+          try {
+            const buffer = await this.audioManager.loadAudioFromPath(data.fillReturnSound.midiPath);
+            state.fillReturnSound.buffer = buffer;
+          } catch (error) {
+            console.error('Erro ao carregar som de retorno:', error);
+          }
+        }
+      }
+    } else {
+      // Formato legado - carregar padrões únicos
+      if (data.patterns?.main) {
+        state.patterns.main = expandPattern(data.patterns.main);
+      }
+      if (data.patterns?.fill) {
+        state.patterns.fill = expandPattern(data.patterns.fill);
+      }
+      if (data.patterns?.end) {
+        state.patterns.end = expandPattern(data.patterns.end);
+      }
+      if (data.patterns?.intro) {
+        state.patterns.intro = expandPattern(data.patterns.intro);
+      }
+
+      // Carregar volumes
+      if (data.volumes) {
+        if (data.volumes.main) state.volumes.main = expandVolumes(data.volumes.main);
+        if (data.volumes.fill) state.volumes.fill = expandVolumes(data.volumes.fill);
+        if (data.volumes.end) state.volumes.end = expandVolumes(data.volumes.end);
+        if (data.volumes.intro) state.volumes.intro = expandVolumes(data.volumes.intro);
+      }
+
+      // Carregar áudio
+      if (data.audioFiles) {
+        const patterns: PatternType[] = ['main', 'fill', 'end', 'intro'];
+
+        for (const patternType of patterns) {
+          const audioFiles = data.audioFiles[patternType];
+          if (audioFiles && audioFiles.length > 0) {
+            for (let i = 0; i < audioFiles.length && i < 8; i++) {
+              const audioFile = audioFiles[i];
+
+              if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
+                continue;
+              }
+
+              const midiPath = normalizeMidiPath(audioFile.midiPath || '');
+              state.channels[patternType][i].midiPath = midiPath;
+              state.channels[patternType][i].fileName = audioFile.fileName;
+
+              try {
+                if (midiPath) {
+                  const buffer = await this.audioManager.loadAudioFromPath(midiPath);
+                  state.channels[patternType][i].buffer = buffer;
+                } else if (audioFile.audioData) {
+                  const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
+                  state.channels[patternType][i].buffer = buffer;
+                }
+              } catch (error) {
+                console.error(`Erro ao carregar áudio para ${patternType} canal ${i}:`, error);
+              }
+            }
+          }
+        }
+      }
+
+      // Criar variações a partir dos padrões únicos
+      for (let v = 0; v < 3; v++) {
+        state.variations.main[v] = {
+          pattern: state.patterns.main.map(row => [...row]),
+          volumes: state.volumes.main.map(row => [...row]),
+          channels: state.channels.main.map(ch => ({ ...ch })),
+          steps: state.patternSteps.main || 16
+        };
+      }
+
+      for (let v = 0; v < 3; v++) {
+        state.variations.fill[v] = {
+          pattern: state.patterns.fill.map(row => [...row]),
+          volumes: state.volumes.fill.map(row => [...row]),
+          channels: state.channels.fill.map(ch => ({ ...ch })),
+          steps: state.patternSteps.fill || 16
+        };
+      }
+
+      for (let v = 0; v < 3; v++) {
+        state.variations.end[v] = {
+          pattern: state.patterns.end.map(row => [...row]),
+          volumes: state.volumes.end.map(row => [...row]),
+          channels: state.channels.end.map(ch => ({ ...ch })),
+          steps: state.patternSteps.end || 8
+        };
+      }
+
+      state.variations.intro[0] = {
+        pattern: state.patterns.intro.map(row => [...row]),
+        volumes: state.volumes.intro.map(row => [...row]),
+        channels: state.channels.intro.map(ch => ({ ...ch })),
+        steps: state.patternSteps.intro || 4
       };
     }
-
-    for (let v = 0; v < 3; v++) {
-      state.variations.fill[v] = {
-        pattern: state.patterns.fill.map(row => [...row]),
-        volumes: state.volumes.fill.map(row => [...row]),
-        channels: state.channels.fill.map(ch => ({ ...ch })),
-        steps: state.patternSteps.fill || 16
-      };
-    }
-
-    state.variations.end[0] = {
-      pattern: state.patterns.end.map(row => [...row]),
-      volumes: state.volumes.end.map(row => [...row]),
-      channels: state.channels.end.map(ch => ({ ...ch })),
-      steps: state.patternSteps.end || 8
-    };
   }
 
   async loadProjectFromPath(filePath: string): Promise<void> {

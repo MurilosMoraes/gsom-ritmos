@@ -87,30 +87,53 @@ export interface SavedPattern {
   name?: string;
 }
 
+export interface SavedVariation {
+  pattern: boolean[][];
+  volumes: number[][];
+  audioFiles: AudioFileData[];
+  steps: number;
+}
+
 export interface SavedProject {
   version: string;
   tempo: number;
   patternSteps?: PatternSteps;
-  patterns: {
-    main: boolean[][];
-    fill: boolean[][];
-    end: boolean[][];
+  // Legacy support - padrões únicos (será removido em versões futuras)
+  patterns?: {
+    main?: boolean[][];
+    fill?: boolean[][];
+    end?: boolean[][];
     intro?: boolean[][];
     transition?: boolean[][];
   };
   volumes?: {
-    main: number[][];
-    fill: number[][];
-    end: number[][];
+    main?: number[][];
+    fill?: number[][];
+    end?: number[][];
     intro?: number[][];
     transition?: number[][];
   };
-  audioFiles: {
-    main: AudioFileData[];
-    fill: AudioFileData[];
-    end: AudioFileData[];
+  audioFiles?: {
+    main?: AudioFileData[];
+    fill?: AudioFileData[];
+    end?: AudioFileData[];
     intro?: AudioFileData[];
     transition?: AudioFileData[];
+  };
+  // Novo formato com variações
+  variations?: {
+    main: SavedVariation[];
+    fill: SavedVariation[];
+    end: SavedVariation[];
+    intro?: SavedVariation[];
+  };
+  fillStartSound?: {
+    fileName: string;
+    midiPath: string;
+  };
+  fillReturnSound?: {
+    fileName: string;
+    midiPath: string;
   };
   timestamp: string;
   name?: string;

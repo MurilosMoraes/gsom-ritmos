@@ -1,10 +1,10 @@
 {
   "version": "1.3",
-  "tempo": 90,
+  "tempo": 110,
   "patternSteps": {
     "main": 6,
     "fill": 6,
-    "end": 6,
+    "end": 12,
     "intro": 6
   },
   "patterns": {
@@ -32,7 +32,7 @@
         false,
         false,
         false,
-        true,
+        false,
         false,
         false,
         false,
@@ -157,29 +157,11 @@
     "fill": [
       [
         true,
-        false,
-        false,
         true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      [
-        false,
         true,
-        false,
-        false,
-        false,
-        false,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -194,9 +176,9 @@
       [
         false,
         false,
-        true,
         false,
-        true,
+        false,
+        false,
         false,
         false,
         false,
@@ -215,7 +197,25 @@
         false,
         false,
         false,
-        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
         false,
         false,
         false,
@@ -362,7 +362,7 @@
         true,
         true,
         false,
-        false,
+        true,
         false,
         false,
         false,
@@ -380,7 +380,7 @@
         false,
         false,
         false,
-        false,
+        true,
         false,
         false,
         false,
@@ -1286,9 +1286,9 @@
         "midiPath": "/midi/surdo.wav"
       },
       {
-        "fileName": "",
+        "fileName": "prato.mp3",
         "audioData": "",
-        "midiPath": ""
+        "midiPath": "/midi/prato.mp3"
       },
       {
         "fileName": "",
@@ -1349,5 +1349,5 @@
       }
     ]
   },
-  "timestamp": "2025-12-09T21:48:01.100Z"
+  "timestamp": "2025-12-09T22:52:17.964Z"
 }
