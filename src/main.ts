@@ -878,8 +878,35 @@ class RhythmSequencer {
         const steps = parseInt((e.target as HTMLSelectElement).value);
         const patternType = this.stateManager.getEditingPattern();
 
+        // Expandir ou encolher os arrays pattern e volumes para o novo tamanho
+        const state = this.stateManager.getState();
+        const currentPattern = state.patterns[patternType];
+        const currentVolumes = state.volumes[patternType];
+
+        // Criar novos arrays com o tamanho correto
+        const newPattern: boolean[][] = [];
+        const newVolumes: number[][] = [];
+
+        for (let i = 0; i < 8; i++) {
+          newPattern[i] = [];
+          newVolumes[i] = [];
+          for (let j = 0; j < steps; j++) {
+            // Copiar valores existentes ou usar padrão
+            newPattern[i][j] = currentPattern[i]?.[j] ?? false;
+            newVolumes[i][j] = currentVolumes[i]?.[j] ?? 1.0;
+          }
+        }
+
+        // Atualizar state
+        state.patterns[patternType] = newPattern;
+        state.volumes[patternType] = newVolumes;
+
         // Atualizar steps do padrão atual
         this.stateManager.setPatternSteps(patternType, steps);
+
+        // Auto-salvar a variação atual com o novo tamanho
+        const currentSlot = this.stateManager.getCurrentVariation(patternType);
+        this.stateManager.saveVariation(patternType, currentSlot);
 
         // Atualizar display
         if (currentStepsDisplay) {

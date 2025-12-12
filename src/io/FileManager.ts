@@ -102,11 +102,12 @@ export class FileManager {
       for (let v = 0; v < 3; v++) {
         if (data.variations.main && data.variations.main[v]) {
           const variation = data.variations.main[v];
+          const targetSteps = variation.steps || state.patternSteps.main;
           state.variations.main[v] = {
-            pattern: expandPattern(variation.pattern),
-            volumes: expandVolumes(variation.volumes),
+            pattern: expandPattern(variation.pattern, targetSteps),
+            volumes: expandVolumes(variation.volumes, targetSteps),
             channels: state.channels.main.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
-            steps: variation.steps || state.patternSteps.main,
+            steps: targetSteps,
             speed: variation.speed || 1
           };
 
@@ -140,11 +141,12 @@ export class FileManager {
       for (let v = 0; v < 3; v++) {
         if (data.variations.fill && data.variations.fill[v]) {
           const variation = data.variations.fill[v];
+          const targetSteps = variation.steps || state.patternSteps.fill;
           state.variations.fill[v] = {
-            pattern: expandPattern(variation.pattern),
-            volumes: expandVolumes(variation.volumes),
+            pattern: expandPattern(variation.pattern, targetSteps),
+            volumes: expandVolumes(variation.volumes, targetSteps),
             channels: state.channels.fill.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
-            steps: variation.steps || state.patternSteps.fill,
+            steps: targetSteps,
             speed: variation.speed || 1
           };
 
@@ -178,11 +180,12 @@ export class FileManager {
       for (let v = 0; v < 3; v++) {
         if (data.variations.end && data.variations.end[v]) {
           const variation = data.variations.end[v];
+          const targetSteps = variation.steps || state.patternSteps.end;
           state.variations.end[v] = {
-            pattern: expandPattern(variation.pattern),
-            volumes: expandVolumes(variation.volumes),
+            pattern: expandPattern(variation.pattern, targetSteps),
+            volumes: expandVolumes(variation.volumes, targetSteps),
             channels: state.channels.end.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
-            steps: variation.steps || state.patternSteps.end,
+            steps: targetSteps,
             speed: variation.speed || 1
           };
 
@@ -223,11 +226,12 @@ export class FileManager {
           }
 
           console.log(`Carregando intro variação ${v}, steps:`, variation.steps);
+          const targetSteps = variation.steps || state.patternSteps.intro;
           state.variations.intro[v] = {
-            pattern: expandPattern(variation.pattern),
-            volumes: expandVolumes(variation.volumes),
+            pattern: expandPattern(variation.pattern, targetSteps),
+            volumes: expandVolumes(variation.volumes, targetSteps),
             channels: state.channels.intro.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
-            steps: variation.steps || state.patternSteps.intro,
+            steps: targetSteps,
             speed: variation.speed || 1
           };
 

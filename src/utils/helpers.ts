@@ -2,15 +2,15 @@
 
 import type { AudioChannel } from '../types';
 
-export function createEmptyPattern(): boolean[][] {
+export function createEmptyPattern(numSteps: number = 16): boolean[][] {
   return Array(8).fill(null).map(() =>
-    Array(16).fill(false)
+    Array(numSteps).fill(false)
   );
 }
 
-export function createEmptyVolumes(): number[][] {
+export function createEmptyVolumes(numSteps: number = 16): number[][] {
   return Array(8).fill(null).map(() =>
-    Array(16).fill(1.0)
+    Array(numSteps).fill(1.0)
   );
 }
 
@@ -45,18 +45,19 @@ export function normalizeMidiPath(path: string): string {
   return path.replace(/^\.\//, '');
 }
 
-export function expandPattern(pattern: boolean[][]): boolean[][] {
+export function expandPattern(pattern: boolean[][], targetSteps: number = 16): boolean[][] {
   const rows = pattern.length;
   const cols = pattern[0]?.length || 0;
 
-  if (rows === 8 && cols === 16) {
+  // Se já tem o tamanho correto, retornar o padrão original
+  if (rows === 8 && cols === targetSteps) {
     return pattern;
   }
 
   const expanded: boolean[][] = [];
   for (let i = 0; i < 8; i++) {
     const row: boolean[] = [];
-    for (let j = 0; j < 16; j++) {
+    for (let j = 0; j < targetSteps; j++) {
       if (i < rows && j < cols) {
         row.push(pattern[i][j]);
       } else {
@@ -69,18 +70,19 @@ export function expandPattern(pattern: boolean[][]): boolean[][] {
   return expanded;
 }
 
-export function expandVolumes(volumes: number[][]): number[][] {
+export function expandVolumes(volumes: number[][], targetSteps: number = 16): number[][] {
   const rows = volumes.length;
   const cols = volumes[0]?.length || 0;
 
-  if (rows === 8 && cols === 16) {
+  // Se já tem o tamanho correto, retornar os volumes originais
+  if (rows === 8 && cols === targetSteps) {
     return volumes;
   }
 
   const expanded: number[][] = [];
   for (let i = 0; i < 8; i++) {
     const row: number[] = [];
-    for (let j = 0; j < 16; j++) {
+    for (let j = 0; j < targetSteps; j++) {
       if (i < rows && j < cols) {
         row.push(volumes[i][j]);
       } else {
