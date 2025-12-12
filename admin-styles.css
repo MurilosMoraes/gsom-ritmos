@@ -439,7 +439,7 @@
   margin-top: 2rem;
 }
 
-.pagination button {
+.pagination-btn {
   padding: 0.5rem 1rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -447,22 +447,30 @@
   color: #ffffff;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-size: 0.875rem;
 }
 
-.pagination button:hover {
+.pagination-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(0, 212, 255, 0.3);
 }
 
-.pagination button.active {
+.pagination-btn.active {
   background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(0, 153, 255, 0.2) 100%);
   border-color: rgba(0, 212, 255, 0.5);
   color: #00d4ff;
+  font-weight: 600;
 }
 
-.pagination button:disabled {
+.pagination-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+.pagination-ellipsis {
+  color: #718096;
+  padding: 0 0.5rem;
+  user-select: none;
 }
 
 /* Modals */
