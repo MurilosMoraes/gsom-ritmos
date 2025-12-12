@@ -20,3 +20,5 @@ Thumbs.db
 
 # Deployment
 .vercel
+www/
+android/local.properties
