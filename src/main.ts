@@ -1294,12 +1294,14 @@ class RhythmSequencer {
     }
   }
 
+  private availableRhythms: Array<{name: string, path: string}> = [];
+  private currentRhythmName: string = '';
+
   private async loadAvailableRhythms(): Promise<void> {
     try {
-      // Tentar carregar lista de ritmos do manifest ou fazer fallback para tentativa dinâmica
+      // Tentar carregar lista de ritmos do manifest
       let rhythmFiles: string[] = [];
 
-      // Tentar carregar manifest.json que lista todos os ritmos
       try {
         const manifestResponse = await fetch('/rhythm/manifest.json');
         if (manifestResponse.ok) {
@@ -1307,23 +1309,16 @@ class RhythmSequencer {
           rhythmFiles = manifest.rhythms || [];
         }
       } catch (e) {
-        // Manifest não existe, usar lista de tentativa
+        // Manifest não existe
       }
 
-      // Se não tiver manifest, tentar uma lista conhecida de possíveis ritmos
+      // Se não tiver manifest, usar lista de tentativa
       if (rhythmFiles.length === 0) {
         const possibleRhythms = [
-          'pop.json',
-          'pop-complete.json',
-          'guarania.json',
-          'samba.json',
-          'bossa.json',
-          'rock.json',
-          'funk.json',
-          'jazz.json'
+          'pop.json', 'pop-complete.json', 'guarania.json', 'samba.json',
+          'bossa.json', 'rock.json', 'funk.json', 'jazz.json'
         ];
 
-        // Verificar quais existem
         for (const file of possibleRhythms) {
           try {
             const testResponse = await fetch(`/rhythm/${file}`, { method: 'HEAD' });
@@ -1336,25 +1331,25 @@ class RhythmSequencer {
         }
       }
 
+      // Limpar array de ritmos
+      this.availableRhythms = [];
+
       // Atualizar select do modo admin
       const select = document.getElementById('rhythmSelect') as HTMLSelectElement;
       if (select) {
         select.innerHTML = '<option value="">Selecione um ritmo...</option>';
       }
 
-      // Atualizar cards do modo usuário
-      const cardsContainer = document.getElementById('rhythmCardsContainer');
-      if (cardsContainer) {
-        cardsContainer.innerHTML = '';
-      }
-
-      // Verificar quais arquivos existem e criar cards
+      // Processar todos os ritmos
       for (const file of rhythmFiles) {
         try {
           const testResponse = await fetch(`/rhythm/${file}`, { method: 'HEAD' });
           if (testResponse.ok) {
             const rhythmPath = `/rhythm/${file}`;
             const rhythmName = file.replace('.json', '').replace(/-/g, ' ');
+
+            // Adicionar à lista de ritmos disponíveis
+            this.availableRhythms.push({ name: rhythmName, path: rhythmPath });
 
             // Adicionar opção no select do admin
             if (select) {
@@ -1363,46 +1358,136 @@ class RhythmSequencer {
               option.textContent = rhythmName;
               select.appendChild(option);
             }
-
-            // Criar card no modo usuário
-            if (cardsContainer) {
-              const card = document.createElement('div');
-              card.className = 'rhythm-card';
-              card.dataset.rhythmPath = rhythmPath;
-
-              card.innerHTML = `
-                <div class="rhythm-card-name">${rhythmName}</div>
-                <div class="rhythm-card-icon">🥁</div>
-              `;
-
-              card.addEventListener('click', async () => {
-                // Remover active de todos os cards
-                cardsContainer.querySelectorAll('.rhythm-card').forEach(c => c.classList.remove('active'));
-                // Adicionar active no card clicado
-                card.classList.add('active');
-
-                // Carregar o ritmo
-                try {
-                  await this.fileManager.loadProjectFromPath(rhythmPath);
-                  this.uiManager.refreshGridDisplay();
-                  this.uiManager.updateVariationButtons();
-                  console.log(`Rhythm ${rhythmName} loaded`);
-                } catch (error) {
-                  console.error(`Error loading rhythm ${rhythmName}:`, error);
-                }
-              });
-
-              cardsContainer.appendChild(card);
-            }
           }
         } catch (e) {
           console.log(`Rhythm ${file} not found`);
         }
       }
 
-      console.log('Rhythms loaded');
+      // Ordenar alfabeticamente
+      this.availableRhythms.sort((a, b) => a.name.localeCompare(b.name));
+
+      // Setup search box
+      this.setupRhythmSearch();
+
+      console.log(`${this.availableRhythms.length} rhythms loaded`);
     } catch (error) {
       console.log('Could not list rhythms automatically');
+    }
+  }
+
+  private setupRhythmSearch(): void {
+    const searchInput = document.getElementById('rhythmSearchInput') as HTMLInputElement;
+    const dropdown = document.getElementById('rhythmDropdown') as HTMLElement;
+    const rhythmList = document.getElementById('rhythmList') as HTMLElement;
+    const resultsCount = document.getElementById('resultsCount') as HTMLElement;
+    const clearBtn = document.getElementById('clearSearchBtn') as HTMLElement;
+
+    if (!searchInput || !dropdown || !rhythmList) return;
+
+    // Click fora fecha o dropdown
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target as Node) && !dropdown.contains(e.target as Node)) {
+        dropdown.style.display = 'none';
+      }
+    });
+
+    // Clear button
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        clearBtn.style.display = 'none';
+        dropdown.style.display = 'none';
+        searchInput.focus();
+      });
+    }
+
+    // Input focus mostra todos os ritmos
+    searchInput.addEventListener('focus', () => {
+      this.filterRhythms('');
+      dropdown.style.display = 'block';
+    });
+
+    // Input change filtra os ritmos
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.trim();
+      clearBtn.style.display = query ? 'flex' : 'none';
+      this.filterRhythms(query);
+      dropdown.style.display = 'block';
+    });
+  }
+
+  private filterRhythms(query: string): void {
+    const dropdown = document.getElementById('rhythmDropdown') as HTMLElement;
+    const rhythmList = document.getElementById('rhythmList') as HTMLElement;
+    const resultsCount = document.getElementById('resultsCount') as HTMLElement;
+
+    if (!rhythmList || !resultsCount) return;
+
+    const searchTerm = query.toLowerCase();
+    const filtered = this.availableRhythms.filter(rhythm =>
+      rhythm.name.toLowerCase().includes(searchTerm)
+    );
+
+    // Atualizar contador
+    resultsCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'ritmo encontrado' : 'ritmos encontrados'}`;
+
+    // Limpar lista
+    rhythmList.innerHTML = '';
+
+    // Adicionar itens filtrados
+    filtered.forEach(rhythm => {
+      const item = document.createElement('div');
+      item.className = 'rhythm-item';
+      if (rhythm.name === this.currentRhythmName) {
+        item.classList.add('selected');
+      }
+
+      item.innerHTML = `
+        <span class="rhythm-item-name">${rhythm.name}</span>
+        <span class="rhythm-item-icon">▶</span>
+      `;
+
+      item.addEventListener('click', async () => {
+        await this.loadRhythm(rhythm.name, rhythm.path);
+        dropdown.style.display = 'none';
+        const searchInput = document.getElementById('rhythmSearchInput') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.value = '';
+          const clearBtn = document.getElementById('clearSearchBtn') as HTMLElement;
+          if (clearBtn) clearBtn.style.display = 'none';
+        }
+      });
+
+      rhythmList.appendChild(item);
+    });
+
+    // Se não houver resultados
+    if (filtered.length === 0) {
+      rhythmList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">Nenhum ritmo encontrado</div>';
+    }
+  }
+
+  private async loadRhythm(name: string, path: string): Promise<void> {
+    try {
+      await this.fileManager.loadProjectFromPath(path);
+      this.updateMIDISelectorsFromState();
+      this.updateSpecialSoundsSelectors();
+      this.uiManager.refreshGridDisplay();
+      this.uiManager.updateVariationButtons();
+
+      // Atualizar nome do ritmo atual
+      this.currentRhythmName = name;
+      const currentRhythmNameEl = document.getElementById('currentRhythmName');
+      if (currentRhythmNameEl) {
+        currentRhythmNameEl.textContent = name;
+      }
+
+      this.uiManager.showAlert(`Ritmo "${name}" carregado!`);
+      console.log(`Rhythm ${name} loaded`);
+    } catch (error) {
+      console.error(`Error loading rhythm ${name}:`, error);
+      this.uiManager.showAlert(`Erro ao carregar ritmo "${name}"`);
     }
   }
 }

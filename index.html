@@ -28,13 +28,38 @@
     <main class="app-main">
       <!-- ============= MODO USUÁRIO ============= -->
       <div id="userMode" class="mode-container active">
-        <!-- Seletor de Ritmos Visual -->
-        <section class="rhythm-selector-visual">
+        <!-- Seletor de Ritmos Profissional -->
+        <section class="rhythm-selector-pro">
           <h3 class="section-title-user">Selecionar Ritmo</h3>
-          <div class="rhythm-cards-container" id="rhythmCardsContainer">
-            <!-- Cards serão gerados dinamicamente -->
-            <div class="rhythm-card-placeholder">
-              <span>Carregando ritmos...</span>
+          <div class="rhythm-search-container">
+            <div class="search-input-wrapper">
+              <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M9 17A8 8 0 1 0 9 1a8 8 0 0 0 0 16zM19 19l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <input
+                type="text"
+                id="rhythmSearchInput"
+                class="rhythm-search-input"
+                placeholder="Buscar ritmo... (ex: guarania, baiao, xote)"
+                autocomplete="off"
+              />
+              <button id="clearSearchBtn" class="clear-search-btn" style="display: none;">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div id="rhythmDropdown" class="rhythm-dropdown" style="display: none;">
+              <div class="rhythm-dropdown-header">
+                <span class="results-count" id="resultsCount">0 ritmos encontrados</span>
+              </div>
+              <div class="rhythm-list" id="rhythmList">
+                <!-- Itens serão gerados dinamicamente -->
+              </div>
+            </div>
+            <div class="current-rhythm-display">
+              <span class="current-rhythm-label">Ritmo atual:</span>
+              <span class="current-rhythm-name" id="currentRhythmName">Nenhum ritmo carregado</span>
             </div>
           </div>
         </section>
