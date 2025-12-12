@@ -67,15 +67,10 @@ export class Scheduler {
     const state = this.stateManager.getState();
     const secondsPerBeat = 60.0 / this.stateManager.getTempo();
 
-    // Aplicar multiplicador de velocidade
-    let speedMultiplier = 1;
+    // Obter velocidade da variação ativa
     const activePattern = this.stateManager.getActivePattern();
-
-    if (activePattern === 'fill') {
-      speedMultiplier = state.fillSpeed;
-    } else if (activePattern === 'end') {
-      speedMultiplier = state.endSpeed;
-    }
+    const currentVariationIndex = this.stateManager.getCurrentVariation(activePattern);
+    const speedMultiplier = this.stateManager.getVariationSpeed(activePattern, currentVariationIndex);
 
     const secondsPerStep = (secondsPerBeat / 2) / speedMultiplier;
     this.nextStepTime += secondsPerStep;

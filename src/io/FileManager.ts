@@ -29,7 +29,8 @@ export class FileManager {
             audioData: '',
             midiPath: ch.midiPath
           })),
-          steps: v.steps
+          steps: v.steps,
+          speed: v.speed
         })),
         fill: state.variations.fill.map(v => ({
           pattern: v.pattern,
@@ -39,7 +40,8 @@ export class FileManager {
             audioData: '',
             midiPath: ch.midiPath
           })),
-          steps: v.steps
+          steps: v.steps,
+          speed: v.speed
         })),
         end: state.variations.end.map(v => ({
           pattern: v.pattern,
@@ -49,7 +51,8 @@ export class FileManager {
             audioData: '',
             midiPath: ch.midiPath
           })),
-          steps: v.steps
+          steps: v.steps,
+          speed: v.speed
         })),
         intro: state.variations.intro.map(v => ({
           pattern: v.pattern,
@@ -59,7 +62,8 @@ export class FileManager {
             audioData: '',
             midiPath: ch.midiPath
           })),
-          steps: v.steps
+          steps: v.steps,
+          speed: v.speed
         }))
       },
       fillStartSound: {
@@ -102,7 +106,8 @@ export class FileManager {
             pattern: expandPattern(variation.pattern),
             volumes: expandVolumes(variation.volumes),
             channels: state.channels.main.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
-            steps: variation.steps || state.patternSteps.main
+            steps: variation.steps || state.patternSteps.main,
+            speed: variation.speed || 1
           };
 
           // Carregar áudios da variação
@@ -139,7 +144,8 @@ export class FileManager {
             pattern: expandPattern(variation.pattern),
             volumes: expandVolumes(variation.volumes),
             channels: state.channels.fill.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
-            steps: variation.steps || state.patternSteps.fill
+            steps: variation.steps || state.patternSteps.fill,
+            speed: variation.speed || 1
           };
 
           // Carregar áudios da variação
@@ -176,7 +182,8 @@ export class FileManager {
             pattern: expandPattern(variation.pattern),
             volumes: expandVolumes(variation.volumes),
             channels: state.channels.end.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
-            steps: variation.steps || state.patternSteps.end
+            steps: variation.steps || state.patternSteps.end,
+            speed: variation.speed || 1
           };
 
           // Carregar áudios da variação
@@ -220,7 +227,8 @@ export class FileManager {
             pattern: expandPattern(variation.pattern),
             volumes: expandVolumes(variation.volumes),
             channels: state.channels.intro.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
-            steps: variation.steps || state.patternSteps.intro
+            steps: variation.steps || state.patternSteps.intro,
+            speed: variation.speed || 1
           };
 
           // Carregar áudios da variação
@@ -344,7 +352,8 @@ export class FileManager {
           pattern: state.patterns.main.map(row => [...row]),
           volumes: state.volumes.main.map(row => [...row]),
           channels: state.channels.main.map(ch => ({ ...ch })),
-          steps: state.patternSteps.main || 16
+          steps: state.patternSteps.main || 16,
+          speed: 1
         };
       }
 
@@ -353,7 +362,8 @@ export class FileManager {
           pattern: state.patterns.fill.map(row => [...row]),
           volumes: state.volumes.fill.map(row => [...row]),
           channels: state.channels.fill.map(ch => ({ ...ch })),
-          steps: state.patternSteps.fill || 16
+          steps: state.patternSteps.fill || 16,
+          speed: 1
         };
       }
 
@@ -362,7 +372,8 @@ export class FileManager {
           pattern: state.patterns.end.map(row => [...row]),
           volumes: state.volumes.end.map(row => [...row]),
           channels: state.channels.end.map(ch => ({ ...ch })),
-          steps: state.patternSteps.end || 8
+          steps: state.patternSteps.end || 8,
+          speed: 1
         };
       }
 
@@ -370,7 +381,8 @@ export class FileManager {
         pattern: state.patterns.intro.map(row => [...row]),
         volumes: state.volumes.intro.map(row => [...row]),
         channels: state.channels.intro.map(ch => ({ ...ch })),
-        steps: state.patternSteps.intro || 4
+        steps: state.patternSteps.intro || 4,
+        speed: 1
       };
     }
   }

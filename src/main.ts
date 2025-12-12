@@ -835,6 +835,40 @@ class RhythmSequencer {
       });
     }
 
+    // Controle de velocidade da variação
+    const variationSpeedSlider = document.getElementById('variationSpeed') as HTMLInputElement;
+    const variationSpeedDisplay = document.getElementById('variationSpeedDisplay');
+
+    if (variationSpeedSlider && variationSpeedDisplay) {
+      variationSpeedSlider.addEventListener('input', (e) => {
+        const speed = parseFloat((e.target as HTMLInputElement).value);
+        const patternType = this.stateManager.getEditingPattern();
+        const slotIndex = this.stateManager.getCurrentVariation(patternType);
+
+        this.stateManager.setVariationSpeed(patternType, slotIndex, speed);
+        variationSpeedDisplay.textContent = `${speed}x`;
+
+        // Atualizar botões de preset
+        this.updateSpeedPresetButtons(speed);
+      });
+    }
+
+    // Botões de preset de velocidade
+    document.querySelectorAll('.speed-preset').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const speed = parseFloat((e.target as HTMLElement).dataset.speed || '1');
+        const patternType = this.stateManager.getEditingPattern();
+        const slotIndex = this.stateManager.getCurrentVariation(patternType);
+
+        this.stateManager.setVariationSpeed(patternType, slotIndex, speed);
+
+        if (variationSpeedSlider) variationSpeedSlider.value = speed.toString();
+        if (variationSpeedDisplay) variationSpeedDisplay.textContent = `${speed}x`;
+
+        this.updateSpeedPresetButtons(speed);
+      });
+    });
+
     // Seletor de steps do padrão
     const patternStepsSelect = document.getElementById('patternStepsSelect') as HTMLSelectElement;
     const currentStepsDisplay = document.getElementById('currentStepsDisplay');
@@ -1014,6 +1048,34 @@ class RhythmSequencer {
         if (hasContent) {
           slotElement.classList.add('has-content');
         }
+      }
+    });
+
+    // Atualizar controle de velocidade para o slot atual
+    this.updateSpeedControls();
+  }
+
+  private updateSpeedControls(): void {
+    const patternType = this.stateManager.getEditingPattern();
+    const slotIndex = this.stateManager.getCurrentVariation(patternType);
+    const speed = this.stateManager.getVariationSpeed(patternType, slotIndex);
+
+    const variationSpeedSlider = document.getElementById('variationSpeed') as HTMLInputElement;
+    const variationSpeedDisplay = document.getElementById('variationSpeedDisplay');
+
+    if (variationSpeedSlider) variationSpeedSlider.value = speed.toString();
+    if (variationSpeedDisplay) variationSpeedDisplay.textContent = `${speed}x`;
+
+    this.updateSpeedPresetButtons(speed);
+  }
+
+  private updateSpeedPresetButtons(currentSpeed: number): void {
+    document.querySelectorAll('.speed-preset').forEach((btn) => {
+      const btnSpeed = parseFloat((btn as HTMLElement).dataset.speed || '1');
+      if (btnSpeed === currentSpeed) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
       }
     });
   }

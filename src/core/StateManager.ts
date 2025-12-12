@@ -50,23 +50,23 @@ export class StateManager {
       patternQueue: [],
       variations: {
         main: [
-          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 },
-          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 },
-          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 }
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16, speed: 1 },
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16, speed: 1 },
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16, speed: 1 }
         ],
         fill: [
-          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 },
-          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 },
-          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 }
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16, speed: 1 },
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16, speed: 1 },
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16, speed: 1 }
         ],
         end: [
-          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 8 }
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 8, speed: 1 }
         ],
         intro: [
-          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 }
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16, speed: 1 }
         ],
         transition: [
-          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16 }
+          { pattern: emptyPattern(), volumes: emptyVolumes(), channels: emptyChannels(), steps: 16, speed: 1 }
         ]
       },
       currentMainVariation: 0,
@@ -222,12 +222,14 @@ export class StateManager {
     const volumesClone = this.state.volumes[pattern].map(row => [...row]);
     const channelsClone = this.state.channels[pattern].map(ch => ({ ...ch }));
     const currentSteps = this.getPatternSteps(pattern);
+    const currentSpeed = this.state.variations[pattern][index]?.speed || 1;
 
     this.state.variations[pattern][index] = {
       pattern: patternClone,
       volumes: volumesClone,
       channels: channelsClone,
-      steps: currentSteps
+      steps: currentSteps,
+      speed: currentSpeed
     };
     this.notify('variations');
   }
@@ -287,6 +289,20 @@ export class StateManager {
 
   setShouldPlayReturnSound(should: boolean): void {
     this.state.shouldPlayReturnSound = should;
+  }
+
+  // Variation speed management
+  getVariationSpeed(pattern: PatternType, index: number): number {
+    const variation = this.state.variations[pattern][index];
+    return variation?.speed || 1;
+  }
+
+  setVariationSpeed(pattern: PatternType, index: number, speed: number): void {
+    const variation = this.state.variations[pattern][index];
+    if (variation) {
+      variation.speed = Math.max(0.25, Math.min(4, speed)); // Limitar entre 0.25x e 4x
+      this.notify('variations');
+    }
   }
 
   // Observer pattern

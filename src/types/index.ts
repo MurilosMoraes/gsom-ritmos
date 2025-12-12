@@ -26,6 +26,7 @@ export interface PatternVariation {
   volumes: number[][];
   channels: AudioChannel[];
   steps: number;
+  speed: number; // Velocidade individual da variação (1 = normal, 2 = 2x mais rápido, etc)
 }
 
 export interface SequencerState {
@@ -92,6 +93,7 @@ export interface SavedVariation {
   volumes: number[][];
   audioFiles: AudioFileData[];
   steps: number;
+  speed?: number; // Opcional para compatibilidade com arquivos antigos
 }
 
 export interface SavedProject {
