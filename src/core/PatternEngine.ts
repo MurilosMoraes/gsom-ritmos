@@ -253,8 +253,16 @@ export class PatternEngine {
     this.stateManager.loadVariation('fill', variationIndex);
 
     const entryPoint = this.getNextEntryPoint();
-    // A virada começa do mesmo ponto onde vai entrar, tocando apenas o restante do ciclo
-    const fillStartStep = entryPoint;
+
+    // Calcular o step inicial da virada baseado na proporção entre os tamanhos
+    // Se main tem 16 steps e fill tem 32, e estamos no step 0 do main,
+    // começamos no step 0 da virada para sincronizar corretamente
+    const mainSteps = this.stateManager.getPatternSteps('main');
+    const fillSteps = variation.steps;
+
+    // Mapear o ponto de entrada do main para o step correspondente na virada
+    // usando proporção: fillStartStep = (entryPoint / mainSteps) * fillSteps
+    const fillStartStep = Math.floor((entryPoint / mainSteps) * fillSteps) % fillSteps;
 
     this.stateManager.setPendingFill({
       variationIndex,
@@ -281,8 +289,13 @@ export class PatternEngine {
     this.stateManager.loadVariation('end', 0);
 
     const entryPoint = this.getNextEntryPoint();
-    // Finalização começa do mesmo ponto onde vai entrar
-    const endStartStep = entryPoint;
+
+    // Calcular o step inicial do end baseado na proporção entre os tamanhos
+    const mainSteps = this.stateManager.getPatternSteps('main');
+    const endSteps = variation.steps;
+
+    // Mapear o ponto de entrada do main para o step correspondente no end
+    const endStartStep = Math.floor((entryPoint / mainSteps) * endSteps) % endSteps;
 
     this.stateManager.setPendingEnd({
       variationIndex: 0,
