@@ -2,6 +2,9 @@
 
 import { authService } from './AuthService';
 import type { User, DeviceInfo } from './AuthService';
+import { ModalManager } from '../ui/ModalManager';
+
+const modalManager = new ModalManager();
 
 interface Subscription {
   id: string;
@@ -527,7 +530,7 @@ class AdminDashboard {
     const maxDevices = parseInt((document.getElementById('editUserMaxDevices') as HTMLInputElement).value);
 
     if (!name || !email) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
+      modalManager.show('Campos Obrigatórios', 'Por favor, preencha todos os campos obrigatórios.', 'warning');
       return;
     }
 
@@ -540,7 +543,7 @@ class AdminDashboard {
         this.users[userIndex].status = status;
         this.users[userIndex].maxDevices = maxDevices;
       }
-      alert('Usuário atualizado com sucesso!');
+      modalManager.show('Sucesso', 'Usuário atualizado com sucesso!', 'success');
     } else {
       // Add new user
       const newUser: User = {
@@ -578,7 +581,7 @@ class AdminDashboard {
         amount: 49.00
       });
 
-      alert('Usuário criado com sucesso!');
+      modalManager.show('Sucesso', 'Usuário criado com sucesso!', 'success');
     }
 
     this.closeModal('editUserModal');
@@ -618,7 +621,7 @@ class AdminDashboard {
     this.renderUsersTable();
 
     // Em produção, aqui seria uma chamada à API
-    alert('Assinatura atualizada com sucesso!');
+    modalManager.show('Sucesso', 'Assinatura atualizada com sucesso!', 'success');
   }
 
   private handleConfirmDelete(): void {
@@ -634,7 +637,7 @@ class AdminDashboard {
       this.renderDashboard();
 
       // Em produção, aqui seria uma chamada à API
-      alert('Usuário excluído com sucesso!');
+      modalManager.show('Sucesso', 'Usuário excluído com sucesso!', 'success');
     }
 
     this.closeModal('deleteModal');

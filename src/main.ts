@@ -6,6 +6,7 @@ import { Scheduler } from './core/Scheduler';
 import { PatternEngine } from './core/PatternEngine';
 import { FileManager } from './io/FileManager';
 import { UIManager } from './ui/UIManager';
+import { ModalManager } from './ui/ModalManager';
 import type { PatternType, SequencerState } from './types';
 
 class RhythmSequencer {
@@ -16,6 +17,7 @@ class RhythmSequencer {
   private patternEngine: PatternEngine;
   private fileManager: FileManager;
   private uiManager: UIManager;
+  private modalManager: ModalManager;
 
   constructor() {
     // Inicializar contexto de áudio
@@ -28,6 +30,7 @@ class RhythmSequencer {
     this.scheduler = new Scheduler(this.stateManager, this.audioManager, this.patternEngine);
     this.fileManager = new FileManager(this.stateManager, this.audioManager);
     this.uiManager = new UIManager(this.stateManager);
+    this.modalManager = new ModalManager();
 
     // Configurar callbacks
     this.setupCallbacks();
@@ -1144,9 +1147,30 @@ class RhythmSequencer {
     if (this.stateManager.isPlaying()) {
       this.stop();
     } else {
+      // Verificar se há pelo menos um ritmo carregado
+      if (!this.hasRhythmLoaded()) {
+        this.modalManager.show(
+          'Nenhum Ritmo Carregado',
+          'Por favor, carregue um ritmo antes de iniciar a reprodução.',
+          'warning'
+        );
+        return;
+      }
+
       this.patternEngine.playIntroAndStart();
       this.play();
     }
+  }
+
+  private hasRhythmLoaded(): boolean {
+    const state = this.stateManager.getState();
+
+    // Verificar se alguma variação do main tem conteúdo
+    const hasMainContent = state.variations.main.some(variation =>
+      variation.pattern.some(row => row.some(step => step === true))
+    );
+
+    return hasMainContent;
   }
 
   private async play(): Promise<void> {

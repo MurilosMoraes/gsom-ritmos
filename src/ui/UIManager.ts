@@ -2,12 +2,15 @@
 
 import type { StateManager } from '../core/StateManager';
 import type { PatternType } from '../types';
+import { ModalManager } from './ModalManager';
 
 export class UIManager {
   private stateManager: StateManager;
+  private modalManager: ModalManager;
 
   constructor(stateManager: StateManager) {
     this.stateManager = stateManager;
+    this.modalManager = new ModalManager();
   }
 
   // Play/Stop UI
@@ -276,7 +279,11 @@ export class UIManager {
     }
   }
 
-  showAlert(message: string): void {
-    alert(message);
+  showAlert(message: string, type: 'info' | 'error' | 'warning' | 'success' = 'info'): void {
+    this.modalManager.show('Aviso', message, type);
+  }
+
+  showConfirm(title: string, message: string): Promise<boolean> {
+    return this.modalManager.confirm(title, message);
   }
 }
