@@ -86,7 +86,7 @@
               <label class="control-label">Volume</label>
               <div class="control-content">
                 <span class="volume-icon-new">🔊</span>
-                <input type="range" id="masterVolumeUser" min="0" max="200" value="100" step="5" class="volume-slider-new">
+                <input type="range" id="masterVolumeUser" min="0" max="200" value="200" step="5" class="volume-slider-new">
                 <span class="volume-display-new" id="volumeDisplayUser">100%</span>
               </div>
             </div>
@@ -194,12 +194,10 @@
               </button>
             </div>
             <div class="variation-actions">
-              <button id="saveVariation" class="btn-admin btn-variation">
-                <span>Salvar Variação</span>
+              <button id="testVariation" class="btn-admin btn-variation btn-test">
+                <span>▶ Testar</span>
               </button>
-              <button id="loadVariation" class="btn-admin btn-variation">
-                <span>Carregar Variação</span>
-              </button>
+              <p class="variation-help-text">Clique nos slots para alternar entre variações. As alterações são salvas automaticamente.</p>
             </div>
           </div>
         </section>

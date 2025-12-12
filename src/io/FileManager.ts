@@ -205,39 +205,54 @@ export class FileManager {
         }
       }
 
-      // Carregar variações de intro
-      if (data.variations.intro && data.variations.intro[0]) {
-        const variation = data.variations.intro[0];
-        state.variations.intro[0] = {
-          pattern: expandPattern(variation.pattern),
-          volumes: expandVolumes(variation.volumes),
-          channels: state.channels.intro.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
-          steps: variation.steps || state.patternSteps.intro
-        };
-
-        // Carregar áudios da variação
-        for (let i = 0; i < variation.audioFiles.length && i < 8; i++) {
-          const audioFile = variation.audioFiles[i];
-          if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
+      // Carregar variações de intro (apenas uma variação)
+      if (data.variations.intro && data.variations.intro.length > 0) {
+        console.log('Carregando intro, quantidade de variações:', data.variations.intro.length);
+        for (let v = 0; v < Math.min(data.variations.intro.length, 1); v++) {
+          const variation = data.variations.intro[v];
+          if (!variation) {
+            console.log(`Variação intro ${v} não existe`);
             continue;
           }
 
-          const midiPath = normalizeMidiPath(audioFile.midiPath || '');
-          state.variations.intro[0].channels[i].midiPath = midiPath;
-          state.variations.intro[0].channels[i].fileName = audioFile.fileName;
+          console.log(`Carregando intro variação ${v}, steps:`, variation.steps);
+          state.variations.intro[v] = {
+            pattern: expandPattern(variation.pattern),
+            volumes: expandVolumes(variation.volumes),
+            channels: state.channels.intro.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
+            steps: variation.steps || state.patternSteps.intro
+          };
 
-          try {
-            if (midiPath) {
-              const buffer = await this.audioManager.loadAudioFromPath(midiPath);
-              state.variations.intro[0].channels[i].buffer = buffer;
-            } else if (audioFile.audioData) {
-              const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
-              state.variations.intro[0].channels[i].buffer = buffer;
+          // Carregar áudios da variação
+          console.log(`Intro variação ${v} tem ${variation.audioFiles.length} arquivos de áudio`);
+          for (let i = 0; i < variation.audioFiles.length && i < 8; i++) {
+            const audioFile = variation.audioFiles[i];
+            if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
+              continue;
             }
-          } catch (error) {
-            console.error(`Erro ao carregar áudio para intro canal ${i}:`, error);
+
+            console.log(`Carregando áudio intro canal ${i}:`, audioFile.fileName, audioFile.midiPath);
+            const midiPath = normalizeMidiPath(audioFile.midiPath || '');
+            state.variations.intro[v].channels[i].midiPath = midiPath;
+            state.variations.intro[v].channels[i].fileName = audioFile.fileName;
+
+            try {
+              if (midiPath) {
+                const buffer = await this.audioManager.loadAudioFromPath(midiPath);
+                state.variations.intro[v].channels[i].buffer = buffer;
+                console.log(`✓ Áudio carregado com sucesso para intro canal ${i}`);
+              } else if (audioFile.audioData) {
+                const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
+                state.variations.intro[v].channels[i].buffer = buffer;
+                console.log(`✓ Áudio carregado com sucesso para intro canal ${i} (base64)`);
+              }
+            } catch (error) {
+              console.error(`Erro ao carregar áudio para intro variação ${v} canal ${i}:`, error);
+            }
           }
         }
+      } else {
+        console.log('Intro não foi carregada - data.variations.intro:', data.variations?.intro);
       }
 
       // Carregar sons de início e retorno
@@ -365,7 +380,7 @@ export class FileManager {
     const text = await response.text();
     const data = JSON.parse(text);
 
-    if (data.patterns) {
+    if (data.patterns || data.variations) {
       await this.loadProject(data);
     } else {
       throw new Error('Formato de arquivo não reconhecido');
@@ -376,7 +391,7 @@ export class FileManager {
     const text = await file.text();
     const data = JSON.parse(text);
 
-    if (data.patterns) {
+    if (data.patterns || data.variations) {
       await this.loadProject(data);
     } else {
       throw new Error('Formato de arquivo não reconhecido');

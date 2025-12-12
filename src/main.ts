@@ -412,16 +412,18 @@ class RhythmSequencer {
 
     if (masterVolumeUser && volumeDisplayUser) {
       masterVolumeUser.addEventListener('input', (e) => {
-        const valuePercent = parseInt((e.target as HTMLInputElement).value);
-        const value = valuePercent / 100;
-        this.stateManager.setMasterVolume(value);
-        volumeDisplayUser.textContent = `${valuePercent}%`;
+        const sliderValue = parseInt((e.target as HTMLInputElement).value); // 0-200
+        const displayPercent = Math.round(sliderValue / 2); // Mostrar 0-100%
+        const actualValue = sliderValue / 100; // Valor real 0-2.0
+
+        this.stateManager.setMasterVolume(actualValue);
+        volumeDisplayUser.textContent = `${displayPercent}%`;
 
         // Sincronizar com o controle do modo admin
         const masterVolumeAdmin = document.getElementById('masterVolume') as HTMLInputElement;
         const volumeDisplayAdmin = document.getElementById('masterVolumeDisplay');
-        if (masterVolumeAdmin) masterVolumeAdmin.value = valuePercent.toString();
-        if (volumeDisplayAdmin) volumeDisplayAdmin.textContent = `${valuePercent}%`;
+        if (masterVolumeAdmin) masterVolumeAdmin.value = sliderValue.toString();
+        if (volumeDisplayAdmin) volumeDisplayAdmin.textContent = `${sliderValue}%`;
       });
     }
 
@@ -444,10 +446,11 @@ class RhythmSequencer {
 
     // Observer para atualizar a UI quando o volume master mudar
     this.stateManager.subscribe('masterVolume', (state) => {
-      const volumePercent = Math.round(state.masterVolume * 100);
+      const volumePercent = Math.round(state.masterVolume * 100); // Valor real 0-200
+      const displayPercent = Math.round(volumePercent / 2); // Mostrar 0-100% no modo usuário
 
       if (masterVolumeUser) masterVolumeUser.value = volumePercent.toString();
-      if (volumeDisplayUser) volumeDisplayUser.textContent = `${volumePercent}%`;
+      if (volumeDisplayUser) volumeDisplayUser.textContent = `${displayPercent}%`;
       if (masterVolume) masterVolume.value = volumePercent.toString();
       if (masterVolumeDisplay) masterVolumeDisplay.textContent = `${volumePercent}%`;
     });
@@ -817,16 +820,19 @@ class RhythmSequencer {
       });
     });
 
-    // Botão Salvar Variação
-    const saveVariationBtn = document.getElementById('saveVariation');
-    if (saveVariationBtn) {
-      saveVariationBtn.addEventListener('click', () => this.saveCurrentVariation());
-    }
+    // Botão Testar Variação
+    const testVariationBtn = document.getElementById('testVariation');
+    if (testVariationBtn) {
+      testVariationBtn.addEventListener('click', () => this.testCurrentVariation());
 
-    // Botão Carregar Variação
-    const loadVariationBtn = document.getElementById('loadVariation');
-    if (loadVariationBtn) {
-      loadVariationBtn.addEventListener('click', () => this.loadSelectedVariation());
+      // Atualizar o texto do botão baseado no estado de reprodução
+      this.stateManager.subscribe('playState', (state) => {
+        if (state.isPlaying) {
+          testVariationBtn.innerHTML = '<span>⏸ Parar</span>';
+        } else {
+          testVariationBtn.innerHTML = '<span>▶ Testar</span>';
+        }
+      });
     }
 
     // Seletor de steps do padrão
@@ -897,38 +903,86 @@ class RhythmSequencer {
       return;
     }
 
+    // Auto-salvar a variação atual antes de trocar
+    const currentSlot = this.stateManager.getCurrentVariation(patternType);
+    this.stateManager.saveVariation(patternType, currentSlot);
+
+    // Trocar para o novo slot
     this.stateManager.setCurrentVariation(patternType, slotIndex);
-    this.updateVariationSlotsUI();
-  }
 
-  private saveCurrentVariation(): void {
-    const patternType = this.stateManager.getEditingPattern();
-    const slotIndex = this.stateManager.getCurrentVariation(patternType);
-
-    this.stateManager.saveVariation(patternType, slotIndex);
-    console.log(`Variação ${slotIndex + 1} de ${patternType.toUpperCase()} salva`);
-    this.uiManager.showAlert(`Variação ${slotIndex + 1} salva com sucesso!`);
-
-    this.updateVariationSlotsUI();
-    this.uiManager.updateVariationButtons();
-  }
-
-  private loadSelectedVariation(): void {
-    const patternType = this.stateManager.getEditingPattern();
-    const slotIndex = this.stateManager.getCurrentVariation(patternType);
+    // Carregar a variação selecionada (mesmo que vazia)
     const state = this.stateManager.getState();
     const variation = state.variations[patternType][slotIndex];
 
-    if (!variation || !variation.pattern) {
-      this.uiManager.showAlert('Nenhuma variação salva neste slot');
+    if (variation && variation.pattern) {
+      this.stateManager.loadVariation(patternType, slotIndex);
+      this.updateMIDISelectorsFromState();
+      this.uiManager.refreshGridDisplay();
+    }
+
+    this.updateVariationSlotsUI();
+  }
+
+  private testCurrentVariation(): void {
+    const patternType = this.stateManager.getEditingPattern();
+    const slotIndex = this.stateManager.getCurrentVariation(patternType);
+    let state = this.stateManager.getState();
+
+    // Se estiver tocando, parar
+    if (this.stateManager.isPlaying()) {
+      this.patternEngine.setTestMode(false);
+      this.stop();
       return;
     }
 
-    this.stateManager.loadVariation(patternType, slotIndex);
-    console.log(`Variação ${slotIndex + 1} de ${patternType.toUpperCase()} carregada`);
-    this.uiManager.showAlert(`Variação ${slotIndex + 1} carregada com sucesso!`);
+    const variation = state.variations[patternType][slotIndex];
 
-    this.uiManager.refreshGridDisplay();
+    if (!variation || !variation.pattern) {
+      this.uiManager.showAlert('Nenhuma variação para testar neste slot');
+      return;
+    }
+
+    // Verificar se há conteúdo na variação
+    const hasContent = variation.pattern.some(row => row.some(step => step === true));
+    if (!hasContent) {
+      this.uiManager.showAlert('Esta variação está vazia');
+      return;
+    }
+
+    // Auto-salvar antes de testar
+    this.stateManager.saveVariation(patternType, slotIndex);
+
+    // Carregar a variação atual nos patterns principais para tocar
+    const loadSuccess = this.stateManager.loadVariation(patternType, slotIndex);
+    console.log(`LoadVariation retornou: ${loadSuccess}`);
+
+    // Verificar quantos steps tem a variação
+    const numSteps = this.stateManager.getPatternSteps(patternType);
+    console.log(`Testando ${patternType} slot ${slotIndex + 1} com ${numSteps} steps`);
+
+    // Debug: verificar se o pattern foi carregado
+    state = this.stateManager.getState();
+    const hasPattern = state.patterns[patternType].some(row => row.some(step => step));
+    console.log(`Pattern ${patternType} tem conteúdo:`, hasPattern);
+
+    // Verificar steps configurados apenas para patterns válidos
+    if (patternType === 'main' || patternType === 'fill' || patternType === 'end' || patternType === 'intro') {
+      console.log(`Pattern steps configurados:`, state.patternSteps[patternType]);
+    }
+
+    // Definir o padrão ativo para o que está sendo editado
+    this.stateManager.setActivePattern(patternType);
+    this.stateManager.resetStep();
+
+    // Ativar modo de teste para evitar transições automáticas
+    this.patternEngine.setTestMode(true);
+
+    // Tocar apenas o padrão que está sendo editado (sem intro/transições)
+    this.stateManager.setPlaying(true);
+    this.scheduler.start();
+
+    // Notificar UI da mudança
+    this.uiManager.updateStatusUI(patternType);
   }
 
   private updateVariationSlotsUI(): void {
@@ -1058,6 +1112,11 @@ class RhythmSequencer {
     const pattern = this.stateManager.getEditingPattern();
     this.stateManager.toggleStep(pattern, channel, step);
     this.uiManager.updateStepVisual(channel, step);
+
+    // Auto-salvar a variação atual
+    const currentSlot = this.stateManager.getCurrentVariation(pattern);
+    this.stateManager.saveVariation(pattern, currentSlot);
+    this.uiManager.updateVariationButtons();
   }
 
   private showVolumeControl(channel: number, step: number, element: HTMLElement): void {
@@ -1098,6 +1157,10 @@ class RhythmSequencer {
       valueDisplay.textContent = `${Math.round(value * 100)}%`;
       slider.value = (value * 100).toString();
       this.uiManager.updateStepVisual(channel, step);
+
+      // Auto-salvar a variação atual
+      const currentSlot = this.stateManager.getCurrentVariation(pattern);
+      this.stateManager.saveVariation(pattern, currentSlot);
     };
 
     slider.addEventListener('input', (e) => {
@@ -1135,12 +1198,23 @@ class RhythmSequencer {
     const activeTab = document.querySelector(`[data-pattern="${patternType}"]`);
     activeTab?.classList.add('active');
 
+    // Selecionar automaticamente o slot 0 (primeiro slot)
+    this.stateManager.setCurrentVariation(patternType, 0);
+
+    // Carregar a variação do slot 0
+    const state = this.stateManager.getState();
+    const variation = state.variations[patternType][0];
+    if (variation && variation.pattern) {
+      this.stateManager.loadVariation(patternType, 0);
+    }
+
     // Regenerar grid com número correto de steps para o padrão
     this.generateChannelsHTML();
 
     // Recarregar MIDIs e reconectar event listeners
     this.loadAvailableMidi().then(() => {
       this.setupMIDISelectors();
+      this.updateMIDISelectorsFromState();
     });
 
     // Atualizar variações UI
@@ -1168,6 +1242,11 @@ class RhythmSequencer {
       state.channels[pattern][channel].midiPath = filePath;
 
       console.log(`MIDI loaded: ${filePath}`);
+
+      // Auto-salvar a variação atual
+      const currentSlot = this.stateManager.getCurrentVariation(pattern);
+      this.stateManager.saveVariation(pattern, currentSlot);
+      this.uiManager.updateVariationButtons();
     } catch (error) {
       console.error('Error loading MIDI:', error);
       this.uiManager.showAlert('Erro ao carregar arquivo MIDI');
@@ -1199,6 +1278,11 @@ class RhythmSequencer {
   private async loadRhythmFromPath(filePath: string): Promise<void> {
     try {
       await this.fileManager.loadProjectFromPath(filePath);
+
+      // Carregar a primeira variação do padrão sendo editado
+      const patternType = this.stateManager.getEditingPattern();
+      this.stateManager.loadVariation(patternType, 0);
+
       this.updateMIDISelectorsFromState();
       this.updateSpecialSoundsSelectors();
       this.uiManager.refreshGridDisplay();
@@ -1471,6 +1555,11 @@ class RhythmSequencer {
   private async loadRhythm(name: string, path: string): Promise<void> {
     try {
       await this.fileManager.loadProjectFromPath(path);
+
+      // Carregar a primeira variação do padrão sendo editado
+      const patternType = this.stateManager.getEditingPattern();
+      this.stateManager.loadVariation(patternType, 0);
+
       this.updateMIDISelectorsFromState();
       this.updateSpecialSoundsSelectors();
       this.uiManager.refreshGridDisplay();

@@ -22,7 +22,7 @@ export class StateManager {
       tempo: 80,
       fillSpeed: 1,
       endSpeed: 1,
-      masterVolume: 1.0,
+      masterVolume: 2.0,
       patternSteps: {
         main: 16,
         fill: 16,

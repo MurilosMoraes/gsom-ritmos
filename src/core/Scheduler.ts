@@ -42,6 +42,7 @@ export class Scheduler {
   private schedule(): void {
     const currentTime = this.audioManager.getCurrentTime();
 
+    let stepsScheduled = 0;
     while (this.nextStepTime < currentTime + this.scheduleAheadTime) {
       const state = this.stateManager.getState();
       this.audioManager.scheduleStep(
@@ -50,6 +51,11 @@ export class Scheduler {
         state
       );
       this.nextStep();
+      stepsScheduled++;
+    }
+
+    if (stepsScheduled > 0) {
+      console.log(`[Scheduler.schedule] Scheduled ${stepsScheduled} steps`);
     }
 
     if (this.stateManager.isPlaying()) {
@@ -79,11 +85,15 @@ export class Scheduler {
     const maxSteps = this.stateManager.getPatternSteps(activePattern);
     const nextStep = (currentStep + 1) % maxSteps;
 
+    console.log(`[Scheduler] currentStep=${currentStep}, maxSteps=${maxSteps}, nextStep=${nextStep}, activePattern=${activePattern}`);
+
     // Atualizar o step
     this.stateManager.setCurrentStep(nextStep);
 
     // Verificar padrões pendentes APÓS incrementar o step
-    if (this.patternEngine.checkPendingPatterns()) {
+    const hasPending = this.patternEngine.checkPendingPatterns();
+    console.log(`[Scheduler] checkPendingPatterns returned: ${hasPending}`);
+    if (hasPending) {
       // Atualizar UI antes de retornar
       if (this.updateStepCallback) {
         const delay = (this.nextStepTime - this.audioManager.getCurrentTime()) * 1000;
@@ -94,6 +104,7 @@ export class Scheduler {
 
     // Verificar fim do padrão (quando volta ao step 0)
     if (nextStep === 0) {
+      console.log(`[Scheduler] Pattern completed, calling handlePatternCompletion()`);
       this.patternEngine.handlePatternCompletion();
     }
 
@@ -102,5 +113,7 @@ export class Scheduler {
       const delay = (this.nextStepTime - this.audioManager.getCurrentTime()) * 1000;
       setTimeout(() => this.updateStepCallback!(), Math.max(0, delay));
     }
+
+    console.log(`[Scheduler] isPlaying=${this.stateManager.isPlaying()}`);
   }
 }

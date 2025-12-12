@@ -8,11 +8,16 @@ export class PatternEngine {
   private currentFillRotation = 0;
   private pendingMainVariation = 0;
   private shouldChangeRhythmAfterFill = false;
+  private isTestMode = false;
   private onPatternChange?: (pattern: PatternType) => void;
   private onStop?: () => void;
 
   constructor(stateManager: StateManager) {
     this.stateManager = stateManager;
+  }
+
+  setTestMode(enabled: boolean): void {
+    this.isTestMode = enabled;
   }
 
   setOnPatternChange(callback: (pattern: PatternType) => void): void {
@@ -56,7 +61,14 @@ export class PatternEngine {
   }
 
   handlePatternCompletion(): void {
+    // No modo de teste, não fazer transições - apenas continuar em loop
+    if (this.isTestMode) {
+      console.log('[PatternEngine] Test mode - skipping pattern transitions, continuing loop');
+      return;
+    }
+
     const activePattern = this.stateManager.getActivePattern();
+    console.log(`[PatternEngine] handlePatternCompletion for ${activePattern}`);
 
     if (activePattern === 'fill') {
       this.handleFillCompletion();
@@ -114,13 +126,21 @@ export class PatternEngine {
   // Pattern activation methods
   playIntroAndStart(): void {
     const state = this.stateManager.getState();
-    const hasIntroPattern = state.patterns.intro.some(row => row.some(step => step));
+
+    // Verificar se há intro carregada nas variações
+    const introVariation = state.variations.intro[0];
+    const hasIntroPattern = introVariation?.pattern.some(row => row.some(step => step));
 
     if (hasIntroPattern) {
+      console.log('Intro detectada, carregando variação 0');
+      this.stateManager.setCurrentVariation('intro', 0);
+      this.stateManager.loadVariation('intro', 0);
       this.stateManager.setActivePattern('intro');
       this.stateManager.resetStep();
       this.stateManager.setShouldPlayStartSound(false);
+      this.onPatternChange?.('intro');
     } else {
+      console.log('Nenhuma intro detectada, iniciando direto no main');
       this.stateManager.setShouldPlayStartSound(true);
     }
   }
