@@ -176,6 +176,17 @@ export class PatternEngine {
       nextMainVariation = availableRhythms[nextPosition].index;
     }
 
+    // Verificar se há fills disponíveis
+    const availableFills = state.variations.fill
+      .filter(f => f.pattern.some(row => row.some(step => step === true)));
+
+    if (availableFills.length === 0) {
+      // Sem fills disponíveis: trocar diretamente com sincronização musical
+      console.log('[PatternEngine] No fills available, switching rhythm directly');
+      this.activateRhythm(nextMainVariation);
+      return;
+    }
+
     this.pendingMainVariation = nextMainVariation;
     this.shouldChangeRhythmAfterFill = true;
     this.playRotatingFill();
@@ -309,22 +320,31 @@ export class PatternEngine {
 
     const entryPoint = this.getNextEntryPoint();
 
-    // Calcular o step inicial da virada baseado na velocidade
-    const mainSteps = this.stateManager.getPatternSteps('main');
+    // Obter informações do main atual
+    const mainVariationIndex = this.stateManager.getCurrentVariation('main');
+    const mainVariation = state.variations.main[mainVariationIndex];
+    const mainSteps = mainVariation?.steps || 16;
+    const mainSpeed = mainVariation?.speed || 1;
+
+    // Informações da fill
     const fillSteps = variation.steps;
     const fillSpeed = variation.speed;
 
-    // Calcular quantos steps faltam para o main completar a partir do entry point
+    // Calcular tempo musical restante (em "beats base")
+    // remainingMainSteps / mainSpeed = tempo musical restante em beats base
     const remainingMainSteps = mainSteps - entryPoint;
+    const remainingMusicalBeats = remainingMainSteps / mainSpeed;
 
-    // A fill vai tocar (remainingMainSteps * fillSpeed) steps no mesmo tempo
-    // Como a fill pode ter menos steps do que precisa tocar, fazemos o módulo
-    // para obter quantos steps ela vai tocar de fato (com wrap around)
-    const fillStepsToPlay = (remainingMainSteps * fillSpeed) % fillSteps;
+    // Quantos steps da fill cabem nesse tempo musical?
+    // steps = beats * speed
+    const fillStepsToPlay = Math.round(remainingMusicalBeats * fillSpeed) % fillSteps;
 
-    // Se fillStepsToPlay é 0, significa que vai tocar a fill completa
-    // Senão, começa no step correto para terminar no step 0
+    // Se fillStepsToPlay é 0, toca fill completa; senão, começa no step certo
     const fillStartStep = fillStepsToPlay === 0 ? 0 : fillSteps - fillStepsToPlay;
+
+    console.log(`[PatternEngine] Fill timing: main ${entryPoint}/${mainSteps} @${mainSpeed}x, ` +
+      `remaining beats: ${remainingMusicalBeats.toFixed(2)}, ` +
+      `fill starts at step ${fillStartStep}/${fillSteps} @${fillSpeed}x`);
 
     this.stateManager.setPendingFill({
       variationIndex,
@@ -352,19 +372,24 @@ export class PatternEngine {
 
     const entryPoint = this.getNextEntryPoint();
 
-    // Calcular o step inicial do end baseado na velocidade
-    const mainSteps = this.stateManager.getPatternSteps('main');
+    // Obter informações do main atual
+    const mainVariationIndex = this.stateManager.getCurrentVariation('main');
+    const mainVariation = state.variations.main[mainVariationIndex];
+    const mainSteps = mainVariation?.steps || 16;
+    const mainSpeed = mainVariation?.speed || 1;
+
+    // Informações do end
     const endSteps = variation.steps;
     const endSpeed = variation.speed;
 
-    // Calcular quantos steps faltam para o main completar
+    // Calcular tempo musical restante (em "beats base")
     const remainingMainSteps = mainSteps - entryPoint;
+    const remainingMusicalBeats = remainingMainSteps / mainSpeed;
 
-    // O end vai tocar (remainingMainSteps * endSpeed) steps no mesmo tempo
-    // Com wrap around se necessário
-    const endStepsToPlay = (remainingMainSteps * endSpeed) % endSteps;
+    // Quantos steps do end cabem nesse tempo musical?
+    const endStepsToPlay = Math.round(remainingMusicalBeats * endSpeed) % endSteps;
 
-    // Se endStepsToPlay é 0, toca o end completo; senão começa no ponto certo
+    // Se endStepsToPlay é 0, toca end completo; senão, começa no step certo
     const endStartStep = endStepsToPlay === 0 ? 0 : endSteps - endStepsToPlay;
 
     this.stateManager.setPendingEnd({
