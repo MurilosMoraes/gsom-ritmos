@@ -261,17 +261,21 @@ export class PatternEngine {
 
     const entryPoint = this.getNextEntryPoint();
 
-    // Calcular o step inicial da virada baseado na proporção entre os tamanhos
-    // e considerando a velocidade da virada
+    // Calcular o step inicial da virada baseado na velocidade
     const mainSteps = this.stateManager.getPatternSteps('main');
     const fillSteps = variation.steps;
     const fillSpeed = variation.speed;
 
-    // Quando a virada é 2x mais rápida, ela precisa começar em um ponto proporcional
-    // que leve em conta que ela vai tocar 2x mais steps no mesmo tempo
-    // Exemplo: se main está no step 8 de 32, e fill é 2x (32 steps em 2x speed),
-    // a fill deve começar no step 16 (porque vai tocar 2 steps por beat do main)
-    const fillStartStep = Math.floor((entryPoint / mainSteps) * fillSteps * fillSpeed) % fillSteps;
+    // Calcular quantos steps faltam para o main completar a partir do entry point
+    const remainingMainSteps = mainSteps - entryPoint;
+
+    // A fill vai tocar (remainingMainSteps * fillSpeed) steps no mesmo tempo
+    // Então ela precisa começar no step (fillSteps - remainingMainSteps * fillSpeed)
+    // para terminar exatamente quando o main terminar
+    // Exemplo: main tem 8 steps restantes, fill é 2x -> fill toca 16 steps
+    // Se fill tem 32 steps, começa no step 16 (32 - 16)
+    const fillStepsToPlay = remainingMainSteps * fillSpeed;
+    const fillStartStep = Math.max(0, fillSteps - fillStepsToPlay) % fillSteps;
 
     this.stateManager.setPendingFill({
       variationIndex,
@@ -299,15 +303,18 @@ export class PatternEngine {
 
     const entryPoint = this.getNextEntryPoint();
 
-    // Calcular o step inicial do end baseado na proporção entre os tamanhos
-    // e considerando a velocidade do end
+    // Calcular o step inicial do end baseado na velocidade
     const mainSteps = this.stateManager.getPatternSteps('main');
     const endSteps = variation.steps;
     const endSpeed = variation.speed;
 
-    // Mapear o ponto de entrada do main para o step correspondente no end
-    // considerando a velocidade (2x speed = 2x steps no mesmo tempo)
-    const endStartStep = Math.floor((entryPoint / mainSteps) * endSteps * endSpeed) % endSteps;
+    // Calcular quantos steps faltam para o main completar
+    const remainingMainSteps = mainSteps - entryPoint;
+
+    // O end vai tocar (remainingMainSteps * endSpeed) steps no mesmo tempo
+    // Então ele precisa começar no step correto para terminar junto
+    const endStepsToPlay = remainingMainSteps * endSpeed;
+    const endStartStep = Math.max(0, endSteps - endStepsToPlay) % endSteps;
 
     this.stateManager.setPendingEnd({
       variationIndex: 0,
