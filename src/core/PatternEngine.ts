@@ -90,7 +90,8 @@ export class PatternEngine {
 
     if (this.shouldChangeRhythmAfterFill) {
       this.shouldChangeRhythmAfterFill = false;
-      this.activateRhythm(this.pendingMainVariation);
+      // Após fill, sempre começa do step 0 - usar ativação simples
+      this.activateRhythmFromStart(this.pendingMainVariation);
     } else if (this.stateManager.getState().patternQueue.length > 0) {
       const nextPattern = this.stateManager.shiftQueue();
       if (nextPattern) {
@@ -224,7 +225,8 @@ export class PatternEngine {
     this.activateEndWithTiming(0);
   }
 
-  activateRhythm(variationIndex: number): void {
+  // Ativar ritmo começando do step 0 (após fill, intro, etc)
+  private activateRhythmFromStart(variationIndex: number): void {
     const variation = this.stateManager.getState().variations.main[variationIndex];
     if (!variation || !variation.pattern) return;
 
@@ -237,6 +239,49 @@ export class PatternEngine {
     if (this.stateManager.isPlaying()) {
       this.stateManager.setActivePattern('main');
       this.stateManager.clearQueue();
+      // Step já foi resetado para 0 antes de chamar este método
+      this.onPatternChange?.('main');
+    }
+  }
+
+  activateRhythm(variationIndex: number): void {
+    const variation = this.stateManager.getState().variations.main[variationIndex];
+    if (!variation || !variation.pattern) return;
+
+    const hasContent = variation.pattern.some(row => row.some(step => step === true));
+    if (!hasContent) return;
+
+    // Antes de trocar, calcular a posição musical atual
+    const currentStep = this.stateManager.getCurrentStep();
+    const currentVariationIndex = this.stateManager.getCurrentVariation('main');
+    const currentVariation = this.stateManager.getState().variations.main[currentVariationIndex];
+    const currentSteps = currentVariation?.steps || 16;
+    const currentSpeed = currentVariation?.speed || 1;
+
+    // Posição musical = (step / totalSteps) normalizada pela velocidade
+    // Para ritmos 2x, o ciclo musical é 2x mais curto
+    // musicalPosition vai de 0 a 1 representando um ciclo completo do ritmo base
+    const musicalPosition = (currentStep / currentSteps) / currentSpeed;
+
+    this.stateManager.setCurrentVariation('main', variationIndex);
+    this.stateManager.loadVariation('main', variationIndex);
+
+    if (this.stateManager.isPlaying()) {
+      this.stateManager.setActivePattern('main');
+      this.stateManager.clearQueue();
+
+      // Calcular o step equivalente no novo ritmo
+      const newSteps = variation.steps || 16;
+      const newSpeed = variation.speed || 1;
+
+      // Converter posição musical para step no novo ritmo
+      // musicalPosition * newSpeed * newSteps = step no novo ritmo
+      const equivalentStep = Math.floor(musicalPosition * newSpeed * newSteps) % newSteps;
+
+      console.log(`[PatternEngine] Rhythm sync: step ${currentStep}/${currentSteps} @${currentSpeed}x -> step ${equivalentStep}/${newSteps} @${newSpeed}x (musical pos: ${musicalPosition.toFixed(3)})`);
+
+      this.stateManager.setCurrentStep(equivalentStep);
+
       // Notificar UI da mudança de pattern
       this.onPatternChange?.('main');
     }

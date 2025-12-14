@@ -64,9 +64,13 @@ export class Scheduler {
   }
 
   private nextStep(): void {
-    // Incrementar step primeiro
-    const currentStep = this.stateManager.getCurrentStep();
+    // Capturar velocidade ANTES de qualquer transição
     const activePatternBefore = this.stateManager.getActivePattern();
+    const variationIndexBefore = this.stateManager.getCurrentVariation(activePatternBefore);
+    const speedBefore = this.stateManager.getVariationSpeed(activePatternBefore, variationIndexBefore);
+
+    // Incrementar step
+    const currentStep = this.stateManager.getCurrentStep();
     const maxSteps = this.stateManager.getPatternSteps(activePatternBefore);
     const nextStep = (currentStep + 1) % maxSteps;
 
@@ -81,15 +85,27 @@ export class Scheduler {
       this.patternEngine.handlePatternCompletion();
     }
 
-    // AGORA calcular o tempo para o próximo step, com a velocidade ATUAL
-    // (que pode ter mudado após checkPendingPatterns ou handlePatternCompletion)
+    // Capturar velocidade APÓS transições
     const activePatternAfter = this.stateManager.getActivePattern();
-    const currentVariationIndex = this.stateManager.getCurrentVariation(activePatternAfter);
-    const speedMultiplier = this.stateManager.getVariationSpeed(activePatternAfter, currentVariationIndex);
+    const variationIndexAfter = this.stateManager.getCurrentVariation(activePatternAfter);
+    const speedAfter = this.stateManager.getVariationSpeed(activePatternAfter, variationIndexAfter);
 
     const secondsPerBeat = 60.0 / this.stateManager.getTempo();
-    const secondsPerStep = (secondsPerBeat / 2) / speedMultiplier;
-    this.nextStepTime += secondsPerStep;
+
+    // Se a velocidade mudou, precisamos ressincronizar o tempo
+    if (speedBefore !== speedAfter) {
+      // O próximo step deve começar baseado no tempo atual, não acumulado
+      // Isso evita "drift" quando a velocidade muda
+      const currentTime = this.audioManager.getCurrentTime();
+      const secondsPerStepNew = (secondsPerBeat / 2) / speedAfter;
+      this.nextStepTime = currentTime + secondsPerStepNew;
+
+      console.log(`[Scheduler] Speed changed: ${speedBefore}x -> ${speedAfter}x, resync time`);
+    } else {
+      // Velocidade não mudou, calcular normalmente
+      const secondsPerStep = (secondsPerBeat / 2) / speedAfter;
+      this.nextStepTime += secondsPerStep;
+    }
 
     // Atualizar UI
     if (this.updateStepCallback) {
