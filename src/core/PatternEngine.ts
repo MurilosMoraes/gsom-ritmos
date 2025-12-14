@@ -269,10 +269,8 @@ export class PatternEngine {
     const currentSteps = currentVariation?.steps || 16;
     const currentSpeed = currentVariation?.speed || 1;
 
-    // Posição musical = (step / totalSteps) normalizada pela velocidade
-    // Para ritmos 2x, o ciclo musical é 2x mais curto
-    // musicalPosition vai de 0 a 1 representando um ciclo completo do ritmo base
-    const musicalPosition = (currentStep / currentSteps) / currentSpeed;
+    // Posição dentro do ciclo atual (0 a 1)
+    const cyclePosition = currentStep / currentSteps;
 
     this.stateManager.setCurrentVariation('main', variationIndex);
     this.stateManager.loadVariation('main', variationIndex);
@@ -285,11 +283,14 @@ export class PatternEngine {
       const newSteps = variation.steps || 16;
       const newSpeed = variation.speed || 1;
 
-      // Converter posição musical para step no novo ritmo
-      // musicalPosition * newSpeed * newSteps = step no novo ritmo
-      const equivalentStep = Math.floor(musicalPosition * newSpeed * newSteps) % newSteps;
+      // Converter posição do ciclo considerando a diferença de velocidade
+      // Se vou de 1x para 2x: cyclePosition 0.5 no 1x = cyclePosition 0 no 2x (já completou um ciclo)
+      // Se vou de 2x para 1x: cyclePosition 0.5 no 2x = cyclePosition 0.25 no 1x
+      const speedRatio = newSpeed / currentSpeed;
+      const adjustedPosition = (cyclePosition * speedRatio) % 1;
+      const equivalentStep = Math.floor(adjustedPosition * newSteps);
 
-      console.log(`[PatternEngine] Rhythm sync: step ${currentStep}/${currentSteps} @${currentSpeed}x -> step ${equivalentStep}/${newSteps} @${newSpeed}x (musical pos: ${musicalPosition.toFixed(3)})`);
+      console.log(`[PatternEngine] Rhythm sync: step ${currentStep}/${currentSteps} @${currentSpeed}x -> step ${equivalentStep}/${newSteps} @${newSpeed}x (cycle: ${cyclePosition.toFixed(3)}, adjusted: ${adjustedPosition.toFixed(3)})`);
 
       this.stateManager.setCurrentStep(equivalentStep);
 
