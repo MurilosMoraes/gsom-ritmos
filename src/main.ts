@@ -8,6 +8,7 @@ import { FileManager } from './io/FileManager';
 import { UIManager } from './ui/UIManager';
 import { ModalManager } from './ui/ModalManager';
 import type { PatternType, SequencerState } from './types';
+import { KeepAwake } from '@capacitor-community/keep-awake';
 
 class RhythmSequencer {
   private audioContext: AudioContext;
@@ -209,6 +210,12 @@ class RhythmSequencer {
           this.patternEngine.playEndAndStop();
         }
       });
+    }
+
+    // Cymbal button (prato)
+    const cymbalBtn = document.getElementById('cymbalBtn');
+    if (cymbalBtn) {
+      cymbalBtn.addEventListener('click', () => this.playCymbal());
     }
 
     // Tempo controls
@@ -535,7 +542,13 @@ class RhythmSequencer {
         const variationIndex = parseInt(element.getAttribute('data-variation') || '0');
 
         if (cellType === 'main') {
-          this.patternEngine.activateRhythm(variationIndex);
+          // Se estiver tocando e for um ritmo diferente do atual, fazer virada antes de mudar
+          const currentVariation = this.stateManager.getCurrentVariation('main');
+          if (this.stateManager.isPlaying() && variationIndex !== currentVariation) {
+            this.patternEngine.playFillToNextRhythm(variationIndex);
+          } else {
+            this.patternEngine.activateRhythm(variationIndex);
+          }
         } else if (cellType === 'fill') {
           this.patternEngine.activateFillWithTiming(variationIndex);
         } else if (cellType === 'end') {
@@ -1177,6 +1190,14 @@ class RhythmSequencer {
     await this.audioManager.resume();
     this.stateManager.setPlaying(true);
 
+    // Manter tela ativa para evitar problemas de áudio em background
+    try {
+      await KeepAwake.keepAwake();
+      console.log('[KeepAwake] Screen will stay awake');
+    } catch (error) {
+      console.warn('[KeepAwake] Failed to keep awake:', error);
+    }
+
     const activePattern = this.stateManager.getActivePattern();
     this.uiManager.updateStatusUI(activePattern);
     this.uiManager.updatePerformanceGrid();
@@ -1193,6 +1214,14 @@ class RhythmSequencer {
     this.stateManager.setPendingEnd(null);
 
     this.scheduler.stop();
+
+    // Liberar keep awake quando parar
+    try {
+      KeepAwake.allowSleep();
+      console.log('[KeepAwake] Screen can sleep now');
+    } catch (error) {
+      console.warn('[KeepAwake] Failed to allow sleep:', error);
+    }
 
     const statusAdmin = document.getElementById('status');
     const statusUser = document.getElementById('statusUser');

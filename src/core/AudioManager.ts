@@ -31,7 +31,18 @@ export class AudioManager {
     source.buffer = buffer;
 
     const gainNode = this.audioContext.createGain();
-    gainNode.gain.value = volume;
+
+    // Fade in/out suave para eliminar estalos (especialmente importante no Android)
+    const fadeTime = 0.005; // 5ms de fade - imperceptível mas elimina cliques
+    gainNode.gain.setValueAtTime(0, time);
+    gainNode.gain.linearRampToValueAtTime(volume, time + fadeTime);
+
+    // Fade out no final
+    const duration = buffer.duration;
+    if (duration > fadeTime * 2) {
+      gainNode.gain.setValueAtTime(volume, time + duration - fadeTime);
+      gainNode.gain.linearRampToValueAtTime(0, time + duration);
+    }
 
     source.connect(gainNode);
     gainNode.connect(this.audioContext.destination);

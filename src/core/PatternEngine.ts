@@ -145,25 +145,32 @@ export class PatternEngine {
     }
   }
 
-  playFillToNextRhythm(): void {
+  playFillToNextRhythm(targetVariationIndex?: number): void {
     const state = this.stateManager.getState();
 
-    // Obter ritmos disponíveis com seus índices
-    const availableRhythms = state.variations.main
-      .map((v, index) => ({
-        index,
-        hasContent: v.pattern.some(row => row.some(step => step === true))
-      }))
-      .filter(r => r.hasContent);
+    let nextMainVariation: number;
 
-    // Se só tem 1 ritmo, não faz nada
-    if (availableRhythms.length <= 1) return;
+    if (targetVariationIndex !== undefined) {
+      // Se foi especificado um ritmo alvo, usar ele
+      nextMainVariation = targetVariationIndex;
+    } else {
+      // Obter ritmos disponíveis com seus índices
+      const availableRhythms = state.variations.main
+        .map((v, index) => ({
+          index,
+          hasContent: v.pattern.some(row => row.some(step => step === true))
+        }))
+        .filter(r => r.hasContent);
 
-    // Encontrar próximo ritmo com conteúdo
-    const currentIndex = this.stateManager.getCurrentVariation('main');
-    const currentPosition = availableRhythms.findIndex(r => r.index === currentIndex);
-    const nextPosition = (currentPosition + 1) % availableRhythms.length;
-    const nextMainVariation = availableRhythms[nextPosition].index;
+      // Se só tem 1 ritmo, não faz nada
+      if (availableRhythms.length <= 1) return;
+
+      // Encontrar próximo ritmo com conteúdo
+      const currentIndex = this.stateManager.getCurrentVariation('main');
+      const currentPosition = availableRhythms.findIndex(r => r.index === currentIndex);
+      const nextPosition = (currentPosition + 1) % availableRhythms.length;
+      nextMainVariation = availableRhythms[nextPosition].index;
+    }
 
     this.pendingMainVariation = nextMainVariation;
     this.shouldChangeRhythmAfterFill = true;
@@ -255,14 +262,16 @@ export class PatternEngine {
     const entryPoint = this.getNextEntryPoint();
 
     // Calcular o step inicial da virada baseado na proporção entre os tamanhos
-    // Se main tem 16 steps e fill tem 32, e estamos no step 0 do main,
-    // começamos no step 0 da virada para sincronizar corretamente
+    // e considerando a velocidade da virada
     const mainSteps = this.stateManager.getPatternSteps('main');
     const fillSteps = variation.steps;
+    const fillSpeed = variation.speed;
 
-    // Mapear o ponto de entrada do main para o step correspondente na virada
-    // usando proporção: fillStartStep = (entryPoint / mainSteps) * fillSteps
-    const fillStartStep = Math.floor((entryPoint / mainSteps) * fillSteps) % fillSteps;
+    // Quando a virada é 2x mais rápida, ela precisa começar em um ponto proporcional
+    // que leve em conta que ela vai tocar 2x mais steps no mesmo tempo
+    // Exemplo: se main está no step 8 de 32, e fill é 2x (32 steps em 2x speed),
+    // a fill deve começar no step 16 (porque vai tocar 2 steps por beat do main)
+    const fillStartStep = Math.floor((entryPoint / mainSteps) * fillSteps * fillSpeed) % fillSteps;
 
     this.stateManager.setPendingFill({
       variationIndex,
@@ -291,11 +300,14 @@ export class PatternEngine {
     const entryPoint = this.getNextEntryPoint();
 
     // Calcular o step inicial do end baseado na proporção entre os tamanhos
+    // e considerando a velocidade do end
     const mainSteps = this.stateManager.getPatternSteps('main');
     const endSteps = variation.steps;
+    const endSpeed = variation.speed;
 
     // Mapear o ponto de entrada do main para o step correspondente no end
-    const endStartStep = Math.floor((entryPoint / mainSteps) * endSteps) % endSteps;
+    // considerando a velocidade (2x speed = 2x steps no mesmo tempo)
+    const endStartStep = Math.floor((entryPoint / mainSteps) * endSteps * endSpeed) % endSteps;
 
     this.stateManager.setPendingEnd({
       variationIndex: 0,
