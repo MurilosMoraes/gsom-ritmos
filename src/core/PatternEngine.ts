@@ -85,6 +85,9 @@ export class PatternEngine {
     this.stateManager.setShouldPlayReturnSound(true);
     this.stateManager.setShouldPlayStartSound(false);
 
+    // Reset step para 0 ao voltar para o main após a fill
+    this.stateManager.resetStep();
+
     if (this.shouldChangeRhythmAfterFill) {
       this.shouldChangeRhythmAfterFill = false;
       this.activateRhythm(this.pendingMainVariation);
