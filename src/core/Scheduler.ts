@@ -64,51 +64,37 @@ export class Scheduler {
   }
 
   private nextStep(): void {
-    const state = this.stateManager.getState();
-    const secondsPerBeat = 60.0 / this.stateManager.getTempo();
-
-    // Obter velocidade da variação ativa
-    const activePattern = this.stateManager.getActivePattern();
-    const currentVariationIndex = this.stateManager.getCurrentVariation(activePattern);
-    const speedMultiplier = this.stateManager.getVariationSpeed(activePattern, currentVariationIndex);
-
-    const secondsPerStep = (secondsPerBeat / 2) / speedMultiplier;
-    this.nextStepTime += secondsPerStep;
-
-    // Incrementar step temporariamente para calcular o próximo
+    // Incrementar step primeiro
     const currentStep = this.stateManager.getCurrentStep();
-    const maxSteps = this.stateManager.getPatternSteps(activePattern);
+    const activePatternBefore = this.stateManager.getActivePattern();
+    const maxSteps = this.stateManager.getPatternSteps(activePatternBefore);
     const nextStep = (currentStep + 1) % maxSteps;
-
-    console.log(`[Scheduler] currentStep=${currentStep}, maxSteps=${maxSteps}, nextStep=${nextStep}, activePattern=${activePattern}`);
 
     // Atualizar o step
     this.stateManager.setCurrentStep(nextStep);
 
-    // Verificar padrões pendentes APÓS incrementar o step
+    // Verificar padrões pendentes (pode mudar o padrão ativo)
     const hasPending = this.patternEngine.checkPendingPatterns();
-    console.log(`[Scheduler] checkPendingPatterns returned: ${hasPending}`);
-    if (hasPending) {
-      // Atualizar UI antes de retornar
-      if (this.updateStepCallback) {
-        const delay = (this.nextStepTime - this.audioManager.getCurrentTime()) * 1000;
-        setTimeout(() => this.updateStepCallback!(), Math.max(0, delay));
-      }
-      return;
-    }
 
     // Verificar fim do padrão (quando volta ao step 0)
-    if (nextStep === 0) {
-      console.log(`[Scheduler] Pattern completed, calling handlePatternCompletion()`);
+    if (!hasPending && nextStep === 0) {
       this.patternEngine.handlePatternCompletion();
     }
+
+    // AGORA calcular o tempo para o próximo step, com a velocidade ATUAL
+    // (que pode ter mudado após checkPendingPatterns ou handlePatternCompletion)
+    const activePatternAfter = this.stateManager.getActivePattern();
+    const currentVariationIndex = this.stateManager.getCurrentVariation(activePatternAfter);
+    const speedMultiplier = this.stateManager.getVariationSpeed(activePatternAfter, currentVariationIndex);
+
+    const secondsPerBeat = 60.0 / this.stateManager.getTempo();
+    const secondsPerStep = (secondsPerBeat / 2) / speedMultiplier;
+    this.nextStepTime += secondsPerStep;
 
     // Atualizar UI
     if (this.updateStepCallback) {
       const delay = (this.nextStepTime - this.audioManager.getCurrentTime()) * 1000;
       setTimeout(() => this.updateStepCallback!(), Math.max(0, delay));
     }
-
-    console.log(`[Scheduler] isPlaying=${this.stateManager.isPlaying()}`);
   }
 }
