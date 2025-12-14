@@ -270,12 +270,13 @@ export class PatternEngine {
     const remainingMainSteps = mainSteps - entryPoint;
 
     // A fill vai tocar (remainingMainSteps * fillSpeed) steps no mesmo tempo
-    // Então ela precisa começar no step (fillSteps - remainingMainSteps * fillSpeed)
-    // para terminar exatamente quando o main terminar
-    // Exemplo: main tem 8 steps restantes, fill é 2x -> fill toca 16 steps
-    // Se fill tem 32 steps, começa no step 16 (32 - 16)
-    const fillStepsToPlay = remainingMainSteps * fillSpeed;
-    const fillStartStep = Math.max(0, fillSteps - fillStepsToPlay) % fillSteps;
+    // Como a fill pode ter menos steps do que precisa tocar, fazemos o módulo
+    // para obter quantos steps ela vai tocar de fato (com wrap around)
+    const fillStepsToPlay = (remainingMainSteps * fillSpeed) % fillSteps;
+
+    // Se fillStepsToPlay é 0, significa que vai tocar a fill completa
+    // Senão, começa no step correto para terminar no step 0
+    const fillStartStep = fillStepsToPlay === 0 ? 0 : fillSteps - fillStepsToPlay;
 
     this.stateManager.setPendingFill({
       variationIndex,
@@ -312,9 +313,11 @@ export class PatternEngine {
     const remainingMainSteps = mainSteps - entryPoint;
 
     // O end vai tocar (remainingMainSteps * endSpeed) steps no mesmo tempo
-    // Então ele precisa começar no step correto para terminar junto
-    const endStepsToPlay = remainingMainSteps * endSpeed;
-    const endStartStep = Math.max(0, endSteps - endStepsToPlay) % endSteps;
+    // Com wrap around se necessário
+    const endStepsToPlay = (remainingMainSteps * endSpeed) % endSteps;
+
+    // Se endStepsToPlay é 0, toca o end completo; senão começa no ponto certo
+    const endStartStep = endStepsToPlay === 0 ? 0 : endSteps - endStepsToPlay;
 
     this.stateManager.setPendingEnd({
       variationIndex: 0,
