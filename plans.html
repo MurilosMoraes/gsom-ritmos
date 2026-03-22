@@ -84,6 +84,50 @@
       box-shadow: 0 6px 28px rgba(0, 212, 255, 0.5);
       transform: translateY(-1px);
     }
+    /* Coupon */
+    .coupon-section {
+      max-width: 900px; width: 100%; margin-bottom: 1.5rem;
+    }
+    .coupon-row {
+      display: flex; gap: 0.5rem; align-items: center;
+    }
+    .coupon-input {
+      flex: 1; max-width: 240px; padding: 0.6rem 0.8rem;
+      background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.08);
+      border-radius: 10px; color: #fff; font-size: 0.85rem; font-family: inherit;
+      outline: none; text-transform: uppercase; letter-spacing: 1px;
+      transition: border-color 0.15s;
+    }
+    .coupon-input:focus { border-color: rgba(0, 212, 255, 0.4); }
+    .coupon-input::placeholder { color: rgba(255,255,255,0.2); text-transform: none; letter-spacing: 0; }
+    .coupon-btn {
+      padding: 0.6rem 1rem; border: none; border-radius: 10px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.6); font-size: 0.8rem; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .coupon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .coupon-btn:disabled { opacity: 0.4; cursor: default; }
+    .coupon-status {
+      font-size: 0.75rem; margin-top: 0.4rem; min-height: 1.2em;
+    }
+    .coupon-status.success { color: #00E68C; }
+    .coupon-status.error { color: #FF4466; }
+    .coupon-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      background: rgba(0, 230, 140, 0.1); border: 1px solid rgba(0, 230, 140, 0.2);
+      border-radius: 8px; padding: 0.3rem 0.6rem;
+      font-size: 0.7rem; font-weight: 600; color: #00E68C;
+    }
+    .coupon-badge button {
+      background: none; border: none; color: rgba(255,255,255,0.4);
+      cursor: pointer; font-size: 0.9rem; line-height: 1; padding: 0 0.2rem;
+    }
+    .plan-original-price {
+      font-size: 0.8rem; color: rgba(255,255,255,0.3);
+      text-decoration: line-through; margin-bottom: 0.15rem;
+    }
     .plans-footer {
       margin-top: 1.5rem; font-size: 0.75rem;
       color: rgba(255,255,255,0.25); text-align: center;
@@ -116,6 +160,15 @@
     <p class="plans-subtitle">Acesso completo ao melhor sequenciador de ritmos do Brasil</p>
 
     <div class="alert-bar" id="alertBar"></div>
+
+    <!-- Cupom -->
+    <div class="coupon-section" id="couponSection">
+      <div class="coupon-row">
+        <input type="text" class="coupon-input" id="couponInput" placeholder="Tem um cupom?" maxlength="20" />
+        <button class="coupon-btn" id="couponBtn">Aplicar</button>
+      </div>
+      <div class="coupon-status" id="couponStatus"></div>
+    </div>
 
     <div class="plans-grid" id="plansGrid">
       <!-- Cards gerados pelo JS -->
