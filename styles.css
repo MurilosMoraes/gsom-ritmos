@@ -168,8 +168,8 @@ input:checked + .slider:before {
   max-width: 600px;
   margin: 0 auto;
   width: 100%;
-  height: calc(100vh - 2rem);
-  height: calc(100dvh - 2rem);
+  height: calc(100vh - 4rem);
+  height: calc(100dvh - 4rem);
   padding-top: env(safe-area-inset-top, 0.5rem);
   padding-bottom: env(safe-area-inset-bottom, 0.5rem);
 }
@@ -247,16 +247,19 @@ input:checked + .slider:before {
 
 /* --- 1. Favoritos Navigation --- */
 
-/* Top bar: Logo + Menu */
-.user-topbar {
+/* Global top bar (fora dos modos) */
+.global-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-shrink: 0;
+  padding: 0.5rem 1rem;
   position: relative;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
 }
-.user-logo-img {
-  height: 40px;
+.global-logo-img {
+  height: 36px;
   width: auto;
   object-fit: contain;
   opacity: 0.8;

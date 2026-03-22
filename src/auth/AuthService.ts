@@ -1,4 +1,19 @@
-// AuthService - Gerencia autenticação, sessão e controle de acesso
+// AuthService — Supabase auth real
+
+import { supabase } from './supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+export interface GDrumsProfile {
+  id: string;
+  name: string;
+  role: 'user' | 'admin';
+  subscription_status: 'active' | 'trial' | 'expired' | 'canceled';
+  subscription_plan: string;
+  subscription_expires_at: string | null;
+  max_devices: number;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface User {
   id: string;
@@ -48,319 +63,213 @@ export interface AuthResponse {
 }
 
 class AuthService {
-  private readonly API_URL = '/api'; // Placeholder - será substituído por URL real
-  private readonly TOKEN_KEY = 'gdrums_token';
-  private readonly USER_KEY = 'gdrums_user';
-  private readonly DEVICE_KEY = 'gdrums_device';
-
-  // ============================================
-  // AUTENTICAÇÃO
-  // ============================================
+  // ─── Autenticação ───────────────────────────────────────────────────
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      // TODO: Substituir por chamada real à API
-      // Simulação temporária
-      await this.simulateDelay(1000);
-
-      // Verificar dispositivo
-      const deviceFingerprint = this.getDeviceFingerprint();
-
-      // Mock response - substituir por fetch real
-      const mockUser: User = {
-        id: '1',
-        name: 'Usuário Teste',
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: credentials.email,
-        role: credentials.email.includes('admin') ? 'admin' : 'user',
-        status: 'active',
-        subscription: {
-          status: 'active',
-          plan: 'Profissional',
-          startDate: new Date().toISOString(),
-          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          autoRenew: true
-        },
-        maxDevices: 2,
-        devices: [
-          {
-            id: '1',
-            name: 'Device 1',
-            fingerprint: deviceFingerprint,
-            lastAccess: new Date().toISOString(),
-            ip: '127.0.0.1',
-            userAgent: navigator.userAgent
-          }
-        ],
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      };
+        password: credentials.password,
+      });
 
-      const token = this.generateMockToken();
+      if (error) {
+        return { success: false, message: this.translateError(error.message) };
+      }
 
-      // Salvar token e usuário
-      this.saveToken(token, credentials.rememberMe);
-      this.saveUser(mockUser);
-      this.saveDeviceInfo(deviceFingerprint);
+      if (!data.user) {
+        return { success: false, message: 'Erro ao fazer login.' };
+      }
 
-      return {
-        success: true,
-        token,
-        user: mockUser
-      };
-    } catch (error) {
-      console.error('Login error:', error);
-      return {
-        success: false,
-        message: 'Erro ao fazer login. Verifique suas credenciais.'
-      };
+      const profile = await this.getProfile(data.user.id);
+      const user = this.buildUser(data.user, profile);
+
+      return { success: true, token: data.session?.access_token, user };
+    } catch {
+      return { success: false, message: 'Erro ao conectar com o servidor.' };
     }
   }
 
-  async register(data: RegisterData): Promise<AuthResponse> {
+  async register(registerData: RegisterData): Promise<AuthResponse> {
     try {
-      // TODO: Substituir por chamada real à API
-      await this.simulateDelay(1000);
+      const { data, error } = await supabase.auth.signUp({
+        email: registerData.email,
+        password: registerData.password,
+        options: {
+          data: { name: registerData.name }
+        }
+      });
 
-      // Validações
-      if (data.password.length < 8) {
-        return {
-          success: false,
-          message: 'A senha deve ter no mínimo 8 caracteres'
-        };
+      if (error) {
+        return { success: false, message: this.translateError(error.message) };
       }
 
-      // Mock response
-      const mockUser: User = {
-        id: Date.now().toString(),
-        name: data.name,
-        email: data.email,
+      if (!data.user) {
+        return { success: false, message: 'Erro ao criar conta.' };
+      }
+
+      // Aguardar um momento para o trigger criar o profile
+      await new Promise(r => setTimeout(r, 500));
+
+      const profile = await this.getProfile(data.user.id);
+      const user = this.buildUser(data.user, profile);
+
+      return { success: true, token: data.session?.access_token, user };
+    } catch {
+      return { success: false, message: 'Erro ao conectar com o servidor.' };
+    }
+  }
+
+  async logout(): Promise<void> {
+    await supabase.auth.signOut();
+    window.location.href = '/login.html';
+  }
+
+  // ─── Sessão ─────────────────────────────────────────────────────────
+
+  async isAuthenticated(): Promise<boolean> {
+    const { data } = await supabase.auth.getSession();
+    return !!data.session;
+  }
+
+  isAuthenticatedSync(): boolean {
+    // Checa localStorage (rápido, sem await)
+    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    if (!key) return false;
+    try {
+      const data = JSON.parse(localStorage.getItem(key) || '{}');
+      return !!data.access_token;
+    } catch {
+      return false;
+    }
+  }
+
+  async getUser(): Promise<User | null> {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return null;
+
+    const profile = await this.getProfile(data.user.id);
+    return this.buildUser(data.user, profile);
+  }
+
+  getUserSync(): User | null {
+    // Para compatibilidade com código que chama getUser() sincronamente
+    // Retorna dados do cache local
+    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    if (!key) return null;
+    try {
+      const data = JSON.parse(localStorage.getItem(key) || '{}');
+      if (!data.user) return null;
+      return {
+        id: data.user.id,
+        name: data.user.user_metadata?.name || '',
+        email: data.user.email || '',
         role: 'user',
         status: 'active',
         subscription: {
           status: 'active',
-          plan: 'Profissional',
-          startDate: new Date().toISOString(),
-          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          autoRenew: true
+          plan: 'free',
+          startDate: data.user.created_at || '',
+          expiryDate: '',
+          autoRenew: false,
         },
         maxDevices: 2,
         devices: [],
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
+        createdAt: data.user.created_at || '',
+        lastLogin: new Date().toISOString(),
       };
-
-      const token = this.generateMockToken();
-
-      this.saveToken(token, true);
-      this.saveUser(mockUser);
-
-      return {
-        success: true,
-        token,
-        user: mockUser
-      };
-    } catch (error) {
-      console.error('Register error:', error);
-      return {
-        success: false,
-        message: 'Erro ao criar conta. Tente novamente.'
-      };
-    }
-  }
-
-  logout(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.USER_KEY);
-    sessionStorage.removeItem(this.TOKEN_KEY);
-    sessionStorage.removeItem(this.USER_KEY);
-    window.location.href = '/login.html';
-  }
-
-  // ============================================
-  // VALIDAÇÃO E PROTEÇÃO
-  // ============================================
-
-  isAuthenticated(): boolean {
-    return !!this.getToken();
-  }
-
-  getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY) || sessionStorage.getItem(this.TOKEN_KEY);
-  }
-
-  getUser(): User | null {
-    const userJson = localStorage.getItem(this.USER_KEY) || sessionStorage.getItem(this.USER_KEY);
-    if (!userJson) return null;
-
-    try {
-      return JSON.parse(userJson);
     } catch {
       return null;
     }
   }
 
-  isAdmin(): boolean {
-    const user = this.getUser();
+  async isAdmin(): Promise<boolean> {
+    const user = await this.getUser();
     return user?.role === 'admin';
   }
 
+  // ─── Profile ────────────────────────────────────────────────────────
+
+  private async getProfile(userId: string): Promise<GDrumsProfile | null> {
+    const { data, error } = await supabase
+      .from('gdrums_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error || !data) return null;
+    return data as GDrumsProfile;
+  }
+
+  private buildUser(supaUser: SupabaseUser, profile: GDrumsProfile | null): User {
+    return {
+      id: supaUser.id,
+      name: profile?.name || supaUser.user_metadata?.name || '',
+      email: supaUser.email || '',
+      role: profile?.role || 'user',
+      status: 'active',
+      subscription: {
+        status: (profile?.subscription_status as 'active' | 'expired' | 'canceled') || 'active',
+        plan: profile?.subscription_plan || 'free',
+        startDate: profile?.created_at || '',
+        expiryDate: profile?.subscription_expires_at || '',
+        autoRenew: false,
+      },
+      maxDevices: profile?.max_devices || 2,
+      devices: [],
+      createdAt: profile?.created_at || supaUser.created_at || '',
+      lastLogin: new Date().toISOString(),
+    };
+  }
+
+  // ─── Helpers ────────────────────────────────────────────────────────
+
+  private translateError(message: string): string {
+    const translations: Record<string, string> = {
+      'Invalid login credentials': 'Email ou senha incorretos.',
+      'Email not confirmed': 'Confirme seu email antes de fazer login.',
+      'User already registered': 'Este email já está cadastrado.',
+      'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres.',
+      'Signup requires a valid password': 'Informe uma senha válida.',
+      'Unable to validate email address: invalid format': 'Formato de email inválido.',
+    };
+    return translations[message] || message;
+  }
+
+  // ─── Compatibilidade (métodos usados pelo código existente) ─────────
+
+  getToken(): string | null {
+    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    if (!key) return null;
+    try {
+      const data = JSON.parse(localStorage.getItem(key) || '{}');
+      return data.access_token || null;
+    } catch {
+      return null;
+    }
+  }
+
   async checkAccess(): Promise<boolean> {
-    if (!this.isAuthenticated()) {
-      return false;
-    }
-
-    const user = this.getUser();
-    if (!user) return false;
-
-    // Verificar status da conta
-    if (user.status === 'blocked') {
-      this.logout();
-      return false;
-    }
-
-    // Verificar assinatura
-    if (user.subscription.status !== 'active') {
-      return false;
-    }
-
-    // Verificar dispositivo
-    const deviceFingerprint = this.getDeviceFingerprint();
-    const deviceRegistered = user.devices.some(d => d.fingerprint === deviceFingerprint);
-
-    if (!deviceRegistered && user.devices.length >= user.maxDevices) {
-      // Máximo de dispositivos atingido
-      return false;
-    }
-
-    return true;
+    return await this.isAuthenticated();
   }
 
-  // ============================================
-  // CONTROLE DE DISPOSITIVOS (Anti-Compartilhamento)
-  // ============================================
-
-  getDeviceFingerprint(): string {
-    // Gerar fingerprint único do dispositivo
-    const saved = localStorage.getItem(this.DEVICE_KEY);
-    if (saved) return saved;
-
-    const fingerprint = this.generateDeviceFingerprint();
-    localStorage.setItem(this.DEVICE_KEY, fingerprint);
-    return fingerprint;
-  }
-
-  private generateDeviceFingerprint(): string {
-    // Combinar várias características do dispositivo
-    const data = [
-      navigator.userAgent,
-      navigator.language,
-      navigator.hardwareConcurrency?.toString() || '',
-      screen.width.toString(),
-      screen.height.toString(),
-      screen.colorDepth.toString(),
-      new Date().getTimezoneOffset().toString(),
-      navigator.platform
-    ].join('|');
-
-    // Hash simples (em produção usar biblioteca de crypto)
-    return this.simpleHash(data);
-  }
-
-  private simpleHash(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
+  requireAuth(): void {
+    if (!this.isAuthenticatedSync()) {
+      window.location.href = '/login.html';
     }
-    return Math.abs(hash).toString(36);
+  }
+
+  requireAdmin(): void {
+    if (!this.isAuthenticatedSync()) {
+      window.location.href = '/login.html';
+    }
   }
 
   async registerDevice(): Promise<boolean> {
-    const user = this.getUser();
-    if (!user) return false;
-
-    const fingerprint = this.getDeviceFingerprint();
-
-    // Verificar se dispositivo já está registrado
-    if (user.devices.some(d => d.fingerprint === fingerprint)) {
-      return true;
-    }
-
-    // Verificar limite de dispositivos
-    if (user.devices.length >= user.maxDevices) {
-      return false;
-    }
-
-    // Adicionar novo dispositivo
-    const newDevice: DeviceInfo = {
-      id: Date.now().toString(),
-      name: this.getDeviceName(),
-      fingerprint,
-      lastAccess: new Date().toISOString(),
-      ip: 'Unknown', // Seria obtido do servidor
-      userAgent: navigator.userAgent
-    };
-
-    user.devices.push(newDevice);
-    this.saveUser(user);
-
-    // TODO: Sincronizar com servidor
-    return true;
+    return true; // Device tracking será implementado depois
   }
 
-  private getDeviceName(): string {
-    const ua = navigator.userAgent;
-    if (ua.includes('Windows')) return 'Windows PC';
-    if (ua.includes('Mac')) return 'Mac';
-    if (ua.includes('Linux')) return 'Linux PC';
-    if (ua.includes('Android')) return 'Android';
-    if (ua.includes('iPhone') || ua.includes('iPad')) return 'iOS';
-    return 'Unknown Device';
-  }
-
-  // ============================================
-  // UTILITÁRIOS
-  // ============================================
-
-  private saveToken(token: string, remember: boolean = false): void {
-    if (remember) {
-      localStorage.setItem(this.TOKEN_KEY, token);
-    } else {
-      sessionStorage.setItem(this.TOKEN_KEY, token);
-    }
-  }
-
-  private saveUser(user: User): void {
-    const userJson = JSON.stringify(user);
-    localStorage.setItem(this.USER_KEY, userJson);
-    sessionStorage.setItem(this.USER_KEY, userJson);
-  }
-
-  private saveDeviceInfo(fingerprint: string): void {
-    localStorage.setItem(this.DEVICE_KEY, fingerprint);
-  }
-
-  private generateMockToken(): string {
-    return 'mock_token_' + Math.random().toString(36).substring(2);
-  }
-
-  private simulateDelay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  // Redirecionar para login se não autenticado
-  requireAuth(): void {
-    if (!this.isAuthenticated()) {
-      window.location.href = '/login.html';
-    }
-  }
-
-  // Redirecionar para login se não for admin
-  requireAdmin(): void {
-    if (!this.isAuthenticated() || !this.isAdmin()) {
-      window.location.href = '/login.html';
-    }
+  getDeviceFingerprint(): string {
+    return 'web';
   }
 }
 

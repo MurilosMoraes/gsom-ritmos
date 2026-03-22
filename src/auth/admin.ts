@@ -48,12 +48,12 @@ class AdminDashboard {
 
   private async init(): Promise<void> {
     // Verificar se está autenticado e é admin
-    if (!authService.isAuthenticated()) {
+    if (!(await authService.isAuthenticated())) {
       window.location.href = '/login.html';
       return;
     }
 
-    const user = authService.getUser();
+    const user = await authService.getUser();
     if (!user || user.role !== 'admin') {
       window.location.href = '/';
       return;

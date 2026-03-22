@@ -8,31 +8,30 @@
 </head>
 <body>
   <div class="app-container">
+    <!-- Menu global (fora dos modos) -->
+    <div class="global-topbar">
+      <img src="/img/logo.png" alt="GDrums" class="global-logo-img">
+      <button class="topbar-menu-btn" id="fabMenu" aria-label="Menu">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M2.5 5h13M2.5 9h13M2.5 13h13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="topbar-dropdown" id="fabDropdown" style="display:none">
+        <div class="topbar-dropdown-item">
+          <span class="topbar-item-label" id="modeLabel">Modo Admin</span>
+          <label class="switch">
+            <input type="checkbox" id="adminModeToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <span class="mode-icon" id="modeIcon" style="display:none"></span>
+      </div>
+    </div>
+
     <main class="app-main">
       <!-- ============= MODO USUÁRIO ============= -->
       <div id="userMode" class="mode-container active">
         <div class="user-layout">
-
-          <!-- Top bar: Logo + Menu -->
-          <div class="user-topbar">
-            <img src="/img/logo.png" alt="GDrums" class="user-logo-img">
-            <button class="topbar-menu-btn" id="fabMenu" aria-label="Menu">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M2.5 5h13M2.5 9h13M2.5 13h13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-            </button>
-            <!-- Menu dropdown -->
-            <div class="topbar-dropdown" id="fabDropdown" style="display:none">
-              <div class="topbar-dropdown-item">
-                <span class="topbar-item-label" id="modeLabel">Modo Admin</span>
-                <label class="switch">
-                  <input type="checkbox" id="adminModeToggle">
-                  <span class="slider"></span>
-                </label>
-              </div>
-              <span class="mode-icon" id="modeIcon" style="display:none"></span>
-            </div>
-          </div>
 
           <!-- 1. Favoritos -->
           <div class="fav-section">

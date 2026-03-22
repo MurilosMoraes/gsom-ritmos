@@ -1,6 +1,7 @@
-// Login Page Script
+// Login Page — Supabase auth
 
 import { authService } from './AuthService';
+import { supabase } from './supabase';
 
 class LoginPage {
   private form: HTMLFormElement;
@@ -21,75 +22,62 @@ class LoginPage {
     this.init();
   }
 
-  private init(): void {
-    // Se já estiver autenticado, redirecionar
-    if (authService.isAuthenticated()) {
-      const user = authService.getUser();
-      if (user?.role === 'admin') {
-        window.location.href = '/admin.html';
-      } else {
-        window.location.href = '/';
-      }
+  private async init(): Promise<void> {
+    if (await authService.isAuthenticated()) {
+      const dest = await this.getRedirectDestination();
+      window.location.href = dest;
       return;
     }
-
     this.setupEventListeners();
   }
 
   private setupEventListeners(): void {
     this.form.addEventListener('submit', (e) => this.handleSubmit(e));
-
-    // Enter key nos inputs
-    [this.emailInput, this.passwordInput].forEach(input => {
-      input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          this.form.requestSubmit();
-        }
-      });
-    });
   }
 
   private async handleSubmit(e: Event): Promise<void> {
     e.preventDefault();
 
-    // Validação básica
-    if (!this.validateForm()) {
-      return;
-    }
+    if (!this.validateForm()) return;
 
-    // Desabilitar botão e mostrar loader
     this.setLoading(true);
     this.hideAlert();
 
-    try {
-      const response = await authService.login({
-        email: this.emailInput.value.trim(),
-        password: this.passwordInput.value,
-        rememberMe: this.rememberMeCheckbox.checked
-      });
+    const response = await authService.login({
+      email: this.emailInput.value.trim(),
+      password: this.passwordInput.value,
+      rememberMe: this.rememberMeCheckbox.checked
+    });
 
-      if (response.success && response.user) {
-        this.showAlert('Login realizado com sucesso! Redirecionando...', 'success');
-
-        // Registrar dispositivo
-        await authService.registerDevice();
-
-        // Redirecionar após 1 segundo
-        setTimeout(() => {
-          if (response.user!.role === 'admin') {
-            window.location.href = '/admin.html';
-          } else {
-            window.location.href = '/';
-          }
-        }, 1000);
-      } else {
-        this.showAlert(response.message || 'Erro ao fazer login', 'error');
-        this.setLoading(false);
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      this.showAlert('Erro ao conectar com o servidor', 'error');
+    if (response.success) {
+      this.showAlert('Login realizado! Redirecionando...', 'success');
+      const dest = await this.getRedirectDestination();
+      setTimeout(() => { window.location.href = dest; }, 800);
+    } else {
+      this.showAlert(response.message || 'Erro ao fazer login', 'error');
       this.setLoading(false);
+    }
+  }
+
+  private async getRedirectDestination(): Promise<string> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return '/plans.html';
+
+      const { data: profile } = await supabase
+        .from('gdrums_profiles')
+        .select('subscription_status, subscription_expires_at')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.subscription_status === 'active' && profile.subscription_expires_at) {
+        if (new Date(profile.subscription_expires_at) > new Date()) {
+          return '/';
+        }
+      }
+      return '/plans.html';
+    } catch {
+      return '/plans.html';
     }
   }
 
@@ -98,19 +86,19 @@ class LoginPage {
     const password = this.passwordInput.value;
 
     if (!email) {
-      this.showAlert('Por favor, informe seu e-mail', 'error');
+      this.showAlert('Informe seu e-mail', 'error');
       this.emailInput.focus();
       return false;
     }
 
-    if (!this.isValidEmail(email)) {
-      this.showAlert('Por favor, informe um e-mail válido', 'error');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      this.showAlert('E-mail inválido', 'error');
       this.emailInput.focus();
       return false;
     }
 
     if (!password) {
-      this.showAlert('Por favor, informe sua senha', 'error');
+      this.showAlert('Informe sua senha', 'error');
       this.passwordInput.focus();
       return false;
     }
@@ -118,34 +106,19 @@ class LoginPage {
     return true;
   }
 
-  private isValidEmail(email: string): boolean {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  }
-
   private setLoading(loading: boolean): void {
     this.loginBtn.disabled = loading;
     const btnText = this.loginBtn.querySelector('.btn-text') as HTMLElement;
     const btnLoader = this.loginBtn.querySelector('.btn-loader') as HTMLElement;
-
-    if (loading) {
-      btnText.style.display = 'none';
-      btnLoader.style.display = 'block';
-    } else {
-      btnText.style.display = 'block';
-      btnLoader.style.display = 'none';
-    }
+    if (btnText) btnText.style.display = loading ? 'none' : 'block';
+    if (btnLoader) btnLoader.style.display = loading ? 'block' : 'none';
   }
 
   private showAlert(message: string, type: 'success' | 'error'): void {
     this.alertMessage.textContent = message;
     this.alertMessage.className = `alert-message ${type}`;
     this.alertMessage.style.display = 'block';
-
-    // Auto-hide após 5 segundos se for sucesso
-    if (type === 'success') {
-      setTimeout(() => this.hideAlert(), 5000);
-    }
+    if (type === 'success') setTimeout(() => this.hideAlert(), 5000);
   }
 
   private hideAlert(): void {
@@ -153,7 +126,4 @@ class LoginPage {
   }
 }
 
-// Inicializar quando a página carregar
-window.addEventListener('DOMContentLoaded', () => {
-  new LoginPage();
-});
+window.addEventListener('DOMContentLoaded', () => { new LoginPage(); });

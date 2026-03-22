@@ -12,7 +12,9 @@ export default defineConfig({
         landing: './landing.html',
         login: './login.html',
         register: './register.html',
-        admin: './admin.html'
+        admin: './admin.html',
+        plans: './plans.html',
+        paymentSuccess: './payment-success.html'
       }
     }
   },

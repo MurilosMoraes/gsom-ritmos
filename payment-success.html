@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pagamento Confirmado - GDrums</title>
+  <link rel="stylesheet" href="auth-styles.css" />
+  <style>
+    .success-container {
+      min-height: 100vh; background: #030014;
+      display: flex; align-items: center; justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .success-card {
+      background: rgba(10, 10, 30, 0.7); backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.06); border-radius: 20px;
+      padding: 2.5rem; max-width: 420px; width: 100%; text-align: center;
+    }
+    .success-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.5rem; font-size: 1.8rem;
+    }
+    .success-icon.loading {
+      background: rgba(0, 212, 255, 0.1); border: 2px solid rgba(0, 212, 255, 0.3);
+      animation: pulse 1.5s ease infinite;
+    }
+    .success-icon.ok {
+      background: rgba(0, 230, 140, 0.1); border: 2px solid rgba(0, 230, 140, 0.3);
+      color: #00E68C;
+    }
+    .success-icon.fail {
+      background: rgba(255, 68, 102, 0.1); border: 2px solid rgba(255, 68, 102, 0.3);
+      color: #FF4466;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+    }
+    .success-title { font-size: 1.3rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
+    .success-msg { font-size: 0.9rem; color: rgba(255,255,255,0.45); margin-bottom: 1.5rem; line-height: 1.5; }
+    .success-btn {
+      width: 100%; padding: 0.85rem; border: none; border-radius: 12px;
+      font-size: 0.95rem; font-weight: 700; font-family: inherit; cursor: pointer;
+      background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 100%);
+      color: #fff; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+      transition: all 0.15s ease; display: none;
+    }
+    .success-btn:hover { box-shadow: 0 6px 28px rgba(0, 212, 255, 0.5); transform: translateY(-1px); }
+    .success-btn.visible { display: block; }
+    .retry-btn {
+      width: 100%; padding: 0.75rem; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; background: transparent; color: rgba(255,255,255,0.5);
+      font-size: 0.85rem; font-family: inherit; cursor: pointer; margin-top: 0.75rem;
+      display: none; transition: all 0.15s ease;
+    }
+    .retry-btn:hover { border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); }
+    .retry-btn.visible { display: block; }
+    .spinner-sm {
+      width: 24px; height: 24px; border: 3px solid rgba(0, 212, 255, 0.2);
+      border-top-color: #00D4FF; border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="success-container">
+    <div class="success-card">
+      <div class="success-icon loading" id="statusIcon">
+        <div class="spinner-sm"></div>
+      </div>
+      <h1 class="success-title" id="statusTitle">Verificando pagamento...</h1>
+      <p class="success-msg" id="statusMsg">Estamos confirmando seu pagamento. Isso leva poucos segundos.</p>
+      <a href="/" class="success-btn" id="accessBtn">Acessar GDrums</a>
+      <button class="retry-btn" id="retryBtn" onclick="window.location.href='/plans.html'">Tentar novamente</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/auth/payment-success.ts"></script>
+</body>
+</html>
