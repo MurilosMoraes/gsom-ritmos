@@ -128,7 +128,16 @@ class AuthService {
 
   async isAuthenticated(): Promise<boolean> {
     const { data } = await supabase.auth.getSession();
-    return !!data.session;
+    if (!data.session) return false;
+
+    // Validar que a sessão ainda é aceita pelo servidor
+    const { error } = await supabase.auth.getUser();
+    if (error) {
+      // Token inválido/expirado — limpar sessão corrompida
+      await supabase.auth.signOut();
+      return false;
+    }
+    return true;
   }
 
   isAuthenticatedSync(): boolean {
