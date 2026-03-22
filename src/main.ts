@@ -149,16 +149,22 @@ class RhythmSequencer {
 
     const { data: { session } } = await supabase.auth.getSession();
 
-    // Não logado → login
     if (!session) {
       window.location.href = '/login.html';
       return false;
     }
 
-    // Logado → verificar subscription
+    // Validar token
+    const { error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      await supabase.auth.signOut();
+      window.location.href = '/login.html';
+      return false;
+    }
+
     const { data: profile } = await supabase
       .from('gdrums_profiles')
-      .select('subscription_status, subscription_expires_at')
+      .select('subscription_status, subscription_expires_at, subscription_plan')
       .eq('id', session.user.id)
       .single();
 
@@ -166,14 +172,101 @@ class RhythmSequencer {
     const expires = profile?.subscription_expires_at;
 
     if ((status === 'active' || status === 'trial') && expires) {
-      if (new Date(expires) > new Date()) {
-        return true; // Acesso liberado
+      const expiresDate = new Date(expires);
+      if (expiresDate > new Date()) {
+        // Mostrar banner de trial/assinatura
+        this.showSubscriptionBanner(status, expiresDate, profile?.subscription_plan || '');
+        return true;
       }
     }
 
-    // Sem subscription válida → planos
     window.location.href = '/plans.html';
     return false;
+  }
+
+  private showSubscriptionBanner(status: string, expires: Date, plan: string): void {
+    if (status === 'active' && plan !== 'trial') return; // Assinante pago, sem banner
+
+    const now = new Date();
+    const hoursLeft = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60 * 60)));
+    const minutesLeft = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60)) % 60);
+
+    const banner = document.createElement('div');
+    banner.className = 'trial-banner';
+
+    if (hoursLeft <= 6) {
+      banner.classList.add('trial-banner-urgent');
+    }
+
+    const timeText = hoursLeft > 0 ? `${hoursLeft}h ${minutesLeft}min` : `${minutesLeft}min`;
+
+    banner.innerHTML = `
+      <span class="trial-banner-text">
+        ${status === 'trial' ? 'Teste grátis' : 'Seu plano'}: <strong>${timeText} restantes</strong>
+      </span>
+      <a href="/plans.html" class="trial-banner-btn">Assinar agora</a>
+    `;
+
+    document.body.appendChild(banner);
+
+    // Injetar CSS
+    if (!document.getElementById('trial-banner-css')) {
+      const style = document.createElement('style');
+      style.id = 'trial-banner-css';
+      style.textContent = `
+        .trial-banner {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: rgba(10, 10, 30, 0.9);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border-top: 1px solid rgba(0, 212, 255, 0.15);
+          padding: 0.6rem 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.75rem;
+          z-index: 9999;
+          animation: bannerSlideUp 0.3s ease;
+        }
+        .trial-banner-urgent {
+          border-top-color: rgba(255, 68, 68, 0.3);
+          background: rgba(30, 5, 5, 0.9);
+        }
+        .trial-banner-text {
+          font-size: 0.75rem;
+          color: rgba(255, 255, 255, 0.6);
+        }
+        .trial-banner-text strong {
+          color: #00D4FF;
+        }
+        .trial-banner-urgent .trial-banner-text strong {
+          color: #FF6B6B;
+        }
+        .trial-banner-btn {
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: #fff;
+          background: linear-gradient(135deg, #00D4FF, #8B5CF6);
+          padding: 0.35rem 0.8rem;
+          border-radius: 8px;
+          text-decoration: none;
+          white-space: nowrap;
+          transition: all 0.15s;
+        }
+        .trial-banner-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+        }
+        @keyframes bannerSlideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }
 
   private generateChannelsHTML(): void {
