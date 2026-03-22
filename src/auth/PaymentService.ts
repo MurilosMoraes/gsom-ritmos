@@ -1,7 +1,7 @@
 // PaymentService — InfinitePay checkout via API
 
+const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
 const INFINITEPAY_HANDLE = 'g-drums';
-const INFINITEPAY_CHECKOUT = 'https://checkout.infinitepay.io';
 const INFINITEPAY_API = 'https://api.infinitepay.io/invoices/public/checkout';
 
 export interface Plan {
@@ -73,24 +73,40 @@ export interface CheckoutLinkResponse {
   error?: string;
 }
 
-export function buildCheckoutUrl(
+export interface CheckoutResult {
+  success: boolean;
+  url?: string;
+  error?: string;
+}
+
+export async function createCheckoutLink(
   plan: Plan,
   orderNsu: string,
   redirectUrl: string,
-): string {
-  const items = JSON.stringify([{
-    name: plan.name,
-    price: plan.priceCents,
-    quantity: 1,
-  }]);
+  customer?: { name?: string; email?: string }
+): Promise<CheckoutResult> {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: [{ quantity: 1, price: plan.priceCents, description: plan.name }],
+        order_nsu: orderNsu,
+        redirect_url: redirectUrl,
+        customer,
+      }),
+    });
 
-  const params = new URLSearchParams({
-    items,
-    order_nsu: orderNsu,
-    redirect_url: redirectUrl,
-  });
+    const data = await response.json();
 
-  return `${INFINITEPAY_CHECKOUT}/${INFINITEPAY_HANDLE}?${params.toString()}`;
+    if (!response.ok || !data.url) {
+      return { success: false, error: data.error || 'Erro ao criar checkout' };
+    }
+
+    return { success: true, url: data.url };
+  } catch (e) {
+    return { success: false, error: String(e) };
+  }
 }
 
 // ─── Verificar pagamento ──────────────────────────────────────────────

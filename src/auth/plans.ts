@@ -2,7 +2,7 @@
 
 import { authService } from './AuthService';
 import { supabase } from './supabase';
-import { PLANS, generateOrderNsu, buildCheckoutUrl } from './PaymentService';
+import { PLANS, generateOrderNsu, createCheckoutLink } from './PaymentService';
 import type { Plan } from './PaymentService';
 
 class PlansPage {
@@ -95,9 +95,18 @@ class PlansPage {
         orderNsu, planId: plan.id, userId: user.id,
       }));
 
-      // Montar URL de checkout direto (sem API, evita CORS)
-      const checkoutUrl = buildCheckoutUrl(plan, orderNsu, redirectUrl);
-      window.location.href = checkoutUrl;
+      // Criar link via Edge Function (sem CORS, com webhook)
+      const result = await createCheckoutLink(plan, orderNsu, redirectUrl, {
+        name: user.user_metadata?.name || '',
+        email: user.email || '',
+      });
+
+      if (result.success && result.url) {
+        window.location.href = result.url;
+      } else {
+        if (loading) loading.classList.remove('active');
+        this.showAlert(result.error || 'Erro ao gerar pagamento. Tente novamente.');
+      }
     } catch {
       if (loading) loading.classList.remove('active');
       this.showAlert('Erro ao processar. Tente novamente.');
