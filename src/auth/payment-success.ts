@@ -2,7 +2,7 @@
 
 import { authService } from './AuthService';
 import { supabase } from './supabase';
-import { verifyPayment, parseOrderNsu, getPlan, calculateExpiryDate } from './PaymentService';
+import { verifyPayment, parseOrderNsu, getPlan, calculatePlanExpiry } from './PaymentService';
 
 class PaymentSuccessPage {
   constructor() {

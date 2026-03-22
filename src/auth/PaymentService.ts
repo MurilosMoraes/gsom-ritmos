@@ -1,7 +1,7 @@
-// PaymentService — InfinitePay checkout integration
+// PaymentService — InfinitePay checkout via API
 
 const INFINITEPAY_HANDLE = 'g-drums';
-const INFINITEPAY_CHECKOUT = 'https://checkout.infinitepay.com.br';
+const INFINITEPAY_API = 'https://api.infinitepay.io/invoices/public/checkout';
 
 export interface Plan {
   id: string;
@@ -18,7 +18,7 @@ export interface Plan {
 export const PLANS: Plan[] = [
   {
     id: 'mensal',
-    name: 'Plano Mensal',
+    name: 'Plano Mensal GDrums',
     displayName: 'Mensal',
     priceCents: 2900,
     priceDisplay: 'R$ 29',
@@ -27,7 +27,7 @@ export const PLANS: Plan[] = [
   },
   {
     id: 'semestral',
-    name: 'Plano Semestral',
+    name: 'Plano Semestral GDrums',
     displayName: 'Semestral',
     priceCents: 14400,
     priceDisplay: 'R$ 144',
@@ -38,7 +38,7 @@ export const PLANS: Plan[] = [
   },
   {
     id: 'anual',
-    name: 'Plano Anual',
+    name: 'Plano Anual GDrums',
     displayName: 'Anual',
     priceCents: 22800,
     priceDisplay: 'R$ 228',
@@ -56,35 +56,63 @@ export function generateOrderNsu(userId: string, planId: string): string {
   return `${userId}_${planId}_${Date.now()}`;
 }
 
-export function parseOrderNsu(orderNsu: string): { userId: string; planId: string; timestamp: string } | null {
+export function parseOrderNsu(orderNsu: string): { userId: string; planId: string } | null {
   const parts = orderNsu.split('_');
   if (parts.length < 3) return null;
-  // userId is UUID (has dashes), so rejoin all but last 2 parts
   const planId = parts[parts.length - 2];
-  const timestamp = parts[parts.length - 1];
   const userId = parts.slice(0, parts.length - 2).join('_');
-  return { userId, planId, timestamp };
+  return { userId, planId };
 }
 
-export function buildCheckoutUrl(plan: Plan, orderNsu: string, redirectUrl: string, webhookUrl?: string): string {
-  const items = JSON.stringify([{
-    name: plan.name,
-    price: plan.priceCents,
-    quantity: 1
-  }]);
+// ─── Gerar link de checkout via API ───────────────────────────────────
 
-  const params = new URLSearchParams({
-    items,
-    order_nsu: orderNsu,
-    redirect_url: redirectUrl,
-  });
+export interface CheckoutLinkResponse {
+  success: boolean;
+  url?: string;
+  error?: string;
+}
 
-  if (webhookUrl) {
-    params.set('webhook_url', webhookUrl);
+export async function createCheckoutLink(
+  plan: Plan,
+  orderNsu: string,
+  redirectUrl: string,
+  webhookUrl?: string,
+  customer?: { name?: string; email?: string }
+): Promise<CheckoutLinkResponse> {
+  try {
+    const body: Record<string, unknown> = {
+      handle: INFINITEPAY_HANDLE,
+      order_nsu: orderNsu,
+      items: [{
+        quantity: 1,
+        price: plan.priceCents,
+        description: plan.name,
+      }],
+      redirect_url: redirectUrl,
+    };
+
+    if (webhookUrl) body.webhook_url = webhookUrl;
+    if (customer) body.customer = customer;
+
+    const response = await fetch(`${INFINITEPAY_API}/links`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      return { success: false, error: err };
+    }
+
+    const data = await response.json();
+    return { success: true, url: data.url };
+  } catch (e) {
+    return { success: false, error: String(e) };
   }
-
-  return `${INFINITEPAY_CHECKOUT}/${INFINITEPAY_HANDLE}?${params.toString()}`;
 }
+
+// ─── Verificar pagamento ──────────────────────────────────────────────
 
 export interface PaymentCheckResult {
   success: boolean;
@@ -94,9 +122,13 @@ export interface PaymentCheckResult {
   capture_method?: string;
 }
 
-export async function verifyPayment(orderNsu: string, transactionNsu: string, slug: string): Promise<PaymentCheckResult> {
+export async function verifyPayment(
+  orderNsu: string,
+  transactionNsu: string,
+  slug: string
+): Promise<PaymentCheckResult> {
   try {
-    const response = await fetch('https://api.infinitepay.io/invoices/public/checkout/payment_check', {
+    const response = await fetch(`${INFINITEPAY_API}/payment_check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -107,9 +139,7 @@ export async function verifyPayment(orderNsu: string, transactionNsu: string, sl
       }),
     });
 
-    if (!response.ok) {
-      return { success: false, paid: false };
-    }
+    if (!response.ok) return { success: false, paid: false };
 
     const data = await response.json();
     return {
@@ -124,8 +154,18 @@ export async function verifyPayment(orderNsu: string, transactionNsu: string, sl
   }
 }
 
-export function calculateExpiryDate(plan: Plan): string {
+// ─── Trial ────────────────────────────────────────────────────────────
+
+export const TRIAL_HOURS = 48;
+
+export function calculateTrialExpiry(): string {
   const now = new Date();
-  now.setMonth(now.getMonth() + plan.durationMonths);
+  now.setHours(now.getHours() + TRIAL_HOURS);
+  return now.toISOString();
+}
+
+export function calculatePlanExpiry(durationMonths: number): string {
+  const now = new Date();
+  now.setMonth(now.getMonth() + durationMonths);
   return now.toISOString();
 }

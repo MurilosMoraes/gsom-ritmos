@@ -2,7 +2,7 @@
 
 import { authService } from './AuthService';
 import { supabase } from './supabase';
-import { PLANS, generateOrderNsu, buildCheckoutUrl } from './PaymentService';
+import { PLANS, generateOrderNsu, createCheckoutLink } from './PaymentService';
 import type { Plan } from './PaymentService';
 
 class PlansPage {
@@ -11,55 +11,50 @@ class PlansPage {
   }
 
   private async init(): Promise<void> {
-    // Check auth
     if (!(await authService.isAuthenticated())) {
       window.location.href = '/login.html';
       return;
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.href = '/login.html'; return; }
+
     // Check if already subscribed
-    const user = await authService.getUser();
-    if (user) {
-      const { data: profile } = await supabase
-        .from('gdrums_profiles')
-        .select('subscription_status, subscription_expires_at')
-        .eq('id', user.id)
-        .single();
+    const { data: profile } = await supabase
+      .from('gdrums_profiles')
+      .select('subscription_status, subscription_expires_at')
+      .eq('id', user.id)
+      .single();
 
-      if (profile?.subscription_status === 'active' && profile.subscription_expires_at) {
-        const expires = new Date(profile.subscription_expires_at);
-        if (expires > new Date()) {
-          window.location.href = '/';
-          return;
-        }
+    const status = profile?.subscription_status;
+    if ((status === 'active' || status === 'trial') && profile?.subscription_expires_at) {
+      if (new Date(profile.subscription_expires_at) > new Date()) {
+        window.location.href = '/';
+        return;
       }
+    }
 
-      // Show alert if expired
-      if (profile?.subscription_status === 'expired') {
-        this.showAlert('Sua assinatura expirou. Escolha um plano para continuar.');
-      }
+    if (status === 'expired' || (status === 'trial' && profile?.subscription_expires_at && new Date(profile.subscription_expires_at) <= new Date())) {
+      this.showAlert('Sua assinatura expirou. Escolha um plano para continuar.');
     }
 
     // Check for pre-selected plan from URL
     const params = new URLSearchParams(window.location.search);
-    const preselectedPlan = params.get('plan');
-
-    this.renderPlans(preselectedPlan);
+    this.renderPlans(params.get('plan'));
   }
 
   private renderPlans(highlight?: string | null): void {
     const grid = document.getElementById('plansGrid');
     if (!grid) return;
-
     grid.innerHTML = '';
 
     PLANS.forEach(plan => {
+      const isHighlighted = plan.popular || highlight === plan.id;
       const card = document.createElement('div');
-      card.className = 'plan-card' + (plan.popular ? ' popular' : '');
-      if (highlight === plan.id) card.classList.add('popular');
+      card.className = 'plan-card' + (isHighlighted ? ' popular' : '');
 
       card.innerHTML = `
-        ${plan.popular || highlight === plan.id ? '<div class="plan-badge">Mais Popular</div>' : ''}
+        ${isHighlighted ? '<div class="plan-badge">Mais Popular</div>' : ''}
         <span class="plan-name">${plan.displayName}</span>
         <div class="plan-price">
           <span class="plan-currency">R$</span>
@@ -72,7 +67,6 @@ class PlansPage {
           <li>Acesso total ao sequenciador</li>
           <li>Biblioteca completa de ritmos</li>
           <li>Salvar projetos ilimitados</li>
-          <li>Importar seus próprios samples</li>
           <li>Favoritos e setlists</li>
           ${plan.durationMonths >= 6 ? '<li>Suporte prioritário</li>' : '<li>Suporte por email</li>'}
           ${plan.durationMonths >= 12 ? '<li>Acesso antecipado a novidades</li>' : ''}
@@ -91,26 +85,28 @@ class PlansPage {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        window.location.href = '/login.html';
-        return;
-      }
+      if (!user) { window.location.href = '/login.html'; return; }
 
       const orderNsu = generateOrderNsu(user.id, plan.id);
       const redirectUrl = `${window.location.origin}/payment-success.html`;
 
-      // Store order info for verification
+      // Salvar pedido pendente
       localStorage.setItem('gdrums-pending-order', JSON.stringify({
-        orderNsu,
-        planId: plan.id,
-        userId: user.id,
-        createdAt: new Date().toISOString(),
+        orderNsu, planId: plan.id, userId: user.id,
       }));
 
-      const checkoutUrl = buildCheckoutUrl(plan, orderNsu, redirectUrl);
+      // Gerar link via API do InfinitePay
+      const result = await createCheckoutLink(plan, orderNsu, redirectUrl, undefined, {
+        name: user.user_metadata?.name || '',
+        email: user.email || '',
+      });
 
-      // Redirect to InfinitePay
-      window.location.href = checkoutUrl;
+      if (result.success && result.url) {
+        window.location.href = result.url;
+      } else {
+        if (loading) loading.classList.remove('active');
+        this.showAlert('Erro ao gerar link de pagamento. Tente novamente.');
+      }
     } catch {
       if (loading) loading.classList.remove('active');
       this.showAlert('Erro ao processar. Tente novamente.');
@@ -119,10 +115,7 @@ class PlansPage {
 
   private showAlert(message: string): void {
     const alert = document.getElementById('alertBar');
-    if (alert) {
-      alert.textContent = message;
-      alert.style.display = 'block';
-    }
+    if (alert) { alert.textContent = message; alert.style.display = 'block'; }
   }
 }
 

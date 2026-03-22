@@ -308,6 +308,26 @@ input:checked + .slider:before {
   color: rgba(255, 255, 255, 0.6);
   font-weight: 500;
 }
+.topbar-dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 0.5rem 0;
+}
+.topbar-dropdown-btn {
+  width: 100%;
+  padding: 0.5rem 0;
+  background: none;
+  border: none;
+  color: rgba(255, 80, 80, 0.7);
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.topbar-dropdown-btn:hover { color: rgba(255, 80, 80, 1); }
 
 .fav-section {
   width: 100%;

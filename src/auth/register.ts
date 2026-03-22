@@ -1,6 +1,8 @@
 // Register Page — Supabase auth
 
 import { authService } from './AuthService';
+import { supabase } from './supabase';
+import { calculateTrialExpiry } from './PaymentService';
 
 class RegisterPage {
   private form: HTMLFormElement;
@@ -54,9 +56,19 @@ class RegisterPage {
       password: this.passwordInput.value
     });
 
-    if (response.success) {
-      this.showAlert('Conta criada! Redirecionando...', 'success');
-      setTimeout(() => { window.location.href = '/plans.html'; }, 800);
+    if (response.success && response.user) {
+      // Ativar trial de 48h
+      await supabase
+        .from('gdrums_profiles')
+        .update({
+          subscription_status: 'trial',
+          subscription_plan: 'trial',
+          subscription_expires_at: calculateTrialExpiry(),
+        })
+        .eq('id', response.user.id);
+
+      this.showAlert('Conta criada! Teste grátis por 48h ativado!', 'success');
+      setTimeout(() => { window.location.href = '/'; }, 1200);
     } else {
       this.showAlert(response.message || 'Erro ao criar conta', 'error');
       this.setLoading(false);
@@ -136,8 +148,8 @@ class RegisterPage {
     this.registerBtn.disabled = loading;
     const btnText = this.registerBtn.querySelector('.btn-text') as HTMLElement;
     const btnLoader = this.registerBtn.querySelector('.btn-loader') as HTMLElement;
-    if (btnText) btnText.style.display = loading ? 'none' : 'block';
-    if (btnLoader) btnLoader.style.display = loading ? 'block' : 'none';
+    if (btnText) btnText.classList.toggle('hidden', loading);
+    if (btnLoader) btnLoader.classList.toggle('active', loading);
   }
 
   private showAlert(message: string, type: 'success' | 'error'): void {

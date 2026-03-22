@@ -1,128 +1,131 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Criar Conta - GDrums</title>
-    <link rel="stylesheet" href="auth-styles.css" />
-  </head>
-  <body>
-    <div class="auth-container">
-      <div class="auth-card">
-        <div class="auth-header">
-          <div class="logo-auth">
-            <img src="/img/logo.png" alt="GDrums" class="logo-img-auth" />
-          </div>
-          <p class="auth-subtitle">Crie sua conta e comece agora!</p>
-        </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Criar Conta - GDrums</title>
+  <link rel="stylesheet" href="auth-styles.css" />
+  <style>
+    body { background: #030014; }
+    .register-page {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .register-card {
+      background: rgba(10, 10, 30, 0.7); backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.06); border-radius: 20px;
+      padding: 2.5rem 2rem; max-width: 420px; width: 100%;
+    }
+    .register-logo { height: 40px; display: block; margin: 0 auto 1.5rem; opacity: 0.8; }
+    .register-title { font-size: 1.3rem; font-weight: 700; color: #fff; text-align: center; margin-bottom: 0.3rem; }
+    .register-sub { font-size: 0.85rem; color: rgba(255,255,255,0.4); text-align: center; margin-bottom: 1.5rem; }
+    .trial-badge {
+      display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+      background: rgba(0, 230, 140, 0.08); border: 1px solid rgba(0, 230, 140, 0.2);
+      border-radius: 10px; padding: 0.5rem; margin-bottom: 1.5rem;
+      font-size: 0.75rem; color: #00E68C; font-weight: 600;
+    }
+    .trial-badge svg { flex-shrink: 0; }
+    .reg-form { display: flex; flex-direction: column; gap: 0.9rem; }
+    .reg-field label {
+      display: block; font-size: 0.7rem; font-weight: 600; color: rgba(255,255,255,0.4);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem;
+    }
+    .reg-field input[type="text"],
+    .reg-field input[type="email"],
+    .reg-field input[type="password"] {
+      width: 100%; padding: 0.7rem 0.9rem;
+      background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.08);
+      border-radius: 10px; color: #fff; font-size: 0.9rem; font-family: inherit;
+      outline: none; transition: border-color 0.15s;
+    }
+    .reg-field input:focus { border-color: rgba(0, 212, 255, 0.4); }
+    .reg-field input::placeholder { color: rgba(255,255,255,0.2); }
+    .strength-bar-wrap {
+      height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 0.4rem; overflow: hidden;
+    }
+    .strength-bar { height: 100%; width: 0%; border-radius: 2px; transition: all 0.2s; }
+    .reg-check { display: flex; align-items: flex-start; gap: 0.5rem; }
+    .reg-check input[type="checkbox"] {
+      width: 16px; height: 16px; margin-top: 2px; accent-color: #00D4FF; flex-shrink: 0;
+    }
+    .reg-check span { font-size: 0.75rem; color: rgba(255,255,255,0.4); line-height: 1.4; }
+    .reg-check a { color: #00D4FF; text-decoration: none; }
+    .reg-btn {
+      width: 100%; padding: 0.8rem; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 100%);
+      color: #fff; font-size: 0.95rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: all 0.15s; position: relative;
+      box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+    }
+    .reg-btn:hover { box-shadow: 0 6px 28px rgba(0, 212, 255, 0.5); transform: translateY(-1px); }
+    .reg-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+    .reg-btn .btn-loader { display: none; }
+    .reg-btn .btn-loader.active { display: block; }
+    .reg-btn .btn-text.hidden { display: none; }
+    .reg-footer {
+      text-align: center; margin-top: 1rem; font-size: 0.8rem; color: rgba(255,255,255,0.3);
+    }
+    .reg-footer a { color: #00D4FF; text-decoration: none; font-weight: 600; }
+    .reg-alert {
+      margin-top: 0.75rem; padding: 0.6rem 0.8rem; border-radius: 8px;
+      font-size: 0.8rem; display: none; text-align: center;
+    }
+    .reg-alert.error { background: rgba(255,68,102,0.1); color: #FF4466; border: 1px solid rgba(255,68,102,0.2); }
+    .reg-alert.success { background: rgba(0,230,140,0.1); color: #00E68C; border: 1px solid rgba(0,230,140,0.2); }
+    .spinner-sm {
+      width: 20px; height: 20px; border: 2.5px solid rgba(255,255,255,0.2);
+      border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="register-page">
+    <div class="register-card">
+      <img src="/img/logo.png" alt="GDrums" class="register-logo" />
+      <h1 class="register-title">Crie sua conta</h1>
+      <p class="register-sub">Comece a criar ritmos profissionais agora</p>
 
-        <form id="registerForm" class="auth-form">
-          <div class="form-group">
-            <label for="name">Nome completo</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              required
-              placeholder="Seu nome completo"
-              autocomplete="name"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="email">E-mail</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              required
-              placeholder="seu@email.com"
-              autocomplete="email"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="password">Senha</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              required
-              placeholder="Mínimo 8 caracteres"
-              autocomplete="new-password"
-            />
-            <div class="password-strength" id="passwordStrength">
-              <div class="strength-bar"></div>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="confirmPassword">Confirmar senha</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              required
-              placeholder="Digite a senha novamente"
-              autocomplete="new-password"
-            />
-          </div>
-
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="acceptTerms" required />
-              <span>
-                Aceito os <a href="#" target="_blank">termos de uso</a> e
-                <a href="#" target="_blank">política de privacidade</a>
-              </span>
-            </label>
-          </div>
-
-          <button type="submit" class="btn-primary-auth" id="registerBtn">
-            <span class="btn-text">Criar conta</span>
-            <span class="btn-loader" style="display: none;">
-              <svg class="spinner" viewBox="0 0 50 50">
-                <circle cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
-              </svg>
-            </span>
-          </button>
-
-          <div class="auth-divider">
-            <span>ou</span>
-          </div>
-
-          <p class="auth-footer">
-            Já tem uma conta?
-            <a href="login.html">Fazer login</a>
-          </p>
-        </form>
-
-        <div class="alert-message" id="alertMessage" style="display: none;"></div>
+      <div class="trial-badge">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1l2.06 4.18L15 5.82l-3.5 3.41.83 4.82L8 11.77l-4.33 2.28.83-4.82L1 5.82l4.94-.64L8 1z" fill="currentColor"/></svg>
+        Teste grátis por 48 horas — sem cartão de crédito
       </div>
 
-      <div class="auth-illustration">
-        <div class="illustration-content">
-          <h2>Plano Profissional</h2>
-          <p>Acesso completo a todas as funcionalidades</p>
-          <div class="pricing-card">
-            <div class="price">
-              <span class="currency">R$</span>
-              <span class="amount">49</span>
-              <span class="period">/mês</span>
-            </div>
-            <ul class="features-list">
-              <li>✓ 150+ ritmos profissionais</li>
-              <li>✓ Editor completo de padrões</li>
-              <li>✓ Sistema de variações avançado</li>
-              <li>✓ Exportação MIDI ilimitada</li>
-              <li>✓ Suporte prioritário</li>
-              <li>✓ Atualizações constantes</li>
-            </ul>
-          </div>
+      <form id="registerForm" class="reg-form">
+        <div class="reg-field">
+          <label for="name">Nome</label>
+          <input type="text" id="name" name="name" required placeholder="Seu nome" autocomplete="name" />
         </div>
-      </div>
+        <div class="reg-field">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" required placeholder="seu@email.com" autocomplete="email" />
+        </div>
+        <div class="reg-field">
+          <label for="password">Senha</label>
+          <input type="password" id="password" name="password" required placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+          <div class="strength-bar-wrap" id="passwordStrength"><div class="strength-bar"></div></div>
+        </div>
+        <div class="reg-field">
+          <label for="confirmPassword">Confirmar senha</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Repita a senha" autocomplete="new-password" />
+        </div>
+        <div class="reg-check">
+          <input type="checkbox" id="acceptTerms" required />
+          <span>Aceito os <a href="#">termos de uso</a> e <a href="#">política de privacidade</a></span>
+        </div>
+        <button type="submit" class="reg-btn" id="registerBtn">
+          <span class="btn-text">Criar conta e começar</span>
+          <span class="btn-loader"><div class="spinner-sm"></div></span>
+        </button>
+      </form>
+
+      <p class="reg-footer">Já tem conta? <a href="login.html">Fazer login</a></p>
+      <div class="reg-alert" id="alertMessage"></div>
     </div>
+  </div>
 
-    <script type="module" src="/src/auth/register.ts"></script>
-  </body>
+  <script type="module" src="/src/auth/register.ts"></script>
+</body>
 </html>

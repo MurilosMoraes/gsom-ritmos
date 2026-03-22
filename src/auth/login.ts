@@ -23,9 +23,9 @@ class LoginPage {
   }
 
   private async init(): Promise<void> {
+    // Se já logado, redirecionar direto
     if (await authService.isAuthenticated()) {
-      const dest = await this.getRedirectDestination();
-      window.location.href = dest;
+      window.location.href = await this.getDestination();
       return;
     }
     this.setupEventListeners();
@@ -37,7 +37,6 @@ class LoginPage {
 
   private async handleSubmit(e: Event): Promise<void> {
     e.preventDefault();
-
     if (!this.validateForm()) return;
 
     this.setLoading(true);
@@ -51,15 +50,15 @@ class LoginPage {
 
     if (response.success) {
       this.showAlert('Login realizado! Redirecionando...', 'success');
-      const dest = await this.getRedirectDestination();
-      setTimeout(() => { window.location.href = dest; }, 800);
+      const dest = await this.getDestination();
+      setTimeout(() => { window.location.href = dest; }, 600);
     } else {
       this.showAlert(response.message || 'Erro ao fazer login', 'error');
       this.setLoading(false);
     }
   }
 
-  private async getRedirectDestination(): Promise<string> {
+  private async getDestination(): Promise<string> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return '/plans.html';
@@ -70,7 +69,8 @@ class LoginPage {
         .eq('id', user.id)
         .single();
 
-      if (profile?.subscription_status === 'active' && profile.subscription_expires_at) {
+      const status = profile?.subscription_status;
+      if ((status === 'active' || status === 'trial') && profile?.subscription_expires_at) {
         if (new Date(profile.subscription_expires_at) > new Date()) {
           return '/';
         }
@@ -85,24 +85,16 @@ class LoginPage {
     const email = this.emailInput.value.trim();
     const password = this.passwordInput.value;
 
-    if (!email) {
-      this.showAlert('Informe seu e-mail', 'error');
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      this.showAlert('Informe um e-mail válido', 'error');
       this.emailInput.focus();
       return false;
     }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      this.showAlert('E-mail inválido', 'error');
-      this.emailInput.focus();
-      return false;
-    }
-
     if (!password) {
       this.showAlert('Informe sua senha', 'error');
       this.passwordInput.focus();
       return false;
     }
-
     return true;
   }
 

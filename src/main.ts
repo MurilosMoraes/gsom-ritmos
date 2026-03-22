@@ -859,6 +859,16 @@ class RhythmSequencer {
   }
 
   private setupModeToggle(): void {
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        if (this.stateManager.isPlaying()) this.stop();
+        const { authService } = await import('./auth/AuthService');
+        await authService.logout();
+      });
+    }
+
     // Fab menu toggle
     const fabMenu = document.getElementById('fabMenu');
     const fabDropdown = document.getElementById('fabDropdown');
