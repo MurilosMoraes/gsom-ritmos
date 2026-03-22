@@ -86,9 +86,15 @@ export async function createCheckoutLink(
   customer?: { name?: string; email?: string }
 ): Promise<CheckoutResult> {
   try {
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzZnppaXZ1YndkZ3Rtd3l6dGZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MDY5NzYsImV4cCI6MjA4ODA4Mjk3Nn0.-yTPPDrZHE26FtmHVzsuR4qSMNJdQtmx8mYA_bkQ6ZE';
+
     const response = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ANON_KEY}`,
+        'apikey': ANON_KEY,
+      },
       body: JSON.stringify({
         items: [{ quantity: 1, price: plan.priceCents, description: plan.name }],
         order_nsu: orderNsu,
