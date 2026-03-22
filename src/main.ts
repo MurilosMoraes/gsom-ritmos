@@ -133,11 +133,47 @@ class RhythmSequencer {
   }
 
   private init(): void {
-    this.generateChannelsHTML();
-    this.setupEventListeners();
-    this.setupSetlistUI();
-    this.loadAvailableMidi();
-    this.loadAvailableRhythms();
+    // Guard: verificar auth e subscription antes de qualquer coisa
+    this.checkAccess().then(allowed => {
+      if (!allowed) return;
+      this.generateChannelsHTML();
+      this.setupEventListeners();
+      this.setupSetlistUI();
+      this.loadAvailableMidi();
+      this.loadAvailableRhythms();
+    });
+  }
+
+  private async checkAccess(): Promise<boolean> {
+    const { supabase } = await import('./auth/supabase');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    // Não logado → login
+    if (!session) {
+      window.location.href = '/login.html';
+      return false;
+    }
+
+    // Logado → verificar subscription
+    const { data: profile } = await supabase
+      .from('gdrums_profiles')
+      .select('subscription_status, subscription_expires_at')
+      .eq('id', session.user.id)
+      .single();
+
+    const status = profile?.subscription_status;
+    const expires = profile?.subscription_expires_at;
+
+    if ((status === 'active' || status === 'trial') && expires) {
+      if (new Date(expires) > new Date()) {
+        return true; // Acesso liberado
+      }
+    }
+
+    // Sem subscription válida → planos
+    window.location.href = '/plans.html';
+    return false;
   }
 
   private generateChannelsHTML(): void {
