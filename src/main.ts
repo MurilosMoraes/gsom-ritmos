@@ -2086,12 +2086,13 @@ class RhythmSequencer {
 
   private async onSetlistEditorClose(): Promise<void> {
     this.updateSetlistUI();
-    // Carregar o ritmo atual do setlist
+
+    if (this.setlistManager.isEmpty()) return;
+
+    // Sempre carregar o ritmo da posição atual ao fechar o editor
     const current = this.setlistManager.getCurrentItem();
-    if (current && current.name !== this.currentRhythmName) {
-      if (this.stateManager.isPlaying()) {
-        this.stop();
-      }
+    if (current) {
+      if (this.stateManager.isPlaying()) this.stop();
       await this.loadRhythm(current.name, current.path);
     }
   }
