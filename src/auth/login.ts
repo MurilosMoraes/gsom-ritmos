@@ -48,7 +48,15 @@ class LoginPage {
       rememberMe: this.rememberMeCheckbox.checked
     });
 
-    if (response.success) {
+    if (response.success && response.user) {
+      // Gerar sessão única (invalida outros devices)
+      const sessionId = crypto.randomUUID();
+      await supabase
+        .from('gdrums_profiles')
+        .update({ active_session_id: sessionId })
+        .eq('id', response.user.id);
+      localStorage.setItem('gdrums-session-id', sessionId);
+
       this.showAlert('Login realizado! Redirecionando...', 'success');
       const dest = await this.getDestination();
       setTimeout(() => { window.location.href = dest; }, 600);

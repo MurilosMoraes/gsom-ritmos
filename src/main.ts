@@ -133,9 +133,16 @@ class RhythmSequencer {
   }
 
   private init(): void {
-    // Guard: verificar auth e subscription antes de qualquer coisa
-    this.checkAccess().then(allowed => {
+    this.checkAccess().then(async (allowed) => {
       if (!allowed) return;
+
+      // Inicializar favoritos com dados do Supabase
+      const { supabase } = await import('./auth/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await this.setlistManager.initWithUser(session.user.id, supabase);
+      }
+
       this.generateChannelsHTML();
       this.setupEventListeners();
       this.setupSetlistUI();
@@ -164,9 +171,19 @@ class RhythmSequencer {
 
     const { data: profile } = await supabase
       .from('gdrums_profiles')
-      .select('subscription_status, subscription_expires_at, subscription_plan')
+      .select('subscription_status, subscription_expires_at, subscription_plan, active_session_id')
       .eq('id', session.user.id)
       .single();
+
+    // Sessão única — verificar se este device é o ativo
+    const localSessionId = localStorage.getItem('gdrums-session-id');
+    if (profile?.active_session_id && localSessionId !== profile.active_session_id) {
+      // Outra sessão está ativa — deslogar este device
+      await supabase.auth.signOut();
+      localStorage.clear();
+      window.location.href = '/login.html';
+      return false;
+    }
 
     const status = profile?.subscription_status;
     const expires = profile?.subscription_expires_at;

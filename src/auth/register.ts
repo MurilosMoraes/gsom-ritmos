@@ -1,12 +1,14 @@
-// Register Page — Supabase auth
+// Register Page — Supabase auth + CPF validation
 
 import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { calculateTrialExpiry } from './PaymentService';
+import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
 
 class RegisterPage {
   private form: HTMLFormElement;
   private nameInput: HTMLInputElement;
+  private cpfInput: HTMLInputElement;
   private emailInput: HTMLInputElement;
   private passwordInput: HTMLInputElement;
   private confirmPasswordInput: HTMLInputElement;
@@ -18,6 +20,7 @@ class RegisterPage {
   constructor() {
     this.form = document.getElementById('registerForm') as HTMLFormElement;
     this.nameInput = document.getElementById('name') as HTMLInputElement;
+    this.cpfInput = document.getElementById('cpf') as HTMLInputElement;
     this.emailInput = document.getElementById('email') as HTMLInputElement;
     this.passwordInput = document.getElementById('password') as HTMLInputElement;
     this.confirmPasswordInput = document.getElementById('confirmPassword') as HTMLInputElement;
@@ -34,6 +37,16 @@ class RegisterPage {
       window.location.href = '/';
       return;
     }
+
+    // Máscara do CPF
+    this.cpfInput.addEventListener('input', () => {
+      const pos = this.cpfInput.selectionStart || 0;
+      const before = this.cpfInput.value.length;
+      this.cpfInput.value = formatCPF(this.cpfInput.value);
+      const after = this.cpfInput.value.length;
+      this.cpfInput.setSelectionRange(pos + (after - before), pos + (after - before));
+    });
+
     this.setupEventListeners();
   }
 
@@ -44,12 +57,28 @@ class RegisterPage {
 
   private async handleSubmit(e: Event): Promise<void> {
     e.preventDefault();
-
     if (!this.validateForm()) return;
 
     this.setLoading(true);
     this.hideAlert();
 
+    // 1. Validar CPF
+    const cpfHash = await hashCPF(this.cpfInput.value);
+
+    // 2. Verificar se CPF já foi usado (trial único)
+    const { data: existing } = await supabase
+      .from('gdrums_profiles')
+      .select('id')
+      .eq('cpf_hash', cpfHash)
+      .single();
+
+    if (existing) {
+      this.showAlert('Este CPF já possui uma conta cadastrada.', 'error');
+      this.setLoading(false);
+      return;
+    }
+
+    // 3. Criar conta
     const response = await authService.register({
       name: this.nameInput.value.trim(),
       email: this.emailInput.value.trim(),
@@ -57,18 +86,27 @@ class RegisterPage {
     });
 
     if (response.success && response.user) {
-      // Ativar trial de 48h
+      // 4. Ativar trial e salvar CPF hash
       await supabase
         .from('gdrums_profiles')
         .update({
+          cpf_hash: cpfHash,
           subscription_status: 'trial',
           subscription_plan: 'trial',
           subscription_expires_at: calculateTrialExpiry(),
         })
         .eq('id', response.user.id);
 
+      // 5. Gerar session ID único
+      const sessionId = crypto.randomUUID();
+      await supabase
+        .from('gdrums_profiles')
+        .update({ active_session_id: sessionId })
+        .eq('id', response.user.id);
+      localStorage.setItem('gdrums-session-id', sessionId);
+
       this.showAlert('Conta criada! Teste grátis por 48h ativado!', 'success');
-      setTimeout(() => { window.location.href = '/'; }, 1200);
+      setTimeout(() => { window.location.href = '/'; }, 1000);
     } else {
       this.showAlert(response.message || 'Erro ao criar conta', 'error');
       this.setLoading(false);
@@ -77,6 +115,7 @@ class RegisterPage {
 
   private validateForm(): boolean {
     const name = this.nameInput.value.trim();
+    const cpf = this.cpfInput.value;
     const email = this.emailInput.value.trim();
     const password = this.passwordInput.value;
     const confirmPassword = this.confirmPasswordInput.value;
@@ -85,6 +124,12 @@ class RegisterPage {
     if (!name || name.length < 3) {
       this.showAlert('Nome deve ter pelo menos 3 caracteres', 'error');
       this.nameInput.focus();
+      return false;
+    }
+
+    if (!validateCPF(cpf)) {
+      this.showAlert('CPF inválido', 'error');
+      this.cpfInput.focus();
       return false;
     }
 
@@ -119,29 +164,19 @@ class RegisterPage {
     const strengthBar = this.passwordStrength?.querySelector('.strength-bar') as HTMLElement;
     if (!strengthBar) return;
 
-    if (password.length === 0) {
-      strengthBar.style.width = '0%';
-      return;
-    }
+    if (!password.length) { strengthBar.style.width = '0%'; return; }
 
-    let strength = 0;
-    if (password.length >= 6) strength++;
-    if (password.length >= 10) strength++;
-    if (/[a-z]/.test(password)) strength++;
-    if (/[A-Z]/.test(password)) strength++;
-    if (/[0-9]/.test(password)) strength++;
-    if (/[^a-zA-Z0-9]/.test(password)) strength++;
+    let s = 0;
+    if (password.length >= 6) s++;
+    if (password.length >= 10) s++;
+    if (/[a-z]/.test(password)) s++;
+    if (/[A-Z]/.test(password)) s++;
+    if (/[0-9]/.test(password)) s++;
+    if (/[^a-zA-Z0-9]/.test(password)) s++;
 
-    const configs = [
-      { max: 2, color: '#ff3366', width: '25%' },
-      { max: 4, color: '#ffaa00', width: '50%' },
-      { max: 5, color: '#00d4ff', width: '75%' },
-      { max: 99, color: '#00ff88', width: '100%' },
-    ];
-
-    const cfg = configs.find(c => strength <= c.max) || configs[3];
-    strengthBar.style.width = cfg.width;
-    strengthBar.style.background = cfg.color;
+    const cfg = s <= 2 ? { c: '#ff3366', w: '25%' } : s <= 4 ? { c: '#ffaa00', w: '50%' } : s <= 5 ? { c: '#00d4ff', w: '75%' } : { c: '#00ff88', w: '100%' };
+    strengthBar.style.width = cfg.w;
+    strengthBar.style.background = cfg.c;
   }
 
   private setLoading(loading: boolean): void {
@@ -154,7 +189,7 @@ class RegisterPage {
 
   private showAlert(message: string, type: 'success' | 'error'): void {
     this.alertMessage.textContent = message;
-    this.alertMessage.className = `alert-message ${type}`;
+    this.alertMessage.className = `reg-alert ${type}`;
     this.alertMessage.style.display = 'block';
     if (type === 'success') setTimeout(() => this.hideAlert(), 5000);
   }

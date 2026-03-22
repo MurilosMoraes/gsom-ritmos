@@ -121,6 +121,13 @@ class AuthService {
 
   async logout(): Promise<void> {
     await supabase.auth.signOut();
+    // Limpar dados locais (favoritos, sessão, etc)
+    localStorage.removeItem('gdrums-setlist');
+    localStorage.removeItem('gdrums-session-id');
+    localStorage.removeItem('gdrums-pending-order');
+    localStorage.removeItem('gdrums-toggle-intro');
+    localStorage.removeItem('gdrums-toggle-final');
+    localStorage.removeItem('gdrums-mode');
     window.location.href = '/login.html';
   }
 
