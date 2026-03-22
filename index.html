@@ -8,402 +8,357 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Header com Switch de Modo -->
-    <header class="app-header">
-      <div class="header-content">
-        <div class="logo">
-          <img src="/img/logo.png" alt="GDrums Logo" class="logo-img">
-        </div>
-        <div class="mode-switch">
-          <span class="mode-label" id="modeLabel">Modo Usuário</span>
-          <label class="switch">
-            <input type="checkbox" id="adminModeToggle">
-            <span class="slider"></span>
-          </label>
-          <span class="mode-icon" id="modeIcon"></span>
-        </div>
-      </div>
-    </header>
-
     <main class="app-main">
       <!-- ============= MODO USUÁRIO ============= -->
       <div id="userMode" class="mode-container active">
-        <!-- Seletor de Ritmos Profissional -->
-        <section class="rhythm-selector-pro">
-          <h3 class="section-title-user">Selecionar Ritmo</h3>
-          <div class="rhythm-search-container">
-            <div class="search-input-wrapper">
-              <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M9 17A8 8 0 1 0 9 1a8 8 0 0 0 0 16zM19 19l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <div class="user-layout">
+
+          <!-- Top bar: Logo + Menu -->
+          <div class="user-topbar">
+            <img src="/img/logo.png" alt="GDrums" class="user-logo-img">
+            <button class="topbar-menu-btn" id="fabMenu" aria-label="Menu">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M2.5 5h13M2.5 9h13M2.5 13h13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
-              <input
-                type="text"
-                id="rhythmSearchInput"
-                class="rhythm-search-input"
-                placeholder="Buscar ritmo... (ex: guarania, baiao, xote)"
-                autocomplete="off"
-              />
-              <button id="clearSearchBtn" class="clear-search-btn" style="display: none;">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+            </button>
+            <!-- Menu dropdown -->
+            <div class="topbar-dropdown" id="fabDropdown" style="display:none">
+              <div class="topbar-dropdown-item">
+                <span class="topbar-item-label" id="modeLabel">Modo Admin</span>
+                <label class="switch">
+                  <input type="checkbox" id="adminModeToggle">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <span class="mode-icon" id="modeIcon" style="display:none"></span>
+            </div>
+          </div>
+
+          <!-- 1. Favoritos -->
+          <div class="fav-section">
+            <div class="fav-bar">
+              <button class="fav-side fav-prev" id="setlistPrev">
+                <span class="fav-side-label">Anterior</span>
+                <span class="fav-side-name" id="favPrevName">--</span>
+              </button>
+              <div class="fav-center">
+                <span class="fav-num" id="setlistNum">#</span>
+                <span class="fav-current-name" id="currentRhythmName">Monte seus favoritos</span>
+                <span class="fav-position" id="setlistPosition"></span>
+              </div>
+              <button class="fav-side fav-next" id="setlistNext">
+                <span class="fav-side-label">Proximo</span>
+                <span class="fav-side-name" id="favNextName">--</span>
               </button>
             </div>
-            <div id="rhythmDropdown" class="rhythm-dropdown" style="display: none;">
-              <div class="rhythm-dropdown-header">
-                <span class="results-count" id="resultsCount">0 ritmos encontrados</span>
+            <button class="fav-edit-btn" id="setlistEditBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" opacity="0.7"/></svg>
+              FAVORITOS
+            </button>
+            <div class="rhythm-strip-cards" id="rhythmStripCards" style="display:none"></div>
+            <input type="text" id="rhythmSearchInput" style="display:none" />
+            <button id="clearSearchBtn" style="display:none"></button>
+            <div id="rhythmDropdown" style="display:none"><span id="resultsCount"></span><div id="rhythmList"></div></div>
+            <span id="setlistNextName" style="display:none"></span>
+            <span id="setlistNextNum" style="display:none"></span>
+            <div id="setlistNextPreview" style="display:none"></div>
+          </div>
+
+          <!-- 2. Beat Marker -->
+          <div class="beat-section">
+            <div class="beat-dots" id="beatDots">
+              <div class="beat-dot" data-beat="0"></div>
+              <div class="beat-dot" data-beat="1"></div>
+              <div class="beat-dot" data-beat="2"></div>
+              <div class="beat-dot" data-beat="3"></div>
+            </div>
+            <span id="statusUser" style="display:none">Parado</span>
+            <span id="currentStepUser" style="display:none">0</span>
+            <span id="nextEntryUser" style="display:none">-</span>
+          </div>
+
+          <!-- 3. Performance Grid -->
+          <div class="user-grid-section">
+            <div class="user-performance-grid">
+              <div class="grid-cell rhythm-cell" data-type="main" data-variation="0">
+                <span class="cell-number">1</span>
+                <span class="cell-label">RITMO</span>
+                <div class="cell-indicator"></div>
               </div>
-              <div class="rhythm-list" id="rhythmList">
-                <!-- Itens serão gerados dinamicamente -->
+              <div class="grid-cell rhythm-cell" data-type="main" data-variation="1">
+                <span class="cell-number">2</span>
+                <span class="cell-label">RITMO</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell rhythm-cell" data-type="main" data-variation="2">
+                <span class="cell-number">3</span>
+                <span class="cell-label">RITMO</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell fill-cell" data-type="fill" data-variation="0">
+                <span class="cell-number">1</span>
+                <span class="cell-label">VIRADA</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell fill-cell" data-type="fill" data-variation="1">
+                <span class="cell-number">2</span>
+                <span class="cell-label">VIRADA</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell fill-cell" data-type="fill" data-variation="2">
+                <span class="cell-number">3</span>
+                <span class="cell-label">VIRADA</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell intro-cell" id="introBtnUser">
+                <span class="cell-label">INTRO</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell end-cell" data-type="end" data-variation="0">
+                <span class="cell-label">FINAL</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell cymbal-cell" id="cymbalBtn">
+                <span class="cell-label">PRATO</span>
+                <div class="cell-indicator"></div>
               </div>
             </div>
-            <div class="current-rhythm-display">
-              <span class="current-rhythm-label">Ritmo atual:</span>
-              <span class="current-rhythm-name" id="currentRhythmName">Nenhum ritmo carregado</span>
-            </div>
           </div>
-        </section>
 
-        <!-- Controles de Playback -->
-        <section class="playback-controls-section">
-          <button id="playStopUser" class="btn-play-large">
-            <span class="play-icon">▶</span>
-            <span class="play-label">PLAY</span>
-          </button>
-
-          <div class="controls-row">
-            <div class="control-item">
-              <label class="control-label">Tempo</label>
-              <div class="control-content">
-                <button id="tempoDownUser" class="control-btn">−</button>
-                <div class="control-display" id="tempoDisplayUser">80</div>
-                <button id="tempoUpUser" class="control-btn">+</button>
-                <span class="control-unit">BPM</span>
+          <!-- 4. Controles -->
+          <div class="controls-bar">
+            <div class="ctrl-group">
+              <span class="ctrl-label">BPM</span>
+              <div class="ctrl-row">
+                <button id="tempoDownUser" class="ctrl-btn">&minus;</button>
+                <span class="ctrl-value" id="tempoDisplayUser">80</span>
+                <button id="tempoUpUser" class="ctrl-btn">+</button>
               </div>
             </div>
-
-            <div class="control-item">
-              <label class="control-label">Volume</label>
-              <div class="control-content">
-                <span class="volume-icon-new">🔊</span>
-                <input type="range" id="masterVolumeUser" min="0" max="200" value="200" step="5" class="volume-slider-new">
-                <span class="volume-display-new" id="volumeDisplayUser">100%</span>
+            <div class="ctrl-divider"></div>
+            <div class="ctrl-group ctrl-group-vol">
+              <span class="ctrl-label">VOL</span>
+              <div class="ctrl-row">
+                <input type="range" id="masterVolumeUser" min="0" max="200" value="200" step="5" class="ctrl-slider">
+                <span class="ctrl-value ctrl-value-sm" id="volumeDisplayUser">100%</span>
               </div>
             </div>
+            <div class="ctrl-divider"></div>
+            <div class="ctrl-toggles">
+              <button class="ctrl-toggle active" id="toggleIntro" title="Intro ligada">
+                <span class="ctrl-toggle-dot"></span>
+                <span class="ctrl-toggle-label">INTRO</span>
+              </button>
+              <button class="ctrl-toggle active" id="toggleFinal" title="Final ligado">
+                <span class="ctrl-toggle-dot"></span>
+                <span class="ctrl-toggle-label">FINAL</span>
+              </button>
+            </div>
+            <button id="playStopUser" style="display:none"></button>
           </div>
-        </section>
 
-        <!-- Grid Principal: 3 colunas x 3 linhas -->
-        <section class="user-grid-section">
-          <div class="user-performance-grid">
-            <!-- Linha 1: Ritmos Principais -->
-            <div class="grid-cell rhythm-cell" data-type="main" data-variation="0">
-              <span class="cell-label">RITMO 1</span>
-              <div class="cell-indicator"></div>
-            </div>
-            <div class="grid-cell rhythm-cell" data-type="main" data-variation="1">
-              <span class="cell-label">RITMO 2</span>
-              <div class="cell-indicator"></div>
-            </div>
-            <div class="grid-cell rhythm-cell" data-type="main" data-variation="2">
-              <span class="cell-label">RITMO 3</span>
-              <div class="cell-indicator"></div>
-            </div>
-
-            <!-- Linha 2: Viradas -->
-            <div class="grid-cell fill-cell" data-type="fill" data-variation="0">
-              <span class="cell-label">VIRADA 1</span>
-              <div class="cell-indicator"></div>
-            </div>
-            <div class="grid-cell fill-cell" data-type="fill" data-variation="1">
-              <span class="cell-label">VIRADA 2</span>
-              <div class="cell-indicator"></div>
-            </div>
-            <div class="grid-cell fill-cell" data-type="fill" data-variation="2">
-              <span class="cell-label">VIRADA 3</span>
-              <div class="cell-indicator"></div>
-            </div>
-
-            <!-- Linha 3: Finalização e Prato -->
-            <div class="grid-cell end-cell" data-type="end" data-variation="0">
-              <span class="cell-label">FINAL 1</span>
-              <div class="cell-indicator"></div>
-            </div>
-            <div class="grid-cell cymbal-cell" id="cymbalBtn">
-              <span class="cell-label">PRATO</span>
-              <div class="cell-indicator"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Status Bar -->
-        <section class="user-status-bar">
-          <div class="status-info">
-            <span class="status-label">Status:</span>
-            <span class="status-value" id="statusUser">Parado</span>
-          </div>
-          <div class="position-info">
-            <span class="position-label">Posição:</span>
-            <span class="position-value"><span id="currentStepUser">0</span></span>
-          </div>
-          <div class="next-entry-info">
-            <span class="entry-label">Próxima entrada:</span>
-            <span class="entry-value" id="nextEntryUser">-</span>
-          </div>
-        </section>
+        </div>
       </div>
 
       <!-- ============= MODO ADMIN ============= -->
       <div id="adminMode" class="mode-container">
-        <!-- Tabs de Padrão -->
-        <section class="admin-section pattern-tabs-section">
-          <h2>Editor de Padrões</h2>
-          <div class="pattern-tabs-modern">
-            <button class="pattern-tab" data-pattern="intro">
-              <span class="tab-label">INTRO</span>
-              <small>Contagem</small>
-            </button>
-            <button class="pattern-tab active" data-pattern="main">
-              <span class="tab-label">PRINCIPAL</span>
-              <small>Groove base</small>
-            </button>
-            <button class="pattern-tab" data-pattern="fill">
-              <span class="tab-label">VIRADA</span>
-              <small>Fill/Break</small>
-            </button>
-            <button class="pattern-tab" data-pattern="end">
-              <span class="tab-label">FINAL</span>
-              <small>Encerramento</small>
-            </button>
+
+        <!-- Indicador de projeto -->
+        <div class="admin-panel admin-project-bar">
+          <div class="project-info">
+            <span class="project-dot" id="projectDot"></span>
+            <input type="text" class="project-name-input" id="projectName" value="Novo Projeto" spellcheck="false" />
           </div>
-        </section>
-
-        <!-- Controle de Variações -->
-        <section class="admin-section variations-section">
-          <h3>Variações do Padrão Atual</h3>
-          <div class="variations-controls">
-            <div class="variation-slots">
-              <button class="variation-slot active" data-slot="0">
-                <span class="slot-number">1</span>
-              </button>
-              <button class="variation-slot" data-slot="1">
-                <span class="slot-number">2</span>
-              </button>
-              <button class="variation-slot" data-slot="2">
-                <span class="slot-number">3</span>
-              </button>
-            </div>
-            <div class="variation-actions">
-              <button id="testVariation" class="btn-admin btn-variation btn-test">
-                <span>▶ Testar</span>
-              </button>
-              <div class="variation-speed-control">
-                <label for="variationSpeed">
-                  Velocidade da Variação: <span id="variationSpeedDisplay">1x</span>
-                </label>
-                <input type="range" id="variationSpeed" min="0.25" max="4" step="0.25" value="1">
-                <div class="speed-presets">
-                  <button class="speed-preset" data-speed="0.5">0.5x</button>
-                  <button class="speed-preset" data-speed="1">1x</button>
-                  <button class="speed-preset" data-speed="1.5">1.5x</button>
-                  <button class="speed-preset" data-speed="2">2x</button>
-                </div>
-              </div>
-              <p class="variation-help-text">Clique nos slots para alternar entre variações. As alterações são salvas automaticamente.</p>
-            </div>
+          <div class="project-actions">
+            <button id="newProject" class="admin-btn">Novo</button>
+            <button id="saveAll" class="admin-btn admin-btn-primary">Salvar Projeto</button>
+            <button id="loadAll" class="admin-btn">Abrir Projeto</button>
+            <input type="file" id="loadAllFile" accept=".json" class="file-input-hidden">
           </div>
-        </section>
-
-        <!-- Controle de Steps do Padrão -->
-        <section class="admin-section steps-section">
-          <h3>Quantidade de Steps</h3>
-          <div class="steps-controls">
-            <label for="patternStepsSelect">Steps:</label>
-            <select id="patternStepsSelect" class="steps-select">
-              <optgroup label="Múltiplos de 3">
-                <option value="3">3</option>
-                <option value="6">6</option>
-                <option value="12">12</option>
-                <option value="18">18</option>
-                <option value="24">24</option>
-              </optgroup>
-              <optgroup label="Múltiplos de 4">
-                <option value="4">4</option>
-                <option value="8">8</option>
-                <option value="16" selected>16</option>
-                <option value="20">20</option>
-                <option value="24">24</option>
-                <option value="28">28</option>
-                <option value="32">32</option>
-              </optgroup>
-            </select>
-            <span id="currentStepsDisplay" class="steps-display">16 steps</span>
-          </div>
-        </section>
-
-        <!-- Sequenciador Grid -->
-        <section class="admin-section sequencer-section">
-          <div id="sequencer" class="sequencer-modern">
-            <!-- Canais serão gerados dinamicamente -->
-          </div>
-        </section>
-
-        <!-- Controles Admin -->
-        <div class="admin-controls-wrapper">
-          <!-- Controles de Playback Admin -->
-          <section class="admin-section admin-playback">
-            <h3>Reprodução</h3>
-            <div class="controls-grid">
-              <button id="playStop" class="btn-admin btn-play-admin">
-                <span>PLAY</span>
-              </button>
-              <button id="fill" class="btn-admin btn-secondary-admin">
-                <span>FILL</span>
-              </button>
-              <button id="end" class="btn-admin btn-secondary-admin">
-                <span>END</span>
-              </button>
-            </div>
-          </section>
-
-          <!-- Controle de Tempo Admin -->
-          <section class="admin-section tempo-config">
-            <h3>Configurações de Tempo</h3>
-            <div class="config-row">
-              <label>BPM:</label>
-              <div class="input-group">
-                <button id="tempoDown" class="btn-small">−</button>
-                <input type="number" id="tempo" value="80" min="40" max="240" step="1">
-                <button id="tempoUp" class="btn-small">+</button>
-                <span class="value-display" id="tempoDisplay">80</span>
-              </div>
-              <input type="range" id="tempoSlider" min="40" max="240" value="80" step="1" class="range-input">
-            </div>
-
-            <div class="config-row">
-              <label>Vel. FILL:</label>
-              <div class="input-group">
-                <button id="fillSpeedDown" class="btn-small">−</button>
-                <input type="number" id="fillSpeed" value="1" min="0.25" max="4" step="0.25">
-                <button id="fillSpeedUp" class="btn-small">+</button>
-                <span class="value-display" id="fillSpeedDisplay">1x</span>
-              </div>
-            </div>
-
-            <div class="config-row">
-              <label>Vel. END:</label>
-              <div class="input-group">
-                <button id="endSpeedDown" class="btn-small">−</button>
-                <input type="number" id="endSpeed" value="1" min="0.25" max="4" step="0.25">
-                <button id="endSpeedUp" class="btn-small">+</button>
-                <span class="value-display" id="endSpeedDisplay">1x</span>
-              </div>
-            </div>
-
-            <div class="config-row">
-              <label>Tamanho Virada:</label>
-              <select id="fillSteps" class="select-input">
-                <option value="4">4 steps</option>
-                <option value="8">8 steps</option>
-                <option value="16" selected>16 steps</option>
-                <option value="32">32 steps</option>
-              </select>
-            </div>
-
-            <div class="config-row">
-              <label>Volume Master:</label>
-              <div class="input-group">
-                <input type="range" id="masterVolume" min="0" max="200" value="100" step="5" class="range-input">
-                <span class="value-display" id="masterVolumeDisplay">100%</span>
-              </div>
-            </div>
-          </section>
-
-          <!-- Configuração de Sons -->
-          <section class="admin-section sound-config">
-            <h3>Sons Especiais</h3>
-
-            <div class="sound-config-item">
-              <label>Som de Início:</label>
-              <div class="file-select-group">
-                <select id="fillStartSelect" class="select-input">
-                  <option value="">Nenhum</option>
-                </select>
-                <input type="file" id="fillStartCustomInput" accept="audio/*" class="file-input-hidden">
-                <button id="fillStartCustomBtn" class="btn-file">
-                  <span>Procurar</span>
-                </button>
-              </div>
-              <span id="fillStartFileName" class="file-name-display"></span>
-            </div>
-
-            <div class="sound-config-item">
-              <label>Som de Retorno:</label>
-              <div class="file-select-group">
-                <select id="fillReturnSelect" class="select-input">
-                  <option value="">Nenhum</option>
-                </select>
-                <input type="file" id="fillReturnCustomInput" accept="audio/*" class="file-input-hidden">
-                <button id="fillReturnCustomBtn" class="btn-file">
-                  <span>Procurar</span>
-                </button>
-              </div>
-              <span id="fillReturnFileName" class="file-name-display"></span>
-            </div>
-          </section>
-
-          <!-- Salvar/Carregar -->
-          <section class="admin-section save-load-section">
-            <h3>Gerenciar Padrões</h3>
-            <div class="button-grid">
-              <button id="savePattern" class="btn-admin btn-save">
-                <span>Salvar Padrão</span>
-              </button>
-              <button id="loadPattern" class="btn-admin btn-load">
-                <span>Carregar Padrão</span>
-              </button>
-              <input type="file" id="loadFile" accept=".json" class="file-input-hidden">
-
-              <button id="saveAll" class="btn-admin btn-save-all">
-                <span>Salvar Projeto</span>
-              </button>
-              <button id="loadAll" class="btn-admin btn-load">
-                <span>Carregar Projeto</span>
-              </button>
-              <input type="file" id="loadAllFile" accept=".json" class="file-input-hidden">
-
-              <button id="clearPattern" class="btn-admin btn-clear">
-                <span>Limpar Padrão</span>
-              </button>
-            </div>
-          </section>
-
-          <!-- Carregar Ritmos Salvos -->
-          <section class="admin-section rhythm-library">
-            <h3>Biblioteca de Ritmos</h3>
-            <div class="rhythm-load-group">
-              <select id="rhythmSelect" class="select-input">
-                <option value="">Selecione um ritmo...</option>
-              </select>
-              <button id="loadRhythm" class="btn-admin">Carregar</button>
-              <button id="refreshRhythms" class="btn-admin btn-refresh">Atualizar</button>
-            </div>
-          </section>
-
-          <!-- Status Admin -->
-          <section class="admin-section admin-status">
-            <div class="status-grid">
-              <div class="status-item-admin">
-                <span class="label">Status:</span>
-                <span class="value" id="status">Parado</span>
-              </div>
-              <div class="status-item-admin">
-                <span class="label">Posição:</span>
-                <span class="value"><span id="currentStep">0</span></span>
-              </div>
-            </div>
-          </section>
         </div>
+
+        <!-- Clonar ritmo inteiro -->
+        <div class="admin-panel admin-panel-clone">
+          <span class="admin-label">Clonar Ritmo Inteiro</span>
+          <div class="admin-duplicate-row">
+            <select id="cloneRhythmSelect" class="admin-select"><option value="">Selecione um ritmo...</option></select>
+            <button id="cloneRhythmBtn" class="admin-btn admin-btn-primary">Clonar Tudo</button>
+          </div>
+          <span class="admin-hint">Copia tudo pro seu projeto: ritmos, viradas, final, intro, tempo e sons</span>
+        </div>
+
+        <!-- Copiar variação específica -->
+        <div class="admin-panel admin-panel-duplicate">
+          <span class="admin-label">Copiar variação de outro ritmo</span>
+          <div class="admin-duplicate-grid">
+            <!-- Origem -->
+            <div class="dup-col">
+              <span class="dup-col-title">Origem</span>
+              <select id="duplicateRhythmSelect" class="admin-select"><option value="">Ritmo...</option></select>
+              <select id="duplicatePatternType" class="admin-select">
+                <option value="main">Principal</option>
+                <option value="fill">Virada</option>
+                <option value="end">Final</option>
+                <option value="intro">Intro</option>
+              </select>
+              <select id="duplicateVariationSlot" class="admin-select">
+                <option value="0">Var 1</option>
+                <option value="1">Var 2</option>
+                <option value="2">Var 3</option>
+              </select>
+            </div>
+            <!-- Seta -->
+            <div class="dup-arrow">→</div>
+            <!-- Destino -->
+            <div class="dup-col">
+              <span class="dup-col-title">Destino</span>
+              <select id="dupDestPatternType" class="admin-select">
+                <option value="main">Principal</option>
+                <option value="fill">Virada</option>
+                <option value="end">Final</option>
+                <option value="intro">Intro</option>
+              </select>
+              <select id="dupDestVariationSlot" class="admin-select">
+                <option value="0">Var 1</option>
+                <option value="1">Var 2</option>
+                <option value="2">Var 3</option>
+              </select>
+            </div>
+            <!-- Botão -->
+            <button id="duplicateBtn" class="admin-btn admin-btn-duplicate">Copiar</button>
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="admin-panel admin-toolbar">
+          <button class="pattern-tab active" data-pattern="intro">INTRO</button>
+          <button class="pattern-tab" data-pattern="main">PRINCIPAL</button>
+          <button class="pattern-tab" data-pattern="fill">VIRADA</button>
+          <button class="pattern-tab" data-pattern="end">FINAL</button>
+          <span class="toolbar-divider"></span>
+          <button class="variation-slot active" data-slot="0"><span class="slot-number">1</span></button>
+          <button class="variation-slot" data-slot="1"><span class="slot-number">2</span></button>
+          <button class="variation-slot" data-slot="2"><span class="slot-number">3</span></button>
+          <span class="toolbar-divider"></span>
+          <button id="testVariation" class="admin-btn admin-btn-primary">Testar</button>
+          <select id="patternStepsSelect" class="admin-select">
+            <optgroup label="Múltiplos de 3"><option value="3">3</option><option value="6">6</option><option value="12">12</option><option value="18">18</option><option value="24">24</option></optgroup>
+            <optgroup label="Múltiplos de 4"><option value="4">4</option><option value="8">8</option><option value="16" selected>16</option><option value="20">20</option><option value="24">24</option><option value="28">28</option><option value="32">32</option></optgroup>
+          </select>
+          <span id="currentStepsDisplay" class="admin-steps-badge">16 steps</span>
+        </div>
+
+        <!-- Sequencer Grid -->
+        <div class="admin-panel admin-sequencer-wrap">
+          <div id="sequencer" class="sequencer-modern"></div>
+        </div>
+
+        <!-- Two-column controls -->
+        <div class="admin-controls-grid">
+          <div class="admin-col">
+            <!-- Transport -->
+            <div class="admin-panel">
+              <span class="admin-label">Transporte</span>
+              <div class="admin-config-row">
+                <button id="playStop" class="admin-btn admin-btn-primary">PLAY</button>
+                <button id="fill" class="admin-btn">FILL</button>
+                <button id="end" class="admin-btn">END</button>
+              </div>
+            </div>
+            <!-- BPM -->
+            <div class="admin-panel">
+              <span class="admin-label">BPM</span>
+              <div class="admin-config-row">
+                <button id="tempoDown" class="admin-btn">&minus;</button>
+                <input type="number" id="tempo" value="80" min="40" max="240" step="1" class="admin-input-num">
+                <button id="tempoUp" class="admin-btn">+</button>
+                <span class="admin-value" id="tempoDisplay">80</span>
+              </div>
+              <input type="range" id="tempoSlider" min="40" max="240" value="80" step="1" class="admin-range">
+            </div>
+            <!-- Variation Speed -->
+            <div class="admin-panel">
+              <span class="admin-label">Velocidade da Variação <span id="variationSpeedDisplay" class="admin-highlight">1x</span></span>
+              <input type="range" id="variationSpeed" min="0.25" max="4" step="0.25" value="1" class="admin-range">
+              <div class="admin-config-row" style="margin-top:0.4rem">
+                <button class="speed-preset admin-btn" data-speed="0.5">0.5x</button>
+                <button class="speed-preset admin-btn" data-speed="1">1x</button>
+                <button class="speed-preset admin-btn" data-speed="1.5">1.5x</button>
+                <button class="speed-preset admin-btn" data-speed="2">2x</button>
+              </div>
+            </div>
+            <!-- Fill / End speeds -->
+            <div class="admin-panel">
+              <span class="admin-label">Vel. Fill / End</span>
+              <div class="admin-config-row">
+                <span class="admin-config-label">FILL</span>
+                <button id="fillSpeedDown" class="admin-btn">&minus;</button>
+                <input type="number" id="fillSpeed" value="1" min="0.25" max="4" step="0.25" class="admin-input-num">
+                <button id="fillSpeedUp" class="admin-btn">+</button>
+                <span class="admin-value" id="fillSpeedDisplay">1x</span>
+              </div>
+              <div class="admin-config-row">
+                <span class="admin-config-label">END</span>
+                <button id="endSpeedDown" class="admin-btn">&minus;</button>
+                <input type="number" id="endSpeed" value="1" min="0.25" max="4" step="0.25" class="admin-input-num">
+                <button id="endSpeedUp" class="admin-btn">+</button>
+                <span class="admin-value" id="endSpeedDisplay">1x</span>
+              </div>
+              <div class="admin-config-row">
+                <span class="admin-config-label">Tam.</span>
+                <select id="fillSteps" class="admin-select"><option value="4">4</option><option value="8">8</option><option value="16" selected>16</option><option value="32">32</option></select>
+              </div>
+            </div>
+            <!-- Master Volume -->
+            <div class="admin-panel">
+              <span class="admin-label">Volume Master</span>
+              <div class="admin-config-row">
+                <input type="range" id="masterVolume" min="0" max="200" value="100" step="5" class="admin-range">
+                <span class="admin-value" id="masterVolumeDisplay">100%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-col">
+            <!-- Special Sounds -->
+            <div class="admin-panel">
+              <span class="admin-label">Sons Especiais</span>
+              <div class="admin-config-row">
+                <span class="admin-config-label">Início</span>
+                <select id="fillStartSelect" class="admin-select"><option value="">Nenhum</option></select>
+                <input type="file" id="fillStartCustomInput" accept="audio/*" class="file-input-hidden">
+                <button id="fillStartCustomBtn" class="admin-btn">Procurar</button>
+              </div>
+              <span id="fillStartFileName" class="admin-file-name"></span>
+              <div class="admin-config-row">
+                <span class="admin-config-label">Retorno</span>
+                <select id="fillReturnSelect" class="admin-select"><option value="">Nenhum</option></select>
+                <input type="file" id="fillReturnCustomInput" accept="audio/*" class="file-input-hidden">
+                <button id="fillReturnCustomBtn" class="admin-btn">Procurar</button>
+              </div>
+              <span id="fillReturnFileName" class="admin-file-name"></span>
+            </div>
+            <!-- Hidden: ritmos (select usado pelo JS) -->
+            <select id="rhythmSelect" style="display:none"><option value="">Selecione...</option></select>
+            <button id="loadRhythm" style="display:none"></button>
+            <button id="refreshRhythms" style="display:none"></button>
+            <!-- Hidden: IDs que o JS referencia -->
+            <button id="clearPattern" style="display:none"></button>
+            <button id="savePattern" style="display:none"></button>
+            <button id="loadPattern" style="display:none"></button>
+            <input type="file" id="loadFile" accept=".json" style="display:none">
+          </div>
+        </div>
+
+        <!-- Status Strip -->
+        <div class="admin-panel admin-status-strip">
+          <span class="admin-config-label">Status:</span>
+          <span id="status" class="admin-value">Parado</span>
+          <span class="toolbar-divider"></span>
+          <span class="admin-config-label">Posição:</span>
+          <span id="currentStep" class="admin-value">0</span>
+        </div>
+
       </div>
     </main>
   </div>

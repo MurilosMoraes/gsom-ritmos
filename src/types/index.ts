@@ -71,6 +71,21 @@ export interface SequencerState {
   pendingEnd: PendingPattern | null;
 }
 
+// ─── Setlist ──────────────────────────────────────────────────────────
+
+export interface SetlistItem {
+  name: string;
+  path: string;
+}
+
+export interface Setlist {
+  name: string;
+  items: SetlistItem[];
+  currentIndex: number;
+}
+
+// ─── Audio/File ───────────────────────────────────────────────────────
+
 export interface AudioFileData {
   fileName: string;
   audioData: string;

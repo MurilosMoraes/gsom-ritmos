@@ -31,10 +31,10 @@ export class UIManager {
     if (playBtnUser) {
       if (isPlaying) {
         playBtnUser.classList.add('playing');
-        playBtnUser.innerHTML = '<span class="label">PARAR</span>';
+        playBtnUser.innerHTML = '<span class="play-icon">&#9632;</span><span class="play-label">PARAR</span>';
       } else {
         playBtnUser.classList.remove('playing');
-        playBtnUser.innerHTML = '<span class="label">PLAY</span>';
+        playBtnUser.innerHTML = '<span class="play-icon">&#9654;</span><span class="play-label">TOCAR</span>';
       }
     }
   }
@@ -247,6 +247,16 @@ export class UIManager {
       } else if (state.pendingEnd && index === state.pendingEnd.variationIndex) {
         // Mostrar que está agendado
         cellElement.classList.add('queued');
+      }
+    });
+
+    // Intro
+    document.querySelectorAll('.intro-cell').forEach((cell) => {
+      const cellElement = cell as HTMLElement;
+      cellElement.classList.remove('active');
+
+      if (state.isPlaying && state.activePattern === 'intro') {
+        cellElement.classList.add('active');
       }
     });
 

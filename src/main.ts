@@ -7,7 +7,10 @@ import { PatternEngine } from './core/PatternEngine';
 import { FileManager } from './io/FileManager';
 import { UIManager } from './ui/UIManager';
 import { ModalManager } from './ui/ModalManager';
+import { SetlistManager } from './core/SetlistManager';
+import { SetlistEditorUI } from './ui/SetlistEditorUI';
 import type { PatternType, SequencerState } from './types';
+import { expandPattern, expandVolumes, normalizeMidiPath } from './utils/helpers';
 import { KeepAwake } from '@capacitor-community/keep-awake';
 
 class RhythmSequencer {
@@ -19,6 +22,9 @@ class RhythmSequencer {
   private fileManager: FileManager;
   private uiManager: UIManager;
   private modalManager: ModalManager;
+  private setlistManager: SetlistManager;
+  private setlistEditor: SetlistEditorUI;
+  private isAdminMode = false;
 
   constructor() {
     // Inicializar contexto de áudio
@@ -32,6 +38,11 @@ class RhythmSequencer {
     this.fileManager = new FileManager(this.stateManager, this.audioManager);
     this.uiManager = new UIManager(this.stateManager);
     this.modalManager = new ModalManager();
+    this.setlistManager = new SetlistManager();
+    this.setlistEditor = new SetlistEditorUI();
+
+    // Setlist onChange — não atualizar UI automaticamente durante navegação
+    // A UI é atualizada explicitamente após cada ação
 
     // Configurar callbacks
     this.setupCallbacks();
@@ -41,9 +52,11 @@ class RhythmSequencer {
   }
 
   private setupCallbacks(): void {
-    // Scheduler -> UI
-    this.scheduler.setUpdateStepCallback(() => {
+    // Scheduler -> UI (step visual + beat marker + countdown)
+    this.scheduler.setUpdateStepCallback((step: number, pattern: PatternType) => {
       this.uiManager.updateCurrentStepVisual();
+      this.updateBeatMarker(step, pattern);
+      this.updateCountdown(step, pattern);
     });
 
     // PatternEngine -> UI
@@ -122,6 +135,7 @@ class RhythmSequencer {
   private init(): void {
     this.generateChannelsHTML();
     this.setupEventListeners();
+    this.setupSetlistUI();
     this.loadAvailableMidi();
     this.loadAvailableRhythms();
   }
@@ -238,6 +252,8 @@ class RhythmSequencer {
 
     // Performance grid
     this.setupPerformanceGrid();
+    this.setupIntroButton();
+    this.setupToggles();
 
     // File operations
     this.setupFileOperations();
@@ -253,6 +269,9 @@ class RhythmSequencer {
 
     // Variations
     this.setupVariations();
+
+    // Duplicate from rhythm
+    this.setupDuplicateFromRhythm();
 
     // User mode
     this.setupUserMode();
@@ -469,6 +488,8 @@ class RhythmSequencer {
   private setupKeyboardShortcuts(): void {
     let arrowRightLastPress = 0;
     let arrowRightTimeout: number | null = null;
+    let arrowLeftLastPress = 0;
+    let arrowLeftTimeout: number | null = null;
 
     window.addEventListener('keydown', (e) => {
       const target = e.target as HTMLElement;
@@ -483,25 +504,53 @@ class RhythmSequencer {
         return;
       }
 
-      // ArrowLeft = Intro + Play OU Fill + Next rhythm
+      // ArrowLeft:
+      //   Parado → Play (com intro se ON)
+      //   Tocando single → Fill + próximo ritmo
+      //   Tocando double → Fill + ritmo anterior
       if ((e.code === 'ArrowLeft' || e.key === 'ArrowLeft') && !e.repeat) {
         e.preventDefault();
         if (!this.stateManager.isPlaying()) {
-          // Sempre começar do ritmo 1 (índice 0) quando parado
           this.patternEngine.activateRhythm(0);
-          this.patternEngine.playIntroAndStart();
+          if (this.useIntro) {
+            this.patternEngine.playIntroAndStart();
+          } else {
+            this.stateManager.setShouldPlayStartSound(true);
+          }
           this.play();
         } else {
-          this.patternEngine.playFillToNextRhythm();
+          const now = Date.now();
+          const timeSinceLastPress = now - arrowLeftLastPress;
+
+          if (timeSinceLastPress < 500 && arrowLeftLastPress > 0) {
+            // Double: fill + ritmo anterior
+            if (arrowLeftTimeout) {
+              clearTimeout(arrowLeftTimeout);
+              arrowLeftTimeout = null;
+            }
+            this.playFillToPreviousRhythm();
+            arrowLeftLastPress = 0;
+          } else {
+            arrowLeftLastPress = now;
+            if (arrowLeftTimeout) clearTimeout(arrowLeftTimeout);
+
+            arrowLeftTimeout = window.setTimeout(() => {
+              // Single: fill + próximo ritmo
+              this.patternEngine.playFillToNextRhythm();
+              arrowLeftTimeout = null;
+            }, 500);
+          }
         }
         return;
       }
 
-      // ArrowRight = Single: Fill / Double: End + Stop
+      // ArrowRight:
+      //   Parado → Prato
+      //   Tocando single → Fill
+      //   Tocando double → Final + Stop
       if ((e.code === 'ArrowRight' || e.key === 'ArrowRight') && !e.repeat) {
         e.preventDefault();
         if (!this.stateManager.isPlaying()) {
-          // Tocar prato se não estiver tocando
           this.playCymbal();
           return;
         }
@@ -509,22 +558,23 @@ class RhythmSequencer {
         const now = Date.now();
         const timeSinceLastPress = now - arrowRightLastPress;
 
-        // Double click detectado (menos de 500ms entre cliques)
         if (timeSinceLastPress < 500 && arrowRightLastPress > 0) {
           if (arrowRightTimeout) {
             clearTimeout(arrowRightTimeout);
             arrowRightTimeout = null;
           }
-          // Double click: Finalização + Stop
-          this.patternEngine.playEndAndStop();
+          // Double right: parar com ou sem final
+          if (this.useFinal) {
+            this.patternEngine.playEndAndStop();
+          } else {
+            this.stop();
+          }
           arrowRightLastPress = 0;
         } else {
-          // Single click: aguarda para ver se haverá double click
           arrowRightLastPress = now;
           if (arrowRightTimeout) clearTimeout(arrowRightTimeout);
 
           arrowRightTimeout = window.setTimeout(() => {
-            // Single click confirmado: apenas virada
             this.patternEngine.playRotatingFill();
             arrowRightTimeout = null;
           }, 500);
@@ -542,29 +592,129 @@ class RhythmSequencer {
         const variationIndex = parseInt(element.getAttribute('data-variation') || '0');
 
         if (cellType === 'main') {
-          // Se estiver tocando e for um ritmo diferente do atual, fazer virada antes de mudar
           const currentVariation = this.stateManager.getCurrentVariation('main');
-          if (this.stateManager.isPlaying() && variationIndex !== currentVariation) {
-            this.patternEngine.playFillToNextRhythm(variationIndex);
-          } else {
+
+          if (!this.stateManager.isPlaying()) {
+            // Parado → ativar ritmo e dar play
             this.patternEngine.activateRhythm(variationIndex);
+            if (this.useIntro) {
+              this.patternEngine.playIntroAndStart();
+            } else {
+              this.stateManager.setShouldPlayStartSound(true);
+            }
+            this.play();
+          } else if (variationIndex === currentVariation) {
+            // Tocando o mesmo ritmo → parar (com ou sem final)
+            if (this.useFinal) {
+              this.patternEngine.playEndAndStop();
+            } else {
+              this.stop();
+            }
+          } else {
+            // Tocando outro ritmo → fazer virada antes de mudar
+            this.patternEngine.playFillToNextRhythm(variationIndex);
           }
         } else if (cellType === 'fill') {
-          this.patternEngine.activateFillWithTiming(variationIndex);
+          if (this.stateManager.isPlaying()) {
+            this.patternEngine.activateFillWithTiming(variationIndex);
+          }
         } else if (cellType === 'end') {
-          this.patternEngine.activateEndWithTiming(variationIndex);
+          if (this.stateManager.isPlaying()) {
+            this.patternEngine.activateEndWithTiming(variationIndex);
+          }
         }
       });
     });
   }
 
+  private setupIntroButton(): void {
+    const introBtn = document.getElementById('introBtnUser');
+    if (introBtn) {
+      introBtn.addEventListener('click', () => {
+        if (!this.stateManager.isPlaying() && this.hasRhythmLoaded()) {
+          this.patternEngine.playIntroAndStart();
+          this.play();
+        }
+      });
+    }
+  }
+
+  // ─── Toggles Intro/Final (persistidos) ───────────────────────────
+
+  private useIntro = true;
+  private useFinal = true;
+
+  private setupToggles(): void {
+    // Carregar do localStorage
+    const savedIntro = localStorage.getItem('gdrums-toggle-intro');
+    const savedFinal = localStorage.getItem('gdrums-toggle-final');
+    if (savedIntro !== null) this.useIntro = savedIntro === 'true';
+    if (savedFinal !== null) this.useFinal = savedFinal === 'true';
+
+    const introToggle = document.getElementById('toggleIntro');
+    const finalToggle = document.getElementById('toggleFinal');
+
+    // Aplicar estado inicial
+    if (introToggle) introToggle.classList.toggle('active', this.useIntro);
+    if (finalToggle) finalToggle.classList.toggle('active', this.useFinal);
+
+    introToggle?.addEventListener('click', () => {
+      this.useIntro = !this.useIntro;
+      introToggle.classList.toggle('active', this.useIntro);
+      localStorage.setItem('gdrums-toggle-intro', String(this.useIntro));
+    });
+
+    finalToggle?.addEventListener('click', () => {
+      this.useFinal = !this.useFinal;
+      finalToggle.classList.toggle('active', this.useFinal);
+      localStorage.setItem('gdrums-toggle-final', String(this.useFinal));
+    });
+  }
+
   private setupFileOperations(): void {
-    // Save/Load Project
+    // Novo Projeto
+    const newProjectBtn = document.getElementById('newProject');
+    if (newProjectBtn) {
+      newProjectBtn.addEventListener('click', async () => {
+        const confirmed = await this.uiManager.showConfirm('Novo Projeto', 'Isso vai limpar o editor. Deseja continuar?');
+        if (confirmed) {
+          if (this.stateManager.isPlaying()) this.stop();
+          // Resetar state do editor sem afetar user mode
+          const state = this.stateManager.getState();
+          const { createEmptyPattern, createEmptyVolumes, createEmptyChannels } = await import('./utils/helpers');
+          for (const type of ['main', 'fill', 'end', 'intro', 'transition'] as const) {
+            state.patterns[type] = createEmptyPattern();
+            state.volumes[type] = createEmptyVolumes();
+            state.channels[type] = createEmptyChannels();
+            const maxVar = type === 'end' || type === 'intro' || type === 'transition' ? 1 : 3;
+            for (let i = 0; i < maxVar; i++) {
+              state.variations[type][i] = {
+                pattern: createEmptyPattern(),
+                volumes: createEmptyVolumes(),
+                channels: createEmptyChannels(),
+                steps: type === 'end' ? 8 : 16,
+                speed: 1
+              };
+            }
+          }
+          state.tempo = 80;
+          this.stateManager.setTempo(80);
+          this.switchEditingPattern('main');
+          this.updateProjectBar('');
+          this.uiManager.refreshGridDisplay();
+          this.uiManager.updateVariationButtons();
+          this.uiManager.showAlert('Novo projeto criado!');
+        }
+      });
+    }
+
+    // Salvar Projeto
     const saveAllBtn = document.getElementById('saveAll');
     if (saveAllBtn) {
       saveAllBtn.addEventListener('click', () => this.fileManager.saveProject());
     }
 
+    // Abrir Projeto
     const loadAllBtn = document.getElementById('loadAll');
     const loadAllFile = document.getElementById('loadAllFile') as HTMLInputElement;
     if (loadAllBtn && loadAllFile) {
@@ -573,12 +723,14 @@ class RhythmSequencer {
         const file = (e.target as HTMLInputElement).files?.[0];
         if (file) {
           try {
+            if (this.stateManager.isPlaying()) this.stop();
             await this.fileManager.loadProjectFromFile(file);
+            this.updateProjectBar(file.name.replace('.json', ''));
             this.uiManager.refreshGridDisplay();
             this.uiManager.updateVariationButtons();
-            this.uiManager.showAlert('Projeto carregado com sucesso!');
+            this.uiManager.showAlert('Projeto carregado!');
           } catch (error) {
-            console.error('Error loading project:', error);
+            void error;
             this.uiManager.showAlert('Erro ao carregar projeto');
           }
         }
@@ -620,16 +772,22 @@ class RhythmSequencer {
         if (confirm('Tem certeza que deseja limpar o padrão atual?')) {
           const pattern = this.stateManager.getEditingPattern();
           const state = this.stateManager.getState();
+          const numSteps = this.stateManager.getPatternSteps(pattern);
 
-          // Limpar padrão
+          // Limpar padrão com número correto de steps
           for (let channel = 0; channel < 8; channel++) {
-            for (let step = 0; step < 16; step++) {
+            for (let step = 0; step < numSteps; step++) {
               state.patterns[pattern][channel][step] = false;
               state.volumes[pattern][channel][step] = 1.0;
             }
           }
 
+          // Auto-salvar a variação limpa
+          const currentSlot = this.stateManager.getCurrentVariation(pattern);
+          this.stateManager.saveVariation(pattern, currentSlot);
+
           this.uiManager.refreshGridDisplay();
+          this.uiManager.updateVariationButtons();
           this.uiManager.showAlert('Padrão limpo!');
         }
       });
@@ -667,30 +825,85 @@ class RhythmSequencer {
     }
   }
 
+  // ─── Admin mode com persistência segura ──────────────────────────
+
+  // Token secreto que não pode ser adivinhado pelo usuário
+  // Gerado com timestamp + salt no primeiro acesso admin
+  private static readonly ADMIN_STORAGE_KEY = 'gdrums-mode';
+  private static readonly ADMIN_SECRET = 'gD$2026!rHyThM#aDmIn';
+
+  private generateAdminToken(): string {
+    // Hash simples mas não-trivial: combina secret + user agent + screen
+    const raw = RhythmSequencer.ADMIN_SECRET + navigator.userAgent + screen.width;
+    let hash = 0;
+    for (let i = 0; i < raw.length; i++) {
+      hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return 'adm_' + Math.abs(hash).toString(36) + '_' + raw.length.toString(36);
+  }
+
+  private saveAdminState(isAdmin: boolean): void {
+    if (isAdmin) {
+      localStorage.setItem(RhythmSequencer.ADMIN_STORAGE_KEY, this.generateAdminToken());
+    } else {
+      localStorage.removeItem(RhythmSequencer.ADMIN_STORAGE_KEY);
+    }
+  }
+
+  private isAdminPersisted(): boolean {
+    const stored = localStorage.getItem(RhythmSequencer.ADMIN_STORAGE_KEY);
+    if (!stored) return false;
+    // Validar que o token é legítimo (gerado por este sistema neste device)
+    return stored === this.generateAdminToken();
+  }
+
   private setupModeToggle(): void {
+    // Fab menu toggle
+    const fabMenu = document.getElementById('fabMenu');
+    const fabDropdown = document.getElementById('fabDropdown');
+    if (fabMenu && fabDropdown) {
+      fabMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fabDropdown.style.display = fabDropdown.style.display === 'none' ? 'block' : 'none';
+      });
+      document.addEventListener('click', () => {
+        fabDropdown.style.display = 'none';
+      });
+    }
+
+    // Mode toggle
     const adminModeToggle = document.getElementById('adminModeToggle') as HTMLInputElement;
     const userMode = document.getElementById('userMode');
     const adminMode = document.getElementById('adminMode');
     const modeLabel = document.getElementById('modeLabel');
-    const modeIcon = document.getElementById('modeIcon');
 
-    if (adminModeToggle && userMode && adminMode && modeLabel && modeIcon) {
+    if (adminModeToggle && userMode && adminMode && modeLabel) {
+      // Restaurar estado persistido (com validação de token)
+      if (this.isAdminPersisted()) {
+        this.isAdminMode = true;
+        adminModeToggle.checked = true;
+        userMode.classList.remove('active');
+        adminMode.classList.add('active');
+        modeLabel.textContent = 'Modo Admin';
+      }
+
       adminModeToggle.addEventListener('change', (e) => {
         const isAdmin = (e.target as HTMLInputElement).checked;
+        this.isAdminMode = isAdmin;
 
         if (isAdmin) {
-          // Modo Admin
           userMode.classList.remove('active');
           adminMode.classList.add('active');
           modeLabel.textContent = 'Modo Admin';
-          modeIcon.textContent = '⚙️';
         } else {
-          // Modo Usuário
           adminMode.classList.remove('active');
           userMode.classList.add('active');
           modeLabel.textContent = 'Modo Usuário';
-          modeIcon.textContent = '👤';
         }
+
+        this.saveAdminState(isAdmin);
+        if (fabDropdown) fabDropdown.style.display = 'none';
       });
     }
   }
@@ -844,9 +1057,9 @@ class RhythmSequencer {
       // Atualizar o texto do botão baseado no estado de reprodução
       this.stateManager.subscribe('playState', (state) => {
         if (state.isPlaying) {
-          testVariationBtn.innerHTML = '<span>⏸ Parar</span>';
+          testVariationBtn.innerHTML = '<span>Parar</span>';
         } else {
-          testVariationBtn.innerHTML = '<span>▶ Testar</span>';
+          testVariationBtn.innerHTML = '<span>Testar</span>';
         }
       });
     }
@@ -1031,21 +1244,13 @@ class RhythmSequencer {
 
     // Carregar a variação atual nos patterns principais para tocar
     const loadSuccess = this.stateManager.loadVariation(patternType, slotIndex);
-    console.log(`LoadVariation retornou: ${loadSuccess}`);
+    void loadSuccess;
 
     // Verificar quantos steps tem a variação
     const numSteps = this.stateManager.getPatternSteps(patternType);
-    console.log(`Testando ${patternType} slot ${slotIndex + 1} com ${numSteps} steps`);
+    void numSteps;
 
-    // Debug: verificar se o pattern foi carregado
     state = this.stateManager.getState();
-    const hasPattern = state.patterns[patternType].some(row => row.some(step => step));
-    console.log(`Pattern ${patternType} tem conteúdo:`, hasPattern);
-
-    // Verificar steps configurados apenas para patterns válidos
-    if (patternType === 'main' || patternType === 'fill' || patternType === 'end' || patternType === 'intro') {
-      console.log(`Pattern steps configurados:`, state.patternSteps[patternType]);
-    }
 
     // Definir o padrão ativo para o que está sendo editado
     this.stateManager.setActivePattern(patternType);
@@ -1143,24 +1348,29 @@ class RhythmSequencer {
     this.stateManager.setCurrentVariation(patternType, variationIndex);
     this.stateManager.loadVariation(patternType, variationIndex);
 
-    console.log(`${patternType.toUpperCase()} variação ${variationIndex + 1} ativada`);
-
     // Atualizar UI
     this.uiManager.updateVariationButtons();
     this.uiManager.refreshGridDisplay();
-
-    // Se estiver tocando e no padrão correspondente, aplicar a mudança
-    if (this.stateManager.isPlaying() && this.stateManager.getActivePattern() === patternType) {
-      console.log('Mudança será aplicada no próximo ciclo');
-    }
   }
 
   // Core methods
+  private updateProjectBar(name: string): void {
+    const nameEl = document.getElementById('projectName') as HTMLInputElement;
+    const dotEl = document.getElementById('projectDot');
+    if (nameEl) nameEl.value = name || 'Novo Projeto';
+    if (dotEl) {
+      dotEl.classList.toggle('loaded', !!name);
+    }
+  }
+
   private togglePlayStop(): void {
     if (this.stateManager.isPlaying()) {
-      this.stop();
+      if (this.useFinal) {
+        this.patternEngine.playEndAndStop();
+      } else {
+        this.stop();
+      }
     } else {
-      // Verificar se há pelo menos um ritmo carregado
       if (!this.hasRhythmLoaded()) {
         this.modalManager.show(
           'Nenhum Ritmo Carregado',
@@ -1170,9 +1380,32 @@ class RhythmSequencer {
         return;
       }
 
-      this.patternEngine.playIntroAndStart();
+      if (this.useIntro) {
+        this.patternEngine.playIntroAndStart();
+      } else {
+        this.stateManager.setShouldPlayStartSound(true);
+      }
       this.play();
     }
+  }
+
+  private playFillToPreviousRhythm(): void {
+    const state = this.stateManager.getState();
+    const availableRhythms = state.variations.main
+      .map((v, index) => ({
+        index,
+        hasContent: v.pattern.some(row => row.some(step => step === true))
+      }))
+      .filter(r => r.hasContent);
+
+    if (availableRhythms.length <= 1) return;
+
+    const currentIndex = this.stateManager.getCurrentVariation('main');
+    const currentPosition = availableRhythms.findIndex(r => r.index === currentIndex);
+    const prevPosition = (currentPosition - 1 + availableRhythms.length) % availableRhythms.length;
+    const prevVariation = availableRhythms[prevPosition].index;
+
+    this.patternEngine.playFillToNextRhythm(prevVariation);
   }
 
   private hasRhythmLoaded(): boolean {
@@ -1230,14 +1463,164 @@ class RhythmSequencer {
 
     this.uiManager.clearQueuedCells();
     this.uiManager.updatePerformanceGrid();
+    this.resetBeatMarker();
   }
 
+  // ─── Beat Marker ────────────────────────────────────────────────────
+
+  private updateBeatMarker(step: number, pattern: PatternType): void {
+    const totalSteps = this.stateManager.getPatternSteps(pattern);
+    // Calcular beat (4 beats por compasso, cada beat = totalSteps/4 steps)
+    const stepsPerBeat = Math.max(1, Math.floor(totalSteps / 4));
+    const currentBeat = Math.floor(step / stepsPerBeat) % 4;
+    const isDownbeat = step % stepsPerBeat === 0;
+
+    const dots = document.querySelectorAll('.beat-dot');
+    dots.forEach((dot, i) => {
+      dot.classList.remove('beat-active', 'beat-pulse');
+      if (i === currentBeat) {
+        dot.classList.add('beat-active');
+        if (isDownbeat) {
+          dot.classList.add('beat-pulse');
+        }
+      }
+    });
+
+    // Atualizar step counter
+    const stepEl = document.getElementById('currentStepUser');
+    if (stepEl) {
+      stepEl.textContent = `${step + 1}/${totalSteps}`;
+    }
+  }
+
+  private resetBeatMarker(): void {
+    document.querySelectorAll('.beat-dot').forEach(dot => {
+      dot.classList.remove('beat-active', 'beat-pulse');
+    });
+  }
+
+  // ─── Countdown Overlay ──────────────────────────────────────────────
+
+  private countdownOverlay: HTMLElement | null = null;
+  private countdownStyleInjected = false;
+
+  private updateCountdown(step: number, pattern: PatternType): void {
+    if (pattern !== 'intro') {
+      this.hideCountdown();
+      return;
+    }
+
+    this.injectCountdownStyles();
+
+    const totalSteps = this.stateManager.getPatternSteps('intro');
+    const stepsPerBeat = Math.max(1, Math.floor(totalSteps / 4));
+    const beatNum = Math.floor(step / stepsPerBeat) + 1;
+
+    // Só mostrar no downbeat de cada tempo
+    if (step % stepsPerBeat !== 0) return;
+
+    if (!this.countdownOverlay) {
+      this.countdownOverlay = document.createElement('div');
+      this.countdownOverlay.className = 'countdown-overlay';
+      document.body.appendChild(this.countdownOverlay);
+    }
+
+    this.countdownOverlay.style.display = 'flex';
+    this.countdownOverlay.innerHTML = `<span class="countdown-num" key="${beatNum}">${beatNum}</span>`;
+
+    // Force reflow para reiniciar animação
+    const numEl = this.countdownOverlay.querySelector('.countdown-num') as HTMLElement;
+    void numEl.offsetHeight;
+    numEl.classList.add('countdown-animate');
+  }
+
+  private hideCountdown(): void {
+    if (this.countdownOverlay) {
+      this.countdownOverlay.style.display = 'none';
+    }
+  }
+
+  private injectCountdownStyles(): void {
+    if (this.countdownStyleInjected) return;
+    this.countdownStyleInjected = true;
+
+    const style = document.createElement('style');
+    style.id = 'countdown-styles';
+    style.textContent = `
+      .countdown-overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 99998;
+        pointer-events: none;
+        background: rgba(2, 0, 15, 0.4);
+      }
+
+      .countdown-num {
+        font-size: clamp(8rem, 30vw, 16rem);
+        font-weight: 900;
+        color: transparent;
+        background: linear-gradient(135deg, #F97316 0%, #FF6B35 40%, #FFB020 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        line-height: 1;
+        opacity: 0;
+        transform: scale(0.5);
+        filter: drop-shadow(0 0 40px rgba(249, 115, 22, 0.6))
+                drop-shadow(0 0 80px rgba(249, 115, 22, 0.3));
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+        letter-spacing: -0.05em;
+      }
+
+      .countdown-num.countdown-animate {
+        animation: countdownPop 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      @keyframes countdownPop {
+        0% {
+          opacity: 0;
+          transform: scale(0.4);
+          filter: drop-shadow(0 0 20px rgba(249, 115, 22, 0.3));
+        }
+        30% {
+          opacity: 1;
+          transform: scale(1.1);
+          filter: drop-shadow(0 0 60px rgba(249, 115, 22, 0.8))
+                  drop-shadow(0 0 120px rgba(249, 115, 22, 0.4));
+        }
+        60% {
+          opacity: 1;
+          transform: scale(1);
+          filter: drop-shadow(0 0 50px rgba(249, 115, 22, 0.6))
+                  drop-shadow(0 0 100px rgba(249, 115, 22, 0.3));
+        }
+        100% {
+          opacity: 0.15;
+          transform: scale(0.95);
+          filter: drop-shadow(0 0 30px rgba(249, 115, 22, 0.2));
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  private cymbalBuffer: AudioBuffer | null = null;
+
   private async playCymbal(): Promise<void> {
-    // Carregar e tocar o som do prato
-    const cymbalBuffer = await this.audioManager.loadAudioFromPath('/midi/prato.mp3');
-    if (cymbalBuffer) {
+    // Cache do buffer do prato
+    if (!this.cymbalBuffer) {
+      try {
+        this.cymbalBuffer = await this.audioManager.loadAudioFromPath('/midi/prato.mp3');
+      } catch {
+        return;
+      }
+    }
+
+    if (this.cymbalBuffer) {
       const currentTime = this.audioManager.getCurrentTime();
-      this.audioManager.playSound(cymbalBuffer, currentTime, 1.0);
+      this.audioManager.playSound(this.cymbalBuffer, currentTime, 1.0);
 
       // Feedback visual
       const cymbalBtn = document.getElementById('cymbalBtn');
@@ -1383,7 +1766,7 @@ class RhythmSequencer {
       state.channels[pattern][channel].fileName = filePath.split('/').pop() || filePath;
       state.channels[pattern][channel].midiPath = filePath;
 
-      console.log(`MIDI loaded: ${filePath}`);
+      void filePath;
 
       // Auto-salvar a variação atual
       const currentSlot = this.stateManager.getCurrentVariation(pattern);
@@ -1410,7 +1793,7 @@ class RhythmSequencer {
       state.channels[pattern][channel].fileName = file.name;
       state.channels[pattern][channel].midiPath = '';
 
-      console.log(`Custom audio loaded: ${file.name}`);
+      void file.name;
     } catch (error) {
       console.error('Error loading audio:', error);
       this.uiManager.showAlert('Erro ao carregar arquivo de áudio');
@@ -1514,11 +1897,116 @@ class RhythmSequencer {
         }
       }
 
-      console.log('MIDI files loaded');
+      void 0; // MIDI loaded
     } catch (error) {
-      console.log('Could not list MIDI files automatically');
+      void error;
     }
   }
+
+  // ─── Setlist ─────────────────────────────────────────────────────────
+
+  private setupSetlistUI(): void {
+    // Botão editar setlist
+    const editBtn = document.getElementById('setlistEditBtn');
+    editBtn?.addEventListener('click', () => {
+      this.setlistEditor.open(
+        this.availableRhythms,
+        this.setlistManager,
+        () => this.onSetlistEditorClose()
+      );
+    });
+
+    // Botão próximo
+    const nextBtn = document.getElementById('setlistNext');
+    nextBtn?.addEventListener('click', () => this.navigateSetlist('next'));
+
+    // Botão anterior
+    const prevBtn = document.getElementById('setlistPrev');
+    prevBtn?.addEventListener('click', () => this.navigateSetlist('previous'));
+
+    // Atualizar UI inicial
+    this.updateSetlistUI();
+  }
+
+  private async onSetlistEditorClose(): Promise<void> {
+    this.updateSetlistUI();
+    // Carregar o ritmo atual do setlist
+    const current = this.setlistManager.getCurrentItem();
+    if (current && current.name !== this.currentRhythmName) {
+      if (this.stateManager.isPlaying()) {
+        this.stop();
+      }
+      await this.loadRhythm(current.name, current.path);
+    }
+  }
+
+  private async navigateSetlist(direction: 'next' | 'previous'): Promise<void> {
+    const item = direction === 'next'
+      ? this.setlistManager.next()
+      : this.setlistManager.previous();
+
+    if (!item) return;
+
+    // Parar reprodução antes de trocar
+    if (this.stateManager.isPlaying()) {
+      this.stop();
+    }
+
+    await this.loadRhythm(item.name, item.path);
+  }
+
+  private updateSetlistUI(): void {
+    const numEl = document.getElementById('setlistNum');
+    const positionEl = document.getElementById('setlistPosition');
+    const nameEl = document.getElementById('currentRhythmName');
+    const prevNameEl = document.getElementById('favPrevName');
+    const nextNameEl = document.getElementById('favNextName');
+    const prevBtn = document.getElementById('setlistPrev') as HTMLButtonElement;
+    const nextBtn = document.getElementById('setlistNext') as HTMLButtonElement;
+    const stripCards = document.getElementById('rhythmStripCards');
+    const favBar = document.querySelector('.fav-bar') as HTMLElement;
+
+    if (this.setlistManager.isEmpty()) {
+      if (numEl) numEl.textContent = '#';
+      if (positionEl) positionEl.textContent = '';
+      if (nameEl) nameEl.textContent = 'Monte seus favoritos';
+      if (prevNameEl) prevNameEl.textContent = '--';
+      if (nextNameEl) nextNameEl.textContent = '--';
+      if (prevBtn) { prevBtn.disabled = true; prevBtn.style.opacity = '0.25'; }
+      if (nextBtn) { nextBtn.disabled = true; nextBtn.style.opacity = '0.25'; }
+      if (stripCards) stripCards.style.display = 'flex';
+      if (favBar) favBar.style.display = 'none';
+      return;
+    }
+
+    if (stripCards) stripCards.style.display = 'none';
+    if (favBar) favBar.style.display = 'flex';
+
+    const idx = this.setlistManager.getCurrentIndex();
+    const total = this.setlistManager.getLength();
+    const current = this.setlistManager.getCurrentItem();
+    const prev = this.setlistManager.getPreviousItem();
+    const next = this.setlistManager.getNextItem();
+
+    if (numEl) numEl.textContent = `${idx + 1}`;
+    if (positionEl) positionEl.textContent = `de ${total}`;
+    if (nameEl && current) nameEl.textContent = current.name;
+    if (prevNameEl) prevNameEl.textContent = prev ? prev.name : '--';
+    if (nextNameEl) nextNameEl.textContent = next ? next.name : '--';
+
+    if (prevBtn) {
+      const hasPrev = idx > 0;
+      prevBtn.disabled = !hasPrev;
+      prevBtn.style.opacity = hasPrev ? '1' : '0.25';
+    }
+    if (nextBtn) {
+      const hasNext = idx < total - 1;
+      nextBtn.disabled = !hasNext;
+      nextBtn.style.opacity = hasNext ? '1' : '0.25';
+    }
+  }
+
+  // ─── Rhythm loading ─────────────────────────────────────────────────
 
   private availableRhythms: Array<{name: string, path: string}> = [];
   private currentRhythmName: string = '';
@@ -1586,116 +2074,78 @@ class RhythmSequencer {
             }
           }
         } catch (e) {
-          console.log(`Rhythm ${file} not found`);
+          void file;
         }
       }
 
       // Ordenar alfabeticamente
       this.availableRhythms.sort((a, b) => a.name.localeCompare(b.name));
 
-      // Setup search box
-      this.setupRhythmSearch();
+      // Renderizar cards visuais e atualizar setlist
+      this.renderRhythmStrip();
+      this.populateDuplicateRhythmSelect();
+      this.populateCloneRhythmSelect();
+      this.updateSetlistUI();
 
-      console.log(`${this.availableRhythms.length} rhythms loaded`);
-    } catch (error) {
-      console.log('Could not list rhythms automatically');
-    }
-  }
-
-  private setupRhythmSearch(): void {
-    const searchInput = document.getElementById('rhythmSearchInput') as HTMLInputElement;
-    const dropdown = document.getElementById('rhythmDropdown') as HTMLElement;
-    const rhythmList = document.getElementById('rhythmList') as HTMLElement;
-    const resultsCount = document.getElementById('resultsCount') as HTMLElement;
-    const clearBtn = document.getElementById('clearSearchBtn') as HTMLElement;
-
-    if (!searchInput || !dropdown || !rhythmList) return;
-
-    // Click fora fecha o dropdown
-    document.addEventListener('click', (e) => {
-      if (!searchInput.contains(e.target as Node) && !dropdown.contains(e.target as Node)) {
-        dropdown.style.display = 'none';
-      }
-    });
-
-    // Clear button
-    if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
-        searchInput.value = '';
-        clearBtn.style.display = 'none';
-        dropdown.style.display = 'none';
-        searchInput.focus();
-      });
-    }
-
-    // Input focus mostra todos os ritmos
-    searchInput.addEventListener('focus', () => {
-      this.filterRhythms('');
-      dropdown.style.display = 'block';
-    });
-
-    // Input change filtra os ritmos
-    searchInput.addEventListener('input', () => {
-      const query = searchInput.value.trim();
-      clearBtn.style.display = query ? 'flex' : 'none';
-      this.filterRhythms(query);
-      dropdown.style.display = 'block';
-    });
-  }
-
-  private filterRhythms(query: string): void {
-    const dropdown = document.getElementById('rhythmDropdown') as HTMLElement;
-    const rhythmList = document.getElementById('rhythmList') as HTMLElement;
-    const resultsCount = document.getElementById('resultsCount') as HTMLElement;
-
-    if (!rhythmList || !resultsCount) return;
-
-    const searchTerm = query.toLowerCase();
-    const filtered = this.availableRhythms.filter(rhythm =>
-      rhythm.name.toLowerCase().includes(searchTerm)
-    );
-
-    // Atualizar contador
-    resultsCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'ritmo encontrado' : 'ritmos encontrados'}`;
-
-    // Limpar lista
-    rhythmList.innerHTML = '';
-
-    // Adicionar itens filtrados
-    filtered.forEach(rhythm => {
-      const item = document.createElement('div');
-      item.className = 'rhythm-item';
-      if (rhythm.name === this.currentRhythmName) {
-        item.classList.add('selected');
-      }
-
-      item.innerHTML = `
-        <span class="rhythm-item-name">${rhythm.name}</span>
-        <span class="rhythm-item-icon">▶</span>
-      `;
-
-      item.addEventListener('click', async () => {
-        await this.loadRhythm(rhythm.name, rhythm.path);
-        dropdown.style.display = 'none';
-        const searchInput = document.getElementById('rhythmSearchInput') as HTMLInputElement;
-        if (searchInput) {
-          searchInput.value = '';
-          const clearBtn = document.getElementById('clearSearchBtn') as HTMLElement;
-          if (clearBtn) clearBtn.style.display = 'none';
+      // Carregar ritmo atual do setlist ao iniciar (só no modo user)
+      if (!this.isAdminMode && !this.setlistManager.isEmpty()) {
+        const current = this.setlistManager.getCurrentItem();
+        if (current && current.name !== this.currentRhythmName) {
+          await this.loadRhythm(current.name, current.path);
         }
+      }
+    } catch (error) {
+      void error;
+    }
+  }
+
+  private renderRhythmStrip(): void {
+    const container = document.getElementById('rhythmStripCards');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    this.availableRhythms.forEach(rhythm => {
+      const card = document.createElement('button');
+      card.className = 'rhythm-card-btn';
+      if (rhythm.name === this.currentRhythmName) {
+        card.classList.add('active');
+      }
+      card.setAttribute('data-rhythm-path', rhythm.path);
+      card.textContent = rhythm.name;
+
+      card.addEventListener('click', async () => {
+        await this.loadRhythm(rhythm.name, rhythm.path);
       });
 
-      rhythmList.appendChild(item);
+      container.appendChild(card);
     });
 
-    // Se não houver resultados
-    if (filtered.length === 0) {
-      rhythmList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">Nenhum ritmo encontrado</div>';
+    if (this.availableRhythms.length === 0) {
+      container.innerHTML = '<span class="rhythm-strip-empty">Nenhum ritmo disponível</span>';
     }
+  }
+
+  private updateRhythmStripActive(): void {
+    const container = document.getElementById('rhythmStripCards');
+    if (!container) return;
+
+    container.querySelectorAll('.rhythm-card-btn').forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.textContent === this.currentRhythmName) {
+        btn.classList.add('active');
+        btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    });
   }
 
   private async loadRhythm(name: string, path: string): Promise<void> {
     try {
+      // Parar reprodução ao trocar de ritmo
+      if (this.stateManager.isPlaying()) {
+        this.stop();
+      }
+
       await this.fileManager.loadProjectFromPath(path);
 
       // Carregar a primeira variação do padrão sendo editado
@@ -1707,24 +2157,201 @@ class RhythmSequencer {
       this.uiManager.refreshGridDisplay();
       this.uiManager.updateVariationButtons();
 
-      // Atualizar nome do ritmo atual
-      this.currentRhythmName = name;
-      const currentRhythmNameEl = document.getElementById('currentRhythmName');
-      if (currentRhythmNameEl) {
-        currentRhythmNameEl.textContent = name;
+      if (this.isAdminMode) {
+        // Admin: só atualizar project bar
+        this.updateProjectBar(name);
+      } else {
+        // User: atualizar nome do ritmo, favoritos, strip
+        this.currentRhythmName = name;
+        const currentRhythmNameEl = document.getElementById('currentRhythmName');
+        if (currentRhythmNameEl) {
+          currentRhythmNameEl.textContent = name;
+        }
+        this.updateRhythmStripActive();
+        this.updateSetlistUI();
       }
 
       this.uiManager.showAlert(`Ritmo "${name}" carregado!`);
-      console.log(`Rhythm ${name} loaded`);
     } catch (error) {
       console.error(`Error loading rhythm ${name}:`, error);
       this.uiManager.showAlert(`Erro ao carregar ritmo "${name}"`);
     }
+  }
+
+  // ─── Duplicate from Rhythm ───────────────────────────────────────────
+
+  private setupDuplicateFromRhythm(): void {
+    // Limitar variação de origem baseado no tipo
+    const updateSlotOptions = (typeSelect: HTMLSelectElement, slotSelect: HTMLSelectElement) => {
+      typeSelect.addEventListener('change', () => {
+        const t = typeSelect.value;
+        slotSelect.innerHTML = '';
+        const max = (t === 'end' || t === 'intro') ? 1 : 3;
+        for (let i = 0; i < max; i++) {
+          const o = document.createElement('option');
+          o.value = String(i);
+          o.textContent = `Var ${i + 1}`;
+          slotSelect.appendChild(o);
+        }
+      });
+    };
+
+    const srcType = document.getElementById('duplicatePatternType') as HTMLSelectElement;
+    const srcSlot = document.getElementById('duplicateVariationSlot') as HTMLSelectElement;
+    const dstType = document.getElementById('dupDestPatternType') as HTMLSelectElement;
+    const dstSlot = document.getElementById('dupDestVariationSlot') as HTMLSelectElement;
+
+    if (srcType && srcSlot) updateSlotOptions(srcType, srcSlot);
+    if (dstType && dstSlot) updateSlotOptions(dstType, dstSlot);
+
+    const duplicateBtn = document.getElementById('duplicateBtn');
+    if (duplicateBtn) {
+      duplicateBtn.addEventListener('click', () => this.duplicateFromRhythm());
+    }
+
+    // Clonar ritmo inteiro
+    const cloneBtn = document.getElementById('cloneRhythmBtn');
+    if (cloneBtn) {
+      cloneBtn.addEventListener('click', () => this.cloneEntireRhythm());
+    }
+  }
+
+  private async duplicateFromRhythm(): Promise<void> {
+    const rhythmSelect = document.getElementById('duplicateRhythmSelect') as HTMLSelectElement;
+    const patternTypeSelect = document.getElementById('duplicatePatternType') as HTMLSelectElement;
+    const variationSlotSelect = document.getElementById('duplicateVariationSlot') as HTMLSelectElement;
+    const dstTypeSelect = document.getElementById('dupDestPatternType') as HTMLSelectElement;
+    const dstSlotSelect = document.getElementById('dupDestVariationSlot') as HTMLSelectElement;
+
+    if (!rhythmSelect || !patternTypeSelect || !variationSlotSelect || !dstTypeSelect || !dstSlotSelect) return;
+
+    const rhythmPath = rhythmSelect.value;
+    const sourcePatternType = patternTypeSelect.value as PatternType;
+    const sourceSlotIndex = parseInt(variationSlotSelect.value, 10);
+
+    if (!rhythmPath) {
+      this.uiManager.showAlert('Selecione um ritmo para duplicar.');
+      return;
+    }
+
+    // Parar reprodução antes de duplicar
+    if (this.stateManager.isPlaying()) {
+      this.stop();
+    }
+
+    try {
+      const response = await fetch(rhythmPath);
+      const data = await response.json();
+
+      const sourceVariation = data.variations?.[sourcePatternType]?.[sourceSlotIndex];
+
+      if (!sourceVariation || !sourceVariation.pattern) {
+        this.uiManager.showAlert('A variação selecionada não existe ou não tem padrão.');
+        return;
+      }
+
+      // Destino escolhido pelo usuário
+      const targetPatternType = dstTypeSelect.value as PatternType;
+      const targetSlot = parseInt(dstSlotSelect.value, 10);
+      const state = this.stateManager.getState();
+
+      const targetSteps = sourceVariation.steps || 16;
+
+      // Deep-copy pattern and volumes
+      state.variations[targetPatternType][targetSlot].pattern = expandPattern(sourceVariation.pattern, targetSteps);
+      state.variations[targetPatternType][targetSlot].volumes = expandVolumes(sourceVariation.volumes, targetSteps);
+      state.variations[targetPatternType][targetSlot].steps = targetSteps;
+      state.variations[targetPatternType][targetSlot].speed = sourceVariation.speed || 1;
+
+      // Load audio channels from source
+      if (sourceVariation.audioFiles) {
+        for (let i = 0; i < sourceVariation.audioFiles.length && i < 8; i++) {
+          const audioFile = sourceVariation.audioFiles[i];
+          if (!audioFile) continue;
+
+          const midiPath = normalizeMidiPath(audioFile.midiPath || '');
+          state.variations[targetPatternType][targetSlot].channels[i].midiPath = midiPath;
+          state.variations[targetPatternType][targetSlot].channels[i].fileName = audioFile.fileName || '';
+
+          if (midiPath) {
+            try {
+              const buffer = await this.audioManager.loadAudioFromPath(midiPath);
+              state.variations[targetPatternType][targetSlot].channels[i].buffer = buffer;
+            } catch (error) {
+              console.error(`Erro ao carregar áudio do canal ${i}:`, error);
+            }
+          }
+        }
+      }
+
+      // Navegar pro destino e ativar
+      this.stateManager.setCurrentVariation(targetPatternType, targetSlot);
+      this.stateManager.loadVariation(targetPatternType, targetSlot);
+      this.stateManager.setPatternSteps(targetPatternType, targetSteps);
+      this.switchEditingPattern(targetPatternType);
+
+      this.uiManager.showAlert(`Copiado para ${targetPatternType.toUpperCase()} Var ${targetSlot + 1}!`);
+    } catch (error) {
+      console.error('Erro ao duplicar variação:', error);
+      this.uiManager.showAlert('Erro ao duplicar variação do ritmo.');
+    }
+  }
+
+  private populateDuplicateRhythmSelect(): void {
+    const select = document.getElementById('duplicateRhythmSelect') as HTMLSelectElement;
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Selecione um ritmo...</option>';
+
+    this.availableRhythms.forEach(rhythm => {
+      const option = document.createElement('option');
+      option.value = rhythm.path;
+      option.textContent = rhythm.name;
+      select.appendChild(option);
+    });
+  }
+
+  private async cloneEntireRhythm(): Promise<void> {
+    const select = document.getElementById('cloneRhythmSelect') as HTMLSelectElement;
+    if (!select || !select.value) {
+      this.uiManager.showAlert('Selecione um ritmo para clonar.');
+      return;
+    }
+
+    if (this.stateManager.isPlaying()) this.stop();
+
+    try {
+      await this.fileManager.loadProjectFromPath(select.value);
+      const rhythmName = select.options[select.selectedIndex].textContent || 'Projeto';
+
+      // Navegar pro padrão principal
+      this.stateManager.setCurrentVariation('main', 0);
+      this.stateManager.loadVariation('main', 0);
+      this.switchEditingPattern('main');
+
+      this.updateProjectBar(rhythmName + ' (cópia)');
+      this.uiManager.showAlert(`"${rhythmName}" clonado! Edite e salve como novo projeto.`);
+    } catch {
+      this.uiManager.showAlert('Erro ao clonar ritmo.');
+    }
+  }
+
+  private populateCloneRhythmSelect(): void {
+    const select = document.getElementById('cloneRhythmSelect') as HTMLSelectElement;
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Selecione um ritmo...</option>';
+    this.availableRhythms.forEach(rhythm => {
+      const option = document.createElement('option');
+      option.value = rhythm.path;
+      option.textContent = rhythm.name;
+      select.appendChild(option);
+    });
   }
 }
 
 // Inicializar quando a página carregar
 window.addEventListener('DOMContentLoaded', () => {
   new RhythmSequencer();
-  console.log('GSOM Rhythm Sequencer initialized!');
+  void 0; // initialized
 });

@@ -1,10 +1,23 @@
-// Gerenciamento de áudio e reprodução
+// Gerenciamento de áudio e reprodução — com suporte a snapshot imutável
 
-import type { AudioChannel, PatternType, SequencerState } from '../types';
+import type { AudioChannel, SequencerState } from '../types';
 import { base64ToArrayBuffer } from '../utils/helpers';
+
+export interface AudioSnapshot {
+  step: number;
+  pattern: boolean[][];
+  channels: AudioChannel[];
+  volumes: number[][];
+  masterVolume: number;
+  shouldPlayStartSound: boolean;
+  shouldPlayReturnSound: boolean;
+  fillStartBuffer: AudioBuffer | null;
+  fillReturnBuffer: AudioBuffer | null;
+}
 
 export class AudioManager {
   private audioContext: AudioContext;
+  private readonly FADE_TIME = 0.005; // 5ms fade — elimina cliques
 
   constructor(audioContext: AudioContext) {
     this.audioContext = audioContext;
@@ -27,57 +40,83 @@ export class AudioManager {
   }
 
   playSound(buffer: AudioBuffer, time: number, volume: number = 1.0): void {
+    if (!buffer || volume <= 0) return;
+
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
 
     const gainNode = this.audioContext.createGain();
+    const clampedVolume = Math.max(0, Math.min(4, volume)); // hard limit
 
-    // Fade in/out suave para eliminar estalos (especialmente importante no Android)
-    const fadeTime = 0.005; // 5ms de fade - imperceptível mas elimina cliques
+    // Fade in suave para eliminar estalos
     gainNode.gain.setValueAtTime(0, time);
-    gainNode.gain.linearRampToValueAtTime(volume, time + fadeTime);
+    gainNode.gain.linearRampToValueAtTime(clampedVolume, time + this.FADE_TIME);
 
-    // Fade out no final
+    // Fade out no final do sample
     const duration = buffer.duration;
-    if (duration > fadeTime * 2) {
-      gainNode.gain.setValueAtTime(volume, time + duration - fadeTime);
+    if (duration > this.FADE_TIME * 3) {
+      gainNode.gain.setValueAtTime(clampedVolume, time + duration - this.FADE_TIME);
       gainNode.gain.linearRampToValueAtTime(0, time + duration);
     }
 
     source.connect(gainNode);
     gainNode.connect(this.audioContext.destination);
     source.start(time);
+
+    // Auto-cleanup: desconectar nodes após o sample terminar
+    source.onended = () => {
+      source.disconnect();
+      gainNode.disconnect();
+    };
   }
 
-  scheduleStep(
-    step: number,
-    time: number,
-    state: SequencerState
-  ): void {
-    const activePatternType = state.activePattern;
-    const activePattern = state.patterns[activePatternType];
-    const activeChannels = state.channels[activePatternType];
-    const activeVolumes = state.volumes[activePatternType];
-    const masterVolume = state.masterVolume;
+  // ─── Método principal: agenda step a partir de snapshot imutável ────
 
-    // Som de início
-    if (step === 0 && state.shouldPlayStartSound && state.fillStartSound.buffer) {
-      this.playSound(state.fillStartSound.buffer, time, masterVolume);
+  scheduleStepFromSnapshot(snapshot: AudioSnapshot, time: number): void {
+    const { step, pattern, channels, volumes, masterVolume } = snapshot;
+
+    // Som de início de fill
+    if (snapshot.shouldPlayStartSound && snapshot.fillStartBuffer) {
+      this.playSound(snapshot.fillStartBuffer, time, masterVolume);
     }
 
-    // Som de retorno
-    if (step === 0 && state.shouldPlayReturnSound && state.fillReturnSound.buffer) {
-      this.playSound(state.fillReturnSound.buffer, time, masterVolume);
+    // Som de retorno do fill
+    if (snapshot.shouldPlayReturnSound && snapshot.fillReturnBuffer) {
+      this.playSound(snapshot.fillReturnBuffer, time, masterVolume);
     }
 
     // Sons dos canais ativos
     for (let channel = 0; channel < 8; channel++) {
-      const buffer = activeChannels[channel].buffer;
-      if (activePattern[channel][step] && buffer) {
-        const volume = activeVolumes[channel][step] * masterVolume;
-        this.playSound(buffer, time, volume);
+      if (!pattern[channel] || !pattern[channel][step]) continue;
+
+      const buffer = channels[channel]?.buffer;
+      if (!buffer) continue;
+
+      const stepVolume = volumes[channel]?.[step] ?? 1.0;
+      const finalVolume = stepVolume * masterVolume;
+
+      if (finalVolume > 0) {
+        this.playSound(buffer, time, finalVolume);
       }
     }
+  }
+
+  // ─── Método legado para compatibilidade (usado no test mode, cymbal, etc) ──
+
+  scheduleStep(step: number, time: number, state: SequencerState): void {
+    const activePatternType = state.activePattern;
+    const snapshot: AudioSnapshot = {
+      step,
+      pattern: state.patterns[activePatternType],
+      channels: state.channels[activePatternType],
+      volumes: state.volumes[activePatternType],
+      masterVolume: state.masterVolume,
+      shouldPlayStartSound: step === 0 && state.shouldPlayStartSound,
+      shouldPlayReturnSound: step === 0 && state.shouldPlayReturnSound,
+      fillStartBuffer: state.fillStartSound.buffer,
+      fillReturnBuffer: state.fillReturnSound.buffer
+    };
+    this.scheduleStepFromSnapshot(snapshot, time);
   }
 
   getCurrentTime(): number {
