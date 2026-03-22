@@ -22,18 +22,22 @@ class PlansPage {
     // Check if already subscribed
     const { data: profile } = await supabase
       .from('gdrums_profiles')
-      .select('subscription_status, subscription_expires_at')
+      .select('subscription_status, subscription_expires_at, subscription_plan')
       .eq('id', user.id)
       .single();
 
     const status = profile?.subscription_status;
-    if ((status === 'active' || status === 'trial') && profile?.subscription_expires_at) {
+    const plan = profile?.subscription_plan;
+
+    // Só redirecionar se tem plano PAGO ativo (não trial)
+    if (status === 'active' && plan && plan !== 'trial' && profile?.subscription_expires_at) {
       if (new Date(profile.subscription_expires_at) > new Date()) {
         window.location.href = '/';
         return;
       }
     }
 
+    // Mostrar alerta se expirado
     if (status === 'expired' || (status === 'trial' && profile?.subscription_expires_at && new Date(profile.subscription_expires_at) <= new Date())) {
       this.showAlert('Sua assinatura expirou. Escolha um plano para continuar.');
     }

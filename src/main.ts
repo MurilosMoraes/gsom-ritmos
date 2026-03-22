@@ -2246,7 +2246,7 @@ class RhythmSequencer {
       // Carregar ritmo atual do setlist ao iniciar (só no modo user)
       if (!this.isAdminMode && !this.setlistManager.isEmpty()) {
         const current = this.setlistManager.getCurrentItem();
-        if (current && current.name !== this.currentRhythmName) {
+        if (current) {
           await this.loadRhythm(current.name, current.path);
         }
       }
