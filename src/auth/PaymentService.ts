@@ -1,6 +1,7 @@
 // PaymentService — InfinitePay checkout via API
 
 const INFINITEPAY_HANDLE = 'g-drums';
+const INFINITEPAY_CHECKOUT = 'https://checkout.infinitepay.io';
 const INFINITEPAY_API = 'https://api.infinitepay.io/invoices/public/checkout';
 
 export interface Plan {
@@ -72,44 +73,24 @@ export interface CheckoutLinkResponse {
   error?: string;
 }
 
-export async function createCheckoutLink(
+export function buildCheckoutUrl(
   plan: Plan,
   orderNsu: string,
   redirectUrl: string,
-  webhookUrl?: string,
-  customer?: { name?: string; email?: string }
-): Promise<CheckoutLinkResponse> {
-  try {
-    const body: Record<string, unknown> = {
-      handle: INFINITEPAY_HANDLE,
-      order_nsu: orderNsu,
-      items: [{
-        quantity: 1,
-        price: plan.priceCents,
-        description: plan.name,
-      }],
-      redirect_url: redirectUrl,
-    };
+): string {
+  const items = JSON.stringify([{
+    name: plan.name,
+    price: plan.priceCents,
+    quantity: 1,
+  }]);
 
-    if (webhookUrl) body.webhook_url = webhookUrl;
-    if (customer) body.customer = customer;
+  const params = new URLSearchParams({
+    items,
+    order_nsu: orderNsu,
+    redirect_url: redirectUrl,
+  });
 
-    const response = await fetch(`${INFINITEPAY_API}/links`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      return { success: false, error: err };
-    }
-
-    const data = await response.json();
-    return { success: true, url: data.url };
-  } catch (e) {
-    return { success: false, error: String(e) };
-  }
+  return `${INFINITEPAY_CHECKOUT}/${INFINITEPAY_HANDLE}?${params.toString()}`;
 }
 
 // ─── Verificar pagamento ──────────────────────────────────────────────

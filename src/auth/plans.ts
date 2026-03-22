@@ -2,7 +2,7 @@
 
 import { authService } from './AuthService';
 import { supabase } from './supabase';
-import { PLANS, generateOrderNsu, createCheckoutLink } from './PaymentService';
+import { PLANS, generateOrderNsu, buildCheckoutUrl } from './PaymentService';
 import type { Plan } from './PaymentService';
 
 class PlansPage {
@@ -95,18 +95,9 @@ class PlansPage {
         orderNsu, planId: plan.id, userId: user.id,
       }));
 
-      // Gerar link via API do InfinitePay
-      const result = await createCheckoutLink(plan, orderNsu, redirectUrl, undefined, {
-        name: user.user_metadata?.name || '',
-        email: user.email || '',
-      });
-
-      if (result.success && result.url) {
-        window.location.href = result.url;
-      } else {
-        if (loading) loading.classList.remove('active');
-        this.showAlert('Erro ao gerar link de pagamento. Tente novamente.');
-      }
+      // Montar URL de checkout direto (sem API, evita CORS)
+      const checkoutUrl = buildCheckoutUrl(plan, orderNsu, redirectUrl);
+      window.location.href = checkoutUrl;
     } catch {
       if (loading) loading.classList.remove('active');
       this.showAlert('Erro ao processar. Tente novamente.');
