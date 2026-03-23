@@ -1006,6 +1006,15 @@ class RhythmSequencer {
   }
 
   private setupModeToggle(): void {
+    // Info pedal
+    const pedalInfoBtn = document.getElementById('pedalInfoBtn');
+    if (pedalInfoBtn) {
+      pedalInfoBtn.addEventListener('click', () => {
+        if (fabDropdown) fabDropdown.style.display = 'none';
+        this.showPedalInfo();
+      });
+    }
+
     // Logout
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
@@ -1511,6 +1520,74 @@ class RhythmSequencer {
   }
 
   // Core methods
+  private showPedalInfo(): void {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.85);backdrop-filter:blur(16px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+    overlay.innerHTML = `
+      <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:2rem;max-width:440px;width:100%;max-height:85vh;overflow-y:auto;">
+        <h2 style="font-size:1.2rem;font-weight:700;color:#fff;margin:0 0 1.25rem;text-align:center;">Controles do Pedal</h2>
+
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1rem;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,212,255,0.6);margin-bottom:0.5rem;">Espaço</div>
+            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.5;">
+              <strong style="color:#fff;">Parado:</strong> Play (com intro se ativado)<br>
+              <strong style="color:#fff;">Tocando:</strong> Stop (com final se ativado)
+            </div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1rem;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(139,92,246,0.6);margin-bottom:0.5rem;">Seta Esquerda</div>
+            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.5;">
+              <strong style="color:#fff;">Parado:</strong> Play com intro<br>
+              <strong style="color:#fff;">1 toque:</strong> Virada + próximo ritmo<br>
+              <strong style="color:#fff;">2 toques:</strong> Virada + ritmo anterior
+            </div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1rem;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(249,115,22,0.6);margin-bottom:0.5rem;">Seta Direita</div>
+            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.5;">
+              <strong style="color:#fff;">Parado:</strong> Toca prato<br>
+              <strong style="color:#fff;">1 toque:</strong> Virada (fill)<br>
+              <strong style="color:#fff;">2 toques:</strong> Finalização + stop
+            </div>
+          </div>
+
+          <div style="background:rgba(0,230,140,0.05);border:1px solid rgba(0,230,140,0.15);border-radius:12px;padding:1rem;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,230,140,0.6);margin-bottom:0.5rem;">Toggles</div>
+            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.5;">
+              <strong style="color:#fff;">INTRO:</strong> Liga/desliga contagem antes de tocar<br>
+              <strong style="color:#fff;">FINAL:</strong> Liga/desliga finalização antes de parar
+            </div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1rem;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);margin-bottom:0.5rem;">Grid</div>
+            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.5;">
+              <strong style="color:#fff;">Ritmo (parado):</strong> Play<br>
+              <strong style="color:#fff;">Ritmo (tocando):</strong> Toque no ativo = stop, outro = troca<br>
+              <strong style="color:#fff;">Virada:</strong> Executa fill<br>
+              <strong style="color:#fff;">Final:</strong> Finalização + stop<br>
+              <strong style="color:#fff;">Intro:</strong> Play com contagem<br>
+              <strong style="color:#fff;">Prato:</strong> Toca prato
+            </div>
+          </div>
+        </div>
+
+        <button id="closePedalInfo" style="width:100%;margin-top:1.25rem;padding:0.7rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">Entendi</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.querySelector('#closePedalInfo')!.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+  }
+
   private updateProjectBar(name: string): void {
     const nameEl = document.getElementById('projectName') as HTMLInputElement;
     const dotEl = document.getElementById('projectDot');

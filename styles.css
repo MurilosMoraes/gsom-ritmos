@@ -328,6 +328,8 @@ input:checked + .slider:before {
   -webkit-tap-highlight-color: transparent;
 }
 .topbar-dropdown-btn:hover { color: rgba(255, 80, 80, 1); }
+.topbar-dropdown-btn-info { color: rgba(0, 212, 255, 0.7); }
+.topbar-dropdown-btn-info:hover { color: rgba(0, 212, 255, 1); }
 
 .fav-section {
   width: 100%;
