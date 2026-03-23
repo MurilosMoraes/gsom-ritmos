@@ -1526,52 +1526,34 @@ class RhythmSequencer {
 
     overlay.innerHTML = `
       <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:2rem;max-width:440px;width:100%;max-height:85vh;overflow-y:auto;">
-        <h2 style="font-size:1.2rem;font-weight:700;color:#fff;margin:0 0 1.25rem;text-align:center;">Controles do Pedal</h2>
+        <h2 style="font-size:1.2rem;font-weight:700;color:#fff;margin:0 0 0.5rem;text-align:center;">Controles do Pedal</h2>
+        <p style="font-size:0.75rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.25rem;">Configure as setas do teclado no seu pedal</p>
 
         <div style="display:flex;flex-direction:column;gap:1rem;">
-          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1rem;">
-            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,212,255,0.6);margin-bottom:0.5rem;">Espaço</div>
-            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.5;">
-              <strong style="color:#fff;">Parado:</strong> Play (com intro se ativado)<br>
-              <strong style="color:#fff;">Tocando:</strong> Stop (com final se ativado)
+          <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:1rem;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(139,92,246,0.7);margin-bottom:0.5rem;">Pedal Esquerdo</div>
+            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.7;">
+              <strong style="color:#fff;">Parado:</strong> Inicia a música<br>
+              <strong style="color:#fff;">1 toque:</strong> Faz virada e vai pro próximo ritmo<br>
+              <strong style="color:#fff;">2 toques rápidos:</strong> Faz virada e volta pro ritmo anterior
             </div>
           </div>
 
-          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1rem;">
-            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(139,92,246,0.6);margin-bottom:0.5rem;">Seta Esquerda</div>
-            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.5;">
-              <strong style="color:#fff;">Parado:</strong> Play com intro<br>
-              <strong style="color:#fff;">1 toque:</strong> Virada + próximo ritmo<br>
-              <strong style="color:#fff;">2 toques:</strong> Virada + ritmo anterior
-            </div>
-          </div>
-
-          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1rem;">
-            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(249,115,22,0.6);margin-bottom:0.5rem;">Seta Direita</div>
-            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.5;">
+          <div style="background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.2);border-radius:12px;padding:1rem;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(249,115,22,0.7);margin-bottom:0.5rem;">Pedal Direito</div>
+            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.7;">
               <strong style="color:#fff;">Parado:</strong> Toca prato<br>
-              <strong style="color:#fff;">1 toque:</strong> Virada (fill)<br>
-              <strong style="color:#fff;">2 toques:</strong> Finalização + stop
+              <strong style="color:#fff;">1 toque:</strong> Faz uma virada<br>
+              <strong style="color:#fff;">2 toques rápidos:</strong> Finaliza e para a música
             </div>
           </div>
 
           <div style="background:rgba(0,230,140,0.05);border:1px solid rgba(0,230,140,0.15);border-radius:12px;padding:1rem;">
-            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,230,140,0.6);margin-bottom:0.5rem;">Toggles</div>
-            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.5;">
-              <strong style="color:#fff;">INTRO:</strong> Liga/desliga contagem antes de tocar<br>
-              <strong style="color:#fff;">FINAL:</strong> Liga/desliga finalização antes de parar
-            </div>
-          </div>
-
-          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1rem;">
-            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);margin-bottom:0.5rem;">Grid</div>
-            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.5;">
-              <strong style="color:#fff;">Ritmo (parado):</strong> Play<br>
-              <strong style="color:#fff;">Ritmo (tocando):</strong> Toque no ativo = stop, outro = troca<br>
-              <strong style="color:#fff;">Virada:</strong> Executa fill<br>
-              <strong style="color:#fff;">Final:</strong> Finalização + stop<br>
-              <strong style="color:#fff;">Intro:</strong> Play com contagem<br>
-              <strong style="color:#fff;">Prato:</strong> Toca prato
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,230,140,0.6);margin-bottom:0.5rem;">Dicas</div>
+            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.7;">
+              <strong style="color:#fff;">INTRO ligado:</strong> Toca contagem antes de iniciar<br>
+              <strong style="color:#fff;">FINAL ligado:</strong> Toca finalização antes de parar<br>
+              <strong style="color:#fff;">Desligados:</strong> Início e parada instantâneos
             </div>
           </div>
         </div>
