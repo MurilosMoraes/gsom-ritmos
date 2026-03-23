@@ -10,7 +10,7 @@ export function createEmptyPattern(numSteps: number = 16): boolean[][] {
 
 export function createEmptyVolumes(numSteps: number = 16): number[][] {
   return Array(8).fill(null).map(() =>
-    Array(numSteps).fill(1.0)
+    Array(numSteps).fill(0.8)
   );
 }
 
