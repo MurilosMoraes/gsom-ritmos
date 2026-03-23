@@ -1644,6 +1644,8 @@ input:checked + .slider:before {
 .admin-sequencer-wrap {
   padding: 0.5rem;
   overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
 }
 
 /* --- Sequencer Modern --- */
