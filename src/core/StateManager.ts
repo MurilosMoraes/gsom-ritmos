@@ -183,7 +183,14 @@ export class StateManager {
 
   // Pattern operations
   toggleStep(pattern: PatternType, channel: number, step: number): void {
-    this.state.patterns[pattern][channel][step] = !this.state.patterns[pattern][channel][step];
+    const isNowActive = !this.state.patterns[pattern][channel][step];
+    this.state.patterns[pattern][channel][step] = isNowActive;
+
+    // Ao ativar, garantir volume audível (0.8 = alto, não max)
+    if (isNowActive && this.state.volumes[pattern][channel][step] < 0.1) {
+      this.state.volumes[pattern][channel][step] = 0.8;
+    }
+
     this.notify('patterns');
   }
 

@@ -1791,7 +1791,20 @@ class RhythmSequencer {
 
   private toggleStep(channel: number, step: number): void {
     const pattern = this.stateManager.getEditingPattern();
+    const state = this.stateManager.getState();
     this.stateManager.toggleStep(pattern, channel, step);
+
+    // Se o step acabou de virar ativo e o volume estiver "quebrado" (0/NaN/undefined),
+    // aplica um default pra não ficar começando zerado no popup (Ghost/Médio/Alto/Max).
+    const isActive = state.patterns[pattern][channel][step];
+    if (isActive) {
+      const vol = state.volumes?.[pattern]?.[channel]?.[step];
+      const volumeLooksInvalid = !Number.isFinite(vol) || vol <= 0;
+      if (volumeLooksInvalid) {
+        this.stateManager.setStepVolume(pattern, channel, step, 1.0);
+      }
+    }
+
     this.uiManager.updateStepVisual(channel, step);
 
     // Auto-salvar a variação atual
