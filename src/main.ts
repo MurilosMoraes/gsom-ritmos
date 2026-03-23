@@ -2321,8 +2321,9 @@ class RhythmSequencer {
         this.stop();
       }
 
-      // Adicionar version bust pra evitar cache
-      const cacheBustPath = path.includes('?') ? path : `${path}?v=${this.rhythmVersion || Date.now()}`;
+      // Adicionar version bust pra evitar cache (limpar query param antigo)
+      const cleanPath = path.split('?')[0];
+      const cacheBustPath = `${cleanPath}?v=${this.rhythmVersion || Date.now()}`;
       await this.fileManager.loadProjectFromPath(cacheBustPath);
 
       // Carregar a primeira variação do padrão sendo editado
