@@ -2366,6 +2366,12 @@ class RhythmSequencer {
       duplicateBtn.addEventListener('click', () => this.duplicateFromRhythm());
     }
 
+    // Duplicar slot atual para outro
+    const dupSlotBtn = document.getElementById('duplicateSlotBtn');
+    if (dupSlotBtn) {
+      dupSlotBtn.addEventListener('click', () => this.duplicateCurrentSlot());
+    }
+
     // Clonar ritmo inteiro
     const cloneBtn = document.getElementById('cloneRhythmBtn');
     if (cloneBtn) {
@@ -2442,10 +2448,25 @@ class RhythmSequencer {
       }
 
       // Navegar pro destino e ativar
+      this.stateManager.setEditingPattern(targetPatternType);
       this.stateManager.setCurrentVariation(targetPatternType, targetSlot);
       this.stateManager.loadVariation(targetPatternType, targetSlot);
       this.stateManager.setPatternSteps(targetPatternType, targetSteps);
-      this.switchEditingPattern(targetPatternType);
+
+      // Atualizar tabs
+      document.querySelectorAll('.pattern-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelector(`[data-pattern="${targetPatternType}"]`)?.classList.add('active');
+
+      // Regenerar grid completo
+      this.generateChannelsHTML();
+      this.loadAvailableMidi().then(() => {
+        this.setupMIDISelectors();
+        this.updateMIDISelectorsFromState();
+      });
+      this.updateVariationSlotsUI();
+      this.updateStepsSelector();
+      this.uiManager.refreshGridDisplay();
+      this.uiManager.updateVariationButtons();
 
       this.uiManager.showAlert(`Copiado para ${targetPatternType.toUpperCase()} Var ${targetSlot + 1}!`);
     } catch (error) {
@@ -2481,16 +2502,80 @@ class RhythmSequencer {
       await this.fileManager.loadProjectFromPath(select.value);
       const rhythmName = select.options[select.selectedIndex].textContent || 'Projeto';
 
-      // Navegar pro padrão principal
+      // Carregar a primeira variação e atualizar tudo
       this.stateManager.setCurrentVariation('main', 0);
       this.stateManager.loadVariation('main', 0);
-      this.switchEditingPattern('main');
+      this.stateManager.setEditingPattern('main');
+
+      // Regenerar grid com novos dados
+      this.generateChannelsHTML();
+      await this.loadAvailableMidi();
+      this.setupMIDISelectors();
+      this.updateMIDISelectorsFromState();
+      this.updateSpecialSoundsSelectors();
+      this.updateVariationSlotsUI();
+      this.updateStepsSelector();
+      this.uiManager.refreshGridDisplay();
+      this.uiManager.updateVariationButtons();
 
       this.updateProjectBar(rhythmName + ' (cópia)');
-      this.uiManager.showAlert(`"${rhythmName}" clonado! Edite e salve como novo projeto.`);
+      this.uiManager.showAlert(`"${rhythmName}" clonado! Edite e salve.`);
     } catch {
       this.uiManager.showAlert('Erro ao clonar ritmo.');
     }
+  }
+
+  private async duplicateCurrentSlot(): Promise<void> {
+    const patternType = this.stateManager.getEditingPattern();
+    const currentSlot = this.stateManager.getCurrentVariation(patternType);
+    const state = this.stateManager.getState();
+    const source = state.variations[patternType][currentSlot];
+
+    if (!source || !source.pattern.some(row => row.some(s => s))) {
+      this.uiManager.showAlert('Slot atual está vazio.');
+      return;
+    }
+
+    const maxSlots = (patternType === 'end' || patternType === 'intro') ? 1 : 3;
+    if (maxSlots <= 1) {
+      this.uiManager.showAlert('Este padrão só tem uma variação.');
+      return;
+    }
+
+    // Copiar para o próximo slot (ex: virada 1 -> virada 2).
+    const targetSlot = (currentSlot + 1) % maxSlots;
+    const destination = state.variations[patternType][targetSlot];
+    const destinationHasData = !!destination?.pattern?.some(row => row.some(s => s));
+    if (destinationHasData) {
+      this.uiManager.showAlert('O slot de destino já tem conteúdo. Ele será sobrescrito.');
+    }
+
+    // Deep copy
+    state.variations[patternType][targetSlot] = {
+      pattern: source.pattern.map(row => [...row]),
+      volumes: source.volumes.map(row => [...row]),
+      channels: source.channels.map(ch => ({ ...ch })),
+      steps: source.steps,
+      speed: source.speed,
+    };
+
+    // Salvar e navegar pro slot copiado
+    this.stateManager.setCurrentVariation(patternType, targetSlot);
+    this.stateManager.loadVariation(patternType, targetSlot);
+
+    // Regenerar grid e recarregar selects MIDI (evita inconsistência após clone/duplicação)
+    this.generateChannelsHTML();
+    await this.loadAvailableMidi();
+    this.setupMIDISelectors();
+    this.updateMIDISelectorsFromState();
+    this.updateSpecialSoundsSelectors();
+
+    this.updateVariationSlotsUI();
+    this.updateStepsSelector();
+    this.uiManager.refreshGridDisplay();
+    this.uiManager.updateVariationButtons();
+
+    this.uiManager.showAlert(`Copiado para ${patternType.toUpperCase()} Var ${targetSlot + 1}. Edite à vontade!`);
   }
 
   private populateCloneRhythmSelect(): void {
