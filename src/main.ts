@@ -2183,14 +2183,16 @@ class RhythmSequencer {
 
   private async loadAvailableRhythms(): Promise<void> {
     try {
-      // Tentar carregar lista de ritmos do manifest
+      // Carregar manifest com cache bust
       let rhythmFiles: string[] = [];
+      let manifestVersion = 0;
 
       try {
-        const manifestResponse = await fetch('/rhythm/manifest.json');
+        const manifestResponse = await fetch(`/rhythm/manifest.json?t=${Date.now()}`);
         if (manifestResponse.ok) {
           const manifest = await manifestResponse.json();
           rhythmFiles = manifest.rhythms || [];
+          manifestVersion = manifest.version || 0;
         }
       } catch (e) {
         // Manifest não existe
@@ -2224,12 +2226,13 @@ class RhythmSequencer {
         select.innerHTML = '<option value="">Selecione um ritmo...</option>';
       }
 
-      // Processar todos os ritmos
+      // Processar todos os ritmos (com version bust pra evitar cache)
+      const vParam = manifestVersion ? `?v=${manifestVersion}` : `?t=${Date.now()}`;
       for (const file of rhythmFiles) {
         try {
-          const testResponse = await fetch(`/rhythm/${file}`, { method: 'HEAD' });
+          const testResponse = await fetch(`/rhythm/${file}${vParam}`, { method: 'HEAD' });
           if (testResponse.ok) {
-            const rhythmPath = `/rhythm/${file}`;
+            const rhythmPath = `/rhythm/${file}${vParam}`;
             const rhythmName = file.replace('.json', '').replace(/-/g, ' ');
 
             // Adicionar à lista de ritmos disponíveis
