@@ -25,6 +25,7 @@ class RhythmSequencer {
   private setlistManager: SetlistManager;
   private setlistEditor: SetlistEditorUI;
   private isAdminMode = false;
+  private rhythmVersion: number = 0;
 
   constructor() {
     // Inicializar contexto de áudio
@@ -2226,13 +2227,15 @@ class RhythmSequencer {
         select.innerHTML = '<option value="">Selecione um ritmo...</option>';
       }
 
-      // Processar todos os ritmos (com version bust pra evitar cache)
-      const vParam = manifestVersion ? `?v=${manifestVersion}` : `?t=${Date.now()}`;
+      // Guardar versão pra cache bust
+      this.rhythmVersion = manifestVersion || Date.now();
+
+      // Processar todos os ritmos
       for (const file of rhythmFiles) {
         try {
-          const testResponse = await fetch(`/rhythm/${file}${vParam}`, { method: 'HEAD' });
+          const testResponse = await fetch(`/rhythm/${file}?v=${this.rhythmVersion}`, { method: 'HEAD' });
           if (testResponse.ok) {
-            const rhythmPath = `/rhythm/${file}${vParam}`;
+            const rhythmPath = `/rhythm/${file}`; // Path limpo (sem version)
             const rhythmName = file.replace('.json', '').replace(/-/g, ' ');
 
             // Adicionar à lista de ritmos disponíveis
@@ -2314,12 +2317,13 @@ class RhythmSequencer {
 
   private async loadRhythm(name: string, path: string): Promise<void> {
     try {
-      // Parar reprodução ao trocar de ritmo
       if (this.stateManager.isPlaying()) {
         this.stop();
       }
 
-      await this.fileManager.loadProjectFromPath(path);
+      // Adicionar version bust pra evitar cache
+      const cacheBustPath = path.includes('?') ? path : `${path}?v=${this.rhythmVersion || Date.now()}`;
+      await this.fileManager.loadProjectFromPath(cacheBustPath);
 
       // Carregar a primeira variação do padrão sendo editado
       const patternType = this.stateManager.getEditingPattern();
