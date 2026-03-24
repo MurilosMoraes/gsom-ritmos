@@ -1,6 +1,6 @@
 // Gerenciamento de arquivos (salvar/carregar projetos)
 
-import type { SavedProject, SavedPattern, AudioFileData, PatternType } from '../types';
+import { MAX_CHANNELS, type SavedProject, type SavedPattern, type AudioFileData, type PatternType } from '../types';
 import type { StateManager } from '../core/StateManager';
 import type { AudioManager } from '../core/AudioManager';
 import { arrayBufferToBase64, expandPattern, expandVolumes, normalizeMidiPath } from '../utils/helpers';
@@ -112,7 +112,7 @@ export class FileManager {
           };
 
           // Carregar áudios da variação
-          for (let i = 0; i < variation.audioFiles.length && i < 8; i++) {
+          for (let i = 0; i < variation.audioFiles.length && i < MAX_CHANNELS; i++) {
             const audioFile = variation.audioFiles[i];
             if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
               continue;
@@ -151,7 +151,7 @@ export class FileManager {
           };
 
           // Carregar áudios da variação
-          for (let i = 0; i < variation.audioFiles.length && i < 8; i++) {
+          for (let i = 0; i < variation.audioFiles.length && i < MAX_CHANNELS; i++) {
             const audioFile = variation.audioFiles[i];
             if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
               continue;
@@ -190,7 +190,7 @@ export class FileManager {
           };
 
           // Carregar áudios da variação
-          for (let i = 0; i < variation.audioFiles.length && i < 8; i++) {
+          for (let i = 0; i < variation.audioFiles.length && i < MAX_CHANNELS; i++) {
             const audioFile = variation.audioFiles[i];
             if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
               continue;
@@ -230,7 +230,7 @@ export class FileManager {
             speed: variation.speed || 1
           };
 
-          for (let i = 0; i < variation.audioFiles.length && i < 8; i++) {
+          for (let i = 0; i < variation.audioFiles.length && i < MAX_CHANNELS; i++) {
             const audioFile = variation.audioFiles[i];
             if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
               continue;
@@ -311,7 +311,7 @@ export class FileManager {
         for (const patternType of patterns) {
           const audioFiles = data.audioFiles[patternType];
           if (audioFiles && audioFiles.length > 0) {
-            for (let i = 0; i < audioFiles.length && i < 8; i++) {
+            for (let i = 0; i < audioFiles.length && i < MAX_CHANNELS; i++) {
               const audioFile = audioFiles[i];
 
               if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
@@ -443,7 +443,7 @@ export class FileManager {
 
     // Carregar áudio
     if (data.audioFiles && data.audioFiles.length > 0) {
-      for (let i = 0; i < data.audioFiles.length && i < 8; i++) {
+      for (let i = 0; i < data.audioFiles.length && i < MAX_CHANNELS; i++) {
         const audioFile = data.audioFiles[i];
 
         if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {

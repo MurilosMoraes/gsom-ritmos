@@ -1,21 +1,21 @@
 // Funções auxiliares
 
-import type { AudioChannel } from '../types';
+import { MAX_CHANNELS, type AudioChannel } from '../types';
 
 export function createEmptyPattern(numSteps: number = 16): boolean[][] {
-  return Array(8).fill(null).map(() =>
+  return Array(MAX_CHANNELS).fill(null).map(() =>
     Array(numSteps).fill(false)
   );
 }
 
 export function createEmptyVolumes(numSteps: number = 16): number[][] {
-  return Array(8).fill(null).map(() =>
+  return Array(MAX_CHANNELS).fill(null).map(() =>
     Array(numSteps).fill(0.8)
   );
 }
 
 export function createEmptyChannels(): AudioChannel[] {
-  return Array(8).fill(null).map(() => ({
+  return Array(MAX_CHANNELS).fill(null).map(() => ({
     buffer: null,
     fileName: '',
     midiPath: ''
@@ -50,12 +50,12 @@ export function expandPattern(pattern: boolean[][], targetSteps: number = 16): b
   const cols = pattern[0]?.length || 0;
 
   // Se já tem o tamanho correto, retornar o padrão original
-  if (rows === 8 && cols === targetSteps) {
+  if (rows === MAX_CHANNELS && cols === targetSteps) {
     return pattern;
   }
 
   const expanded: boolean[][] = [];
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < MAX_CHANNELS; i++) {
     const row: boolean[] = [];
     for (let j = 0; j < targetSteps; j++) {
       if (i < rows && j < cols) {
@@ -75,12 +75,12 @@ export function expandVolumes(volumes: number[][], targetSteps: number = 16): nu
   const cols = volumes[0]?.length || 0;
 
   // Se já tem o tamanho correto, retornar os volumes originais
-  if (rows === 8 && cols === targetSteps) {
+  if (rows === MAX_CHANNELS && cols === targetSteps) {
     return volumes;
   }
 
   const expanded: number[][] = [];
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < MAX_CHANNELS; i++) {
     const row: number[] = [];
     for (let j = 0; j < targetSteps; j++) {
       if (i < rows && j < cols) {

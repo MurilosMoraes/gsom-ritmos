@@ -1,3 +1,6 @@
+// Constante global de canais
+export const MAX_CHANNELS = 12;
+
 // Tipos principais do sequenciador
 
 export interface AudioChannel {

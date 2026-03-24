@@ -1648,6 +1648,7 @@ input:checked + .slider:before {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-gutter: stable;
+  min-height: 0;
 }
 
 /* --- Sequencer Modern --- */
@@ -1709,6 +1710,8 @@ input:checked + .slider:before {
 
 .step {
   aspect-ratio: 1;
+  max-width: 40px;
+  max-height: 40px;
   border: 2px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
   border-radius: 6px;

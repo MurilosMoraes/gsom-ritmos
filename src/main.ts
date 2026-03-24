@@ -9,7 +9,7 @@ import { UIManager } from './ui/UIManager';
 import { ModalManager } from './ui/ModalManager';
 import { SetlistManager } from './core/SetlistManager';
 import { SetlistEditorUI } from './ui/SetlistEditorUI';
-import type { PatternType, SequencerState } from './types';
+import { MAX_CHANNELS, type PatternType, type SequencerState } from './types';
 import { expandPattern, expandVolumes, normalizeMidiPath } from './utils/helpers';
 import { KeepAwake } from '@capacitor-community/keep-awake';
 
@@ -26,6 +26,7 @@ class RhythmSequencer {
   private setlistEditor: SetlistEditorUI;
   private isAdminMode = false;
   private rhythmVersion: number = 0;
+  private pedalMap: { left: string; right: string } = { left: 'ArrowLeft', right: 'ArrowRight' };
 
   constructor() {
     // Inicializar contexto de áudio
@@ -142,6 +143,12 @@ class RhythmSequencer {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         await this.setlistManager.initWithUser(session.user.id, supabase);
+      }
+
+      // Carregar mapeamento de pedal salvo
+      const savedPedalMap = localStorage.getItem('gdrums_pedal_map');
+      if (savedPedalMap) {
+        try { this.pedalMap = JSON.parse(savedPedalMap); } catch { /* usar padrão */ }
       }
 
       this.generateChannelsHTML();
@@ -297,7 +304,7 @@ class RhythmSequencer {
     const patternType = this.stateManager.getEditingPattern();
     const numSteps = this.stateManager.getPatternSteps(patternType);
 
-    for (let channel = 0; channel < 8; channel++) {
+    for (let channel = 0; channel < MAX_CHANNELS; channel++) {
       const channelDiv = document.createElement('div');
       channelDiv.className = 'channel';
 
@@ -655,7 +662,7 @@ class RhythmSequencer {
       //   Parado → Play (com intro se ON)
       //   Tocando single → Fill + próximo ritmo
       //   Tocando double → Fill + ritmo anterior
-      if ((e.code === 'ArrowLeft' || e.key === 'ArrowLeft') && !e.repeat) {
+      if (e.code === this.pedalMap.left && !e.repeat) {
         e.preventDefault();
         if (!this.stateManager.isPlaying()) {
           this.patternEngine.activateRhythm(0);
@@ -695,7 +702,7 @@ class RhythmSequencer {
       //   Parado → Prato
       //   Tocando single → Fill
       //   Tocando double → Final + Stop
-      if ((e.code === 'ArrowRight' || e.key === 'ArrowRight') && !e.repeat) {
+      if (e.code === this.pedalMap.right && !e.repeat) {
         e.preventDefault();
         if (!this.stateManager.isPlaying()) {
           this.playCymbal();
@@ -922,7 +929,7 @@ class RhythmSequencer {
           const numSteps = this.stateManager.getPatternSteps(pattern);
 
           // Limpar padrão com número correto de steps
-          for (let channel = 0; channel < 8; channel++) {
+          for (let channel = 0; channel < MAX_CHANNELS; channel++) {
             for (let step = 0; step < numSteps; step++) {
               state.patterns[pattern][channel][step] = false;
               state.volumes[pattern][channel][step] = 1.0;
@@ -1012,6 +1019,15 @@ class RhythmSequencer {
       pedalInfoBtn.addEventListener('click', () => {
         if (fabDropdown) fabDropdown.style.display = 'none';
         this.showPedalInfo();
+      });
+    }
+
+    // Mapear pedal
+    const pedalMapBtn = document.getElementById('pedalMapBtn');
+    if (pedalMapBtn) {
+      pedalMapBtn.addEventListener('click', () => {
+        if (fabDropdown) fabDropdown.style.display = 'none';
+        this.showPedalMapper();
       });
     }
 
@@ -1282,7 +1298,7 @@ class RhythmSequencer {
         const newPattern: boolean[][] = [];
         const newVolumes: number[][] = [];
 
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < MAX_CHANNELS; i++) {
           newPattern[i] = [];
           newVolumes[i] = [];
           for (let j = 0; j < steps; j++) {
@@ -1568,6 +1584,225 @@ class RhythmSequencer {
     overlay.querySelector('#closePedalInfo')!.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+  }
+
+  private showPedalMapper(): void {
+    // Carregar mapeamento salvo
+    const saved = localStorage.getItem('gdrums_pedal_map');
+    const map = saved ? JSON.parse(saved) : {
+      left: 'ArrowLeft',
+      right: 'ArrowRight'
+    };
+
+    const keyLabels: Record<string, string> = {
+      'ArrowLeft': '← Seta Esquerda',
+      'ArrowRight': '→ Seta Direita',
+      'ArrowUp': '↑ Seta Cima',
+      'ArrowDown': '↓ Seta Baixo',
+      'Space': 'Espaço',
+      'Enter': 'Enter',
+      'KeyA': 'A', 'KeyB': 'B', 'KeyC': 'C', 'KeyD': 'D',
+      'KeyE': 'E', 'KeyF': 'F', 'KeyG': 'G', 'KeyH': 'H',
+      'KeyI': 'I', 'KeyJ': 'J', 'KeyK': 'K', 'KeyL': 'L',
+      'KeyM': 'M', 'KeyN': 'N', 'KeyO': 'O', 'KeyP': 'P',
+      'KeyQ': 'Q', 'KeyR': 'R', 'KeyS': 'S', 'KeyT': 'T',
+      'KeyU': 'U', 'KeyV': 'V', 'KeyW': 'W', 'KeyX': 'X',
+      'KeyY': 'Y', 'KeyZ': 'Z',
+      'Digit1': '1', 'Digit2': '2', 'Digit3': '3', 'Digit4': '4',
+      'Digit5': '5', 'Digit6': '6', 'Digit7': '7', 'Digit8': '8',
+      'Digit9': '9', 'Digit0': '0',
+    };
+
+    const getLabel = (code: string) => keyLabels[code] || code;
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(20px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+    overlay.innerHTML = `
+      <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:2rem;max-width:500px;width:100%;">
+        <h2 style="font-size:1.2rem;font-weight:700;color:#fff;margin:0 0 0.3rem;text-align:center;">Mapear Pedal</h2>
+        <p style="font-size:0.7rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.5rem;">Clique no pedal e pressione a tecla do seu controlador</p>
+
+        <!-- Visual dos pedais -->
+        <div style="display:flex;gap:2rem;justify-content:center;align-items:flex-end;margin-bottom:1.5rem;">
+
+          <!-- Pedal Esquerdo -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0.75rem;">
+            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(139,92,246,0.6);">Esquerdo</div>
+            <button id="pedalLeftBtn" style="
+              width:90px;height:140px;border-radius:16px;border:2px solid rgba(139,92,246,0.3);
+              background:linear-gradient(180deg,rgba(139,92,246,0.12) 0%,rgba(139,92,246,0.04) 100%);
+              cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;
+              transition:all 0.2s;position:relative;overflow:hidden;
+            ">
+              <div style="font-size:2rem;filter:drop-shadow(0 0 8px rgba(139,92,246,0.4));">🦶</div>
+              <div id="pedalLeftKey" style="font-size:0.75rem;font-weight:700;color:rgba(139,92,246,0.9);background:rgba(139,92,246,0.15);padding:0.25rem 0.6rem;border-radius:8px;border:1px solid rgba(139,92,246,0.25);">${getLabel(map.left)}</div>
+            </button>
+            <div style="font-size:0.55rem;color:rgba(255,255,255,0.25);text-align:center;line-height:1.5;max-width:120px;">
+              <span style="color:rgba(139,92,246,0.5);">1×</span> Próximo ritmo<br>
+              <span style="color:rgba(139,92,246,0.5);">2×</span> Ritmo anterior
+            </div>
+          </div>
+
+          <!-- Separador visual - base do pedal -->
+          <div style="width:2px;height:100px;background:linear-gradient(180deg,transparent,rgba(255,255,255,0.06),transparent);border-radius:1px;"></div>
+
+          <!-- Pedal Direito -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0.75rem;">
+            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(249,115,22,0.6);">Direito</div>
+            <button id="pedalRightBtn" style="
+              width:90px;height:140px;border-radius:16px;border:2px solid rgba(249,115,22,0.3);
+              background:linear-gradient(180deg,rgba(249,115,22,0.12) 0%,rgba(249,115,22,0.04) 100%);
+              cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;
+              transition:all 0.2s;position:relative;overflow:hidden;
+            ">
+              <div style="font-size:2rem;filter:drop-shadow(0 0 8px rgba(249,115,22,0.4));">🦶</div>
+              <div id="pedalRightKey" style="font-size:0.75rem;font-weight:700;color:rgba(249,115,22,0.9);background:rgba(249,115,22,0.15);padding:0.25rem 0.6rem;border-radius:8px;border:1px solid rgba(249,115,22,0.25);">${getLabel(map.right)}</div>
+            </button>
+            <div style="font-size:0.55rem;color:rgba(255,255,255,0.25);text-align:center;line-height:1.5;max-width:120px;">
+              <span style="color:rgba(249,115,22,0.5);">1×</span> Virada<br>
+              <span style="color:rgba(249,115,22,0.5);">2×</span> Finalizar
+            </div>
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div id="pedalMapStatus" style="text-align:center;font-size:0.7rem;color:rgba(255,255,255,0.2);min-height:1.5rem;margin-bottom:1rem;transition:all 0.3s;"></div>
+
+        <!-- Teste ao vivo -->
+        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:1rem;margin-bottom:1rem;">
+          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.2);margin-bottom:0.5rem;text-align:center;">Teste ao vivo</div>
+          <div id="pedalTestArea" style="display:flex;justify-content:center;gap:2rem;">
+            <div id="testLeft" style="width:50px;height:50px;border-radius:12px;border:2px solid rgba(139,92,246,0.15);background:rgba(139,92,246,0.03);display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:rgba(139,92,246,0.3);font-weight:700;transition:all 0.15s;">ESQ</div>
+            <div id="testRight" style="width:50px;height:50px;border-radius:12px;border:2px solid rgba(249,115,22,0.15);background:rgba(249,115,22,0.03);display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:rgba(249,115,22,0.3);font-weight:700;transition:all 0.15s;">DIR</div>
+          </div>
+        </div>
+
+        <!-- Botões -->
+        <div style="display:flex;gap:0.5rem;">
+          <button id="pedalMapReset" style="flex:1;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Resetar</button>
+          <button id="pedalMapSave" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(0,230,140,0.12);border:1px solid rgba(0,230,140,0.25);color:rgba(0,230,140,0.9);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Salvar</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    let listening: 'left' | 'right' | null = null;
+    const leftBtn = overlay.querySelector('#pedalLeftBtn') as HTMLElement;
+    const rightBtn = overlay.querySelector('#pedalRightBtn') as HTMLElement;
+    const leftKeyEl = overlay.querySelector('#pedalLeftKey') as HTMLElement;
+    const rightKeyEl = overlay.querySelector('#pedalRightKey') as HTMLElement;
+    const statusEl = overlay.querySelector('#pedalMapStatus') as HTMLElement;
+    const testLeft = overlay.querySelector('#testLeft') as HTMLElement;
+    const testRight = overlay.querySelector('#testRight') as HTMLElement;
+
+    const setListening = (side: 'left' | 'right') => {
+      listening = side;
+      const btn = side === 'left' ? leftBtn : rightBtn;
+      const color = side === 'left' ? '139,92,246' : '249,115,22';
+      btn.style.borderColor = `rgba(${color},0.8)`;
+      btn.style.boxShadow = `0 0 20px rgba(${color},0.3), inset 0 0 20px rgba(${color},0.1)`;
+      btn.style.transform = 'scale(1.05)';
+      statusEl.textContent = `Pressione a tecla para o pedal ${side === 'left' ? 'esquerdo' : 'direito'}...`;
+      statusEl.style.color = `rgba(${color},0.7)`;
+    };
+
+    const resetBtn = (side: 'left' | 'right') => {
+      const btn = side === 'left' ? leftBtn : rightBtn;
+      btn.style.borderColor = '';
+      btn.style.boxShadow = '';
+      btn.style.transform = '';
+    };
+
+    leftBtn.addEventListener('click', (e) => { e.stopPropagation(); setListening('left'); });
+    rightBtn.addEventListener('click', (e) => { e.stopPropagation(); setListening('right'); });
+
+    // Listener de teste ao vivo + mapeamento
+    const keyHandler = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (listening) {
+        // Modo mapeamento
+        if (listening === 'left') {
+          map.left = e.code;
+          leftKeyEl.textContent = getLabel(e.code);
+        } else {
+          map.right = e.code;
+          rightKeyEl.textContent = getLabel(e.code);
+        }
+
+        const side = listening;
+        const color = side === 'left' ? '0,230,140' : '0,230,140';
+        statusEl.textContent = `${getLabel(e.code)} mapeado!`;
+        statusEl.style.color = `rgba(${color},0.7)`;
+
+        resetBtn(listening);
+        listening = null;
+
+        setTimeout(() => {
+          statusEl.textContent = '';
+        }, 1500);
+      }
+
+      // Teste ao vivo (sempre)
+      if (e.code === map.left) {
+        testLeft.style.background = 'rgba(139,92,246,0.3)';
+        testLeft.style.borderColor = 'rgba(139,92,246,0.7)';
+        testLeft.style.color = 'rgba(139,92,246,0.9)';
+        testLeft.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+          testLeft.style.background = '';
+          testLeft.style.borderColor = '';
+          testLeft.style.color = '';
+          testLeft.style.transform = '';
+        }, 200);
+      }
+      if (e.code === map.right) {
+        testRight.style.background = 'rgba(249,115,22,0.3)';
+        testRight.style.borderColor = 'rgba(249,115,22,0.7)';
+        testRight.style.color = 'rgba(249,115,22,0.9)';
+        testRight.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+          testRight.style.background = '';
+          testRight.style.borderColor = '';
+          testRight.style.color = '';
+          testRight.style.transform = '';
+        }, 200);
+      }
+    };
+
+    document.addEventListener('keydown', keyHandler);
+
+    // Reset
+    overlay.querySelector('#pedalMapReset')!.addEventListener('click', () => {
+      map.left = 'ArrowLeft';
+      map.right = 'ArrowRight';
+      leftKeyEl.textContent = getLabel(map.left);
+      rightKeyEl.textContent = getLabel(map.right);
+      statusEl.textContent = 'Resetado para padrão';
+      statusEl.style.color = 'rgba(255,255,255,0.3)';
+      setTimeout(() => { statusEl.textContent = ''; }, 1500);
+    });
+
+    // Salvar
+    overlay.querySelector('#pedalMapSave')!.addEventListener('click', () => {
+      localStorage.setItem('gdrums_pedal_map', JSON.stringify(map));
+      // Atualizar os bindings no app
+      this.pedalMap = map;
+      close();
+      this.modalManager.toast('Pedal mapeado!', 'success');
+    });
+
+    const close = () => {
+      document.removeEventListener('keydown', keyHandler);
+      overlay.remove();
+    };
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
   }
 
   private updateProjectBar(name: string): void {
@@ -2052,16 +2287,33 @@ class RhythmSequencer {
     const patternType = this.stateManager.getEditingPattern();
     const currentVariation = this.stateManager.getCurrentVariation(patternType);
     const state = this.stateManager.getState();
-    const channels = state.variations[patternType][currentVariation].channels;
+    const channels = state.variations?.[patternType]?.[currentVariation]?.channels;
+    if (!channels) return;
 
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < MAX_CHANNELS; i++) {
       const midiSelect = document.getElementById(`midiSelect${i + 1}`) as HTMLSelectElement;
-      if (midiSelect && channels[i]) {
-        const midiPath = channels[i].midiPath;
-        if (midiPath) {
-          midiSelect.value = midiPath;
-        } else {
-          midiSelect.value = '';
+      if (!midiSelect) continue;
+
+      const midiPath = channels[i]?.midiPath || '';
+      if (!midiPath) {
+        midiSelect.value = '';
+        continue;
+      }
+
+      // Normalizar path — garantir que começa com /midi/
+      const normalized = normalizeMidiPath(midiPath);
+
+      // Tentar setar diretamente
+      midiSelect.value = normalized;
+
+      // Se não encontrou, tentar match parcial pelo nome do arquivo
+      if (!midiSelect.value && normalized) {
+        const fileName = normalized.split('/').pop() || '';
+        for (const option of Array.from(midiSelect.options)) {
+          if (option.value.endsWith(fileName)) {
+            midiSelect.value = option.value;
+            break;
+          }
         }
       }
     }
@@ -2085,48 +2337,51 @@ class RhythmSequencer {
 
   private async loadAvailableMidi(): Promise<void> {
     try {
-      // Lista fixa de arquivos MIDI disponíveis (para funcionar na web hospedada)
-      const allMidiFiles = [
-        'bumbo.wav',
-        'caixa.wav',
-        'chimbal_fechado.wav',
-        'chimbal_aberto.wav',
-        'prato.mp3',
-        'surdo.wav',
-        'tom_1.wav',
-        'tom_2.wav'
-      ];
-
-      // Verificar quais arquivos existem
-      const midiFiles: string[] = [];
-      for (const file of allMidiFiles) {
-        try {
-          const testResponse = await fetch(`/midi/${file}`, { method: 'HEAD' });
-          if (testResponse.ok) {
-            midiFiles.push(file);
-          }
-        } catch (e) {
-          // Arquivo não existe, ignorar
+      // Carregar lista de MIDIs do manifest (dinâmico — basta editar manifest.json)
+      let midiFiles: string[] = [];
+      try {
+        const res = await fetch(`/midi/manifest.json?v=${Date.now()}`);
+        if (res.ok) {
+          const manifest = await res.json();
+          midiFiles = manifest.files || [];
         }
+      } catch {
+        // Fallback hardcoded caso manifest não exista
+        midiFiles = [
+          'bumbo.wav', 'caixa.wav', 'chimbal_fechado.wav', 'chimbal_aberto.wav',
+          'prato.mp3', 'surdo.wav', 'tom_1.wav', 'tom_2.wav'
+        ];
       }
 
-      // Preencher os selects dos canais
-      for (let i = 1; i <= 8; i++) {
+      // Preencher os selects dos canais (12 canais)
+      for (let i = 1; i <= MAX_CHANNELS; i++) {
         const select = document.getElementById(`midiSelect${i}`) as HTMLSelectElement;
         if (select) {
-          select.innerHTML = '<option value="">Selecione MIDI...</option>';
+          // Guardar valor atual antes de limpar
+          const currentValue = select.value;
+
+          select.innerHTML = '<option value="">Selecione...</option>';
 
           midiFiles.forEach(file => {
             const option = document.createElement('option');
             const normalizedPath = `/midi/${file}`;
             option.value = normalizedPath;
-            option.textContent = file;
+            // Nome bonito: remover extensão e underscores
+            option.textContent = file.replace(/\.(wav|mp3|ogg)$/i, '').replace(/_/g, ' ');
             select.appendChild(option);
           });
+
+          // Restaurar valor selecionado
+          if (currentValue) {
+            select.value = currentValue;
+          }
         }
       }
 
-      void 0; // MIDI loaded
+      // Após popular os selects, setar os valores do state
+      this.updateMIDISelectorsFromState();
+
+      void 0;
     } catch (error) {
       void error;
     }
@@ -2508,7 +2763,7 @@ class RhythmSequencer {
 
       // Load audio channels from source
       if (sourceVariation.audioFiles) {
-        for (let i = 0; i < sourceVariation.audioFiles.length && i < 8; i++) {
+        for (let i = 0; i < sourceVariation.audioFiles.length && i < MAX_CHANNELS; i++) {
           const audioFile = sourceVariation.audioFiles[i];
           if (!audioFile) continue;
 

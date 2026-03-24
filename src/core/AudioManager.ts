@@ -1,6 +1,6 @@
 // Gerenciamento de áudio e reprodução — com suporte a snapshot imutável
 
-import type { AudioChannel, SequencerState } from '../types';
+import { MAX_CHANNELS, type AudioChannel, type SequencerState } from '../types';
 import { base64ToArrayBuffer } from '../utils/helpers';
 
 export interface AudioSnapshot {
@@ -86,7 +86,7 @@ export class AudioManager {
     }
 
     // Sons dos canais ativos
-    for (let channel = 0; channel < 8; channel++) {
+    for (let channel = 0; channel < MAX_CHANNELS; channel++) {
       if (!pattern[channel] || !pattern[channel][step]) continue;
 
       const buffer = channels[channel]?.buffer;

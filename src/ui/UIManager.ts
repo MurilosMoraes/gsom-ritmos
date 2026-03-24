@@ -1,7 +1,7 @@
 // Gerenciamento de interface do usuário
 
 import type { StateManager } from '../core/StateManager';
-import type { PatternType } from '../types';
+import { MAX_CHANNELS, type PatternType } from '../types';
 import { ModalManager } from './ModalManager';
 
 export class UIManager {
@@ -122,7 +122,7 @@ export class UIManager {
     const pattern = state.editingPattern;
     const numSteps = this.stateManager.getPatternSteps(pattern);
 
-    for (let channel = 0; channel < 8; channel++) {
+    for (let channel = 0; channel < MAX_CHANNELS; channel++) {
       for (let step = 0; step < numSteps; step++) {
         this.updateStepVisual(channel, step);
       }
@@ -139,7 +139,7 @@ export class UIManager {
     });
 
     // Adicionar 'current' apenas nos steps da posição atual (um por canal)
-    for (let channel = 0; channel < 8; channel++) {
+    for (let channel = 0; channel < MAX_CHANNELS; channel++) {
       const stepElement = document.querySelector(
         `.step[data-channel="${channel}"][data-step="${currentStep}"]`
       );
