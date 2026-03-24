@@ -1017,6 +1017,7 @@ class RhythmSequencer {
       });
     }
 
+
     // Refresh rhythms button
     const refreshRhythmsBtn = document.getElementById('refreshRhythms');
     if (refreshRhythmsBtn) {
@@ -2325,6 +2326,12 @@ class RhythmSequencer {
       this.uiManager.refreshGridDisplay();
       this.uiManager.updateVariationButtons();
       this.uiManager.showAlert('Ritmo carregado com sucesso!');
+
+      // Resetar selects para permitir re-seleção do mesmo ritmo
+      const rhythmSelect = document.getElementById('rhythmSelect') as HTMLSelectElement;
+      const rhythmSelectUser = document.getElementById('rhythmSelectUser') as HTMLSelectElement;
+      if (rhythmSelect) rhythmSelect.value = '';
+      if (rhythmSelectUser) rhythmSelectUser.value = '';
     } catch (error) {
       console.error('Error loading rhythm:', error);
       this.uiManager.showAlert('Erro ao carregar ritmo');
@@ -2463,7 +2470,12 @@ class RhythmSequencer {
   private async onSetlistEditorClose(): Promise<void> {
     this.updateSetlistUI();
 
-    if (this.setlistManager.isEmpty()) return;
+    if (this.setlistManager.isEmpty()) {
+      // Setlist esvaziado — resetar estado e re-renderizar strip de ritmos
+      this.currentRhythmName = '';
+      this.renderRhythmStrip();
+      return;
+    }
 
     // Sempre carregar o ritmo da posição atual ao fechar o editor
     const current = this.setlistManager.getCurrentItem();
@@ -2696,6 +2708,12 @@ class RhythmSequencer {
       this.updateSpecialSoundsSelectors();
       this.uiManager.refreshGridDisplay();
       this.uiManager.updateVariationButtons();
+
+      // Resetar selects para permitir re-seleção do mesmo ritmo
+      const rhythmSelect = document.getElementById('rhythmSelect') as HTMLSelectElement;
+      const rhythmSelectUser = document.getElementById('rhythmSelectUser') as HTMLSelectElement;
+      if (rhythmSelect) rhythmSelect.value = '';
+      if (rhythmSelectUser) rhythmSelectUser.value = '';
 
       if (this.isAdminMode) {
         // Admin: só atualizar project bar

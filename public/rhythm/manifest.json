@@ -1,9 +1,14 @@
 {
-  "version": 3,
+  "version": 4,
   "rhythms": [
-    "Pop.json",
+    "Banda (bailão).json",
+    "Bugio.json",
+    "Chamamé.json",
+    "Guarânia (1).json",
+    "Katchaka.json",
+    "Milonga.json",
+    "Valsa.json",
     "Vaneira.json",
-    "Guarania.json",
     "Xote.json"
   ]
 }
