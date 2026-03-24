@@ -12,6 +12,10 @@ import { SetlistEditorUI } from './ui/SetlistEditorUI';
 import { MAX_CHANNELS, type PatternType, type SequencerState } from './types';
 import { expandPattern, expandVolumes, normalizeMidiPath } from './utils/helpers';
 import { KeepAwake } from '@capacitor-community/keep-awake';
+import { HapticsService } from './native/HapticsService';
+import { OfflineCache } from './native/OfflineCache';
+import { StatusBarService } from './native/StatusBarService';
+import { PushService } from './native/PushService';
 
 class RhythmSequencer {
   private audioContext: AudioContext;
@@ -48,6 +52,10 @@ class RhythmSequencer {
 
     // Configurar callbacks
     this.setupCallbacks();
+
+    // Inicializar serviços nativos (iOS/Android)
+    StatusBarService.init();
+    PushService.init();
 
     // Inicializar UI
     this.init();
@@ -138,11 +146,15 @@ class RhythmSequencer {
     this.checkAccess().then(async (allowed) => {
       if (!allowed) return;
 
-      // Inicializar favoritos com dados do Supabase
-      const { supabase } = await import('./auth/supabase');
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await this.setlistManager.initWithUser(session.user.id, supabase);
+      // Inicializar favoritos — online: Supabase, offline: cache local
+      try {
+        const { supabase } = await import('./auth/supabase');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await this.setlistManager.initWithUser(session.user.id, supabase);
+        }
+      } catch {
+        // Offline — setlist usa cache local automaticamente
       }
 
       // Carregar mapeamento de pedal salvo
@@ -162,6 +174,25 @@ class RhythmSequencer {
   private async checkAccess(): Promise<boolean> {
     const { supabase } = await import('./auth/supabase');
 
+    // ─── Modo offline: se não tem rede, usar cache local ────────────
+    if (OfflineCache.isOffline()) {
+      if (OfflineCache.hasValidOfflineAccess() && !OfflineCache.isAdmin()) {
+        const cached = OfflineCache.getProfile();
+        if (cached?.subscriptionExpiresAt) {
+          this.showSubscriptionBanner(
+            cached.subscriptionStatus,
+            new Date(cached.subscriptionExpiresAt),
+            cached.subscriptionPlan
+          );
+        }
+        return true;
+      }
+      // Sem cache válido e sem rede — não dá pra acessar
+      window.location.href = '/login.html';
+      return false;
+    }
+
+    // ─── Modo online: autenticação normal ───────────────────────────
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
@@ -199,6 +230,18 @@ class RhythmSequencer {
     if ((status === 'active' || status === 'trial') && expires) {
       const expiresDate = new Date(expires);
       if (expiresDate > new Date()) {
+        // Salvar perfil no cache offline para próximo acesso sem rede
+        OfflineCache.saveProfile({
+          userId: session.user.id,
+          name: session.user.user_metadata?.name || '',
+          email: session.user.email || '',
+          role: (profile?.subscription_plan === 'admin' ? 'admin' : 'user') as 'user' | 'admin',
+          subscriptionStatus: status,
+          subscriptionPlan: profile?.subscription_plan || '',
+          subscriptionExpiresAt: expires,
+          cachedAt: Date.now(),
+        });
+
         // Mostrar banner de trial/assinatura
         this.showSubscriptionBanner(status, expiresDate, profile?.subscription_plan || '');
         return true;
@@ -328,6 +371,7 @@ class RhythmSequencer {
         stepDiv.setAttribute('data-channel', channel.toString());
 
         stepDiv.addEventListener('click', () => {
+          HapticsService.light();
           this.toggleStep(channel, step);
         });
 
@@ -353,12 +397,12 @@ class RhythmSequencer {
     // Play/Stop
     const playStopBtn = document.getElementById('playStop');
     if (playStopBtn) {
-      playStopBtn.addEventListener('click', () => this.togglePlayStop());
+      playStopBtn.addEventListener('click', () => { HapticsService.medium(); this.togglePlayStop(); });
     }
 
     const playStopUserBtn = document.getElementById('playStopUser');
     if (playStopUserBtn) {
-      playStopUserBtn.addEventListener('click', () => this.togglePlayStop());
+      playStopUserBtn.addEventListener('click', () => { HapticsService.medium(); this.togglePlayStop(); });
     }
 
     // Admin mode fill and end buttons
@@ -366,6 +410,7 @@ class RhythmSequencer {
     if (fillBtn) {
       fillBtn.addEventListener('click', () => {
         if (this.stateManager.isPlaying()) {
+          HapticsService.heavy();
           this.patternEngine.playRotatingFill();
         }
       });
@@ -375,6 +420,7 @@ class RhythmSequencer {
     if (endBtn) {
       endBtn.addEventListener('click', () => {
         if (this.stateManager.isPlaying()) {
+          HapticsService.heavy();
           this.patternEngine.playEndAndStop();
         }
       });
@@ -383,7 +429,7 @@ class RhythmSequencer {
     // Cymbal button (prato)
     const cymbalBtn = document.getElementById('cymbalBtn');
     if (cymbalBtn) {
-      cymbalBtn.addEventListener('click', () => this.playCymbal());
+      cymbalBtn.addEventListener('click', () => { HapticsService.heavy(); this.playCymbal(); });
     }
 
     // Tempo controls
@@ -741,6 +787,7 @@ class RhythmSequencer {
   private setupPerformanceGrid(): void {
     document.querySelectorAll('.grid-cell').forEach((cell) => {
       cell.addEventListener('click', (e) => {
+        HapticsService.medium();
         const element = e.currentTarget as HTMLElement;
         const cellType = element.getAttribute('data-type');
         const variationIndex = parseInt(element.getAttribute('data-variation') || '0');
@@ -786,6 +833,7 @@ class RhythmSequencer {
     if (introBtn) {
       introBtn.addEventListener('click', () => {
         if (!this.stateManager.isPlaying() && this.hasRhythmLoaded()) {
+          HapticsService.medium();
           this.patternEngine.playIntroAndStart();
           this.play();
         }
@@ -1091,7 +1139,7 @@ class RhythmSequencer {
   }
 
   private setupMIDISelectors(): void {
-    for (let i = 1; i <= 8; i++) {
+    for (let i = 1; i <= MAX_CHANNELS; i++) {
       const midiSelect = document.getElementById(`midiSelect${i}`) as HTMLSelectElement;
       if (midiSelect) {
         midiSelect.addEventListener('change', (e) => this.handleMidiSelect(e, i - 1));

@@ -6,6 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'www',
   server: {
     androidScheme: 'https',
+    iosScheme: 'https',
     allowNavigation: ['*']
   },
   android: {
@@ -17,9 +18,21 @@ const config: CapacitorConfig = {
       releaseType: 'APK'
     }
   },
+  ios: {
+    contentInset: 'automatic',
+    preferredContentMode: 'mobile',
+    scheme: 'GDrums'
+  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 0
+    },
+    StatusBar: {
+      style: 'DARK',
+      backgroundColor: '#030014'
+    },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert']
     }
   }
 };

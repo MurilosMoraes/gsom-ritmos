@@ -2,6 +2,7 @@
 
 import { supabase } from './supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { OfflineCache } from '../native/OfflineCache';
 
 export interface GDrumsProfile {
   id: string;
@@ -121,7 +122,8 @@ class AuthService {
 
   async logout(): Promise<void> {
     await supabase.auth.signOut();
-    // Limpar dados locais (favoritos, sessão, etc)
+    // Limpar dados locais (favoritos, sessão, cache offline, etc)
+    OfflineCache.clear();
     localStorage.removeItem('gdrums-setlist');
     localStorage.removeItem('gdrums-session-id');
     localStorage.removeItem('gdrums-pending-order');

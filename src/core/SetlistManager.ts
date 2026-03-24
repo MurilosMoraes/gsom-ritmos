@@ -20,25 +20,32 @@ export class SetlistManager {
     this.userId = userId;
     this.supabaseClient = supabase;
 
-    // Carregar do Supabase
-    const { data } = await supabase
-      .from('gdrums_favorites')
-      .select('items, current_index')
-      .eq('user_id', userId)
-      .single();
+    // Se estiver offline, usar cache local e sair
+    if (!navigator.onLine) return;
 
-    if (data) {
-      this.setlist = {
-        name: 'Favoritos',
-        items: Array.isArray(data.items) ? data.items : [],
-        currentIndex: typeof data.current_index === 'number' ? data.current_index : 0,
-      };
-      this.saveLocal(); // Cache local
-    } else {
-      // Sem favoritos no Supabase — usar local como fallback e salvar no banco
-      if (this.setlist.items.length > 0) {
-        await this.saveRemote();
+    try {
+      // Carregar do Supabase
+      const { data } = await supabase
+        .from('gdrums_favorites')
+        .select('items, current_index')
+        .eq('user_id', userId)
+        .single();
+
+      if (data) {
+        this.setlist = {
+          name: 'Favoritos',
+          items: Array.isArray(data.items) ? data.items : [],
+          currentIndex: typeof data.current_index === 'number' ? data.current_index : 0,
+        };
+        this.saveLocal(); // Cache local
+      } else {
+        // Sem favoritos no Supabase — usar local como fallback e salvar no banco
+        if (this.setlist.items.length > 0) {
+          await this.saveRemote();
+        }
       }
+    } catch {
+      // Falha de rede — manter cache local existente
     }
   }
 
