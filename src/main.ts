@@ -1792,7 +1792,7 @@ class RhythmSequencer {
       // Atualizar os bindings no app
       this.pedalMap = map;
       close();
-      this.modalManager.toast('Pedal mapeado!', 'success');
+      this.modalManager.show('Pedal', 'Mapeamento salvo!', 'success');
     });
 
     const close = () => {
