@@ -1970,10 +1970,13 @@ class RhythmSequencer {
 
   private updateBeatMarker(step: number, pattern: PatternType): void {
     const totalSteps = this.stateManager.getPatternSteps(pattern);
-    // Calcular beat (4 beats por compasso, cada beat = totalSteps/4 steps)
-    const stepsPerBeat = Math.max(1, Math.floor(totalSteps / 4));
-    const currentBeat = Math.floor(step / stepsPerBeat) % 4;
+    const beatsPerBar = this.detectBeatsPerBar(totalSteps);
+    const stepsPerBeat = Math.max(1, Math.floor(totalSteps / beatsPerBar));
+    const currentBeat = Math.floor(step / stepsPerBeat) % beatsPerBar;
     const isDownbeat = step % stepsPerBeat === 0;
+
+    // Atualizar quantidade de bolinhas se mudou
+    this.ensureBeatDots(beatsPerBar);
 
     const dots = document.querySelectorAll('.beat-dot');
     dots.forEach((dot, i) => {
@@ -1993,7 +1996,53 @@ class RhythmSequencer {
     }
   }
 
+  /**
+   * Detecta quantos beats por compasso baseado nos steps.
+   * 24 steps → 3/4 (valsa, chamamé, guarânia)
+   * 12 steps → 3/4
+   * 16 steps → 4/4
+   * 20 steps → 4/4 (5 subdivisões por beat)
+   * 8 steps  → 2/4 (binário) ou 4/4 (2 subdivisões)
+   * 6 steps  → 3/4
+   */
+  private detectBeatsPerBar(totalSteps: number): number {
+    if (totalSteps % 3 === 0 && totalSteps % 4 !== 0) {
+      // Divisível por 3 mas não por 4 → ternário (3/4 ou 6/8)
+      return 3;
+    }
+    if (totalSteps === 8) {
+      // 8 steps: verificar se o ritmo carregado é binário
+      // Na maioria dos ritmos gaúchos com 8 steps, é 2/4
+      return 2;
+    }
+    // Padrão: quaternário
+    return 4;
+  }
+
+  private lastBeatDotCount = 4;
+
+  private ensureBeatDots(count: number): void {
+    if (count === this.lastBeatDotCount) return;
+    this.lastBeatDotCount = count;
+
+    const container = document.getElementById('beatDots');
+    if (!container) return;
+
+    container.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'beat-dot';
+      dot.setAttribute('data-beat', i.toString());
+      container.appendChild(dot);
+    }
+  }
+
   private resetBeatMarker(): void {
+    // Restaurar bolinhas pro pattern ativo atual
+    const pattern = this.stateManager.getState().activePattern;
+    const totalSteps = this.stateManager.getPatternSteps(pattern);
+    const beatsPerBar = this.detectBeatsPerBar(totalSteps);
+    this.ensureBeatDots(beatsPerBar);
     document.querySelectorAll('.beat-dot').forEach(dot => {
       dot.classList.remove('beat-active', 'beat-pulse');
     });
@@ -2013,7 +2062,8 @@ class RhythmSequencer {
     this.injectCountdownStyles();
 
     const totalSteps = this.stateManager.getPatternSteps('intro');
-    const stepsPerBeat = Math.max(1, Math.floor(totalSteps / 4));
+    const beatsPerBar = this.detectBeatsPerBar(totalSteps);
+    const stepsPerBeat = Math.max(1, Math.floor(totalSteps / beatsPerBar));
     const beatNum = Math.floor(step / stepsPerBeat) + 1;
 
     // Só mostrar no downbeat de cada tempo
