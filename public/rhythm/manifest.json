@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "rhythms": [
     "Adoração Lenta.json",
     "Afro Cuban.json",
@@ -257,15 +257,24 @@
       "Son Cubano.json",
       "Tango.json"
     ],
-    "Outros": [
+    "Gaúcho": [
       "Banda (bailão).json",
       "Bugio.json",
+      "Chacarera.json",
       "Chamamé.json",
+      "Chimarrita.json",
       "Guarânia.json",
       "Katchaka.json",
+      "Mazurca.json",
       "Milonga.json",
+      "Polca.json",
+      "Rancheira.json",
+      "Rasguido Doble.json",
+      "Schottisch.json",
       "Valsa.json",
+      "Vaneira Missioneira.json",
       "Vaneira.json",
+      "Vanerão.json",
       "Xote.json"
     ],
     "Jazz": [
@@ -278,17 +287,6 @@
       "Jazz Waltz.json",
       "Latin Jazz.json",
       "Smooth Jazz.json"
-    ],
-    "Gaúcho": [
-      "Chacarera.json",
-      "Chimarrita.json",
-      "Mazurca.json",
-      "Polca.json",
-      "Rancheira.json",
-      "Rasguido Doble.json",
-      "Schottisch.json",
-      "Vaneira Missioneira.json",
-      "Vanerão.json"
     ],
     "Funk/Soul/R&B": [
       "Funk Groove.json",

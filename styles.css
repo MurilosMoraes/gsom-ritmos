@@ -471,6 +471,58 @@ input:checked + .slider:before {
 
 .rhythm-strip-cards {
   display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0.2rem 0;
+}
+
+/* Category filters */
+.rhythm-category-filters {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.3rem 0.2rem;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 0.4rem;
+}
+
+.rhythm-category-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.rhythm-cat-btn {
+  flex-shrink: 0;
+  padding: 0.35rem 0.9rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.rhythm-cat-btn:hover {
+  background: rgba(0, 212, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.rhythm-cat-btn.active {
+  background: rgba(0, 212, 255, 0.12);
+  border-color: rgba(0, 212, 255, 0.4);
+  color: #00D4FF;
+}
+
+.rhythm-cards-wrap {
+  display: flex;
   gap: 0.6rem;
   overflow-x: auto;
   overflow-y: hidden;
@@ -480,7 +532,7 @@ input:checked + .slider:before {
   scrollbar-width: none;
 }
 
-.rhythm-strip-cards::-webkit-scrollbar {
+.rhythm-cards-wrap::-webkit-scrollbar {
   display: none;
 }
 

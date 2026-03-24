@@ -2610,7 +2610,9 @@ class RhythmSequencer {
 
   // ─── Rhythm loading ─────────────────────────────────────────────────
 
-  private availableRhythms: Array<{name: string, path: string}> = [];
+  private availableRhythms: Array<{name: string, path: string, category: string}> = [];
+  private rhythmCategories: Record<string, string[]> = {};
+  private activeCategory: string = '';
   private currentRhythmName: string = '';
 
   private async loadAvailableRhythms(): Promise<void> {
@@ -2625,6 +2627,7 @@ class RhythmSequencer {
           const manifest = await manifestResponse.json();
           rhythmFiles = manifest.rhythms || [];
           manifestVersion = manifest.version || 0;
+          this.rhythmCategories = manifest.categories || {};
         }
       } catch (e) {
         // Manifest não existe
@@ -2661,13 +2664,22 @@ class RhythmSequencer {
       // Guardar versão pra cache bust
       this.rhythmVersion = manifestVersion || Date.now();
 
+      // Criar mapa reverso: arquivo → categoria
+      const fileToCategory: Record<string, string> = {};
+      for (const [cat, files] of Object.entries(this.rhythmCategories)) {
+        for (const f of (files as string[])) {
+          fileToCategory[f] = cat;
+        }
+      }
+
       // Processar todos os ritmos do manifest (confiamos que existem)
       for (const file of rhythmFiles) {
         const rhythmPath = `/rhythm/${file}`;
         const rhythmName = file.replace('.json', '').replace(/-/g, ' ');
+        const category = fileToCategory[file] || 'Outros';
 
         // Adicionar à lista de ritmos disponíveis
-        this.availableRhythms.push({ name: rhythmName, path: rhythmPath });
+        this.availableRhythms.push({ name: rhythmName, path: rhythmPath, category });
 
         // Adicionar opção no select do admin
         if (select) {
@@ -2705,7 +2717,45 @@ class RhythmSequencer {
 
     container.innerHTML = '';
 
-    this.availableRhythms.forEach(rhythm => {
+    // ── Filtros de categoria ──
+    const categories = Object.keys(this.rhythmCategories).sort();
+    if (categories.length > 0) {
+      const filterBar = document.createElement('div');
+      filterBar.className = 'rhythm-category-filters';
+
+      // Botão "Todos"
+      const allBtn = document.createElement('button');
+      allBtn.className = 'rhythm-cat-btn' + (!this.activeCategory ? ' active' : '');
+      allBtn.textContent = 'Todos';
+      allBtn.addEventListener('click', () => {
+        this.activeCategory = '';
+        this.renderRhythmStrip();
+      });
+      filterBar.appendChild(allBtn);
+
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'rhythm-cat-btn' + (this.activeCategory === cat ? ' active' : '');
+        btn.textContent = cat;
+        btn.addEventListener('click', () => {
+          this.activeCategory = cat;
+          this.renderRhythmStrip();
+        });
+        filterBar.appendChild(btn);
+      });
+
+      container.appendChild(filterBar);
+    }
+
+    // ── Cards de ritmos (filtrados) ──
+    const cardsWrap = document.createElement('div');
+    cardsWrap.className = 'rhythm-cards-wrap';
+
+    const filtered = this.activeCategory
+      ? this.availableRhythms.filter(r => r.category === this.activeCategory)
+      : this.availableRhythms;
+
+    filtered.forEach(rhythm => {
       const card = document.createElement('button');
       card.className = 'rhythm-card-btn';
       if (rhythm.name === this.currentRhythmName) {
@@ -2718,12 +2768,14 @@ class RhythmSequencer {
         await this.loadRhythm(rhythm.name, rhythm.path);
       });
 
-      container.appendChild(card);
+      cardsWrap.appendChild(card);
     });
 
-    if (this.availableRhythms.length === 0) {
-      container.innerHTML = '<span class="rhythm-strip-empty">Nenhum ritmo disponível</span>';
+    if (filtered.length === 0) {
+      cardsWrap.innerHTML = '<span class="rhythm-strip-empty">Nenhum ritmo nesta categoria</span>';
     }
+
+    container.appendChild(cardsWrap);
   }
 
   private updateRhythmStripActive(): void {

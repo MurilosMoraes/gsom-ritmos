@@ -4138,5 +4138,6 @@
     "midiPath": "/midi/prato.mp3"
   },
   "timestamp": "2026-03-24T15:07:00.244Z",
-  "beatsPerBar": 6
+  "beatsPerBar": 6,
+  "category": "Gaúcho"
 }
