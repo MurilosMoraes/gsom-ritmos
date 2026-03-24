@@ -2315,7 +2315,7 @@ class RhythmSequencer {
 
   private async loadRhythmFromPath(filePath: string): Promise<void> {
     try {
-      await this.fileManager.loadProjectFromPath(filePath);
+      await this.fileManager.loadProjectFromPath(encodeURI(filePath));
 
       // Carregar a primeira variação do padrão sendo editado
       const patternType = this.stateManager.getEditingPattern();
@@ -2604,27 +2604,20 @@ class RhythmSequencer {
       // Guardar versão pra cache bust
       this.rhythmVersion = manifestVersion || Date.now();
 
-      // Processar todos os ritmos
+      // Processar todos os ritmos do manifest (confiamos que existem)
       for (const file of rhythmFiles) {
-        try {
-          const testResponse = await fetch(`/rhythm/${file}?v=${this.rhythmVersion}`, { method: 'HEAD' });
-          if (testResponse.ok) {
-            const rhythmPath = `/rhythm/${file}`; // Path limpo (sem version)
-            const rhythmName = file.replace('.json', '').replace(/-/g, ' ');
+        const rhythmPath = `/rhythm/${file}`;
+        const rhythmName = file.replace('.json', '').replace(/-/g, ' ');
 
-            // Adicionar à lista de ritmos disponíveis
-            this.availableRhythms.push({ name: rhythmName, path: rhythmPath });
+        // Adicionar à lista de ritmos disponíveis
+        this.availableRhythms.push({ name: rhythmName, path: rhythmPath });
 
-            // Adicionar opção no select do admin
-            if (select) {
-              const option = document.createElement('option');
-              option.value = rhythmPath;
-              option.textContent = rhythmName;
-              select.appendChild(option);
-            }
-          }
-        } catch (e) {
-          void file;
+        // Adicionar opção no select do admin
+        if (select) {
+          const option = document.createElement('option');
+          option.value = rhythmPath;
+          option.textContent = rhythmName;
+          select.appendChild(option);
         }
       }
 
@@ -2697,7 +2690,8 @@ class RhythmSequencer {
 
       // Adicionar version bust pra evitar cache (limpar query param antigo)
       const cleanPath = path.split('?')[0];
-      const cacheBustPath = `${cleanPath}?v=${this.rhythmVersion || Date.now()}`;
+      const encodedPath = encodeURI(cleanPath);
+      const cacheBustPath = `${encodedPath}?v=${this.rhythmVersion || Date.now()}`;
       await this.fileManager.loadProjectFromPath(cacheBustPath);
 
       // Carregar a primeira variação do padrão sendo editado
