@@ -29,6 +29,7 @@ class RhythmSequencer {
   private setlistManager: SetlistManager;
   private setlistEditor: SetlistEditorUI;
   private isAdminMode = false;
+  private userRole: 'user' | 'admin' = 'user';
   private rhythmVersion: number = 0;
   private pedalMap: { left: string; right: string } = { left: 'ArrowLeft', right: 'ArrowRight' };
 
@@ -210,9 +211,12 @@ class RhythmSequencer {
 
     const { data: profile } = await supabase
       .from('gdrums_profiles')
-      .select('subscription_status, subscription_expires_at, subscription_plan, active_session_id')
+      .select('role, subscription_status, subscription_expires_at, subscription_plan, active_session_id')
       .eq('id', session.user.id)
       .single();
+
+    // Guardar role do usuário (vindo do banco, não do client)
+    this.userRole = (profile?.role === 'admin') ? 'admin' : 'user';
 
     // Sessão única — verificar se este device é o ativo
     const localSessionId = localStorage.getItem('gdrums-session-id');
@@ -235,7 +239,7 @@ class RhythmSequencer {
           userId: session.user.id,
           name: session.user.user_metadata?.name || '',
           email: session.user.email || '',
-          role: (profile?.subscription_plan === 'admin' ? 'admin' : 'user') as 'user' | 'admin',
+          role: this.userRole,
           subscriptionStatus: status,
           subscriptionPlan: profile?.subscription_plan || '',
           subscriptionExpiresAt: expires,
@@ -1055,9 +1059,10 @@ class RhythmSequencer {
   }
 
   private isAdminPersisted(): boolean {
+    // Só admins reais (role do banco) podem ter modo admin
+    if (this.userRole !== 'admin') return false;
     const stored = localStorage.getItem(RhythmSequencer.ADMIN_STORAGE_KEY);
     if (!stored) return false;
-    // Validar que o token é legítimo (gerado por este sistema neste device)
     return stored === this.generateAdminToken();
   }
 
@@ -1103,13 +1108,23 @@ class RhythmSequencer {
       });
     }
 
-    // Mode toggle
+    // Mode toggle — só visível para admins (role do banco de dados)
     const adminModeToggle = document.getElementById('adminModeToggle') as HTMLInputElement;
     const userMode = document.getElementById('userMode');
     const adminMode = document.getElementById('adminMode');
     const modeLabel = document.getElementById('modeLabel');
+    const modeToggleItem = adminModeToggle?.closest('.topbar-dropdown-item') as HTMLElement;
 
-    if (adminModeToggle && userMode && adminMode && modeLabel) {
+    if (this.userRole !== 'admin') {
+      // Não é admin — esconder toggle completamente e forçar modo usuário
+      if (modeToggleItem) modeToggleItem.style.display = 'none';
+      if (modeLabel) modeLabel.style.display = 'none';
+      this.isAdminMode = false;
+      this.saveAdminState(false);
+    } else if (adminModeToggle && userMode && adminMode && modeLabel) {
+      // É admin — mostrar toggle e permitir troca
+      if (modeToggleItem) modeToggleItem.style.display = '';
+
       // Restaurar estado persistido (com validação de token)
       if (this.isAdminPersisted()) {
         this.isAdminMode = true;
