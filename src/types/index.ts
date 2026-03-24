@@ -39,6 +39,7 @@ export interface SequencerState {
   fillSpeed: number;
   endSpeed: number;
   masterVolume: number;
+  beatsPerBar: number;
   patternSteps: PatternSteps;
   fillSteps: number;
   patterns: Record<PatternType, boolean[][]>;
@@ -117,6 +118,7 @@ export interface SavedVariation {
 export interface SavedProject {
   version: string;
   tempo: number;
+  beatsPerBar?: number;
   patternSteps?: PatternSteps;
   // Legacy support - padrões únicos (será removido em versões futuras)
   patterns?: {

@@ -17,8 +17,9 @@ export class FileManager {
   async saveProject(): Promise<void> {
     const state = this.stateManager.getState();
     const project: SavedProject = {
-      version: '1.4',
+      version: '1.5',
       tempo: state.tempo,
+      beatsPerBar: state.beatsPerBar,
       patternSteps: state.patternSteps,
       variations: {
         main: state.variations.main.map(v => ({
@@ -85,6 +86,9 @@ export class FileManager {
     const state = this.stateManager.getState();
 
     this.stateManager.setTempo(data.tempo || 80);
+
+    // Carregar beatsPerBar (compasso)
+    state.beatsPerBar = data.beatsPerBar || 4;
 
     // Carregar patternSteps
     if (data.patternSteps) {

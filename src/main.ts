@@ -566,6 +566,16 @@ class RhythmSequencer {
       });
     }
 
+    // Compasso (beatsPerBar) selector
+    const beatsPerBarSelect = document.getElementById('beatsPerBarSelect') as HTMLSelectElement;
+    if (beatsPerBarSelect) {
+      beatsPerBarSelect.addEventListener('change', (e) => {
+        const beats = parseInt((e.target as HTMLSelectElement).value);
+        this.stateManager.getState().beatsPerBar = beats;
+        this.ensureBeatDots(beats);
+      });
+    }
+
     // Fill Speed controls
     const fillSpeedInput = document.getElementById('fillSpeed') as HTMLInputElement;
     const fillSpeedUp = document.getElementById('fillSpeedUp');
@@ -1985,7 +1995,7 @@ class RhythmSequencer {
 
   private updateBeatMarker(step: number, pattern: PatternType): void {
     const totalSteps = this.stateManager.getPatternSteps(pattern);
-    const beatsPerBar = this.detectBeatsPerBar(totalSteps);
+    const beatsPerBar = this.stateManager.getState().beatsPerBar || 4;
     const stepsPerBeat = Math.max(1, Math.floor(totalSteps / beatsPerBar));
     const currentBeat = Math.floor(step / stepsPerBeat) % beatsPerBar;
     const isDownbeat = step % stepsPerBeat === 0;
@@ -2011,29 +2021,6 @@ class RhythmSequencer {
     }
   }
 
-  /**
-   * Detecta quantos beats por compasso baseado nos steps.
-   * 24 steps → 3/4 (valsa, chamamé, guarânia)
-   * 12 steps → 3/4
-   * 16 steps → 4/4
-   * 20 steps → 4/4 (5 subdivisões por beat)
-   * 8 steps  → 2/4 (binário) ou 4/4 (2 subdivisões)
-   * 6 steps  → 3/4
-   */
-  private detectBeatsPerBar(totalSteps: number): number {
-    // Mapear steps conhecidos diretamente (mais confiável que fórmula)
-    const beatsMap: Record<number, number> = {
-      6: 3,   // 3/4 com 2 subdivisões
-      8: 2,   // 2/4 com 4 subdivisões (Banda/bailão)
-      12: 3,  // 3/4 com 4 subdivisões (fills ternários)
-      16: 4,  // 4/4 com 4 subdivisões
-      20: 4,  // 4/4 com 5 subdivisões
-      24: 3,  // 3/4 com 8 subdivisões (Valsa, Chamamé, Guarânia)
-      32: 4,  // 4/4 com 8 subdivisões
-    };
-    return beatsMap[totalSteps] || 4;
-  }
-
   private lastBeatDotCount = 4;
 
   private ensureBeatDots(count: number): void {
@@ -2053,14 +2040,18 @@ class RhythmSequencer {
   }
 
   private resetBeatMarker(): void {
-    // Restaurar bolinhas pro pattern ativo atual
-    const pattern = this.stateManager.getState().activePattern;
-    const totalSteps = this.stateManager.getPatternSteps(pattern);
-    const beatsPerBar = this.detectBeatsPerBar(totalSteps);
+    const beatsPerBar = this.stateManager.getState().beatsPerBar || 4;
     this.ensureBeatDots(beatsPerBar);
     document.querySelectorAll('.beat-dot').forEach(dot => {
       dot.classList.remove('beat-active', 'beat-pulse');
     });
+  }
+
+  private updateBeatsPerBarUI(): void {
+    const beats = this.stateManager.getState().beatsPerBar || 4;
+    const select = document.getElementById('beatsPerBarSelect') as HTMLSelectElement;
+    if (select) select.value = beats.toString();
+    this.ensureBeatDots(beats);
   }
 
   // ─── Countdown Overlay ──────────────────────────────────────────────
@@ -2077,7 +2068,7 @@ class RhythmSequencer {
     this.injectCountdownStyles();
 
     const totalSteps = this.stateManager.getPatternSteps('intro');
-    const beatsPerBar = this.detectBeatsPerBar(totalSteps);
+    const beatsPerBar = this.stateManager.getState().beatsPerBar || 4;
     const stepsPerBeat = Math.max(1, Math.floor(totalSteps / beatsPerBar));
     const beatNum = Math.floor(step / stepsPerBeat) + 1;
 
@@ -2388,6 +2379,7 @@ class RhythmSequencer {
 
       this.updateMIDISelectorsFromState();
       this.updateSpecialSoundsSelectors();
+      this.updateBeatsPerBarUI();
       this.uiManager.refreshGridDisplay();
       this.uiManager.updateVariationButtons();
       this.uiManager.showAlert('Ritmo carregado com sucesso!');
@@ -2765,6 +2757,7 @@ class RhythmSequencer {
 
       this.updateMIDISelectorsFromState();
       this.updateSpecialSoundsSelectors();
+      this.updateBeatsPerBarUI();
       this.uiManager.refreshGridDisplay();
       this.uiManager.updateVariationButtons();
 

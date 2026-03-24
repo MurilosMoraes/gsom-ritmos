@@ -3753,5 +3753,6 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-03-24T16:03:01.954Z"
+  "timestamp": "2026-03-24T16:03:01.954Z",
+  "beatsPerBar": 4
 }
