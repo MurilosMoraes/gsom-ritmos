@@ -2021,17 +2021,17 @@ class RhythmSequencer {
    * 6 steps  → 3/4
    */
   private detectBeatsPerBar(totalSteps: number): number {
-    if (totalSteps % 3 === 0 && totalSteps % 4 !== 0) {
-      // Divisível por 3 mas não por 4 → ternário (3/4 ou 6/8)
-      return 3;
-    }
-    if (totalSteps === 8) {
-      // 8 steps: verificar se o ritmo carregado é binário
-      // Na maioria dos ritmos gaúchos com 8 steps, é 2/4
-      return 2;
-    }
-    // Padrão: quaternário
-    return 4;
+    // Mapear steps conhecidos diretamente (mais confiável que fórmula)
+    const beatsMap: Record<number, number> = {
+      6: 3,   // 3/4 com 2 subdivisões
+      8: 2,   // 2/4 com 4 subdivisões (Banda/bailão)
+      12: 3,  // 3/4 com 4 subdivisões (fills ternários)
+      16: 4,  // 4/4 com 4 subdivisões
+      20: 4,  // 4/4 com 5 subdivisões
+      24: 3,  // 3/4 com 8 subdivisões (Valsa, Chamamé, Guarânia)
+      32: 4,  // 4/4 com 8 subdivisões
+    };
+    return beatsMap[totalSteps] || 4;
   }
 
   private lastBeatDotCount = 4;
