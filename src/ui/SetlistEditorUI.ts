@@ -29,10 +29,18 @@ export class SetlistEditorUI {
   close(): void {
     if (this.overlay) {
       this.overlay.classList.add('sle-exit');
-      this.overlay.addEventListener('animationend', () => {
+      this.overlay.addEventListener('transitionend', () => {
         this.overlay?.remove();
         this.overlay = null;
       }, { once: true });
+      // Fallback — se transitionend não disparar (ex: display:none), remover após timeout
+      const ref = this.overlay;
+      setTimeout(() => {
+        if (ref.parentNode) {
+          ref.remove();
+          this.overlay = null;
+        }
+      }, 300);
     }
     this.onClose?.();
   }
