@@ -328,6 +328,31 @@ class RhythmSequencer {
       }
     }
 
+    // ─── Verificar pedido pendente (cara pagou mas fechou a página) ──
+    const pendingOrder = localStorage.getItem('gdrums-pending-order');
+    if (pendingOrder) {
+      try {
+        const order = JSON.parse(pendingOrder);
+        if (order.orderNsu) {
+          const webhookResponse = await fetch(
+            `https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/payment-webhook`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ order_nsu: order.orderNsu }),
+            }
+          );
+          const result = await webhookResponse.json();
+          if (result.success) {
+            localStorage.removeItem('gdrums-pending-order');
+            // Revalidar acesso após ativação
+            window.location.reload();
+            return false;
+          }
+        }
+      } catch { /* pedido não confirmado — seguir pro plans */ }
+    }
+
     window.location.href = '/plans.html';
     return false;
   }

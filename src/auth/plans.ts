@@ -48,6 +48,32 @@ class PlansPage {
     const status = profile?.subscription_status;
     const plan = profile?.subscription_plan;
 
+    // Verificar pedido pendente (pagou mas fechou a página do checkout)
+    const pendingOrder = localStorage.getItem('gdrums-pending-order');
+    if (pendingOrder && status !== 'active') {
+      try {
+        const order = JSON.parse(pendingOrder);
+        if (order.orderNsu) {
+          const res = await fetch(
+            'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/payment-webhook',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ order_nsu: order.orderNsu }),
+            }
+          );
+          const result = await res.json();
+          if (result.success) {
+            localStorage.removeItem('gdrums-pending-order');
+            window.location.href = '/';
+            return;
+          }
+          // Pagamento não confirmado — limpar pedido pendente pra não ficar tentando
+          localStorage.removeItem('gdrums-pending-order');
+        }
+      } catch { /* continuar normalmente */ }
+    }
+
     // Só redirecionar se tem plano PAGO ativo
     if (status === 'active' && plan && plan !== 'trial' && profile?.subscription_expires_at) {
       if (new Date(profile.subscription_expires_at) > new Date()) {
