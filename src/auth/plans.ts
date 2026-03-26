@@ -18,6 +18,19 @@ class PlansPage {
   }
 
   private async init(): Promise<void> {
+    // Limpar loading se voltou do checkout (bfcache)
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted) {
+        const loading = document.getElementById('plansLoading');
+        if (loading) loading.classList.remove('active');
+      }
+    });
+    // Também limpar ao ganhar foco (fallback)
+    window.addEventListener('focus', () => {
+      const loading = document.getElementById('plansLoading');
+      if (loading) loading.classList.remove('active');
+    });
+
     if (!(await authService.isAuthenticated())) {
       window.location.href = '/login.html';
       return;
