@@ -48,18 +48,25 @@ class PlansPage {
     const status = profile?.subscription_status;
     const plan = profile?.subscription_plan;
 
-    // Verificar pedido pendente (pagou mas fechou a página do checkout)
-    const pendingOrder = localStorage.getItem('gdrums-pending-order');
-    if (pendingOrder && status !== 'active') {
-      try {
-        const order = JSON.parse(pendingOrder);
-        if (order.orderNsu) {
+    // Verificar pedido pendente no banco (pagou mas fechou a página do checkout)
+    if (status !== 'active') {
+      const { data: pendingTx } = await supabase
+        .from('gdrums_transactions')
+        .select('order_nsu')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (pendingTx?.order_nsu) {
+        try {
           const res = await fetch(
             'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/payment-webhook',
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ order_nsu: order.orderNsu }),
+              body: JSON.stringify({ order_nsu: pendingTx.order_nsu }),
             }
           );
           const result = await res.json();
@@ -68,10 +75,8 @@ class PlansPage {
             window.location.href = '/';
             return;
           }
-          // Pagamento não confirmado — limpar pedido pendente pra não ficar tentando
-          localStorage.removeItem('gdrums-pending-order');
-        }
-      } catch { /* continuar normalmente */ }
+        } catch { /* continuar normalmente */ }
+      }
     }
 
     // Só redirecionar se tem plano PAGO ativo
@@ -252,7 +257,19 @@ class PlansPage {
       const orderNsu = generateOrderNsu(user.id, plan.id) + couponSuffix;
       const redirectUrl = `${window.location.origin}/payment-success.html`;
 
-      // Salvar pedido pendente com info de cupom
+      // Salvar pedido pendente no banco (funciona em qualquer dispositivo)
+      await supabase.from('gdrums_transactions').upsert({
+        user_id: user.id,
+        order_nsu: orderNsu,
+        plan: plan.id,
+        amount_cents: finalPriceCents,
+        original_amount_cents: plan.priceCents,
+        status: 'pending',
+        coupon_code: this.appliedCoupon?.code || null,
+        discount_percent: this.appliedCoupon?.discount_percent || null,
+      }, { onConflict: 'order_nsu' });
+
+      // Backup local (fallback)
       localStorage.setItem('gdrums-pending-order', JSON.stringify({
         orderNsu,
         planId: plan.id,
