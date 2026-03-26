@@ -12,6 +12,7 @@ export class PatternEngine {
   private transitionInProgress = false;
   private onPatternChange?: (pattern: PatternType) => void;
   private onStop?: () => void;
+  private onEndCymbal?: () => void;
 
   constructor(stateManager: StateManager) {
     this.stateManager = stateManager;
@@ -27,6 +28,10 @@ export class PatternEngine {
 
   setOnStop(callback: () => void): void {
     this.onStop = callback;
+  }
+
+  setOnEndCymbal(callback: () => void): void {
+    this.onEndCymbal = callback;
   }
 
   // ─── Verificação de padrões pendentes (chamado pelo Scheduler) ──────
@@ -124,6 +129,7 @@ export class PatternEngine {
   }
 
   private handleEndCompletion(): void {
+    this.onEndCymbal?.();
     this.onStop?.();
   }
 

@@ -18,6 +18,7 @@ export interface AudioSnapshot {
 export class AudioManager {
   private audioContext: AudioContext;
   private readonly FADE_TIME = 0.005; // 5ms fade — elimina cliques
+  private bufferCache = new Map<string, AudioBuffer>();
 
   constructor(audioContext: AudioContext) {
     this.audioContext = audioContext;
@@ -29,9 +30,16 @@ export class AudioManager {
   }
 
   async loadAudioFromPath(path: string): Promise<AudioBuffer> {
+    // Cache por path normalizado (sem query params)
+    const cacheKey = path.split('?')[0];
+    const cached = this.bufferCache.get(cacheKey);
+    if (cached) return cached;
+
     const response = await fetch(path);
     const arrayBuffer = await response.arrayBuffer();
-    return await this.audioContext.decodeAudioData(arrayBuffer);
+    const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+    this.bufferCache.set(cacheKey, buffer);
+    return buffer;
   }
 
   async loadAudioFromBase64(base64: string): Promise<AudioBuffer> {

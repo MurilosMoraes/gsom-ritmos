@@ -77,6 +77,10 @@ class RhythmSequencer {
       this.uiManager.clearQueuedCells();
     });
 
+    this.patternEngine.setOnEndCymbal(() => {
+      this.playCymbal();
+    });
+
     this.patternEngine.setOnStop(() => {
       this.stop();
     });
@@ -234,6 +238,14 @@ class RhythmSequencer {
     if ((status === 'active' || status === 'trial') && expires) {
       const expiresDate = new Date(expires);
       if (expiresDate > new Date()) {
+        // Rotacionar session ID a cada acesso online (invalida sessões copiadas)
+        const newSessionId = crypto.randomUUID();
+        localStorage.setItem('gdrums-session-id', newSessionId);
+        supabase.from('gdrums_profiles')
+          .update({ active_session_id: newSessionId })
+          .eq('id', session.user.id)
+          .then(); // fire-and-forget
+
         // Salvar perfil no cache offline para próximo acesso sem rede
         OfflineCache.saveProfile({
           userId: session.user.id,
@@ -2221,6 +2233,9 @@ class RhythmSequencer {
 
     const currentVolume = state.volumes[pattern][channel][step];
 
+    // Remover popup anterior se existir
+    document.querySelectorAll('.volume-popup').forEach(p => p.remove());
+
     const popup = document.createElement('div');
     popup.className = 'volume-popup';
     popup.innerHTML = `
@@ -2262,11 +2277,12 @@ class RhythmSequencer {
       updateVolume(value);
     });
 
-    // Preset buttons
+    // Preset buttons — fecha imediatamente ao clicar
     popup.querySelectorAll('.preset-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const presetValue = parseInt((e.target as HTMLElement).getAttribute('data-volume')!) / 100;
         updateVolume(presetValue);
+        popup.remove();
       });
     });
 
@@ -2791,7 +2807,37 @@ class RhythmSequencer {
     });
   }
 
+  private isLoadingRhythm = false;
+
+  private showRhythmLoader(name: string): HTMLElement {
+    const loader = document.createElement('div');
+    loader.id = 'rhythmLoader';
+    loader.innerHTML = `
+      <div class="rhythm-loader-content">
+        <div class="rhythm-loader-spinner"></div>
+        <div class="rhythm-loader-name">${name}</div>
+      </div>
+    `;
+    document.body.appendChild(loader);
+    requestAnimationFrame(() => loader.classList.add('visible'));
+    return loader;
+  }
+
+  private hideRhythmLoader(): void {
+    const loader = document.getElementById('rhythmLoader');
+    if (loader) {
+      loader.classList.remove('visible');
+      loader.addEventListener('transitionend', () => loader.remove(), { once: true });
+      setTimeout(() => loader.remove(), 400);
+    }
+  }
+
   private async loadRhythm(name: string, path: string): Promise<void> {
+    if (this.isLoadingRhythm) return;
+    this.isLoadingRhythm = true;
+
+    const loader = this.showRhythmLoader(name);
+
     try {
       if (this.stateManager.isPlaying()) {
         this.stop();
@@ -2832,11 +2878,12 @@ class RhythmSequencer {
         this.updateRhythmStripActive();
         this.updateSetlistUI();
       }
-
-      this.uiManager.showAlert(`Ritmo "${name}" carregado!`);
     } catch (error) {
       console.error(`Error loading rhythm ${name}:`, error);
       this.uiManager.showAlert(`Erro ao carregar ritmo "${name}"`);
+    } finally {
+      this.isLoadingRhythm = false;
+      this.hideRhythmLoader();
     }
   }
 
