@@ -27,6 +27,16 @@ export const PLANS: Plan[] = [
     durationMonths: 1,
   },
   {
+    id: 'trimestral',
+    name: 'Plano Trimestral GDrums',
+    displayName: 'Trimestral',
+    priceCents: 8100,
+    priceDisplay: 'R$ 81',
+    pricePerMonth: '27',
+    durationMonths: 3,
+    savings: 'Economize 7%',
+  },
+  {
     id: 'semestral',
     name: 'Plano Semestral GDrums',
     displayName: 'Semestral',
@@ -46,6 +56,16 @@ export const PLANS: Plan[] = [
     pricePerMonth: '19',
     durationMonths: 12,
     savings: 'Economize 34%',
+  },
+  {
+    id: 'rei-dos-palcos',
+    name: 'Rei dos Palcos — 3 Anos GDrums',
+    displayName: 'Rei dos Palcos',
+    priceCents: 52200,
+    priceDisplay: 'R$ 522',
+    pricePerMonth: '14,50',
+    durationMonths: 36,
+    savings: 'Metade do mensal!',
   },
 ];
 

@@ -1,5 +1,5 @@
 {
-  "version": 9,
+  "version": 10,
   "rhythms": [
     "Arrocha.json",
     "Baião.json",
@@ -8,6 +8,7 @@
     "Bossa Nova.json",
     "Bugio.json",
     "Chamamé.json",
+    "Country.json",
     "Forró.json",
     "Gospel.json",
     "Guarânia.json",
@@ -21,6 +22,7 @@
     "Samba.json",
     "Valsa.json",
     "Vaneira.json",
+    "Worship (tribal).json",
     "Xote.json"
   ],
   "categories": {
@@ -33,6 +35,7 @@
     ],
     "Pop/Rock": [
       "Balada 6-8.json",
+      "Country.json",
       "Pop Rock.json",
       "Punk Rock.json",
       "Rock.json"
@@ -50,7 +53,8 @@
       "Xote.json"
     ],
     "Gospel": [
-      "Gospel.json"
+      "Gospel.json",
+      "Worship (tribal).json"
     ],
     "Reggae": [
       "Reggae.json"

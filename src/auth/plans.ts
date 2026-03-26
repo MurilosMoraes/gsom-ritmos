@@ -181,12 +181,14 @@ class PlansPage {
         ${hasDiscount ? `<span class="plan-savings">${discount}% OFF com cupom!</span>` : (plan.savings ? `<span class="plan-savings">${plan.savings}</span>` : '')}
         ${plan.durationMonths > 1 ? `<span class="plan-total">Total: R$ ${(discountedPrice / 100).toFixed(0)}</span>` : '<span class="plan-total">&nbsp;</span>'}
         <ul class="plan-features">
-          <li>Acesso total ao sequenciador</li>
-          <li>Biblioteca completa de ritmos</li>
-          <li>Salvar projetos ilimitados</li>
-          <li>Favoritos e setlists</li>
-          ${plan.durationMonths >= 6 ? '<li>Suporte prioritário</li>' : '<li>Suporte por email</li>'}
-          ${plan.durationMonths >= 12 ? '<li>Acesso antecipado a novidades</li>' : ''}
+          <li>Todos os ritmos da biblioteca</li>
+          <li>Performance ao vivo (viradas, intro, final)</li>
+          <li>Pedal Bluetooth personalizavel</li>
+          <li>Favoritos e setlist</li>
+          <li>Modo offline</li>
+          <li>Ritmos novos toda semana</li>
+          ${plan.durationMonths >= 6 ? '<li>Suporte prioritario</li>' : ''}
+          ${plan.durationMonths >= 36 ? '<li>3 anos garantidos — metade do mensal</li>' : ''}
         </ul>
         <button class="plan-btn" data-plan="${plan.id}">Assinar ${plan.displayName}</button>
       `;
