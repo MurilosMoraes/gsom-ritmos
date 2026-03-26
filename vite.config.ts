@@ -23,6 +23,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
+        // Forçar ativação imediata do novo SW (sem esperar abas fecharem)
+        skipWaiting: true,
+        clientsClaim: true,
         // Cachear app shell (HTML, CSS, JS) — excluir imagens grandes do precache
         globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
         // Cachear runtime: samples e ritmos
