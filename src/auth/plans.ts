@@ -258,7 +258,7 @@ class PlansPage {
       const redirectUrl = `${window.location.origin}/payment-success.html`;
 
       // Salvar pedido pendente no banco (funciona em qualquer dispositivo)
-      await supabase.from('gdrums_transactions').upsert({
+      await supabase.from('gdrums_transactions').insert({
         user_id: user.id,
         order_nsu: orderNsu,
         plan: plan.id,
@@ -267,7 +267,7 @@ class PlansPage {
         status: 'pending',
         coupon_code: this.appliedCoupon?.code || null,
         discount_percent: this.appliedCoupon?.discount_percent || null,
-      }, { onConflict: 'order_nsu' });
+      });
 
       // Backup local (fallback)
       localStorage.setItem('gdrums-pending-order', JSON.stringify({
