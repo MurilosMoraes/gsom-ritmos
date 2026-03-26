@@ -252,22 +252,35 @@ class PlansPage {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { window.location.href = '/login.html'; return; }
 
+      // Verificar se já tem pending pro mesmo plano (evitar duplicatas)
+      const { data: existingPending } = await supabase
+        .from('gdrums_transactions')
+        .select('order_nsu')
+        .eq('user_id', user.id)
+        .eq('plan', plan.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
       // Gerar order_nsu com info do cupom
       const couponSuffix = this.appliedCoupon ? `_${this.appliedCoupon.code}` : '';
-      const orderNsu = generateOrderNsu(user.id, plan.id) + couponSuffix;
+      const orderNsu = existingPending?.order_nsu || (generateOrderNsu(user.id, plan.id) + couponSuffix);
       const redirectUrl = `${window.location.origin}/payment-success.html`;
 
-      // Salvar pedido pendente no banco (funciona em qualquer dispositivo)
-      await supabase.from('gdrums_transactions').insert({
-        user_id: user.id,
-        order_nsu: orderNsu,
-        plan: plan.id,
-        amount_cents: finalPriceCents,
-        original_amount_cents: plan.priceCents,
-        status: 'pending',
-        coupon_code: this.appliedCoupon?.code || null,
-        discount_percent: this.appliedCoupon?.discount_percent || null,
-      });
+      // Salvar pedido pendente no banco (só se não existe)
+      if (!existingPending) {
+        await supabase.from('gdrums_transactions').insert({
+          user_id: user.id,
+          order_nsu: orderNsu,
+          plan: plan.id,
+          amount_cents: finalPriceCents,
+          original_amount_cents: plan.priceCents,
+          status: 'pending',
+          coupon_code: this.appliedCoupon?.code || null,
+          discount_percent: this.appliedCoupon?.discount_percent || null,
+        });
+      }
 
       // Backup local (fallback)
       localStorage.setItem('gdrums-pending-order', JSON.stringify({
