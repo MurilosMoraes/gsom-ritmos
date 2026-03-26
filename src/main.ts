@@ -31,7 +31,23 @@ class RhythmSequencer {
   private isAdminMode = false;
   private userRole: 'user' | 'admin' = 'user';
   private rhythmVersion: number = 0;
-  private pedalMap: { left: string; right: string } = { left: 'ArrowLeft', right: 'ArrowRight' };
+  // Pedal mapping — suporta 2 a 6 botões
+  // Os 2 primeiros (play_stop e fill_end) são o padrão com double tap
+  // Os extras são ações diretas sem double tap
+  private pedalBindings: Array<{ key: string; action: string }> = [
+    { key: 'ArrowLeft', action: 'play_stop' },
+    { key: 'ArrowRight', action: 'fill_end' },
+  ];
+
+  // Compat: getter para código que usa pedalMap.left/right
+  private get pedalMap() {
+    const play = this.pedalBindings.find(b => b.action === 'play_stop');
+    const fill = this.pedalBindings.find(b => b.action === 'fill_end');
+    return {
+      left: play?.key || 'ArrowLeft',
+      right: fill?.key || 'ArrowRight',
+    };
+  }
 
   constructor() {
     // Inicializar contexto de áudio
@@ -165,7 +181,18 @@ class RhythmSequencer {
       // Carregar mapeamento de pedal salvo
       const savedPedalMap = localStorage.getItem('gdrums_pedal_map');
       if (savedPedalMap) {
-        try { this.pedalMap = JSON.parse(savedPedalMap); } catch { /* usar padrão */ }
+        try {
+          const parsed = JSON.parse(savedPedalMap);
+          // Migrar formato antigo { left, right } para novo formato
+          if (parsed.left && parsed.right && !Array.isArray(parsed)) {
+            this.pedalBindings = [
+              { key: parsed.left, action: 'play_stop' },
+              { key: parsed.right, action: 'fill_end' },
+            ];
+          } else if (Array.isArray(parsed)) {
+            this.pedalBindings = parsed;
+          }
+        } catch { /* usar padrão */ }
       }
 
       this.generateChannelsHTML();
@@ -190,10 +217,47 @@ class RhythmSequencer {
             cached.subscriptionPlan
           );
         }
+        // Quando reconectar, revalidar acesso e atualizar cache
+        window.addEventListener('online', () => {
+          this.checkAccess();
+        }, { once: true });
         return true;
       }
-      // Sem cache válido e sem rede — não dá pra acessar
-      window.location.href = '/login.html';
+
+      // Sem cache válido e sem rede — explicar o motivo
+      const cached = OfflineCache.getProfile();
+      let reason = 'Você precisa estar conectado para acessar o GDrums.';
+      if (cached) {
+        const expires = cached.subscriptionExpiresAt ? new Date(cached.subscriptionExpiresAt) : null;
+        const cacheAge = Date.now() - cached.cachedAt;
+        const maxAge = 7 * 24 * 60 * 60 * 1000;
+
+        if (expires && expires <= new Date()) {
+          reason = 'Sua assinatura expirou. Conecte-se à internet para renovar seu plano.';
+        } else if (cacheAge > maxAge) {
+          reason = 'Faz mais de 7 dias sem conexão. Conecte-se à internet para revalidar seu acesso.';
+        } else if (cached.role === 'admin') {
+          reason = 'O modo admin não funciona offline. Conecte-se à internet.';
+        }
+      }
+
+      // Mostrar mensagem antes de redirecionar
+      document.body.innerHTML = `
+        <div style="position:fixed;inset:0;background:#030014;display:flex;align-items:center;justify-content:center;padding:2rem;">
+          <div style="text-align:center;max-width:400px;">
+            <div style="font-size:2.5rem;margin-bottom:1rem;">📡</div>
+            <h2 style="color:#fff;font-size:1.2rem;margin:0 0 0.75rem;">Sem conexão</h2>
+            <p style="color:rgba(255,255,255,0.5);font-size:0.85rem;line-height:1.6;margin:0 0 1.5rem;">${reason}</p>
+            <button onclick="window.location.reload()" style="
+              padding:0.7rem 2rem;border:none;border-radius:12px;
+              background:linear-gradient(135deg,#00D4FF,#8B5CF6);
+              color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;
+            ">Tentar novamente</button>
+          </div>
+        </div>
+      `;
+      // Quando reconectar, recarregar automaticamente
+      window.addEventListener('online', () => window.location.reload(), { once: true });
       return false;
     }
 
@@ -730,82 +794,96 @@ class RhythmSequencer {
         return;
       }
 
-      // ArrowLeft:
-      //   Parado → Play (com intro se ON)
-      //   Tocando single → Fill + próximo ritmo
-      //   Tocando double → Fill + ritmo anterior
-      if (e.code === this.pedalMap.left && !e.repeat) {
+      // ─── Pedal bindings ───────────────────────────────────────────
+      const binding = this.pedalBindings.find(b => b.key === e.code);
+      if (binding && !e.repeat) {
         e.preventDefault();
-        if (!this.stateManager.isPlaying()) {
-          this.patternEngine.activateRhythm(0);
-          if (this.useIntro) {
-            this.patternEngine.playIntroAndStart();
-          } else {
-            this.stateManager.setShouldPlayStartSound(true);
-          }
-          this.play();
-        } else {
-          const now = Date.now();
-          const timeSinceLastPress = now - arrowLeftLastPress;
 
-          if (timeSinceLastPress < 500 && arrowLeftLastPress > 0) {
-            // Double: fill + ritmo anterior
-            if (arrowLeftTimeout) {
-              clearTimeout(arrowLeftTimeout);
-              arrowLeftTimeout = null;
+        // play_stop: padrão com double tap (play/next/previous)
+        if (binding.action === 'play_stop') {
+          if (!this.stateManager.isPlaying()) {
+            this.patternEngine.activateRhythm(0);
+            if (this.useIntro) {
+              this.patternEngine.playIntroAndStart();
+            } else {
+              this.stateManager.setShouldPlayStartSound(true);
             }
-            this.playFillToPreviousRhythm();
-            arrowLeftLastPress = 0;
+            this.play();
           } else {
-            arrowLeftLastPress = now;
-            if (arrowLeftTimeout) clearTimeout(arrowLeftTimeout);
+            const now = Date.now();
+            const timeSinceLastPress = now - arrowLeftLastPress;
 
-            arrowLeftTimeout = window.setTimeout(() => {
-              // Single: fill + próximo ritmo
-              this.patternEngine.playFillToNextRhythm();
-              arrowLeftTimeout = null;
-            }, 500);
+            if (timeSinceLastPress < 500 && arrowLeftLastPress > 0) {
+              if (arrowLeftTimeout) { clearTimeout(arrowLeftTimeout); arrowLeftTimeout = null; }
+              this.playFillToPreviousRhythm();
+              arrowLeftLastPress = 0;
+            } else {
+              arrowLeftLastPress = now;
+              if (arrowLeftTimeout) clearTimeout(arrowLeftTimeout);
+              arrowLeftTimeout = window.setTimeout(() => {
+                this.patternEngine.playFillToNextRhythm();
+                arrowLeftTimeout = null;
+              }, 500);
+            }
           }
-        }
-        return;
-      }
-
-      // ArrowRight:
-      //   Parado → Prato
-      //   Tocando single → Fill
-      //   Tocando double → Final + Stop
-      if (e.code === this.pedalMap.right && !e.repeat) {
-        e.preventDefault();
-        if (!this.stateManager.isPlaying()) {
-          this.playCymbal();
           return;
         }
 
-        const now = Date.now();
-        const timeSinceLastPress = now - arrowRightLastPress;
-
-        if (timeSinceLastPress < 500 && arrowRightLastPress > 0) {
-          if (arrowRightTimeout) {
-            clearTimeout(arrowRightTimeout);
-            arrowRightTimeout = null;
+        // fill_end: padrão com double tap (virada/finalização)
+        if (binding.action === 'fill_end') {
+          if (!this.stateManager.isPlaying()) {
+            this.playCymbal();
+            return;
           }
-          // Double right: parar com ou sem final
-          if (this.useFinal) {
-            this.patternEngine.playEndAndStop();
+          const now = Date.now();
+          const timeSinceLastPress = now - arrowRightLastPress;
+
+          if (timeSinceLastPress < 500 && arrowRightLastPress > 0) {
+            if (arrowRightTimeout) { clearTimeout(arrowRightTimeout); arrowRightTimeout = null; }
+            if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stop(); }
+            arrowRightLastPress = 0;
           } else {
-            this.stop();
+            arrowRightLastPress = now;
+            if (arrowRightTimeout) clearTimeout(arrowRightTimeout);
+            arrowRightTimeout = window.setTimeout(() => {
+              this.patternEngine.playRotatingFill();
+              arrowRightTimeout = null;
+            }, 500);
           }
-          arrowRightLastPress = 0;
-        } else {
-          arrowRightLastPress = now;
-          if (arrowRightTimeout) clearTimeout(arrowRightTimeout);
-
-          arrowRightTimeout = window.setTimeout(() => {
-            this.patternEngine.playRotatingFill();
-            arrowRightTimeout = null;
-          }, 500);
+          return;
         }
-        return;
+
+        // ─── Ações diretas (botões extras, sem double tap) ────────
+        if (binding.action === 'fill') {
+          if (this.stateManager.isPlaying()) this.patternEngine.playRotatingFill();
+          return;
+        }
+        if (binding.action === 'end') {
+          if (this.stateManager.isPlaying()) {
+            if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stop(); }
+          }
+          return;
+        }
+        if (binding.action === 'cymbal') {
+          this.playCymbal();
+          return;
+        }
+        if (binding.action === 'next_rhythm') {
+          if (this.stateManager.isPlaying()) {
+            this.patternEngine.playFillToNextRhythm();
+          } else {
+            this.navigateSetlist('next');
+          }
+          return;
+        }
+        if (binding.action === 'prev_rhythm') {
+          if (this.stateManager.isPlaying()) {
+            this.playFillToPreviousRhythm();
+          } else {
+            this.navigateSetlist('previous');
+          }
+          return;
+        }
       }
     });
   }
@@ -1673,20 +1751,21 @@ class RhythmSequencer {
   }
 
   private showPedalMapper(): void {
-    // Carregar mapeamento salvo
-    const saved = localStorage.getItem('gdrums_pedal_map');
-    const map = saved ? JSON.parse(saved) : {
-      left: 'ArrowLeft',
-      right: 'ArrowRight'
-    };
+    const ACTIONS: Array<{ id: string; label: string; desc: string; color: string }> = [
+      { id: 'play_stop', label: 'Play / Stop', desc: 'Parado: toca com intro. Tocando: 1× próximo ritmo, 2× ritmo anterior', color: '139,92,246' },
+      { id: 'fill_end', label: 'Virada / Final', desc: 'Parado: toca prato. Tocando: 1× virada, 2× finalização', color: '249,115,22' },
+      { id: 'fill', label: 'Virada', desc: 'Toca a próxima virada (só funciona tocando)', color: '0,212,255' },
+      { id: 'end', label: 'Finalização', desc: 'Toca a finalização e para (só funciona tocando)', color: '236,72,153' },
+      { id: 'cymbal', label: 'Prato', desc: 'Toca o prato a qualquer momento (tocando ou parado)', color: '249,200,22' },
+      { id: 'next_rhythm', label: 'Próximo Ritmo', desc: 'Vai pro próximo ritmo dos favoritos', color: '0,230,140' },
+      { id: 'prev_rhythm', label: 'Ritmo Anterior', desc: 'Volta pro ritmo anterior dos favoritos', color: '0,180,230' },
+    ];
 
     const keyLabels: Record<string, string> = {
-      'ArrowLeft': '← Seta Esquerda',
-      'ArrowRight': '→ Seta Direita',
-      'ArrowUp': '↑ Seta Cima',
-      'ArrowDown': '↓ Seta Baixo',
-      'Space': 'Espaço',
-      'Enter': 'Enter',
+      'ArrowLeft': '← Esquerda', 'ArrowRight': '→ Direita',
+      'ArrowUp': '↑ Cima', 'ArrowDown': '↓ Baixo',
+      'Space': 'Espaço', 'Enter': 'Enter',
+      'PageUp': 'Page Up', 'PageDown': 'Page Down',
       'KeyA': 'A', 'KeyB': 'B', 'KeyC': 'C', 'KeyD': 'D',
       'KeyE': 'E', 'KeyF': 'F', 'KeyG': 'G', 'KeyH': 'H',
       'KeyI': 'I', 'KeyJ': 'J', 'KeyK': 'K', 'KeyL': 'L',
@@ -1698,73 +1777,99 @@ class RhythmSequencer {
       'Digit5': '5', 'Digit6': '6', 'Digit7': '7', 'Digit8': '8',
       'Digit9': '9', 'Digit0': '0',
     };
-
     const getLabel = (code: string) => keyLabels[code] || code;
 
+    // Copiar bindings atuais para edição
+    const bindings = [...this.pedalBindings.map(b => ({ ...b }))];
+
     const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(20px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(20px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto;';
+
+    const renderBindings = () => {
+      const bindingsHTML = bindings.map((b, i) => {
+        const actionDef = ACTIONS.find(a => a.id === b.action)!;
+        const isDefault = i < 2;
+        return `
+          <div class="pedal-bind-row" data-index="${i}" style="
+            display:flex;align-items:center;gap:0.75rem;padding:0.75rem;
+            background:rgba(${actionDef.color},0.05);border:1px solid rgba(${actionDef.color},0.15);
+            border-radius:14px;transition:all 0.2s;
+          ">
+            <button class="pedal-bind-key" data-index="${i}" style="
+              min-width:80px;padding:0.4rem 0.6rem;border-radius:8px;
+              border:2px solid rgba(${actionDef.color},0.3);
+              background:rgba(${actionDef.color},0.1);
+              color:rgba(${actionDef.color},0.9);font-size:0.75rem;font-weight:700;
+              font-family:inherit;cursor:pointer;text-align:center;transition:all 0.2s;
+            ">${getLabel(b.key)}</button>
+            <div style="flex:1;">
+              <div style="font-size:0.8rem;font-weight:600;color:rgba(${actionDef.color},0.9);">${actionDef.label}${isDefault ? ' <span style="font-size:0.6rem;opacity:0.5;">(padrão)</span>' : ''}</div>
+              <div style="font-size:0.55rem;color:rgba(255,255,255,0.3);line-height:1.4;margin-top:2px;">${actionDef.desc}</div>
+            </div>
+            ${!isDefault ? `<button class="pedal-bind-remove" data-index="${i}" style="
+              width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,80,80,0.2);
+              background:rgba(255,80,80,0.08);color:rgba(255,80,80,0.6);font-size:1rem;
+              cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;
+            ">&times;</button>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      // Ações disponíveis para adicionar (excluir as já mapeadas)
+      const usedActions = bindings.map(b => b.action);
+      const availableActions = ACTIONS.filter(a => !usedActions.includes(a.id));
+      const addOptions = availableActions.map(a =>
+        `<option value="${a.id}">${a.label}</option>`
+      ).join('');
+
+      const container = overlay.querySelector('#pedalBindingsContainer') as HTMLElement;
+      container.innerHTML = bindingsHTML;
+
+      const addSelect = overlay.querySelector('#pedalAddSelect') as HTMLSelectElement;
+      addSelect.innerHTML = '<option value="">+ Adicionar botão...</option>' + addOptions;
+      addSelect.style.display = availableActions.length > 0 ? '' : 'none';
+
+      // Bind events
+      container.querySelectorAll('.pedal-bind-key').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const idx = parseInt((e.currentTarget as HTMLElement).getAttribute('data-index')!);
+          setListening(idx);
+        });
+      });
+
+      container.querySelectorAll('.pedal-bind-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const idx = parseInt((e.currentTarget as HTMLElement).getAttribute('data-index')!);
+          bindings.splice(idx, 1);
+          renderBindings();
+        });
+      });
+    };
 
     overlay.innerHTML = `
-      <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:2rem;max-width:500px;width:100%;">
+      <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:2rem;max-width:480px;width:100%;">
         <h2 style="font-size:1.2rem;font-weight:700;color:#fff;margin:0 0 0.3rem;text-align:center;">Mapear Pedal</h2>
-        <p style="font-size:0.7rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.5rem;">Clique no pedal e pressione a tecla do seu controlador</p>
+        <p style="font-size:0.65rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.2rem;">Clique na tecla e pressione o botão do seu pedal. Pedais de 2, 3, 4+ botões.</p>
 
-        <!-- Visual dos pedais -->
-        <div style="display:flex;gap:2rem;justify-content:center;align-items:flex-end;margin-bottom:1.5rem;">
+        <div id="pedalBindingsContainer" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem;"></div>
 
-          <!-- Pedal Esquerdo -->
-          <div style="display:flex;flex-direction:column;align-items:center;gap:0.75rem;">
-            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(139,92,246,0.6);">Esquerdo</div>
-            <button id="pedalLeftBtn" style="
-              width:90px;height:140px;border-radius:16px;border:2px solid rgba(139,92,246,0.3);
-              background:linear-gradient(180deg,rgba(139,92,246,0.12) 0%,rgba(139,92,246,0.04) 100%);
-              cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;
-              transition:all 0.2s;position:relative;overflow:hidden;
-            ">
-              <div style="font-size:2rem;filter:drop-shadow(0 0 8px rgba(139,92,246,0.4));">🦶</div>
-              <div id="pedalLeftKey" style="font-size:0.75rem;font-weight:700;color:rgba(139,92,246,0.9);background:rgba(139,92,246,0.15);padding:0.25rem 0.6rem;border-radius:8px;border:1px solid rgba(139,92,246,0.25);">${getLabel(map.left)}</div>
-            </button>
-            <div style="font-size:0.55rem;color:rgba(255,255,255,0.25);text-align:center;line-height:1.5;max-width:120px;">
-              <span style="color:rgba(139,92,246,0.5);">1×</span> Próximo ritmo<br>
-              <span style="color:rgba(139,92,246,0.5);">2×</span> Ritmo anterior
-            </div>
-          </div>
+        <select id="pedalAddSelect" style="
+          width:100%;padding:0.6rem;border-radius:12px;
+          border:1px dashed rgba(255,255,255,0.15);background:rgba(255,255,255,0.03);
+          color:rgba(255,255,255,0.4);font-size:0.8rem;font-family:inherit;
+          cursor:pointer;margin-bottom:1rem;appearance:none;text-align:center;
+        "></select>
 
-          <!-- Separador visual - base do pedal -->
-          <div style="width:2px;height:100px;background:linear-gradient(180deg,transparent,rgba(255,255,255,0.06),transparent);border-radius:1px;"></div>
-
-          <!-- Pedal Direito -->
-          <div style="display:flex;flex-direction:column;align-items:center;gap:0.75rem;">
-            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(249,115,22,0.6);">Direito</div>
-            <button id="pedalRightBtn" style="
-              width:90px;height:140px;border-radius:16px;border:2px solid rgba(249,115,22,0.3);
-              background:linear-gradient(180deg,rgba(249,115,22,0.12) 0%,rgba(249,115,22,0.04) 100%);
-              cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;
-              transition:all 0.2s;position:relative;overflow:hidden;
-            ">
-              <div style="font-size:2rem;filter:drop-shadow(0 0 8px rgba(249,115,22,0.4));">🦶</div>
-              <div id="pedalRightKey" style="font-size:0.75rem;font-weight:700;color:rgba(249,115,22,0.9);background:rgba(249,115,22,0.15);padding:0.25rem 0.6rem;border-radius:8px;border:1px solid rgba(249,115,22,0.25);">${getLabel(map.right)}</div>
-            </button>
-            <div style="font-size:0.55rem;color:rgba(255,255,255,0.25);text-align:center;line-height:1.5;max-width:120px;">
-              <span style="color:rgba(249,115,22,0.5);">1×</span> Virada<br>
-              <span style="color:rgba(249,115,22,0.5);">2×</span> Finalizar
-            </div>
-          </div>
-        </div>
-
-        <!-- Status -->
-        <div id="pedalMapStatus" style="text-align:center;font-size:0.7rem;color:rgba(255,255,255,0.2);min-height:1.5rem;margin-bottom:1rem;transition:all 0.3s;"></div>
+        <div id="pedalMapStatus" style="text-align:center;font-size:0.7rem;color:rgba(255,255,255,0.2);min-height:1.5rem;margin-bottom:0.75rem;transition:all 0.3s;"></div>
 
         <!-- Teste ao vivo -->
-        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:1rem;margin-bottom:1rem;">
-          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.2);margin-bottom:0.5rem;text-align:center;">Teste ao vivo</div>
-          <div id="pedalTestArea" style="display:flex;justify-content:center;gap:2rem;">
-            <div id="testLeft" style="width:50px;height:50px;border-radius:12px;border:2px solid rgba(139,92,246,0.15);background:rgba(139,92,246,0.03);display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:rgba(139,92,246,0.3);font-weight:700;transition:all 0.15s;">ESQ</div>
-            <div id="testRight" style="width:50px;height:50px;border-radius:12px;border:2px solid rgba(249,115,22,0.15);background:rgba(249,115,22,0.03);display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:rgba(249,115,22,0.3);font-weight:700;transition:all 0.15s;">DIR</div>
-          </div>
+        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:0.75rem;margin-bottom:1rem;">
+          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.2);margin-bottom:0.5rem;text-align:center;">Teste ao vivo — pressione qualquer botão do pedal</div>
+          <div id="pedalTestResult" style="text-align:center;font-size:0.85rem;font-weight:700;color:rgba(255,255,255,0.15);min-height:1.5rem;transition:all 0.15s;"></div>
         </div>
 
-        <!-- Botões -->
         <div style="display:flex;gap:0.5rem;">
           <button id="pedalMapReset" style="flex:1;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Resetar</button>
           <button id="pedalMapSave" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(0,230,140,0.12);border:1px solid rgba(0,230,140,0.25);color:rgba(0,230,140,0.9);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Salvar</button>
@@ -1774,111 +1879,107 @@ class RhythmSequencer {
 
     document.body.appendChild(overlay);
 
-    let listening: 'left' | 'right' | null = null;
-    const leftBtn = overlay.querySelector('#pedalLeftBtn') as HTMLElement;
-    const rightBtn = overlay.querySelector('#pedalRightBtn') as HTMLElement;
-    const leftKeyEl = overlay.querySelector('#pedalLeftKey') as HTMLElement;
-    const rightKeyEl = overlay.querySelector('#pedalRightKey') as HTMLElement;
+    let listeningIndex: number | null = null;
     const statusEl = overlay.querySelector('#pedalMapStatus') as HTMLElement;
-    const testLeft = overlay.querySelector('#testLeft') as HTMLElement;
-    const testRight = overlay.querySelector('#testRight') as HTMLElement;
+    const testResult = overlay.querySelector('#pedalTestResult') as HTMLElement;
 
-    const setListening = (side: 'left' | 'right') => {
-      listening = side;
-      const btn = side === 'left' ? leftBtn : rightBtn;
-      const color = side === 'left' ? '139,92,246' : '249,115,22';
-      btn.style.borderColor = `rgba(${color},0.8)`;
-      btn.style.boxShadow = `0 0 20px rgba(${color},0.3), inset 0 0 20px rgba(${color},0.1)`;
-      btn.style.transform = 'scale(1.05)';
-      statusEl.textContent = `Pressione a tecla para o pedal ${side === 'left' ? 'esquerdo' : 'direito'}...`;
-      statusEl.style.color = `rgba(${color},0.7)`;
+    const setListening = (idx: number) => {
+      listeningIndex = idx;
+      const actionDef = ACTIONS.find(a => a.id === bindings[idx].action)!;
+      statusEl.textContent = `Pressione a tecla para "${actionDef.label}"...`;
+      statusEl.style.color = `rgba(${actionDef.color},0.7)`;
+
+      // Highlight the key button
+      const keyBtn = overlay.querySelector(`.pedal-bind-key[data-index="${idx}"]`) as HTMLElement;
+      if (keyBtn) {
+        keyBtn.style.transform = 'scale(1.1)';
+        keyBtn.style.boxShadow = `0 0 15px rgba(${actionDef.color},0.4)`;
+      }
     };
 
-    const resetBtn = (side: 'left' | 'right') => {
-      const btn = side === 'left' ? leftBtn : rightBtn;
-      btn.style.borderColor = '';
-      btn.style.boxShadow = '';
-      btn.style.transform = '';
-    };
+    // Add select handler
+    const addSelect = overlay.querySelector('#pedalAddSelect') as HTMLSelectElement;
+    addSelect.addEventListener('change', () => {
+      const actionId = addSelect.value;
+      if (!actionId) return;
+      bindings.push({ key: '(pressione)', action: actionId });
+      renderBindings();
+      // Auto-listen for the new binding
+      setListening(bindings.length - 1);
+    });
 
-    leftBtn.addEventListener('click', (e) => { e.stopPropagation(); setListening('left'); });
-    rightBtn.addEventListener('click', (e) => { e.stopPropagation(); setListening('right'); });
-
-    // Listener de teste ao vivo + mapeamento
+    // Key handler
     const keyHandler = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
 
-      if (listening) {
-        // Modo mapeamento
-        if (listening === 'left') {
-          map.left = e.code;
-          leftKeyEl.textContent = getLabel(e.code);
-        } else {
-          map.right = e.code;
-          rightKeyEl.textContent = getLabel(e.code);
-        }
-
-        const side = listening;
-        const color = side === 'left' ? '0,230,140' : '0,230,140';
+      if (listeningIndex !== null) {
+        bindings[listeningIndex].key = e.code;
+        listeningIndex = null;
         statusEl.textContent = `${getLabel(e.code)} mapeado!`;
-        statusEl.style.color = `rgba(${color},0.7)`;
-
-        resetBtn(listening);
-        listening = null;
-
-        setTimeout(() => {
-          statusEl.textContent = '';
-        }, 1500);
+        statusEl.style.color = 'rgba(0,230,140,0.7)';
+        setTimeout(() => { statusEl.textContent = ''; }, 1500);
+        renderBindings();
       }
 
-      // Teste ao vivo (sempre)
-      if (e.code === map.left) {
-        testLeft.style.background = 'rgba(139,92,246,0.3)';
-        testLeft.style.borderColor = 'rgba(139,92,246,0.7)';
-        testLeft.style.color = 'rgba(139,92,246,0.9)';
-        testLeft.style.transform = 'scale(1.1)';
+      // Teste ao vivo
+      const match = bindings.find(b => b.key === e.code);
+      if (match) {
+        const actionDef = ACTIONS.find(a => a.id === match.action)!;
+        testResult.textContent = `${getLabel(e.code)} → ${actionDef.label}`;
+        testResult.style.color = `rgba(${actionDef.color},0.9)`;
         setTimeout(() => {
-          testLeft.style.background = '';
-          testLeft.style.borderColor = '';
-          testLeft.style.color = '';
-          testLeft.style.transform = '';
-        }, 200);
-      }
-      if (e.code === map.right) {
-        testRight.style.background = 'rgba(249,115,22,0.3)';
-        testRight.style.borderColor = 'rgba(249,115,22,0.7)';
-        testRight.style.color = 'rgba(249,115,22,0.9)';
-        testRight.style.transform = 'scale(1.1)';
-        setTimeout(() => {
-          testRight.style.background = '';
-          testRight.style.borderColor = '';
-          testRight.style.color = '';
-          testRight.style.transform = '';
-        }, 200);
+          testResult.textContent = '';
+          testResult.style.color = '';
+        }, 800);
+      } else {
+        testResult.textContent = `${getLabel(e.code)} — não mapeado`;
+        testResult.style.color = 'rgba(255,255,255,0.3)';
+        setTimeout(() => { testResult.textContent = ''; }, 800);
       }
     };
 
     document.addEventListener('keydown', keyHandler);
 
+    renderBindings();
+
     // Reset
     overlay.querySelector('#pedalMapReset')!.addEventListener('click', () => {
-      map.left = 'ArrowLeft';
-      map.right = 'ArrowRight';
-      leftKeyEl.textContent = getLabel(map.left);
-      rightKeyEl.textContent = getLabel(map.right);
-      statusEl.textContent = 'Resetado para padrão';
+      bindings.length = 0;
+      bindings.push({ key: 'ArrowLeft', action: 'play_stop' });
+      bindings.push({ key: 'ArrowRight', action: 'fill_end' });
+      renderBindings();
+      statusEl.textContent = 'Resetado para padrão (2 pedais)';
       statusEl.style.color = 'rgba(255,255,255,0.3)';
       setTimeout(() => { statusEl.textContent = ''; }, 1500);
     });
 
     // Salvar
     overlay.querySelector('#pedalMapSave')!.addEventListener('click', () => {
-      localStorage.setItem('gdrums_pedal_map', JSON.stringify(map));
-      // Atualizar os bindings no app
-      this.pedalMap = map;
+      // Verificar botões não configurados
+      const unconfigured = bindings.filter(b => b.key === '(pressione)');
+      if (unconfigured.length > 0) {
+        const names = unconfigured.map(b => ACTIONS.find(a => a.id === b.action)?.label).join(', ');
+        statusEl.textContent = `Configure a tecla de: ${names}`;
+        statusEl.style.color = 'rgba(255,80,80,0.8)';
+        setTimeout(() => { statusEl.textContent = ''; }, 3000);
+        return;
+      }
+
+      // Verificar teclas duplicadas
+      const keys = bindings.map(b => b.key);
+      const duplicates = keys.filter((k, i) => keys.indexOf(k) !== i);
+      if (duplicates.length > 0) {
+        statusEl.textContent = `Tecla "${getLabel(duplicates[0])}" está em mais de um botão`;
+        statusEl.style.color = 'rgba(255,80,80,0.8)';
+        setTimeout(() => { statusEl.textContent = ''; }, 3000);
+        return;
+      }
+
+      this.pedalBindings = [...bindings];
+      localStorage.setItem('gdrums_pedal_map', JSON.stringify(bindings));
       close();
-      this.modalManager.show('Pedal', 'Mapeamento salvo!', 'success');
+      this.modalManager.show('Pedal', `Mapeamento salvo! ${bindings.length} botões configurados.`, 'success');
     });
 
     const close = () => {

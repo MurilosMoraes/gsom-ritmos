@@ -492,6 +492,8 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
   transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
 }
 
 .pricing-card:hover {
@@ -592,10 +594,15 @@ body {
   margin-top: 2px;
 }
 
+.pricing-features {
+  flex: 1;
+}
+
 .pricing-button {
   display: block;
   width: 100%;
   padding: 1rem;
+  margin-top: auto;
   text-align: center;
   background: rgba(255, 255, 255, 0.1);
   color: white;
