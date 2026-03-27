@@ -1934,33 +1934,51 @@ class RhythmSequencer {
     document.body.appendChild(overlay);
     render();
 
-    const keyHandler = (e: KeyboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!listening) return;
-
-      // Usar e.code (preferencial) ou e.key como fallback (iOS com alguns pedais BT)
-      const code = e.code || e.key;
-      if (!code) return;
+    const handleDetected = (code: string, debugInfo: string) => {
+      if (!listening) {
+        // Não está ouvindo, mas mostrar debug pra ajudar diagnóstico
+        const statusEl = overlay.querySelector('#pedalStatus');
+        if (statusEl) {
+          statusEl.innerHTML = `<span style="color:rgba(0,212,255,0.6);">${debugInfo}</span>`;
+        }
+        return;
+      }
 
       if (listening === 'left') tempLeft = code;
       else tempRight = code;
 
-      // Mostrar info de debug pro usuário saber o que o pedal está enviando
       const statusEl = overlay.querySelector('#pedalStatus');
       if (statusEl) {
-        statusEl.innerHTML = `<span style="color:rgba(0,230,140,0.8);">Detectado: code="${e.code || '(vazio)'}" key="${e.key || '(vazio)'}"</span>`;
+        statusEl.innerHTML = `<span style="color:rgba(0,230,140,0.8);">Mapeado! ${debugInfo}</span>`;
       }
 
       listening = null;
       render();
     };
 
-    // keydown é o principal, mas keyup como fallback pra pedais que não emitem keydown
-    document.addEventListener('keydown', keyHandler);
+    // Capturar keydown (principal)
+    const keyHandler = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const code = e.code || e.key;
+      if (!code) return;
+      handleDetected(code, `keydown: code="${e.code || ''}" key="${e.key || ''}"`);
+    };
+
+    // Capturar keyup como fallback (alguns pedais BT no iOS só emitem keyup)
+    const keyUpHandler = (e: KeyboardEvent) => {
+      const code = e.code || e.key;
+      if (!code || !listening) return;
+      e.preventDefault();
+      handleDetected(code, `keyup: code="${e.code || ''}" key="${e.key || ''}"`);
+    };
+
+    document.addEventListener('keydown', keyHandler, true);
+    document.addEventListener('keyup', keyUpHandler, true);
 
     const close = () => {
-      document.removeEventListener('keydown', keyHandler);
+      document.removeEventListener('keydown', keyHandler, true);
+      document.removeEventListener('keyup', keyUpHandler, true);
       overlay.remove();
     };
 
