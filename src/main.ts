@@ -660,6 +660,34 @@ class RhythmSequencer {
     this.uiManager.updateVariationButtons();
   }
 
+  // ─── BPM customizado por ritmo (localStorage) ──────────────────────
+
+  private readonly BPM_STORAGE_KEY = 'gdrums-custom-bpm';
+
+  private getCustomBpmMap(): Record<string, number> {
+    try {
+      return JSON.parse(localStorage.getItem(this.BPM_STORAGE_KEY) || '{}');
+    } catch { return {}; }
+  }
+
+  private saveCustomBpm(): void {
+    if (!this.currentRhythmName) return;
+    const currentBpm = this.stateManager.getTempo();
+    // Só salvar se diferente do original do ritmo
+    const map = this.getCustomBpmMap();
+    if (currentBpm === this.currentRhythmOriginalBpm) {
+      delete map[this.currentRhythmName]; // Voltou pro original, limpar
+    } else {
+      map[this.currentRhythmName] = currentBpm;
+    }
+    localStorage.setItem(this.BPM_STORAGE_KEY, JSON.stringify(map));
+  }
+
+  private getCustomBpm(rhythmName: string): number | null {
+    const map = this.getCustomBpmMap();
+    return map[rhythmName] ?? null;
+  }
+
   private setupTempoControls(): void {
     // Controles do modo usuário
     const tempoUpUser = document.getElementById('tempoUpUser');
@@ -669,6 +697,7 @@ class RhythmSequencer {
       tempoUpUser.addEventListener('click', () => {
         const newTempo = Math.min(240, this.stateManager.getTempo() + 1);
         this.stateManager.setTempo(newTempo);
+        this.saveCustomBpm();
       });
     }
 
@@ -676,6 +705,7 @@ class RhythmSequencer {
       tempoDownUser.addEventListener('click', () => {
         const newTempo = Math.max(40, this.stateManager.getTempo() - 1);
         this.stateManager.setTempo(newTempo);
+        this.saveCustomBpm();
       });
     }
 
@@ -2301,9 +2331,10 @@ class RhythmSequencer {
     };
     document.addEventListener('keydown', onEsc);
 
-    // Limpar listener de ESC ao fechar normalmente
+    // Limpar listener de ESC e salvar BPM ao fechar normalmente
     overlay.querySelector('#bpmConfirm')!.addEventListener('click', () => {
       document.removeEventListener('keydown', onEsc);
+      this.saveCustomBpm();
     });
   }
 
@@ -2955,6 +2986,7 @@ class RhythmSequencer {
   private rhythmCategories: Record<string, string[]> = {};
   private activeCategory: string = '';
   private currentRhythmName: string = '';
+  private currentRhythmOriginalBpm: number = 0; // BPM original do JSON do ritmo
 
   private async loadAvailableRhythms(): Promise<void> {
     try {
@@ -3173,6 +3205,15 @@ class RhythmSequencer {
       const encodedPath = encodeURI(cleanPath);
       const finalPath = navigator.onLine ? `${encodedPath}?v=${this.rhythmVersion || Date.now()}` : encodedPath;
       await this.fileManager.loadProjectFromPath(finalPath);
+
+      // Guardar BPM original do ritmo (antes de aplicar customização)
+      this.currentRhythmOriginalBpm = this.stateManager.getTempo();
+
+      // Aplicar BPM customizado do usuário se existir
+      const customBpm = this.getCustomBpm(name);
+      if (customBpm !== null) {
+        this.stateManager.setTempo(customBpm);
+      }
 
       // Carregar a primeira variação do padrão sendo editado
       const patternType = this.stateManager.getEditingPattern();
