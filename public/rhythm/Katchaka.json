@@ -1,10 +1,11 @@
 {
-  "version": "1.4",
+  "version": "1.5",
   "tempo": 100,
+  "beatsPerBar": 4,
   "patternSteps": {
     "main": 16,
     "fill": 16,
-    "end": 20,
+    "end": 16,
     "intro": 8
   },
   "variations": {
@@ -3043,10 +3044,6 @@
             false,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
             false
           ],
           [
@@ -3065,17 +3062,9 @@
             true,
             true,
             false,
-            false,
-            false,
-            false,
-            false,
             false
           ],
           [
-            false,
-            false,
-            false,
-            false,
             false,
             false,
             false,
@@ -3109,10 +3098,6 @@
             false,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
             false
           ],
           [
@@ -3131,17 +3116,9 @@
             false,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
             false
           ],
           [
-            false,
-            false,
-            false,
-            false,
             false,
             false,
             false,
@@ -3173,10 +3150,6 @@
             false,
             false,
             false,
-            false,
-            false,
-            false,
-            true,
             false,
             false,
             false
@@ -3197,10 +3170,6 @@
             false,
             false,
             true,
-            false,
-            false,
-            false,
-            false,
             false
           ],
           [
@@ -3219,6 +3188,20 @@
             false,
             false,
             false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
             false,
             false,
             false,
@@ -3241,39 +3224,9 @@
             false,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
             false
           ],
           [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
             false,
             false,
             false,
@@ -3309,10 +3262,6 @@
             1,
             1,
             1,
-            1,
-            1,
-            1,
-            1,
             1
           ],
           [
@@ -3331,10 +3280,6 @@
             0.5,
             0.8,
             1,
-            1,
-            1,
-            1,
-            1,
             1
           ],
           [
@@ -3346,10 +3291,6 @@
             0,
             0,
             0,
-            1,
-            1,
-            1,
-            1,
             1,
             1,
             1,
@@ -3375,10 +3316,6 @@
             1,
             1,
             1,
-            1,
-            1,
-            1,
-            1,
             1
           ],
           [
@@ -3397,10 +3334,6 @@
             1,
             1,
             1,
-            1,
-            1,
-            1,
-            1,
             1
           ],
           [
@@ -3412,10 +3345,6 @@
             0,
             0,
             0,
-            1,
-            1,
-            1,
-            1,
             1,
             1,
             1,
@@ -3434,10 +3363,6 @@
             0,
             0.9,
             0,
-            1,
-            1,
-            1,
-            1,
             1,
             1,
             1,
@@ -3463,10 +3388,6 @@
             1,
             1,
             0.69,
-            1,
-            1,
-            1,
-            1,
             1
           ],
           [
@@ -3485,6 +3406,20 @@
             1,
             1,
             1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
             1,
             1,
             1,
@@ -3507,39 +3442,9 @@
             1,
             1,
             1,
-            1,
-            1,
-            1,
-            1,
             1
           ],
           [
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            1,
-            1,
-            1,
-            1,
             1,
             1,
             1,
@@ -3620,7 +3525,7 @@
             "midiPath": ""
           }
         ],
-        "steps": 20,
+        "steps": 16,
         "speed": 2
       }
     ],
@@ -3945,7 +3850,6 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-03-24T15:46:43.893Z",
-  "beatsPerBar": 4,
+  "timestamp": "2026-03-27T00:34:31.842Z",
   "category": "Gaúcho"
 }

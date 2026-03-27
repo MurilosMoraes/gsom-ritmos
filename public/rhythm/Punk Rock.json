@@ -5,7 +5,7 @@
   "patternSteps": {
     "main": 16,
     "fill": 8,
-    "end": 18,
+    "end": 16,
     "intro": 8
   },
   "variations": {
@@ -2852,8 +2852,6 @@
             false,
             true,
             false,
-            false,
-            false,
             false
           ],
           [
@@ -2872,8 +2870,6 @@
             false,
             false,
             false,
-            false,
-            false,
             false
           ],
           [
@@ -2882,8 +2878,6 @@
             false,
             true,
             true,
-            false,
-            false,
             false,
             false,
             false,
@@ -2912,8 +2906,6 @@
             false,
             false,
             false,
-            false,
-            false,
             false
           ],
           [
@@ -2929,8 +2921,6 @@
             false,
             true,
             true,
-            false,
-            false,
             false,
             false,
             false,
@@ -2952,8 +2942,6 @@
             true,
             false,
             false,
-            false,
-            false,
             false
           ],
           [
@@ -2972,8 +2960,6 @@
             false,
             false,
             false,
-            false,
-            true,
             false
           ],
           [
@@ -2992,9 +2978,7 @@
             false,
             false,
             true,
-            true,
-            false,
-            false
+            true
           ],
           [
             false,
@@ -3012,13 +2996,9 @@
             false,
             false,
             false,
-            false,
-            true,
             false
           ],
           [
-            false,
-            false,
             false,
             false,
             false,
@@ -3052,13 +3032,9 @@
             false,
             false,
             false,
-            false,
-            false,
             false
           ],
           [
-            false,
-            false,
             false,
             false,
             false,
@@ -3094,8 +3070,6 @@
             0.8,
             0.8,
             1,
-            1,
-            1,
             1
           ],
           [
@@ -3105,8 +3079,6 @@
             0,
             0.95,
             0,
-            1,
-            1,
             1,
             1,
             1,
@@ -3134,8 +3106,6 @@
             1,
             1,
             1,
-            1,
-            1,
             1
           ],
           [
@@ -3154,8 +3124,6 @@
             1,
             1,
             1,
-            1,
-            1,
             1
           ],
           [
@@ -3171,8 +3139,6 @@
             1,
             0.5,
             0.5,
-            1,
-            1,
             1,
             1,
             1,
@@ -3194,8 +3160,6 @@
             0.46,
             1,
             1,
-            1,
-            1,
             1
           ],
           [
@@ -3206,8 +3170,6 @@
             0,
             0,
             0,
-            1,
-            1,
             1,
             1,
             1,
@@ -3234,9 +3196,7 @@
             1,
             1,
             0.38,
-            0.8,
-            1,
-            1
+            0.8
           ],
           [
             1,
@@ -3254,33 +3214,9 @@
             1,
             1,
             1,
-            1,
-            0.5,
             1
           ],
           [
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            1,
-            1,
             1,
             1,
             1,
@@ -3301,6 +3237,22 @@
           [
             1,
             1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
             1,
             1,
             1,
@@ -3381,7 +3333,7 @@
             "midiPath": ""
           }
         ],
-        "steps": 18,
+        "steps": 16,
         "speed": 1
       }
     ],
@@ -3706,6 +3658,6 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-03-25T21:45:40.940Z",
+  "timestamp": "2026-03-27T00:36:09.129Z",
   "category": "Pop/Rock"
 }

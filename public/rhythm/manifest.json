@@ -1,5 +1,5 @@
 {
-  "version": 11,
+  "version": 12,
   "rhythms": [
     "Arrocha.json",
     "Baiao.json",
@@ -20,6 +20,7 @@
     "Reggae.json",
     "Rock.json",
     "Samba.json",
+    "Seresta.json",
     "Valsa.json",
     "Vaneira.json",
     "Worship (tribal).json",
@@ -31,7 +32,8 @@
       "Baiao.json",
       "Bossa Nova.json",
       "Forro.json",
-      "Samba.json"
+      "Samba.json",
+      "Seresta.json"
     ],
     "Pop/Rock": [
       "Balada 6-8.json",

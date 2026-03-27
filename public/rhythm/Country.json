@@ -5,7 +5,7 @@
   "patternSteps": {
     "main": 16,
     "fill": 16,
-    "end": 9,
+    "end": 8,
     "intro": 4
   },
   "variations": {
@@ -3036,7 +3036,6 @@
             true,
             false,
             true,
-            false,
             false
           ],
           [
@@ -3047,25 +3046,22 @@
             false,
             false,
             false,
-            false,
+            false
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
             true
           ],
           [
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            true,
-            false
-          ],
-          [
             false,
             false,
             true,
-            false,
             false,
             false,
             false,
@@ -3080,7 +3076,6 @@
             true,
             false,
             false,
-            false,
             false
           ],
           [
@@ -3091,11 +3086,9 @@
             false,
             false,
             true,
-            false,
             false
           ],
           [
-            false,
             false,
             false,
             false,
@@ -3113,22 +3106,9 @@
             false,
             false,
             false,
-            false,
             false
           ],
           [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
             false,
             false,
             false,
@@ -3146,11 +3126,19 @@
             false,
             false,
             false,
-            false,
             false
           ],
           [
             false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
             false,
             false,
             false,
@@ -3170,11 +3158,9 @@
             0.8,
             0.8,
             0.8,
-            0.8,
             0.8
           ],
           [
-            0.8,
             0.8,
             0.8,
             0.8,
@@ -3192,22 +3178,9 @@
             0.2,
             0.2,
             0.2,
-            0.2,
-            0.8
+            0.2
           ],
           [
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8
-          ],
-          [
-            0.8,
             0.8,
             0.8,
             0.8,
@@ -3225,22 +3198,9 @@
             0.8,
             0.8,
             0.8,
-            0.8,
             0.8
           ],
           [
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8
-          ],
-          [
-            0.8,
             0.8,
             0.8,
             0.8,
@@ -3258,6 +3218,15 @@
             0.8,
             0.8,
             0.8,
+            0.8
+          ],
+          [
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
             0.8,
             0.8
           ],
@@ -3269,6 +3238,15 @@
             0.8,
             0.8,
             0.8,
+            0.8
+          ],
+          [
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
             0.8,
             0.8
           ],
@@ -3280,11 +3258,9 @@
             0.8,
             0.8,
             0.8,
-            0.8,
             0.8
           ],
           [
-            0.8,
             0.8,
             0.8,
             0.8,
@@ -3357,7 +3333,7 @@
             "midiPath": ""
           }
         ],
-        "steps": 9,
+        "steps": 8,
         "speed": 2
       }
     ],
@@ -3586,6 +3562,6 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-03-26T15:22:07.652Z",
+  "timestamp": "2026-03-27T00:32:28.108Z",
   "category": "Pop/Rock"
 }
