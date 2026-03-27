@@ -262,15 +262,56 @@ class RhythmSequencer {
     }
 
     // ─── Modo online: autenticação normal ───────────────────────────
-    const { data: { session } } = await supabase.auth.getSession();
+    let session;
+    try {
+      const result = await supabase.auth.getSession();
+      session = result.data.session;
+    } catch {
+      // Falha de rede — navigator.onLine mentiu (comum no Capacitor)
+      // Fallback pro cache offline
+      if (OfflineCache.hasValidOfflineAccess() && !OfflineCache.isAdmin()) {
+        const cached = OfflineCache.getProfile();
+        if (cached?.subscriptionExpiresAt) {
+          this.showSubscriptionBanner(cached.subscriptionStatus, new Date(cached.subscriptionExpiresAt), cached.subscriptionPlan);
+        }
+        window.addEventListener('online', () => this.checkAccess(), { once: true });
+        return true;
+      }
+      window.location.href = '/login.html';
+      return false;
+    }
 
     if (!session) {
+      // Sem sessão mas pode ter cache offline válido
+      if (OfflineCache.hasValidOfflineAccess() && !OfflineCache.isAdmin()) {
+        const cached = OfflineCache.getProfile();
+        if (cached?.subscriptionExpiresAt) {
+          this.showSubscriptionBanner(cached.subscriptionStatus, new Date(cached.subscriptionExpiresAt), cached.subscriptionPlan);
+        }
+        return true;
+      }
       window.location.href = '/login.html';
       return false;
     }
 
     // Validar token
-    const { error: userError } = await supabase.auth.getUser();
+    let userError;
+    try {
+      const result = await supabase.auth.getUser();
+      userError = result.error;
+    } catch {
+      // Rede caiu durante validação — usar cache
+      if (OfflineCache.hasValidOfflineAccess() && !OfflineCache.isAdmin()) {
+        const cached = OfflineCache.getProfile();
+        if (cached?.subscriptionExpiresAt) {
+          this.showSubscriptionBanner(cached.subscriptionStatus, new Date(cached.subscriptionExpiresAt), cached.subscriptionPlan);
+        }
+        return true;
+      }
+      window.location.href = '/login.html';
+      return false;
+    }
+
     if (userError) {
       await supabase.auth.signOut();
       window.location.href = '/login.html';
