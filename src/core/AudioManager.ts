@@ -17,11 +17,14 @@ export interface AudioSnapshot {
 
 export class AudioManager {
   private audioContext: AudioContext;
-  private readonly FADE_TIME = 0.005; // 5ms fade — elimina cliques
+  private readonly FADE_TIME: number;
   private bufferCache = new Map<string, AudioBuffer>();
 
   constructor(audioContext: AudioContext) {
     this.audioContext = audioContext;
+    // Mobile (PWA ou Capacitor) precisa de fade maior pra evitar estralos nas transições
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    this.FADE_TIME = isMobile ? 0.012 : 0.005; // 12ms mobile, 5ms desktop
   }
 
   async loadAudioFromFile(file: File): Promise<AudioBuffer> {
