@@ -3031,11 +3031,11 @@ class RhythmSequencer {
         this.stop();
       }
 
-      // Adicionar version bust pra evitar cache (limpar query param antigo)
+      // Carregar ritmo — sem cache bust no offline (Service Worker precisa da URL limpa)
       const cleanPath = path.split('?')[0];
       const encodedPath = encodeURI(cleanPath);
-      const cacheBustPath = `${encodedPath}?v=${this.rhythmVersion || Date.now()}`;
-      await this.fileManager.loadProjectFromPath(cacheBustPath);
+      const finalPath = navigator.onLine ? `${encodedPath}?v=${this.rhythmVersion || Date.now()}` : encodedPath;
+      await this.fileManager.loadProjectFromPath(finalPath);
 
       // Carregar a primeira variação do padrão sendo editado
       const patternType = this.stateManager.getEditingPattern();

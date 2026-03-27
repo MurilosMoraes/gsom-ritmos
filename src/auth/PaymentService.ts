@@ -21,9 +21,9 @@ export const PLANS: Plan[] = [
     id: 'mensal',
     name: 'Plano Mensal GDrums',
     displayName: 'Mensal',
-    priceCents: 500,
-    priceDisplay: 'R$ 5',
-    pricePerMonth: '5',
+    priceCents: 2900,
+    priceDisplay: 'R$ 29',
+    pricePerMonth: '29',
     durationMonths: 1,
   },
   {
