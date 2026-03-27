@@ -1,17 +1,17 @@
 {
-  "version": 10,
+  "version": 11,
   "rhythms": [
     "Arrocha.json",
-    "Baião.json",
+    "Baiao.json",
     "Balada 6-8.json",
-    "Banda (bailão).json",
+    "Banda (bailao).json",
     "Bossa Nova.json",
     "Bugio.json",
-    "Chamamé.json",
+    "Chamame.json",
     "Country.json",
-    "Forró.json",
+    "Forro.json",
     "Gospel.json",
-    "Guarânia.json",
+    "Guarania.json",
     "Katchaka.json",
     "Milonga.json",
     "Pop Rock.json",
@@ -28,9 +28,9 @@
   "categories": {
     "Brasileiro": [
       "Arrocha.json",
-      "Baião.json",
+      "Baiao.json",
       "Bossa Nova.json",
-      "Forró.json",
+      "Forro.json",
       "Samba.json"
     ],
     "Pop/Rock": [
@@ -41,10 +41,10 @@
       "Rock.json"
     ],
     "Gaúcho": [
-      "Banda (bailão).json",
+      "Banda (bailao).json",
       "Bugio.json",
-      "Chamamé.json",
-      "Guarânia.json",
+      "Chamame.json",
+      "Guarania.json",
       "Katchaka.json",
       "Milonga.json",
       "Rancheira.json",
