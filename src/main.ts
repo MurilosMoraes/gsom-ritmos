@@ -2119,10 +2119,23 @@ class RhythmSequencer {
         return;
       }
 
-      const keys = bindings.map(b => b.key);
-      const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
-      if (dupes.length > 0) {
-        statusEl.textContent = `Tecla "${getLabel(dupes[0])}" duplicada`;
+      // Verificar se alguma tecla tem mais de 2 ações (máximo é 2 = double tap)
+      const keyCounts: Record<string, number> = {};
+      bindings.forEach(b => { keyCounts[b.key] = (keyCounts[b.key] || 0) + 1; });
+      const overloaded = Object.entries(keyCounts).find(([, count]) => count > 2);
+      if (overloaded) {
+        statusEl.textContent = `Tecla "${getLabel(overloaded[0])}" tem mais de 2 acoes`;
+        statusEl.style.color = 'rgba(255,80,80,0.8)';
+        return;
+      }
+
+      // Verificar se a mesma ação está em mais de uma tecla
+      const actionKeys: Record<string, string[]> = {};
+      bindings.forEach(b => { if (!actionKeys[b.action]) actionKeys[b.action] = []; actionKeys[b.action].push(b.key); });
+      const dupAction = Object.entries(actionKeys).find(([, keys]) => new Set(keys).size > 1);
+      if (dupAction) {
+        const actionLabel = ACTIONS.find(a => a.id === dupAction[0])?.label || dupAction[0];
+        statusEl.textContent = `"${actionLabel}" esta em mais de um botao`;
         statusEl.style.color = 'rgba(255,80,80,0.8)';
         return;
       }
