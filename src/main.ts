@@ -891,16 +891,33 @@ class RhythmSequencer {
     let rightLastPress = 0;
     let rightTimeout: number | null = null;
 
+    // capture:true + passive:false — essencial no iOS pra capturar antes do scroll do browser
     window.addEventListener('keydown', (e) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
-
       // Identificar tecla — e.code é preferencial, e.key é fallback (iOS pedais BT)
       const keyId = e.code || e.key;
+      if (!keyId) return;
+
+      // Se um input/select está focado E a tecla é do pedal, tirar foco e processar
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        if (keyId === this.pedalLeft || keyId === this.pedalRight) {
+          (target as HTMLElement).blur();
+        } else {
+          return; // Outra tecla dentro de input, deixar o browser tratar
+        }
+      }
+
+      // Prevenir scroll/navegação do browser ao usar setas e pedal
+      if (keyId === this.pedalLeft || keyId === this.pedalRight ||
+          keyId === 'Space' || keyId === ' ' ||
+          keyId === 'ArrowLeft' || keyId === 'ArrowRight' ||
+          keyId === 'ArrowUp' || keyId === 'ArrowDown' ||
+          keyId === 'PageUp' || keyId === 'PageDown') {
+        e.preventDefault();
+      }
 
       // Space = Play/Pause
       if ((keyId === 'Space' || keyId === ' ') && !e.repeat) {
-        e.preventDefault();
         this.togglePlayStop();
         return;
       }
@@ -963,7 +980,7 @@ class RhythmSequencer {
         return;
       }
 
-    });
+    }, { capture: true, passive: false } as AddEventListenerOptions);
   }
 
   private setupPerformanceGrid(): void {
