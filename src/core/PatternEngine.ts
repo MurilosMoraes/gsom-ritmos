@@ -12,7 +12,7 @@ export class PatternEngine {
   private transitionInProgress = false;
   private onPatternChange?: (pattern: PatternType) => void;
   private onStop?: () => void;
-  private onEndCymbal?: () => void;
+  private onEndCymbal?: (time: number) => void;
 
   constructor(stateManager: StateManager) {
     this.stateManager = stateManager;
@@ -30,7 +30,7 @@ export class PatternEngine {
     this.onStop = callback;
   }
 
-  setOnEndCymbal(callback: () => void): void {
+  setOnEndCymbal(callback: (time: number) => void): void {
     this.onEndCymbal = callback;
   }
 
@@ -81,7 +81,7 @@ export class PatternEngine {
 
   // ─── Completude de padrão (chamado quando step volta a 0) ──────────
 
-  handlePatternCompletion(): void {
+  handlePatternCompletion(scheduledTime?: number): void {
     if (this.isTestMode) return;
     if (this.transitionInProgress) return;
 
@@ -94,7 +94,7 @@ export class PatternEngine {
           this.handleFillCompletion();
           break;
         case 'end':
-          this.handleEndCompletion();
+          this.handleEndCompletion(scheduledTime);
           break;
         case 'intro':
           this.handleIntroCompletion();
@@ -128,8 +128,10 @@ export class PatternEngine {
     }
   }
 
-  private handleEndCompletion(): void {
-    this.onEndCymbal?.();
+  handleEndCompletion(scheduledTime?: number): void {
+    if (scheduledTime) {
+      this.onEndCymbal?.(scheduledTime);
+    }
     this.onStop?.();
   }
 

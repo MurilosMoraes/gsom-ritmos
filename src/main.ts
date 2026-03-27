@@ -100,8 +100,17 @@ class RhythmSequencer {
       this.uiManager.clearQueuedCells();
     });
 
-    this.patternEngine.setOnEndCymbal(() => {
-      this.playCymbal();
+    this.patternEngine.setOnEndCymbal((time: number) => {
+      // Agendar prato no tempo exato após o último step do end
+      if (this.cymbalBuffer) {
+        this.audioManager.playSound(this.cymbalBuffer, time, this.stateManager.getState().masterVolume);
+      } else {
+        // Buffer ainda não carregado — carregar e tocar
+        this.audioManager.loadAudioFromPath('/midi/prato.mp3').then(buffer => {
+          this.cymbalBuffer = buffer;
+          this.audioManager.playSound(buffer, time, this.stateManager.getState().masterVolume);
+        });
+      }
     });
 
     this.patternEngine.setOnStop(() => {

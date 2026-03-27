@@ -148,7 +148,7 @@ export class Scheduler {
 
     // Verificar fim do padrão (quando volta ao step 0)
     if (!transitioned && nextStep === 0) {
-      this.patternEngine.handlePatternCompletion();
+      this.patternEngine.handlePatternCompletion(this.nextStepTime);
     }
 
     // Capturar velocidade APÓS transições
