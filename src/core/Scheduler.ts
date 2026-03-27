@@ -146,7 +146,13 @@ export class Scheduler {
     // Verificar padrões pendentes (fill/end agendados)
     const transitioned = this.patternEngine.checkPendingPatterns();
 
+    // ═══ TIMING ═══
+    // O intervalo entre o step recém-agendado e o próximo sempre usa a velocidade
+    // do step que FOI AGENDADO (speedBefore), não do próximo step.
+    this.nextStepTime += secondsPerStepBefore;
+
     // Verificar fim do padrão (quando volta ao step 0)
+    // O prato de saída precisa do tempo APÓS o último step (nextStepTime já incrementado)
     if (!transitioned && nextStep === 0) {
       this.patternEngine.handlePatternCompletion(this.nextStepTime);
     }
@@ -155,13 +161,6 @@ export class Scheduler {
     const activePatternAfter = this.stateManager.getActivePattern();
     const variationIndexAfter = this.stateManager.getCurrentVariation(activePatternAfter);
     const speedAfter = this.stateManager.getVariationSpeed(activePatternAfter, variationIndexAfter);
-
-    // ═══ TIMING ═══
-    // O intervalo entre o step recém-agendado e o próximo sempre usa a velocidade
-    // do step que FOI AGENDADO (speedBefore), não do próximo step.
-    // A nova velocidade (speedAfter) só afeta os steps SEGUINTES.
-    // Isso garante que a transição fill 2x → main 1x não "estica" o último step.
-    this.nextStepTime += secondsPerStepBefore;
   }
 
   // ─── UI sync via requestAnimationFrame ──────────────────────────────
