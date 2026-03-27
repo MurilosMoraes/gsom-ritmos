@@ -26,8 +26,9 @@ export default defineConfig({
         // Forçar ativação imediata do novo SW (sem esperar abas fecharem)
         skipWaiting: true,
         clientsClaim: true,
-        // Cachear app shell (HTML, CSS, JS) — excluir imagens grandes do precache
-        globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+        // Pré-cachear tudo: app shell + ritmos + samples + imagens
+        globPatterns: ['**/*.{js,css,html,ico,svg,woff2,json,wav,mp3,png}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB (logo grande)
         // Cachear runtime: samples e ritmos
         runtimeCaching: [
           {
