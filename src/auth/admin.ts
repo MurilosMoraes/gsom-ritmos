@@ -259,6 +259,11 @@ class AdminDashboard {
           <td>
             <div class="action-buttons">
               <button class="btn-action btn-edit" data-user-id="${p.id}">Editar</button>
+              ${p.role !== 'admin' ? (
+                p.subscription_status === 'blocked'
+                  ? `<button class="btn-action btn-edit" data-unblock-id="${p.id}" style="color:#00D4FF;">Desbloquear</button>`
+                  : `<button class="btn-action btn-delete" data-block-id="${p.id}">Bloquear</button>`
+              ) : ''}
             </div>
           </td>
         </tr>
@@ -266,12 +271,62 @@ class AdminDashboard {
     }).join('');
 
     // Bind edit buttons
-    tbody.querySelectorAll('.btn-edit').forEach(btn => {
+    tbody.querySelectorAll('[data-user-id]').forEach(btn => {
       btn.addEventListener('click', () => {
         const userId = (btn as HTMLElement).dataset.userId!;
         this.editUser(userId);
       });
     });
+
+    // Bind block buttons
+    tbody.querySelectorAll('[data-block-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const userId = (btn as HTMLElement).dataset.blockId!;
+        const profile = this.profiles.find(p => p.id === userId);
+        if (!confirm(`Bloquear ${profile?.name}? O usuário não conseguirá mais acessar o app.`)) return;
+        await this.blockUser(userId, true);
+      });
+    });
+
+    // Bind unblock buttons
+    tbody.querySelectorAll('[data-unblock-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const userId = (btn as HTMLElement).dataset.unblockId!;
+        await this.blockUser(userId, false);
+      });
+    });
+  }
+
+  private async blockUser(userId: string, block: boolean): Promise<void> {
+    // 1. Desativar/ativar no Supabase Auth (impede login)
+    await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'apikey': SERVICE_KEY,
+        'Authorization': `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ban_duration: block ? '876600h' : 'none', // 100 anos ou desbloquear
+      }),
+    });
+
+    // 2. Atualizar status no perfil
+    await adminUpdate('gdrums_profiles', userId, {
+      subscription_status: block ? 'blocked' : 'expired',
+      updated_at: new Date().toISOString(),
+    });
+
+    // 3. Atualizar local
+    const idx = this.profiles.findIndex(p => p.id === userId);
+    if (idx !== -1) {
+      this.profiles[idx].subscription_status = block ? 'blocked' : 'expired';
+    }
+
+    this.renderUsers();
+    this.renderDashboard();
+    const profile = this.profiles.find(p => p.id === userId);
+    modalManager.show('Admin', `${profile?.name} ${block ? 'bloqueado' : 'desbloqueado'}!`, block ? 'warning' : 'success');
   }
 
   private editUser(userId: string): void {
