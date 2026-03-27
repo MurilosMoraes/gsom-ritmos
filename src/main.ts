@@ -180,8 +180,16 @@ class RhythmSequencer {
         // Offline — setlist usa cache local automaticamente
       }
 
-      // Limpar mapeamento antigo de pedal (agora é fixo)
-      localStorage.removeItem('gdrums_pedal_map');
+      // Carregar teclas do pedal
+      const savedPedal = localStorage.getItem('gdrums_pedal_keys');
+      if (savedPedal) {
+        try {
+          const parsed = JSON.parse(savedPedal);
+          if (parsed.left) this.pedalLeft = parsed.left;
+          if (parsed.right) this.pedalRight = parsed.right;
+        } catch { /* usar padrão */ }
+      }
+      localStorage.removeItem('gdrums_pedal_map'); // limpar formato antigo
 
       this.generateChannelsHTML();
       this.setupEventListeners();
@@ -1201,7 +1209,13 @@ class RhythmSequencer {
     }
 
     // Mapear pedal
-    // Botão de mapear pedal removido (pedal fixo por enquanto)
+    const pedalMapBtn = document.getElementById('pedalMapBtn');
+    if (pedalMapBtn) {
+      pedalMapBtn.addEventListener('click', () => {
+        if (fabDropdown) fabDropdown.style.display = 'none';
+        this.showPedalMapper();
+      });
+    }
 
     // Logout
     const logoutBtn = document.getElementById('logoutBtn');
@@ -1766,6 +1780,102 @@ class RhythmSequencer {
     overlay.querySelector('#closePedalInfo')!.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+  }
+
+  private showPedalMapper(): void {
+    const keyLabels: Record<string, string> = {
+      'ArrowLeft': 'Seta Esquerda', 'ArrowRight': 'Seta Direita',
+      'ArrowUp': 'Seta Cima', 'ArrowDown': 'Seta Baixo',
+      'Space': 'Espaco', 'Enter': 'Enter',
+      'PageUp': 'Page Up', 'PageDown': 'Page Down',
+    };
+    const getLabel = (code: string) => keyLabels[code] || code;
+
+    let tempLeft = this.pedalLeft;
+    let tempRight = this.pedalRight;
+    let listening: 'left' | 'right' | null = null;
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(20px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+    const render = () => {
+      overlay.innerHTML = `
+        <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:2rem;max-width:400px;width:100%;">
+          <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.3rem;text-align:center;">Mapear Pedal</h2>
+          <p style="font-size:0.65rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.5rem;">Clique no pedal e pressione o botao do seu controlador</p>
+
+          <div style="display:flex;gap:2rem;justify-content:center;margin-bottom:1.5rem;">
+            <div style="text-align:center;">
+              <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(139,92,246,0.6);margin-bottom:0.5rem;">Esquerdo</div>
+              <button id="pedalLeftBtn" style="width:90px;height:120px;border-radius:16px;border:2px solid rgba(139,92,246,${listening === 'left' ? '0.8' : '0.3'});background:rgba(139,92,246,0.08);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;font-family:inherit;${listening === 'left' ? 'box-shadow:0 0 20px rgba(139,92,246,0.3);transform:scale(1.05);' : ''}">
+                <div style="font-size:0.75rem;font-weight:700;color:rgba(139,92,246,0.9);background:rgba(139,92,246,0.15);padding:0.25rem 0.6rem;border-radius:8px;">${getLabel(tempLeft)}</div>
+              </button>
+              <div style="font-size:0.5rem;color:rgba(255,255,255,0.2);margin-top:0.5rem;line-height:1.4;">Parado: play<br>1x prox ritmo<br>2x anterior</div>
+            </div>
+
+            <div style="width:1px;background:rgba(255,255,255,0.05);"></div>
+
+            <div style="text-align:center;">
+              <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(249,115,22,0.6);margin-bottom:0.5rem;">Direito</div>
+              <button id="pedalRightBtn" style="width:90px;height:120px;border-radius:16px;border:2px solid rgba(249,115,22,${listening === 'right' ? '0.8' : '0.3'});background:rgba(249,115,22,0.08);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;font-family:inherit;${listening === 'right' ? 'box-shadow:0 0 20px rgba(249,115,22,0.3);transform:scale(1.05);' : ''}">
+                <div style="font-size:0.75rem;font-weight:700;color:rgba(249,115,22,0.9);background:rgba(249,115,22,0.15);padding:0.25rem 0.6rem;border-radius:8px;">${getLabel(tempRight)}</div>
+              </button>
+              <div style="font-size:0.5rem;color:rgba(255,255,255,0.2);margin-top:0.5rem;line-height:1.4;">Parado: prato<br>1x virada<br>2x finaliza</div>
+            </div>
+          </div>
+
+          <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(255,255,255,0.2);min-height:1.5rem;margin-bottom:1rem;">${listening ? `Pressione a tecla para o pedal ${listening === 'left' ? 'esquerdo' : 'direito'}...` : ''}</div>
+
+          <div style="display:flex;gap:0.5rem;">
+            <button id="pedalReset" style="flex:1;padding:0.6rem;border:none;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Resetar</button>
+            <button id="pedalSave" style="flex:2;padding:0.6rem;border:none;border-radius:10px;background:rgba(0,230,140,0.12);border:1px solid rgba(0,230,140,0.25);color:rgba(0,230,140,0.9);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Salvar</button>
+          </div>
+        </div>
+      `;
+
+      overlay.querySelector('#pedalLeftBtn')!.addEventListener('click', (ev) => { ev.stopPropagation(); listening = 'left'; render(); });
+      overlay.querySelector('#pedalRightBtn')!.addEventListener('click', (ev) => { ev.stopPropagation(); listening = 'right'; render(); });
+
+      overlay.querySelector('#pedalReset')!.addEventListener('click', () => {
+        tempLeft = 'ArrowLeft';
+        tempRight = 'ArrowRight';
+        listening = null;
+        render();
+      });
+
+      overlay.querySelector('#pedalSave')!.addEventListener('click', () => {
+        this.pedalLeft = tempLeft;
+        this.pedalRight = tempRight;
+        localStorage.setItem('gdrums_pedal_keys', JSON.stringify({ left: tempLeft, right: tempRight }));
+        close();
+        this.modalManager.show('Pedal', 'Mapeamento salvo!', 'success');
+      });
+    };
+
+    document.body.appendChild(overlay);
+    render();
+
+    const keyHandler = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!listening) return;
+
+      if (listening === 'left') tempLeft = e.code;
+      else tempRight = e.code;
+      listening = null;
+      render();
+    };
+
+    document.addEventListener('keydown', keyHandler);
+
+    const close = () => {
+      document.removeEventListener('keydown', keyHandler);
+      overlay.remove();
+    };
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
   }
 
   private updateProjectBar(name: string): void {
