@@ -31,12 +31,12 @@ class RhythmSequencer {
   private isAdminMode = false;
   private userRole: 'user' | 'admin' = 'user';
   private rhythmVersion: number = 0;
-  // Pedal mapping — suporta 2 a 6 botões
-  // Os 2 primeiros (play_stop e fill_end) são o padrão com double tap
-  // Os extras são ações diretas sem double tap
+  // Pedal mapping — cada tecla pode ter 1 ou 2 ações
+  // 2 ações na mesma tecla = double tap automático (1x primeira, 2x segunda)
   private pedalBindings: Array<{ key: string; action: string }> = [
-    { key: 'ArrowLeft', action: 'play_stop' },
-    { key: 'ArrowRight', action: 'fill_end' },
+    { key: 'ArrowLeft', action: 'play' },
+    { key: 'ArrowRight', action: 'fill' },
+    { key: 'ArrowRight', action: 'end' },
   ];
 
   // Compat: getter para código que usa pedalMap.left/right
@@ -202,11 +202,17 @@ class RhythmSequencer {
           // Migrar formato antigo { left, right } para novo formato
           if (parsed.left && parsed.right && !Array.isArray(parsed)) {
             this.pedalBindings = [
-              { key: parsed.left, action: 'play_stop' },
-              { key: parsed.right, action: 'fill_end' },
+              { key: parsed.left, action: 'play' },
+              { key: parsed.right, action: 'fill' },
+              { key: parsed.right, action: 'end' },
             ];
           } else if (Array.isArray(parsed)) {
-            this.pedalBindings = parsed;
+            // Migrar ações antigas pra novas
+            this.pedalBindings = parsed.flatMap((b: any) => {
+              if (b.action === 'play_stop') return [{ key: b.key, action: 'play' }];
+              if (b.action === 'fill_end') return [{ key: b.key, action: 'fill' }, { key: b.key, action: 'end' }];
+              return [b];
+            });
           }
         } catch { /* usar padrão */ }
       }
@@ -863,16 +869,73 @@ class RhythmSequencer {
   }
 
   private setupKeyboardShortcuts(): void {
-    let arrowRightLastPress = 0;
-    let arrowRightTimeout: number | null = null;
-    let arrowLeftLastPress = 0;
-    let arrowLeftTimeout: number | null = null;
+    // Double tap genérico por tecla
+    const tapState: Record<string, { lastPress: number; timeout: number | null }> = {};
+
+    const doubleTap = (key: string, onSingle: () => void, onDouble: () => void) => {
+      if (!tapState[key]) tapState[key] = { lastPress: 0, timeout: null };
+      const state = tapState[key];
+      const now = Date.now();
+
+      if (now - state.lastPress < 500 && state.lastPress > 0) {
+        if (state.timeout) { clearTimeout(state.timeout); state.timeout = null; }
+        state.lastPress = 0;
+        onDouble();
+      } else {
+        state.lastPress = now;
+        if (state.timeout) clearTimeout(state.timeout);
+        state.timeout = window.setTimeout(() => {
+          onSingle();
+          state.timeout = null;
+        }, 500);
+      }
+    };
+
+    // Mapa de ações simples
+    const exec = (action: string) => {
+      switch (action) {
+        case 'play':
+          if (!this.stateManager.isPlaying()) {
+            this.patternEngine.activateRhythm(0);
+            if (this.useIntro) { this.patternEngine.playIntroAndStart(); }
+            else { this.stateManager.setShouldPlayStartSound(true); }
+            this.play();
+          } else {
+            this.stop();
+          }
+          break;
+        case 'fill':
+          if (this.stateManager.isPlaying()) this.patternEngine.playRotatingFill();
+          break;
+        case 'end':
+          if (this.stateManager.isPlaying()) {
+            if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stop(); }
+          }
+          break;
+        case 'cymbal':
+          this.playCymbal();
+          break;
+        case 'next_rhythm':
+          if (this.stateManager.isPlaying()) { this.patternEngine.playFillToNextRhythm(); }
+          else { this.navigateSetlist('next'); }
+          break;
+        case 'prev_rhythm':
+          if (this.stateManager.isPlaying()) { this.playFillToPreviousRhythm(); }
+          else { this.navigateSetlist('previous'); }
+          break;
+      }
+    };
+
+    // Pares que viram double tap quando estão no mesmo botão
+    const PAIRS: Array<[string, string]> = [
+      ['fill', 'end'],
+      ['next_rhythm', 'prev_rhythm'],
+      ['fill', 'cymbal'],
+    ];
 
     window.addEventListener('keydown', (e) => {
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
-        return;
-      }
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
 
       // Space = Play/Pause
       if (e.code === 'Space' && !e.repeat) {
@@ -882,96 +945,48 @@ class RhythmSequencer {
       }
 
       // ─── Pedal bindings ───────────────────────────────────────────
-      const binding = this.pedalBindings.find(b => b.key === e.code);
-      if (binding && !e.repeat) {
-        e.preventDefault();
-
-        // play_stop: padrão com double tap (play/next/previous)
-        if (binding.action === 'play_stop') {
-          if (!this.stateManager.isPlaying()) {
-            this.patternEngine.activateRhythm(0);
-            if (this.useIntro) {
-              this.patternEngine.playIntroAndStart();
-            } else {
-              this.stateManager.setShouldPlayStartSound(true);
-            }
-            this.play();
-          } else {
-            const now = Date.now();
-            const timeSinceLastPress = now - arrowLeftLastPress;
-
-            if (timeSinceLastPress < 500 && arrowLeftLastPress > 0) {
-              if (arrowLeftTimeout) { clearTimeout(arrowLeftTimeout); arrowLeftTimeout = null; }
-              this.playFillToPreviousRhythm();
-              arrowLeftLastPress = 0;
-            } else {
-              arrowLeftLastPress = now;
-              if (arrowLeftTimeout) clearTimeout(arrowLeftTimeout);
-              arrowLeftTimeout = window.setTimeout(() => {
-                this.patternEngine.playFillToNextRhythm();
-                arrowLeftTimeout = null;
-              }, 500);
-            }
+      // Pegar TODAS as ações mapeadas nessa tecla
+      const bindings = this.pedalBindings.filter(b => b.key === e.code);
+      if (bindings.length === 0 || e.repeat) {
+        // Compatibilidade: ações antigas (play_stop, fill_end)
+        const legacy = this.pedalBindings.find(b => b.key === e.code);
+        if (legacy && !e.repeat) {
+          e.preventDefault();
+          if (legacy.action === 'play_stop') {
+            if (!this.stateManager.isPlaying()) { exec('play'); }
+            else { doubleTap(e.code, () => exec('next_rhythm'), () => exec('prev_rhythm')); }
+          } else if (legacy.action === 'fill_end') {
+            if (!this.stateManager.isPlaying()) { exec('cymbal'); }
+            else { doubleTap(e.code, () => exec('fill'), () => exec('end')); }
           }
-          return;
         }
-
-        // fill_end: padrão com double tap (virada/finalização)
-        if (binding.action === 'fill_end') {
-          if (!this.stateManager.isPlaying()) {
-            this.playCymbal();
-            return;
-          }
-          const now = Date.now();
-          const timeSinceLastPress = now - arrowRightLastPress;
-
-          if (timeSinceLastPress < 500 && arrowRightLastPress > 0) {
-            if (arrowRightTimeout) { clearTimeout(arrowRightTimeout); arrowRightTimeout = null; }
-            if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stop(); }
-            arrowRightLastPress = 0;
-          } else {
-            arrowRightLastPress = now;
-            if (arrowRightTimeout) clearTimeout(arrowRightTimeout);
-            arrowRightTimeout = window.setTimeout(() => {
-              this.patternEngine.playRotatingFill();
-              arrowRightTimeout = null;
-            }, 500);
-          }
-          return;
-        }
-
-        // ─── Ações diretas (botões extras, sem double tap) ────────
-        if (binding.action === 'fill') {
-          if (this.stateManager.isPlaying()) this.patternEngine.playRotatingFill();
-          return;
-        }
-        if (binding.action === 'end') {
-          if (this.stateManager.isPlaying()) {
-            if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stop(); }
-          }
-          return;
-        }
-        if (binding.action === 'cymbal') {
-          this.playCymbal();
-          return;
-        }
-        if (binding.action === 'next_rhythm') {
-          if (this.stateManager.isPlaying()) {
-            this.patternEngine.playFillToNextRhythm();
-          } else {
-            this.navigateSetlist('next');
-          }
-          return;
-        }
-        if (binding.action === 'prev_rhythm') {
-          if (this.stateManager.isPlaying()) {
-            this.playFillToPreviousRhythm();
-          } else {
-            this.navigateSetlist('previous');
-          }
-          return;
-        }
+        return;
       }
+
+      e.preventDefault();
+
+      if (bindings.length === 1) {
+        // Uma ação nessa tecla — executar direto
+        exec(bindings[0].action);
+      } else if (bindings.length === 2) {
+        // Duas ações na mesma tecla — double tap automático
+        // Encontrar o par na ordem certa
+        const actions = bindings.map(b => b.action);
+        let single = actions[0];
+        let double = actions[1];
+
+        // Ordenar pelos pares conhecidos (primeiro = single, segundo = double)
+        for (const [a, b] of PAIRS) {
+          if (actions.includes(a) && actions.includes(b)) {
+            single = a;
+            double = b;
+            break;
+          }
+        }
+
+        doubleTap(e.code, () => exec(single), () => exec(double));
+      }
+      return;
     });
   }
 
@@ -1839,13 +1854,12 @@ class RhythmSequencer {
 
   private showPedalMapper(): void {
     const ACTIONS: Array<{ id: string; label: string; desc: string; color: string }> = [
-      { id: 'play_stop', label: 'Play / Stop', desc: 'Parado: toca com intro. Tocando: 1x prox. ritmo, 2x anterior', color: '139,92,246' },
-      { id: 'fill_end', label: 'Virada / Final', desc: 'Parado: prato. Tocando: 1x virada, 2x finaliza', color: '249,115,22' },
-      { id: 'fill', label: 'Virada', desc: 'Toca virada (so tocando)', color: '0,212,255' },
-      { id: 'end', label: 'Finalizar', desc: 'Finaliza e para (so tocando)', color: '236,72,153' },
-      { id: 'cymbal', label: 'Prato', desc: 'Toca prato (tocando ou parado)', color: '249,200,22' },
-      { id: 'next_rhythm', label: 'Proximo Ritmo', desc: 'Proximo favorito', color: '0,230,140' },
-      { id: 'prev_rhythm', label: 'Ritmo Anterior', desc: 'Favorito anterior', color: '0,180,230' },
+      { id: 'play', label: 'Play / Stop', desc: 'Inicia ou para o ritmo', color: '139,92,246' },
+      { id: 'fill', label: 'Virada', desc: 'Toca a virada', color: '0,212,255' },
+      { id: 'end', label: 'Finalizar', desc: 'Toca a finalizacao e para', color: '236,72,153' },
+      { id: 'cymbal', label: 'Prato', desc: 'Toca o prato', color: '249,200,22' },
+      { id: 'next_rhythm', label: 'Proximo Ritmo', desc: 'Vai pro proximo favorito', color: '0,230,140' },
+      { id: 'prev_rhythm', label: 'Ritmo Anterior', desc: 'Volta pro favorito anterior', color: '0,180,230' },
     ];
 
     const keyLabels: Record<string, string> = {
@@ -1916,14 +1930,32 @@ class RhythmSequencer {
         return;
       }
 
-      container.innerHTML = bindings.map((b, i) => {
-        const actionDef = ACTIONS.find(a => a.id === b.action)!;
+      // Agrupar por tecla pra mostrar combos
+      const byKey: Record<string, Array<{ action: string; index: number }>> = {};
+      bindings.forEach((b, i) => {
+        if (!byKey[b.key]) byKey[b.key] = [];
+        byKey[b.key].push({ action: b.action, index: i });
+      });
+
+      container.innerHTML = Object.entries(byKey).map(([key, actions]) => {
+        const isCombo = actions.length === 2;
+        const firstAction = ACTIONS.find(a => a.id === actions[0].action)!;
+        const secondAction = isCombo ? ACTIONS.find(a => a.id === actions[1].action)! : null;
+        const color = firstAction.color;
+
         return `
-          <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.6rem;background:rgba(${actionDef.color},0.05);border:1px solid rgba(${actionDef.color},0.12);border-radius:10px;">
-            <div style="min-width:70px;padding:0.25rem 0.5rem;border-radius:6px;border:1px solid rgba(${actionDef.color},0.25);background:rgba(${actionDef.color},0.08);color:rgba(${actionDef.color},0.9);font-size:0.7rem;font-weight:700;text-align:center;">${getLabel(b.key)}</div>
-            <div style="flex:1;font-size:0.75rem;font-weight:600;color:rgba(${actionDef.color},0.8);">${actionDef.label}</div>
-            <div style="font-size:0.5rem;color:rgba(255,255,255,0.2);max-width:100px;">${actionDef.desc}</div>
-            <button data-remove="${i}" style="width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,80,80,0.15);background:rgba(255,80,80,0.05);color:rgba(255,80,80,0.5);font-size:0.9rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;">x</button>
+          <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.6rem;background:rgba(${color},0.05);border:1px solid rgba(${color},0.12);border-radius:10px;">
+            <div style="min-width:70px;padding:0.25rem 0.5rem;border-radius:6px;border:1px solid rgba(${color},0.25);background:rgba(${color},0.08);color:rgba(${color},0.9);font-size:0.7rem;font-weight:700;text-align:center;">${getLabel(key)}</div>
+            <div style="flex:1;">
+              ${isCombo ? `
+                <div style="font-size:0.7rem;font-weight:600;color:rgba(${firstAction.color},0.8);">1x ${firstAction.label}</div>
+                <div style="font-size:0.7rem;font-weight:600;color:rgba(${secondAction!.color},0.8);">2x ${secondAction!.label}</div>
+              ` : `
+                <div style="font-size:0.75rem;font-weight:600;color:rgba(${color},0.8);">${firstAction.label}</div>
+                <div style="font-size:0.5rem;color:rgba(255,255,255,0.2);">${firstAction.desc}</div>
+              `}
+            </div>
+            ${actions.map(a => `<button data-remove="${a.index}" style="width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,80,80,0.15);background:rgba(255,80,80,0.05);color:rgba(255,80,80,0.5);font-size:0.9rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;">x</button>`).join('')}
           </div>
         `;
       }).join('');
@@ -2019,12 +2051,17 @@ class RhythmSequencer {
         e.stopPropagation();
         document.removeEventListener('keydown', addKeyHandler);
 
-        // Verificar se ja ta mapeado
-        if (bindings.find(b => b.key === e.code)) {
-          statusEl.textContent = `${getLabel(e.code)} ja esta mapeado. Remova antes.`;
+        const existing = bindings.filter(b => b.key === e.code);
+        if (existing.length >= 2) {
+          statusEl.textContent = `${getLabel(e.code)} ja tem 2 acoes (maximo). Remova uma antes.`;
           statusEl.style.color = 'rgba(255,80,80,0.7)';
           setTimeout(() => { statusEl.textContent = 'Seus botoes mapeados'; statusEl.style.color = 'rgba(255,255,255,0.3)'; }, 2000);
           return;
+        }
+
+        if (existing.length === 1) {
+          statusEl.textContent = `${getLabel(e.code)} ja tem "${ACTIONS.find(a => a.id === existing[0].action)?.label}". Adicionando 2a acao (double tap).`;
+          statusEl.style.color = 'rgba(249,200,22,0.8)';
         }
 
         showActionSelector(e.code);
@@ -2065,8 +2102,9 @@ class RhythmSequencer {
     // Resetar padrao
     overlay.querySelector('#pedalMapReset')!.addEventListener('click', () => {
       bindings.length = 0;
-      bindings.push({ key: 'ArrowLeft', action: 'play_stop' });
-      bindings.push({ key: 'ArrowRight', action: 'fill_end' });
+      bindings.push({ key: 'ArrowLeft', action: 'play' });
+      bindings.push({ key: 'ArrowRight', action: 'fill' });
+      bindings.push({ key: 'ArrowRight', action: 'end' });
       renderBindings();
       statusEl.textContent = 'Padrao restaurado (2 botoes)';
       statusEl.style.color = 'rgba(255,255,255,0.3)';
