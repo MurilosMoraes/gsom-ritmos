@@ -300,7 +300,7 @@ class PlansPage {
       const orderNsu = existingPending?.order_nsu || (generateOrderNsu(user.id, plan.id) + couponSuffix);
       const redirectUrl = `${window.location.origin}/payment-success.html`;
 
-      // Salvar pedido pendente no banco (só se não existe)
+      // Salvar pedido pendente no banco
       if (!existingPending) {
         await supabase.from('gdrums_transactions').insert({
           user_id: user.id,
@@ -312,6 +312,15 @@ class PlansPage {
           coupon_code: this.appliedCoupon?.code || null,
           discount_percent: this.appliedCoupon?.discount_percent || null,
         });
+      } else if (this.appliedCoupon) {
+        // Pedido pendente já existe mas agora tem cupom — atualizar
+        await supabase.from('gdrums_transactions')
+          .update({
+            coupon_code: this.appliedCoupon.code,
+            discount_percent: this.appliedCoupon.discount_percent,
+            amount_cents: finalPriceCents,
+          })
+          .eq('order_nsu', existingPending.order_nsu);
       }
 
       // Backup local (fallback)
