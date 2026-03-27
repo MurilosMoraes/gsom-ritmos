@@ -31,21 +31,9 @@ class RhythmSequencer {
   private isAdminMode = false;
   private userRole: 'user' | 'admin' = 'user';
   private rhythmVersion: number = 0;
-  // Pedal mapping — suporta 2 a 6 botões
-  private pedalBindings: Array<{ key: string; action: string }> = [
-    { key: 'ArrowLeft', action: 'play_stop' },
-    { key: 'ArrowRight', action: 'fill_end' },
-  ];
-
-  // Compat: getter para código que usa pedalMap.left/right
-  private get pedalMap() {
-    const play = this.pedalBindings.find(b => b.action === 'play_stop');
-    const fill = this.pedalBindings.find(b => b.action === 'fill_end');
-    return {
-      left: play?.key || 'ArrowLeft',
-      right: fill?.key || 'ArrowRight',
-    };
-  }
+  // Pedal fixo — esquerdo e direito
+  private pedalLeft = 'ArrowLeft';
+  private pedalRight = 'ArrowRight';
 
   constructor() {
     // Inicializar contexto de áudio
@@ -192,26 +180,8 @@ class RhythmSequencer {
         // Offline — setlist usa cache local automaticamente
       }
 
-      // Carregar mapeamento de pedal salvo
-      const savedPedalMap = localStorage.getItem('gdrums_pedal_map');
-      if (savedPedalMap) {
-        try {
-          const parsed = JSON.parse(savedPedalMap);
-          // Migrar formato antigo { left, right } para novo formato
-          if (parsed.left && parsed.right && !Array.isArray(parsed)) {
-            this.pedalBindings = [
-              { key: parsed.left, action: 'play_stop' },
-              { key: parsed.right, action: 'fill_end' },
-            ];
-          } else if (Array.isArray(parsed)) {
-            // Migrar ações do formato quebrado
-            this.pedalBindings = parsed.map((b: any) => ({
-              key: b.key,
-              action: b.action === 'play' ? 'play_stop' : b.action,
-            }));
-          }
-        } catch { /* usar padrão */ }
-      }
+      // Limpar mapeamento antigo de pedal (agora é fixo)
+      localStorage.removeItem('gdrums_pedal_map');
 
       this.generateChannelsHTML();
       this.setupEventListeners();
@@ -881,14 +851,13 @@ class RhythmSequencer {
         return;
       }
 
-      const binding = this.pedalBindings.find(b => b.key === e.code);
-      if (!binding || e.repeat) return;
-      e.preventDefault();
+      if (e.repeat) return;
 
-      // ─── ESQUERDO (play_stop) ─────────────────────────────────────
+      // ─── ESQUERDO ─────────────────────────────────────────────────
       // Parado: 1x = play (com intro se ligada)
       // Tocando: 1x = virada + próximo ritmo, 2x = virada + ritmo anterior
-      if (binding.action === 'play_stop') {
+      if (e.code === this.pedalLeft) {
+        e.preventDefault();
         if (!this.stateManager.isPlaying()) {
           this.patternEngine.activateRhythm(0);
           if (this.useIntro) {
@@ -915,10 +884,11 @@ class RhythmSequencer {
         return;
       }
 
-      // ─── DIREITO (fill_end) ───────────────────────────────────────
+      // ─── DIREITO ───────────────────────────────────────────────────
       // Parado: 1x = prato
       // Tocando: 1x = virada (volta pro mesmo ritmo), 2x = finalização
-      if (binding.action === 'fill_end') {
+      if (e.code === this.pedalRight) {
+        e.preventDefault();
         if (!this.stateManager.isPlaying()) {
           this.playCymbal();
         } else {
@@ -939,37 +909,6 @@ class RhythmSequencer {
         return;
       }
 
-      // ─── Ações diretas (botões extras) ────────────────────────────
-      if (binding.action === 'fill') {
-        if (this.stateManager.isPlaying()) this.patternEngine.playRotatingFill();
-        return;
-      }
-      if (binding.action === 'end') {
-        if (this.stateManager.isPlaying()) {
-          if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stop(); }
-        }
-        return;
-      }
-      if (binding.action === 'cymbal') {
-        this.playCymbal();
-        return;
-      }
-      if (binding.action === 'next_rhythm') {
-        if (this.stateManager.isPlaying()) {
-          this.patternEngine.playFillToNextRhythm();
-        } else {
-          this.navigateSetlist('next');
-        }
-        return;
-      }
-      if (binding.action === 'prev_rhythm') {
-        if (this.stateManager.isPlaying()) {
-          this.playFillToPreviousRhythm();
-        } else {
-          this.navigateSetlist('previous');
-        }
-        return;
-      }
     });
   }
 
@@ -1262,13 +1201,7 @@ class RhythmSequencer {
     }
 
     // Mapear pedal
-    const pedalMapBtn = document.getElementById('pedalMapBtn');
-    if (pedalMapBtn) {
-      pedalMapBtn.addEventListener('click', () => {
-        if (fabDropdown) fabDropdown.style.display = 'none';
-        this.showPedalMapper();
-      });
-    }
+    // Botão de mapear pedal removido (pedal fixo por enquanto)
 
     // Logout
     const logoutBtn = document.getElementById('logoutBtn');
@@ -1833,276 +1766,6 @@ class RhythmSequencer {
     overlay.querySelector('#closePedalInfo')!.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
-  }
-
-  private showPedalMapper(): void {
-    const ACTIONS: Array<{ id: string; label: string; desc: string; color: string }> = [
-      { id: 'play_stop', label: 'Play / Stop', desc: 'Parado: play. Tocando: 1x prox ritmo, 2x anterior', color: '139,92,246' },
-      { id: 'fill_end', label: 'Virada / Final', desc: 'Parado: prato. Tocando: 1x virada, 2x finaliza', color: '249,115,22' },
-      { id: 'fill', label: 'Virada', desc: 'Toca virada direto', color: '0,212,255' },
-      { id: 'end', label: 'Finalizar', desc: 'Finaliza e para', color: '236,72,153' },
-      { id: 'cymbal', label: 'Prato', desc: 'Toca o prato', color: '249,200,22' },
-      { id: 'next_rhythm', label: 'Proximo Ritmo', desc: 'Proximo favorito', color: '0,230,140' },
-      { id: 'prev_rhythm', label: 'Ritmo Anterior', desc: 'Favorito anterior', color: '0,180,230' },
-    ];
-
-    const keyLabels: Record<string, string> = {
-      'ArrowLeft': 'Esquerda', 'ArrowRight': 'Direita',
-      'ArrowUp': 'Cima', 'ArrowDown': 'Baixo',
-      'Space': 'Espaco', 'Enter': 'Enter',
-      'PageUp': 'Page Up', 'PageDown': 'Page Down',
-      'KeyA': 'A', 'KeyB': 'B', 'KeyC': 'C', 'KeyD': 'D',
-      'KeyE': 'E', 'KeyF': 'F', 'KeyG': 'G', 'KeyH': 'H',
-      'KeyI': 'I', 'KeyJ': 'J', 'KeyK': 'K', 'KeyL': 'L',
-      'KeyM': 'M', 'KeyN': 'N', 'KeyO': 'O', 'KeyP': 'P',
-      'KeyQ': 'Q', 'KeyR': 'R', 'KeyS': 'S', 'KeyT': 'T',
-      'KeyU': 'U', 'KeyV': 'V', 'KeyW': 'W', 'KeyX': 'X',
-      'KeyY': 'Y', 'KeyZ': 'Z',
-      'Digit1': '1', 'Digit2': '2', 'Digit3': '3', 'Digit4': '4',
-      'Digit5': '5', 'Digit6': '6', 'Digit7': '7', 'Digit8': '8',
-      'Digit9': '9', 'Digit0': '0',
-    };
-    const getLabel = (code: string) => keyLabels[code] || code;
-
-    const bindings = [...this.pedalBindings.map(b => ({ ...b }))];
-    let listeningIndex: number | null = null;
-    let waitingAction = false; // esperando usuario escolher acao
-
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(20px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto;';
-
-    overlay.innerHTML = `
-      <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:2rem;max-width:420px;width:100%;">
-        <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.5rem;text-align:center;">Mapear Pedal</h2>
-        <p id="pedalMapStatus" style="font-size:0.7rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1rem;min-height:1rem;">Seus botoes mapeados</p>
-
-        <div id="pedalBindingsContainer" style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1rem;"></div>
-
-        <!-- Acao selector (hidden by default) -->
-        <div id="actionSelector" style="display:none;margin-bottom:1rem;">
-          <div style="font-size:0.7rem;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;text-align:center;">Escolha a acao para este botao:</div>
-          <div id="actionButtons" style="display:flex;flex-direction:column;gap:0.3rem;"></div>
-        </div>
-
-        <!-- Teste ao vivo -->
-        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:0.6rem;margin-bottom:1rem;">
-          <div style="font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.15);margin-bottom:0.4rem;text-align:center;">Teste ao vivo</div>
-          <div id="pedalTestResult" style="text-align:center;font-size:0.8rem;font-weight:700;color:rgba(255,255,255,0.1);min-height:1.2rem;"></div>
-        </div>
-
-        <div style="display:flex;gap:0.4rem;">
-          <button id="pedalClearAll" style="flex:1;padding:0.55rem;border:none;border-radius:10px;background:rgba(255,80,80,0.08);border:1px solid rgba(255,80,80,0.15);color:rgba(255,80,80,0.6);font-size:0.75rem;font-weight:600;font-family:inherit;cursor:pointer;">Limpar</button>
-          <button id="pedalAddBtn" style="flex:1;padding:0.55rem;border:none;border-radius:10px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.15);color:rgba(0,212,255,0.7);font-size:0.75rem;font-weight:600;font-family:inherit;cursor:pointer;">+ Adicionar</button>
-          <button id="pedalMapReset" style="flex:1;padding:0.55rem;border:none;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.75rem;font-weight:600;font-family:inherit;cursor:pointer;">Padrao</button>
-          <button id="pedalMapSave" style="flex:1.5;padding:0.55rem;border:none;border-radius:10px;background:rgba(0,230,140,0.12);border:1px solid rgba(0,230,140,0.25);color:rgba(0,230,140,0.9);font-size:0.75rem;font-weight:600;font-family:inherit;cursor:pointer;">Salvar</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-
-    const statusEl = overlay.querySelector('#pedalMapStatus') as HTMLElement;
-    const testResult = overlay.querySelector('#pedalTestResult') as HTMLElement;
-    const actionSelector = overlay.querySelector('#actionSelector') as HTMLElement;
-    const actionButtons = overlay.querySelector('#actionButtons') as HTMLElement;
-
-    const renderBindings = () => {
-      const container = overlay.querySelector('#pedalBindingsContainer') as HTMLElement;
-
-      if (bindings.length === 0) {
-        container.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.15);font-size:0.8rem;padding:1rem;">Nenhum botao mapeado. Clique em "+ Adicionar".</div>';
-        return;
-      }
-
-      container.innerHTML = bindings.map((b, i) => {
-        const actionDef = ACTIONS.find(a => a.id === b.action)!;
-        return `
-          <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.6rem;background:rgba(${actionDef.color},0.05);border:1px solid rgba(${actionDef.color},0.12);border-radius:10px;">
-            <div style="min-width:70px;padding:0.25rem 0.5rem;border-radius:6px;border:1px solid rgba(${actionDef.color},0.25);background:rgba(${actionDef.color},0.08);color:rgba(${actionDef.color},0.9);font-size:0.7rem;font-weight:700;text-align:center;">${getLabel(b.key)}</div>
-            <div style="flex:1;">
-              <div style="font-size:0.75rem;font-weight:600;color:rgba(${actionDef.color},0.8);">${actionDef.label}</div>
-              <div style="font-size:0.5rem;color:rgba(255,255,255,0.2);">${actionDef.desc}</div>
-            </div>
-            <button data-remove="${i}" style="width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,80,80,0.15);background:rgba(255,80,80,0.05);color:rgba(255,80,80,0.5);font-size:0.9rem;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;">x</button>
-          </div>
-        `;
-      }).join('');
-
-      container.querySelectorAll('[data-remove]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          bindings.splice(parseInt((btn as HTMLElement).dataset.remove!), 1);
-          renderBindings();
-        });
-      });
-    };
-
-    const showActionSelector = (keyCode: string) => {
-      waitingAction = true;
-      const usedActions = bindings.map(b => b.action);
-      const available = ACTIONS.filter(a => !usedActions.includes(a.id));
-
-      if (available.length === 0) {
-        statusEl.textContent = 'Todas as acoes ja estao mapeadas';
-        statusEl.style.color = 'rgba(255,80,80,0.7)';
-        waitingAction = false;
-        return;
-      }
-
-      statusEl.textContent = `Tecla ${getLabel(keyCode)} detectada. Escolha a acao:`;
-      statusEl.style.color = 'rgba(0,212,255,0.8)';
-
-      actionButtons.innerHTML = available.map(a => `
-        <button data-action="${a.id}" style="padding:0.5rem;border:1px solid rgba(${a.color},0.2);border-radius:8px;background:rgba(${a.color},0.06);color:rgba(${a.color},0.9);font-size:0.75rem;font-weight:600;font-family:inherit;cursor:pointer;text-align:left;">
-          ${a.label} <span style="font-size:0.55rem;color:rgba(255,255,255,0.3);margin-left:0.3rem;">${a.desc}</span>
-        </button>
-      `).join('');
-
-      actionSelector.style.display = '';
-
-      actionButtons.querySelectorAll('[data-action]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const actionId = (btn as HTMLElement).dataset.action!;
-          bindings.push({ key: keyCode, action: actionId });
-          actionSelector.style.display = 'none';
-          waitingAction = false;
-          statusEl.textContent = `${getLabel(keyCode)} mapeado para ${ACTIONS.find(a => a.id === actionId)!.label}!`;
-          statusEl.style.color = 'rgba(0,230,140,0.7)';
-          setTimeout(() => { statusEl.textContent = 'Seus botoes mapeados'; statusEl.style.color = 'rgba(255,255,255,0.3)'; }, 2000);
-          renderBindings();
-        });
-      });
-    };
-
-    // Key handler
-    const keyHandler = (e: KeyboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (waitingAction) return; // esperando escolher acao, ignorar tecla
-
-      // Remapear botao existente
-      if (listeningIndex !== null) {
-        bindings[listeningIndex].key = e.code;
-        listeningIndex = null;
-        renderBindings();
-        statusEl.textContent = 'Seus botoes mapeados';
-        statusEl.style.color = 'rgba(255,255,255,0.3)';
-        return;
-      }
-
-      // Teste ao vivo
-      const match = bindings.find(b => b.key === e.code);
-      if (match) {
-        const actionDef = ACTIONS.find(a => a.id === match.action)!;
-        testResult.textContent = `${getLabel(e.code)} = ${actionDef.label}`;
-        testResult.style.color = `rgba(${actionDef.color},0.9)`;
-        setTimeout(() => { testResult.textContent = ''; testResult.style.color = ''; }, 800);
-      } else {
-        testResult.textContent = `${getLabel(e.code)} (nao mapeado)`;
-        testResult.style.color = 'rgba(255,255,255,0.25)';
-        setTimeout(() => { testResult.textContent = ''; }, 800);
-      }
-    };
-
-    document.addEventListener('keydown', keyHandler);
-    renderBindings();
-
-    // Adicionar — escuta tecla, depois escolhe acao
-    overlay.querySelector('#pedalAddBtn')!.addEventListener('click', () => {
-      actionSelector.style.display = 'none';
-      waitingAction = false;
-      statusEl.textContent = 'Pressione o botao do pedal que quer mapear...';
-      statusEl.style.color = 'rgba(0,212,255,0.8)';
-
-      const addKeyHandler = (e: KeyboardEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        document.removeEventListener('keydown', addKeyHandler);
-
-        if (bindings.find(b => b.key === e.code)) {
-          statusEl.textContent = `${getLabel(e.code)} ja esta mapeado. Remova antes.`;
-          statusEl.style.color = 'rgba(255,80,80,0.7)';
-          setTimeout(() => { statusEl.textContent = 'Seus botoes mapeados'; statusEl.style.color = 'rgba(255,255,255,0.3)'; }, 2000);
-          return;
-        }
-
-        showActionSelector(e.code);
-      };
-
-      // Temporariamente trocar handler
-      document.removeEventListener('keydown', keyHandler);
-      document.addEventListener('keydown', addKeyHandler);
-
-      // Restaurar handler principal quando acao for escolhida ou cancelada
-      const restore = () => {
-        document.removeEventListener('keydown', addKeyHandler);
-        document.addEventListener('keydown', keyHandler);
-      };
-
-      // Observer pra restaurar quando actionSelector esconder
-      const observer = new MutationObserver(() => {
-        if (actionSelector.style.display === 'none') {
-          restore();
-          observer.disconnect();
-        }
-      });
-      observer.observe(actionSelector, { attributes: true, attributeFilter: ['style'] });
-
-      // Fallback: restaurar depois de 10s
-      setTimeout(() => { restore(); observer.disconnect(); }, 10000);
-    });
-
-    // Limpar tudo
-    overlay.querySelector('#pedalClearAll')!.addEventListener('click', () => {
-      bindings.length = 0;
-      renderBindings();
-      statusEl.textContent = 'Tudo limpo. Adicione botoes.';
-      statusEl.style.color = 'rgba(255,255,255,0.3)';
-      setTimeout(() => { statusEl.textContent = 'Seus botoes mapeados'; statusEl.style.color = 'rgba(255,255,255,0.3)'; }, 2000);
-    });
-
-    // Resetar padrao
-    overlay.querySelector('#pedalMapReset')!.addEventListener('click', () => {
-      bindings.length = 0;
-      bindings.push({ key: 'ArrowLeft', action: 'play_stop' });
-      bindings.push({ key: 'ArrowRight', action: 'fill_end' });
-      renderBindings();
-      statusEl.textContent = 'Padrao restaurado (2 botoes)';
-      statusEl.style.color = 'rgba(255,255,255,0.3)';
-    });
-
-    // Salvar
-    overlay.querySelector('#pedalMapSave')!.addEventListener('click', () => {
-      const unconfigured = bindings.filter(b => b.key === '(pressione)');
-      if (unconfigured.length > 0) {
-        statusEl.textContent = 'Configure todas as teclas antes de salvar';
-        statusEl.style.color = 'rgba(255,80,80,0.8)';
-        return;
-      }
-
-      // Verificar teclas duplicadas
-      const keys = bindings.map(b => b.key);
-      const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
-      if (dupes.length > 0) {
-        statusEl.textContent = `Tecla "${getLabel(dupes[0])}" esta em mais de um botao`;
-        statusEl.style.color = 'rgba(255,80,80,0.8)';
-        return;
-      }
-
-      this.pedalBindings = [...bindings];
-      localStorage.setItem('gdrums_pedal_map', JSON.stringify(bindings));
-      close();
-      this.modalManager.show('Pedal', bindings.length > 0 ? `${bindings.length} botoes salvos!` : 'Mapeamento limpo!', 'success');
-    });
-
-    const close = () => {
-      document.removeEventListener('keydown', keyHandler);
-      overlay.remove();
-    };
-
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) close();
-    });
   }
 
   private updateProjectBar(name: string): void {
