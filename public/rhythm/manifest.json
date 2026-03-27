@@ -1,5 +1,5 @@
 {
-  "version": 12,
+  "version": 13,
   "rhythms": [
     "Arrocha.json",
     "Baiao.json",
@@ -14,6 +14,7 @@
     "Guarania.json",
     "Katchaka.json",
     "Milonga.json",
+    "Pisadinha.json",
     "Pop Rock.json",
     "Punk Rock.json",
     "Rancheira.json",
@@ -32,6 +33,7 @@
       "Baiao.json",
       "Bossa Nova.json",
       "Forro.json",
+      "Pisadinha.json",
       "Samba.json",
       "Seresta.json"
     ],

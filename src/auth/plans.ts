@@ -12,6 +12,7 @@ interface AppliedCoupon {
 
 class PlansPage {
   private appliedCoupon: AppliedCoupon | null = null;
+  private upgradeCredit = 0; // Crédito em centavos do plano atual (upgrade proporcional)
 
   constructor() {
     this.init();
@@ -82,19 +83,29 @@ class PlansPage {
       }
     }
 
-    // Só redirecionar se tem plano PAGO ativo
-    if (status === 'active' && plan && plan !== 'trial' && profile?.subscription_expires_at) {
+    // Só redirecionar se tem plano PAGO ativo e NÃO veio fazer upgrade
+    const params = new URLSearchParams(window.location.search);
+    const isUpgrade = params.get('upgrade') === 'true';
+
+    if (!isUpgrade && status === 'active' && plan && plan !== 'trial' && profile?.subscription_expires_at) {
       if (new Date(profile.subscription_expires_at) > new Date()) {
         window.location.href = '/';
         return;
       }
     }
 
-    if (status === 'expired' || (status === 'trial' && profile?.subscription_expires_at && new Date(profile.subscription_expires_at) <= new Date())) {
+    if (isUpgrade) {
+      this.showAlert('Escolha um plano superior para fazer o upgrade da sua assinatura.');
+    } else if (status === 'expired' || (status === 'trial' && profile?.subscription_expires_at && new Date(profile.subscription_expires_at) <= new Date())) {
       this.showAlert('Sua assinatura expirou. Escolha um plano para continuar.');
     }
 
-    const params = new URLSearchParams(window.location.search);
+    // Crédito de upgrade (proporcional ao tempo não usado do plano atual)
+    const creditParam = parseInt(params.get('credit') || '0');
+    if (isUpgrade && creditParam > 0) {
+      this.upgradeCredit = creditParam;
+    }
+
     this.setupCoupon();
     this.renderPlans(params.get('plan'));
   }
@@ -208,25 +219,43 @@ class PlansPage {
       const card = document.createElement('div');
       card.className = 'plan-card' + (isHighlighted ? ' popular' : '');
 
+      // Aplicar desconto do cupom
       const discount = this.appliedCoupon?.discount_percent || 0;
       const originalPrice = plan.priceCents;
-      const discountedPrice = Math.round(originalPrice * (1 - discount / 100));
-      const discountedPerMonth = plan.durationMonths > 0
-        ? Math.round(discountedPrice / plan.durationMonths / 100)
-        : Math.round(discountedPrice / 100);
+      let finalPrice = Math.round(originalPrice * (1 - discount / 100));
       const hasDiscount = discount > 0;
 
+      // Aplicar crédito de upgrade (após cupom)
+      const hasCredit = this.upgradeCredit > 0;
+      const creditApplied = hasCredit ? Math.min(this.upgradeCredit, finalPrice) : 0;
+      finalPrice = Math.max(0, finalPrice - creditApplied);
+
+      const finalPerMonth = plan.durationMonths > 0
+        ? Math.round(finalPrice / plan.durationMonths / 100)
+        : Math.round(finalPrice / 100);
+
+      // Texto de economia
+      let savingsText = '';
+      if (hasCredit && creditApplied > 0) {
+        const creditDisplay = (creditApplied / 100).toFixed(0);
+        savingsText = `Crédito de R$ ${creditDisplay} aplicado!`;
+      } else if (hasDiscount) {
+        savingsText = `${discount}% OFF com cupom!`;
+      } else if (plan.savings) {
+        savingsText = plan.savings;
+      }
+
       card.innerHTML = `
-        ${isHighlighted ? '<div class="plan-badge">Mais Popular</div>' : ''}
+        ${isHighlighted ? '<div class="plan-badge">' + (hasCredit ? 'Upgrade' : 'Mais Popular') + '</div>' : ''}
         <span class="plan-name">${plan.displayName}</span>
-        ${hasDiscount ? `<div class="plan-original-price">R$ ${plan.pricePerMonth}/mês</div>` : ''}
+        ${(hasDiscount || hasCredit) ? `<div class="plan-original-price">R$ ${plan.pricePerMonth}/mês</div>` : ''}
         <div class="plan-price">
           <span class="plan-currency">R$</span>
-          <span class="plan-amount">${hasDiscount ? discountedPerMonth : plan.pricePerMonth}</span>
+          <span class="plan-amount">${(hasDiscount || hasCredit) ? finalPerMonth : plan.pricePerMonth}</span>
           <span class="plan-period">/mês</span>
         </div>
-        ${hasDiscount ? `<span class="plan-savings">${discount}% OFF com cupom!</span>` : (plan.savings ? `<span class="plan-savings">${plan.savings}</span>` : '')}
-        ${plan.durationMonths > 1 ? `<span class="plan-total">Total: R$ ${(discountedPrice / 100).toFixed(0)}</span>` : '<span class="plan-total">&nbsp;</span>'}
+        ${savingsText ? `<span class="plan-savings">${savingsText}</span>` : ''}
+        ${plan.durationMonths > 1 ? `<span class="plan-total">Total: R$ ${(finalPrice / 100).toFixed(0)}</span>` : '<span class="plan-total">&nbsp;</span>'}
         <ul class="plan-features">
           <li>Todos os ritmos da biblioteca</li>
           <li>Performance ao vivo (viradas, intro, final)</li>
@@ -237,10 +266,10 @@ class PlansPage {
           ${plan.durationMonths >= 6 ? '<li>Suporte prioritário</li>' : ''}
           ${plan.durationMonths >= 36 ? '<li>3 anos garantidos — metade do mensal</li>' : ''}
         </ul>
-        <button class="plan-btn" data-plan="${plan.id}">Assinar ${plan.displayName}</button>
+        <button class="plan-btn" data-plan="${plan.id}">${hasCredit ? 'Upgrade para' : 'Assinar'} ${plan.displayName}</button>
       `;
 
-      card.querySelector('.plan-btn')!.addEventListener('click', () => this.selectPlan(plan, discountedPrice));
+      card.querySelector('.plan-btn')!.addEventListener('click', () => this.selectPlan(plan, finalPrice));
       grid.appendChild(card);
     });
   }
@@ -271,7 +300,7 @@ class PlansPage {
       const orderNsu = existingPending?.order_nsu || (generateOrderNsu(user.id, plan.id) + couponSuffix);
       const redirectUrl = `${window.location.origin}/payment-success.html`;
 
-      // Salvar pedido pendente no banco (só se não existe)
+      // Salvar pedido pendente no banco
       if (!existingPending) {
         await supabase.from('gdrums_transactions').insert({
           user_id: user.id,
@@ -283,6 +312,15 @@ class PlansPage {
           coupon_code: this.appliedCoupon?.code || null,
           discount_percent: this.appliedCoupon?.discount_percent || null,
         });
+      } else if (this.appliedCoupon) {
+        // Pedido pendente já existe mas agora tem cupom — atualizar
+        await supabase.from('gdrums_transactions')
+          .update({
+            coupon_code: this.appliedCoupon.code,
+            discount_percent: this.appliedCoupon.discount_percent,
+            amount_cents: finalPriceCents,
+          })
+          .eq('order_nsu', existingPending.order_nsu);
       }
 
       // Backup local (fallback)
@@ -293,6 +331,7 @@ class PlansPage {
         coupon: this.appliedCoupon,
         originalPriceCents: plan.priceCents,
         finalPriceCents,
+        upgradeCredit: this.upgradeCredit || 0,
       }));
 
       // Criar checkout com preço final (já com desconto)

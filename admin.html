@@ -3,112 +3,129 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Dashboard - GDrums</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>Admin — GDrums</title>
     <link rel="stylesheet" href="admin-styles.css" />
   </head>
-  <body class="admin-body">
-    <!-- Header Admin -->
-    <header class="admin-header">
-      <div class="admin-header-content">
-        <div class="logo">
-          <img src="/img/app-img.png" alt="GDrums" class="logo-img" style="height:32px;width:32px;border-radius:8px;" />
-          <h1>GDrums Admin</h1>
+  <body>
+    <!-- Header -->
+    <header class="adm-header">
+      <div class="adm-header-inner">
+        <div class="adm-brand">
+          <img src="/img/logo.png" alt="GDrums" class="adm-logo" />
+          <span class="adm-brand-label">Admin</span>
         </div>
-        <div class="admin-user">
-          <span class="admin-user-name" id="adminUserName">Admin</span>
-          <button class="btn-logout" id="logoutBtn">Sair</button>
+        <div class="adm-header-right">
+          <span class="adm-user-name" id="adminUserName">Admin</span>
+          <button class="adm-btn-logout" id="logoutBtn">Sair</button>
         </div>
       </div>
     </header>
 
-    <div class="admin-layout">
+    <!-- Mobile nav -->
+    <nav class="adm-mobile-nav">
+      <a href="#dashboard" class="adm-nav-item active" data-section="dashboard"><span>Dashboard</span></a>
+      <a href="#users" class="adm-nav-item" data-section="users"><span>Usuários</span></a>
+      <a href="#subscriptions" class="adm-nav-item" data-section="subscriptions"><span>Transações</span></a>
+      <a href="#coupons" class="adm-nav-item" data-section="coupons"><span>Cupons</span></a>
+    </nav>
+
+    <div class="adm-shell">
       <!-- Sidebar -->
-      <aside class="admin-sidebar">
-        <nav class="admin-nav">
-          <a href="#dashboard" class="nav-item active" data-section="dashboard">
-            <span class="nav-icon">D</span>
-            <span class="nav-label">Dashboard</span>
+      <aside class="adm-sidebar">
+        <nav class="adm-nav">
+          <a href="#dashboard" class="adm-nav-item active" data-section="dashboard">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            <span>Dashboard</span>
           </a>
-          <a href="#users" class="nav-item" data-section="users">
-            <span class="nav-icon">U</span>
-            <span class="nav-label">Usuários</span>
+          <a href="#users" class="adm-nav-item" data-section="users">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            <span>Usuários</span>
           </a>
-          <a href="#subscriptions" class="nav-item" data-section="subscriptions">
-            <span class="nav-icon">T</span>
-            <span class="nav-label">Transações</span>
+          <a href="#subscriptions" class="adm-nav-item" data-section="subscriptions">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <span>Transações</span>
+          </a>
+          <a href="#coupons" class="adm-nav-item" data-section="coupons">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <span>Cupons</span>
           </a>
         </nav>
       </aside>
 
-      <!-- Main Content -->
-      <main class="admin-main">
-        <!-- Dashboard Section -->
-        <section id="dashboardSection" class="admin-section active">
-          <div class="section-header">
-            <h2 class="section-title-admin">Dashboard</h2>
-            <button class="btn-add" id="refreshDataBtn">Atualizar</button>
+      <!-- Content -->
+      <main class="adm-main">
+
+        <!-- ═══ Dashboard ═══ -->
+        <section id="dashboardSection" class="adm-section active">
+          <div class="adm-section-top">
+            <h2 class="adm-title">Dashboard</h2>
+            <button class="adm-btn adm-btn-outline" id="refreshDataBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+              Atualizar
+            </button>
           </div>
 
-          <!-- Stats Cards -->
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-icon users-icon"></div>
-              <div class="stat-info">
-                <span class="stat-value" id="totalUsers">0</span>
-                <span class="stat-label">Usuários Totais</span>
+          <div class="adm-kpi-grid">
+            <div class="adm-kpi">
+              <div class="adm-kpi-icon adm-kpi-blue">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              </div>
+              <div class="adm-kpi-body">
+                <span class="adm-kpi-value" id="totalUsers">0</span>
+                <span class="adm-kpi-label">Usuários</span>
               </div>
             </div>
-
-            <div class="stat-card">
-              <div class="stat-icon active-icon"></div>
-              <div class="stat-info">
-                <span class="stat-value" id="activeSubscriptions">0</span>
-                <span class="stat-label">Assinantes Pagos</span>
+            <div class="adm-kpi">
+              <div class="adm-kpi-icon adm-kpi-green">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+              <div class="adm-kpi-body">
+                <span class="adm-kpi-value" id="activeSubscriptions">0</span>
+                <span class="adm-kpi-label">Assinantes Pagos</span>
               </div>
             </div>
-
-            <div class="stat-card">
-              <div class="stat-icon revenue-icon"></div>
-              <div class="stat-info">
-                <span class="stat-value" id="totalRevenue">R$ 0</span>
-                <span class="stat-label">Faturamento Total</span>
+            <div class="adm-kpi">
+              <div class="adm-kpi-icon adm-kpi-gold">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+              </div>
+              <div class="adm-kpi-body">
+                <span class="adm-kpi-value" id="totalRevenue">R$ 0</span>
+                <span class="adm-kpi-label">Faturamento</span>
               </div>
             </div>
-
-            <div class="stat-card">
-              <div class="stat-icon growth-icon"></div>
-              <div class="stat-info">
-                <span class="stat-value" id="growthRate">0</span>
-                <span class="stat-label">Em Trial</span>
+            <div class="adm-kpi">
+              <div class="adm-kpi-icon adm-kpi-purple">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <div class="adm-kpi-body">
+                <span class="adm-kpi-value" id="growthRate">0</span>
+                <span class="adm-kpi-label">Em Trial</span>
               </div>
             </div>
           </div>
 
-          <!-- Charts -->
-          <div class="charts-grid">
-            <div class="chart-card">
-              <h3>Distribuição por Plano</h3>
-              <div class="chart-container" id="usersChart"></div>
+          <div class="adm-cards-row">
+            <div class="adm-card">
+              <h3 class="adm-card-title">Distribuição por Plano</h3>
+              <div class="adm-card-body" id="usersChart"></div>
             </div>
-
-            <div class="chart-card">
-              <h3>Últimas Transações</h3>
-              <div class="chart-container" id="subscriptionsChart"></div>
+            <div class="adm-card">
+              <h3 class="adm-card-title">Últimas Transações</h3>
+              <div class="adm-card-body" id="subscriptionsChart"></div>
             </div>
           </div>
         </section>
 
-        <!-- Users Section -->
-        <section id="usersSection" class="admin-section">
-          <div class="section-header">
-            <h2 class="section-title-admin">Usuários</h2>
+        <!-- ═══ Usuários ═══ -->
+        <section id="usersSection" class="adm-section">
+          <div class="adm-section-top">
+            <h2 class="adm-title">Usuários</h2>
           </div>
 
-          <div class="filters-bar">
-            <input type="text" class="search-input-admin" id="userSearchInput" placeholder="Buscar por nome ou ID..." />
-            <select class="filter-select" id="userStatusFilter">
-              <option value="all">Todos</option>
+          <div class="adm-filters">
+            <input type="text" class="adm-input" id="userSearchInput" placeholder="Buscar por nome ou ID..." />
+            <select class="adm-select" id="userStatusFilter">
+              <option value="all">Todos os status</option>
               <option value="active">Ativos</option>
               <option value="trial">Trial</option>
               <option value="expired">Expirados</option>
@@ -116,8 +133,8 @@
             </select>
           </div>
 
-          <div class="table-container">
-            <table class="admin-table">
+          <div class="adm-table-wrap">
+            <table class="adm-table">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -135,25 +152,25 @@
           </div>
         </section>
 
-        <!-- Transactions Section -->
-        <section id="subscriptionsSection" class="admin-section">
-          <div class="section-header">
-            <h2 class="section-title-admin">Transações</h2>
+        <!-- ═══ Transações ═══ -->
+        <section id="subscriptionsSection" class="adm-section">
+          <div class="adm-section-top">
+            <h2 class="adm-title">Transações</h2>
           </div>
 
-          <div class="filters-bar">
-            <input type="text" class="search-input-admin" id="subscriptionSearchInput" placeholder="Buscar por nome ou plano..." />
-            <select class="filter-select" id="subscriptionStatusFilter">
+          <div class="adm-filters">
+            <input type="text" class="adm-input" id="subscriptionSearchInput" placeholder="Buscar por nome ou plano..." />
+            <select class="adm-select" id="subscriptionStatusFilter">
               <option value="all">Todas</option>
               <option value="confirmed">Confirmadas</option>
               <option value="pending">Pendentes</option>
             </select>
           </div>
 
-          <div id="transactionsSummary" style="padding:0.75rem 1rem;font-size:0.85rem;"></div>
+          <div class="adm-summary" id="transactionsSummary"></div>
 
-          <div class="table-container">
-            <table class="admin-table">
+          <div class="adm-table-wrap">
+            <table class="adm-table">
               <thead>
                 <tr>
                   <th>Usuário</th>
@@ -170,26 +187,55 @@
             </table>
           </div>
         </section>
+
+        <!-- ═══ Cupons ═══ -->
+        <section id="couponsSection" class="adm-section">
+          <div class="adm-section-top">
+            <h2 class="adm-title">Cupons</h2>
+            <button class="adm-btn adm-btn-primary" id="addCouponBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Novo Cupom
+            </button>
+          </div>
+
+          <div class="adm-table-wrap">
+            <table class="adm-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Desconto</th>
+                  <th>Usos</th>
+                  <th>Válido de</th>
+                  <th>Válido até</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="couponsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
       </main>
     </div>
 
-    <!-- Modal: Edit User -->
-    <div class="modal" id="editUserModal">
-      <div class="modal-content">
-        <div class="modal-header">
+    <!-- Modal: Editar Usuário -->
+    <div class="adm-modal-overlay" id="editUserModal">
+      <div class="adm-modal">
+        <div class="adm-modal-head">
           <h3>Editar Usuário</h3>
-          <button class="modal-close" data-modal="editUserModal">×</button>
+          <button class="adm-modal-close" data-modal="editUserModal">&times;</button>
         </div>
         <form id="editUserForm">
-          <div class="modal-body">
+          <div class="adm-modal-body">
             <input type="hidden" id="editUserId" />
-            <div class="form-group">
+            <div class="adm-field">
               <label>Nome</label>
-              <input type="text" id="editUserName" class="form-input" disabled style="opacity:0.5;" />
+              <input type="text" id="editUserName" class="adm-input" disabled />
             </div>
-            <div class="form-group">
+            <div class="adm-field">
               <label>Status</label>
-              <select id="editUserStatus" class="form-input">
+              <select id="editUserStatus" class="adm-select">
                 <option value="active">Ativo</option>
                 <option value="trial">Trial</option>
                 <option value="expired">Expirado</option>
@@ -197,9 +243,9 @@
                 <option value="blocked">Bloqueado</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="adm-field">
               <label>Plano</label>
-              <select id="editUserPlan" class="form-input">
+              <select id="editUserPlan" class="adm-select">
                 <option value="free">Free</option>
                 <option value="trial">Trial</option>
                 <option value="mensal">Mensal</option>
@@ -210,14 +256,57 @@
                 <option value="admin">Admin</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="adm-field">
               <label>Expira em</label>
-              <input type="date" id="editUserExpiry" class="form-input" />
+              <input type="date" id="editUserExpiry" class="adm-input" />
             </div>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn-secondary" data-modal="editUserModal">Cancelar</button>
-            <button type="submit" class="btn-primary">Salvar</button>
+          <div class="adm-modal-foot">
+            <button type="button" class="adm-btn adm-btn-ghost" data-modal="editUserModal">Cancelar</button>
+            <button type="submit" class="adm-btn adm-btn-primary">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Criar/Editar Cupom -->
+    <div class="adm-modal-overlay" id="couponModal">
+      <div class="adm-modal">
+        <div class="adm-modal-head">
+          <h3 id="couponModalTitle">Novo Cupom</h3>
+          <button class="adm-modal-close" data-modal="couponModal">&times;</button>
+        </div>
+        <form id="couponForm">
+          <div class="adm-modal-body">
+            <input type="hidden" id="couponEditId" />
+            <div class="adm-field">
+              <label>Código</label>
+              <input type="text" id="couponCode" class="adm-input" placeholder="EX: GDRUMS20" maxlength="20" style="text-transform:uppercase;" required />
+            </div>
+            <div class="adm-field-row">
+              <div class="adm-field">
+                <label>Desconto (%)</label>
+                <input type="number" id="couponDiscount" class="adm-input" min="1" max="100" placeholder="20" required />
+              </div>
+              <div class="adm-field">
+                <label>Máx. de usos</label>
+                <input type="number" id="couponMaxUses" class="adm-input" min="1" placeholder="100" required />
+              </div>
+            </div>
+            <div class="adm-field-row">
+              <div class="adm-field">
+                <label>Válido de</label>
+                <input type="date" id="couponValidFrom" class="adm-input" required />
+              </div>
+              <div class="adm-field">
+                <label>Válido até</label>
+                <input type="date" id="couponValidUntil" class="adm-input" required />
+              </div>
+            </div>
+          </div>
+          <div class="adm-modal-foot">
+            <button type="button" class="adm-btn adm-btn-ghost" data-modal="couponModal">Cancelar</button>
+            <button type="submit" class="adm-btn adm-btn-primary">Salvar Cupom</button>
           </div>
         </form>
       </div>

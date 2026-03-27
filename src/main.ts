@@ -196,6 +196,11 @@ class RhythmSequencer {
       this.setupSetlistUI();
       this.loadAvailableMidi();
       this.loadAvailableRhythms();
+
+      // Pré-carregar buffer do prato para evitar delay na primeira vez
+      this.audioManager.loadAudioFromPath('/midi/prato.mp3').then(buffer => {
+        this.cymbalBuffer = buffer;
+      }).catch(() => {});
     });
   }
 
@@ -655,6 +660,34 @@ class RhythmSequencer {
     this.uiManager.updateVariationButtons();
   }
 
+  // ─── BPM customizado por ritmo (localStorage) ──────────────────────
+
+  private readonly BPM_STORAGE_KEY = 'gdrums-custom-bpm';
+
+  private getCustomBpmMap(): Record<string, number> {
+    try {
+      return JSON.parse(localStorage.getItem(this.BPM_STORAGE_KEY) || '{}');
+    } catch { return {}; }
+  }
+
+  private saveCustomBpm(): void {
+    if (!this.currentRhythmName) return;
+    const currentBpm = this.stateManager.getTempo();
+    // Só salvar se diferente do original do ritmo
+    const map = this.getCustomBpmMap();
+    if (currentBpm === this.currentRhythmOriginalBpm) {
+      delete map[this.currentRhythmName]; // Voltou pro original, limpar
+    } else {
+      map[this.currentRhythmName] = currentBpm;
+    }
+    localStorage.setItem(this.BPM_STORAGE_KEY, JSON.stringify(map));
+  }
+
+  private getCustomBpm(rhythmName: string): number | null {
+    const map = this.getCustomBpmMap();
+    return map[rhythmName] ?? null;
+  }
+
   private setupTempoControls(): void {
     // Controles do modo usuário
     const tempoUpUser = document.getElementById('tempoUpUser');
@@ -664,6 +697,7 @@ class RhythmSequencer {
       tempoUpUser.addEventListener('click', () => {
         const newTempo = Math.min(240, this.stateManager.getTempo() + 1);
         this.stateManager.setTempo(newTempo);
+        this.saveCustomBpm();
       });
     }
 
@@ -671,6 +705,15 @@ class RhythmSequencer {
       tempoDownUser.addEventListener('click', () => {
         const newTempo = Math.max(40, this.stateManager.getTempo() - 1);
         this.stateManager.setTempo(newTempo);
+        this.saveCustomBpm();
+      });
+    }
+
+    // BPM display clicável → abre modal
+    const tempoDisplayUser = document.getElementById('tempoDisplayUser');
+    if (tempoDisplayUser) {
+      tempoDisplayUser.addEventListener('click', () => {
+        this.showBpmModal();
       });
     }
 
@@ -932,6 +975,17 @@ class RhythmSequencer {
           const currentVariation = this.stateManager.getCurrentVariation('main');
 
           if (!this.stateManager.isPlaying()) {
+            // Verificar se a variação clicada tem conteúdo
+            const variation = this.stateManager.getState().variations.main[variationIndex];
+            const hasContent = variation?.pattern.some(row => row.some(step => step === true));
+            if (!hasContent) {
+              this.modalManager.show(
+                'Nenhum Ritmo Carregado',
+                'Selecione um ritmo na lista antes de iniciar a reprodução.',
+                'warning'
+              );
+              return;
+            }
             // Parado → ativar ritmo e dar play
             this.patternEngine.activateRhythm(variationIndex);
             if (this.useIntro) {
@@ -1224,6 +1278,16 @@ class RhythmSequencer {
         if (this.stateManager.isPlaying()) this.stop();
         const { authService } = await import('./auth/AuthService');
         await authService.logout();
+      });
+    }
+
+    // Minha Conta
+    const myAccountBtn = document.getElementById('myAccountBtn');
+    if (myAccountBtn) {
+      myAccountBtn.addEventListener('click', () => {
+        const fabDropdown = document.getElementById('fabDropdown');
+        if (fabDropdown) fabDropdown.style.display = 'none';
+        this.showAccountModal();
       });
     }
 
@@ -1943,23 +2007,22 @@ class RhythmSequencer {
     return hasMainContent;
   }
 
-  private async play(): Promise<void> {
-    await this.audioManager.resume();
-    this.stateManager.setPlaying(true);
+  private play(): void {
+    // IMPORTANTE: resume() DEVE ser chamado sincronamente dentro do gesto do usuário.
+    // No iOS, qualquer await antes do resume() quebra a cadeia de gesto
+    // e o AudioContext fica permanentemente suspenso (mudo).
+    this.audioManager.resume();
 
-    // Manter tela ativa para evitar problemas de áudio em background
-    try {
-      await KeepAwake.keepAwake();
-      console.log('[KeepAwake] Screen will stay awake');
-    } catch (error) {
-      console.warn('[KeepAwake] Failed to keep awake:', error);
-    }
+    this.stateManager.setPlaying(true);
 
     const activePattern = this.stateManager.getActivePattern();
     this.uiManager.updateStatusUI(activePattern);
     this.uiManager.updatePerformanceGrid();
 
     this.scheduler.start();
+
+    // KeepAwake é fire-and-forget — não bloquear o play
+    KeepAwake.keepAwake().catch(() => {});
   }
 
   private stop(): void {
@@ -2163,16 +2226,322 @@ class RhythmSequencer {
 
   private cymbalBuffer: AudioBuffer | null = null;
 
-  private async playCymbal(): Promise<void> {
-    // Cache do buffer do prato
-    if (!this.cymbalBuffer) {
-      try {
-        this.cymbalBuffer = await this.audioManager.loadAudioFromPath('/midi/prato.mp3');
-      } catch {
-        return;
+  // ─── Modal BPM ──────────────────────────────────────────────────────
+
+  private showBpmModal(): void {
+    const currentTempo = this.stateManager.getTempo();
+    let tempTempo = currentTempo;
+
+    const presets = [60, 70, 80, 90, 100, 110, 120, 140, 160, 180];
+
+    const overlay = document.createElement('div');
+    overlay.className = 'bpm-modal-overlay';
+    overlay.innerHTML = `
+      <div class="bpm-modal">
+        <div class="bpm-modal-title">Ajustar BPM</div>
+
+        <div class="bpm-display">
+          <button class="bpm-display-btn" id="bpmMinus5">&minus;5</button>
+          <button class="bpm-display-btn" id="bpmMinus1">&minus;</button>
+          <div class="bpm-display-value">
+            <input type="number" class="bpm-display-input" id="bpmInput" value="${currentTempo}" min="40" max="240" inputmode="numeric" />
+            <div class="bpm-display-unit">BPM</div>
+          </div>
+          <button class="bpm-display-btn" id="bpmPlus1">+</button>
+          <button class="bpm-display-btn" id="bpmPlus5">+5</button>
+        </div>
+
+        <div class="bpm-slider-wrap">
+          <input type="range" class="bpm-slider" id="bpmSlider" min="40" max="240" value="${currentTempo}" />
+        </div>
+
+        <div class="bpm-presets" id="bpmPresets">
+          ${presets.map(p => `<button class="bpm-preset${p === currentTempo ? ' active' : ''}" data-bpm="${p}">${p}</button>`).join('')}
+        </div>
+
+        <button class="bpm-confirm" id="bpmConfirm">Confirmar</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    const input = overlay.querySelector('#bpmInput') as HTMLInputElement;
+    const slider = overlay.querySelector('#bpmSlider') as HTMLInputElement;
+    const presetsContainer = overlay.querySelector('#bpmPresets')!;
+
+    const updateAll = (bpm: number, source?: string) => {
+      tempTempo = Math.max(40, Math.min(240, bpm));
+      if (source !== 'input') input.value = tempTempo.toString();
+      if (source !== 'slider') slider.value = tempTempo.toString();
+
+      // Atualizar preset ativo
+      presetsContainer.querySelectorAll('.bpm-preset').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.getAttribute('data-bpm') || '0') === tempTempo);
+      });
+
+      // Aplicar em tempo real para ouvir a diferença imediatamente
+      this.stateManager.setTempo(tempTempo);
+    };
+
+    // Botões +/- 1 e +/- 5
+    overlay.querySelector('#bpmMinus5')!.addEventListener('click', () => updateAll(tempTempo - 5));
+    overlay.querySelector('#bpmMinus1')!.addEventListener('click', () => updateAll(tempTempo - 1));
+    overlay.querySelector('#bpmPlus1')!.addEventListener('click', () => updateAll(tempTempo + 1));
+    overlay.querySelector('#bpmPlus5')!.addEventListener('click', () => updateAll(tempTempo + 5));
+
+    // Slider
+    slider.addEventListener('input', () => updateAll(parseInt(slider.value), 'slider'));
+
+    // Input direto
+    input.addEventListener('input', () => {
+      const val = parseInt(input.value);
+      if (!isNaN(val) && val >= 40 && val <= 240) {
+        updateAll(val, 'input');
+      }
+    });
+    input.addEventListener('focus', () => input.select());
+
+    // Presets
+    presetsContainer.querySelectorAll('.bpm-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        updateAll(parseInt(btn.getAttribute('data-bpm') || '80'));
+      });
+    });
+
+    // Fechar
+    const close = () => {
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 200);
+    };
+
+    overlay.querySelector('#bpmConfirm')!.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
+
+    // ESC fecha
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // Restaurar BPM original se cancelou com ESC
+        this.stateManager.setTempo(currentTempo);
+        close();
+        document.removeEventListener('keydown', onEsc);
+      }
+    };
+    document.addEventListener('keydown', onEsc);
+
+    // Limpar listener de ESC e salvar BPM ao fechar normalmente
+    overlay.querySelector('#bpmConfirm')!.addEventListener('click', () => {
+      document.removeEventListener('keydown', onEsc);
+      this.saveCustomBpm();
+    });
+  }
+
+  // ─── Modal Minha Conta ───────────────────────────────────────────────
+
+  private async showAccountModal(): Promise<void> {
+    const { supabase } = await import('./auth/supabase');
+    const { PLANS } = await import('./auth/PaymentService');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from('gdrums_profiles')
+      .select('name, subscription_status, subscription_plan, subscription_expires_at, created_at')
+      .eq('id', user.id)
+      .single();
+
+    const name = profile?.name || user.user_metadata?.name || '';
+    const email = user.email || '';
+    const status = profile?.subscription_status || 'trial';
+    const planId = profile?.subscription_plan || 'trial';
+    const expiresAt = profile?.subscription_expires_at;
+    const createdAt = profile?.created_at || user.created_at;
+
+    // Info do plano
+    const currentPlan = PLANS.find(p => p.id === planId);
+    const planName = currentPlan?.displayName || (planId === 'trial' ? 'Teste Grátis' : planId);
+
+    // Status formatado
+    const statusMap: Record<string, { label: string; color: string }> = {
+      active: { label: 'Ativo', color: '#00E68C' },
+      trial: { label: 'Teste Grátis', color: '#FFB420' },
+      expired: { label: 'Expirado', color: '#FF4466' },
+      canceled: { label: 'Cancelado', color: '#FF4466' },
+    };
+    const statusInfo = statusMap[status] || statusMap.expired;
+
+    // Datas
+    const formatDate = (iso: string) => {
+      const d = new Date(iso);
+      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    };
+
+    const expiresFormatted = expiresAt ? formatDate(expiresAt) : '--';
+    const memberSince = createdAt ? formatDate(createdAt) : '--';
+
+    // Dias restantes
+    let daysLeft = 0;
+    let daysText = '';
+    if (expiresAt) {
+      daysLeft = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      if (daysLeft > 0) {
+        daysText = `${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''}`;
+      } else {
+        daysText = 'Expirado';
       }
     }
 
+    // Barra de progresso (% consumida do plano)
+    let progressPercent = 0;
+    if (currentPlan && expiresAt) {
+      const totalDays = currentPlan.durationMonths * 30;
+      const elapsed = totalDays - daysLeft;
+      progressPercent = Math.min(100, Math.max(0, (elapsed / totalDays) * 100));
+    }
+
+    // ─── Cálculo de upgrade proporcional ────────────────────────────
+    // Crédito = valor pago × (dias restantes / dias totais do plano)
+    // Upgrade = preço novo plano − crédito (mínimo R$ 0)
+    // Prazo do novo plano começa do zero (não soma dias antigos)
+
+    let upgradeCredit = 0;
+    let upgradeNextPlan: typeof PLANS[0] | null = null;
+    let upgradePrice = 0;
+    let upgradeSection = '';
+
+    const planOrder = ['mensal', 'trimestral', 'semestral', 'anual', 'rei-dos-palcos'];
+
+    if (status === 'active' && currentPlan && daysLeft > 0) {
+      const totalDays = currentPlan.durationMonths * 30;
+      const paidCents = currentPlan.priceCents;
+      // Crédito proporcional ao tempo não usado
+      upgradeCredit = Math.round(paidCents * (daysLeft / totalDays));
+
+      const currentIdx = planOrder.indexOf(planId);
+      if (currentIdx < planOrder.length - 1) {
+        upgradeNextPlan = PLANS.find(p => p.id === planOrder[currentIdx + 1]) || null;
+        if (upgradeNextPlan) {
+          upgradePrice = Math.max(0, upgradeNextPlan.priceCents - upgradeCredit);
+          const creditDisplay = (upgradeCredit / 100).toFixed(2).replace('.', ',');
+          const priceDisplay = (upgradePrice / 100).toFixed(2).replace('.', ',');
+
+          upgradeSection = `
+            <div class="account-upgrade-detail">
+              <div class="account-upgrade-row">
+                <span>${upgradeNextPlan.displayName}</span>
+                <span>R$ ${(upgradeNextPlan.priceCents / 100).toFixed(2).replace('.', ',')}</span>
+              </div>
+              <div class="account-upgrade-row account-upgrade-credit">
+                <span>Crédito do plano atual (${daysLeft}d restantes)</span>
+                <span>− R$ ${creditDisplay}</span>
+              </div>
+              <div class="account-upgrade-divider"></div>
+              <div class="account-upgrade-row account-upgrade-total">
+                <span>Valor do upgrade</span>
+                <span>R$ ${priceDisplay}</span>
+              </div>
+            </div>
+          `;
+        }
+      }
+    }
+
+    // Botão de ação inteligente
+    let actionBtn = '';
+    if (status === 'expired' || status === 'canceled') {
+      actionBtn = `<button class="account-action-btn" id="accountActionBtn">Renovar Assinatura</button>`;
+    } else if (status === 'trial') {
+      actionBtn = `<button class="account-action-btn" id="accountActionBtn">Assinar Agora</button>`;
+    } else if (status === 'active' && upgradeNextPlan) {
+      const priceDisplay = (upgradePrice / 100).toFixed(2).replace('.', ',');
+      actionBtn = `<button class="account-action-btn account-action-upgrade" id="accountActionBtn">Fazer upgrade — ${upgradeNextPlan.displayName} por R$ ${priceDisplay}</button>`;
+    }
+
+    // Montar modal
+    const overlay = document.createElement('div');
+    overlay.className = 'account-modal-overlay';
+    overlay.innerHTML = `
+      <div class="account-modal">
+        <button class="account-modal-close" id="accountModalClose">&times;</button>
+        <div class="account-header">
+          <div class="account-avatar">${(name || email).charAt(0).toUpperCase()}</div>
+          <div class="account-name">${name || 'Usuário'}</div>
+          <div class="account-email">${email}</div>
+        </div>
+
+        <div class="account-card">
+          <div class="account-row">
+            <span class="account-label">Plano</span>
+            <span class="account-value">${planName}</span>
+          </div>
+          <div class="account-row">
+            <span class="account-label">Status</span>
+            <span class="account-status" style="color:${statusInfo.color}">${statusInfo.label}</span>
+          </div>
+          ${expiresAt ? `
+          <div class="account-row">
+            <span class="account-label">Expira em</span>
+            <span class="account-value">${expiresFormatted}</span>
+          </div>
+          ${daysLeft > 0 && currentPlan ? `
+          <div class="account-progress-wrap">
+            <div class="account-progress-bar">
+              <div class="account-progress-fill" style="width:${progressPercent}%"></div>
+            </div>
+            <span class="account-days-left">${daysText}</span>
+          </div>
+          ` : ''}
+          ` : ''}
+          <div class="account-row">
+            <span class="account-label">Membro desde</span>
+            <span class="account-value">${memberSince}</span>
+          </div>
+        </div>
+
+        ${upgradeSection}
+        ${actionBtn ? `<div class="account-actions">${actionBtn}</div>` : ''}
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Animar entrada
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    // Fechar
+    const close = () => {
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 200);
+    };
+
+    overlay.querySelector('#accountModalClose')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
+
+    // Ação do botão
+    const actionBtnEl = overlay.querySelector('#accountActionBtn');
+    if (actionBtnEl) {
+      actionBtnEl.addEventListener('click', () => {
+        close();
+        if (status === 'active' && upgradeNextPlan) {
+          // Upgrade: ir pra plans com plano destacado e crédito calculado
+          window.location.href = `/plans.html?upgrade=true&plan=${upgradeNextPlan.id}&credit=${upgradeCredit}`;
+        } else {
+          window.location.href = '/plans.html';
+        }
+      });
+    }
+  }
+
+  private playCymbal(): void {
+    // Resume síncrono — essencial para iOS (não pode ter await antes)
+    this.audioManager.resume();
+
+    // Buffer já foi pré-carregado no init(). Se ainda não carregou, ignorar.
     if (this.cymbalBuffer) {
       const currentTime = this.audioManager.getCurrentTime();
       this.audioManager.playSound(this.cymbalBuffer, currentTime, 1.0);
@@ -2617,6 +2986,7 @@ class RhythmSequencer {
   private rhythmCategories: Record<string, string[]> = {};
   private activeCategory: string = '';
   private currentRhythmName: string = '';
+  private currentRhythmOriginalBpm: number = 0; // BPM original do JSON do ritmo
 
   private async loadAvailableRhythms(): Promise<void> {
     try {
@@ -2835,6 +3205,15 @@ class RhythmSequencer {
       const encodedPath = encodeURI(cleanPath);
       const finalPath = navigator.onLine ? `${encodedPath}?v=${this.rhythmVersion || Date.now()}` : encodedPath;
       await this.fileManager.loadProjectFromPath(finalPath);
+
+      // Guardar BPM original do ritmo (antes de aplicar customização)
+      this.currentRhythmOriginalBpm = this.stateManager.getTempo();
+
+      // Aplicar BPM customizado do usuário se existir
+      const customBpm = this.getCustomBpm(name);
+      if (customBpm !== null) {
+        this.stateManager.setTempo(customBpm);
+      }
 
       // Carregar a primeira variação do padrão sendo editado
       const patternType = this.stateManager.getEditingPattern();

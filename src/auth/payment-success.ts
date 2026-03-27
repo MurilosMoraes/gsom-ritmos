@@ -49,7 +49,7 @@ class PaymentSuccessPage {
       .single();
 
     if (profile?.subscription_status === 'active' && profile?.subscription_plan !== 'trial' && profile?.subscription_plan !== 'free') {
-      this.showSuccess(planName || profile.subscription_plan || 'seu plano');
+      await this.showSuccess(planName || profile.subscription_plan || 'seu plano');
       localStorage.removeItem('gdrums-pending-order');
       return;
     }
@@ -81,7 +81,7 @@ class PaymentSuccessPage {
         const result = await webhookResponse.json();
 
         if (result.success) {
-          this.showSuccess(planName || 'seu plano');
+          await this.showSuccess(planName || 'seu plano');
           localStorage.removeItem('gdrums-pending-order');
           return;
         }
@@ -103,7 +103,7 @@ class PaymentSuccessPage {
         .single();
 
       if (updated?.subscription_status === 'active' && updated?.subscription_plan !== 'trial' && updated?.subscription_plan !== 'free') {
-        this.showSuccess(planName || updated.subscription_plan || 'seu plano');
+        await this.showSuccess(planName || updated.subscription_plan || 'seu plano');
         localStorage.removeItem('gdrums-pending-order');
         return;
       }
@@ -118,7 +118,7 @@ class PaymentSuccessPage {
     if (msg) msg.textContent = text;
   }
 
-  private showSuccess(planName: string): void {
+  private async showSuccess(planName: string): Promise<void> {
     const icon = document.getElementById('statusIcon')!;
     const title = document.getElementById('statusTitle')!;
     const msg = document.getElementById('statusMsg')!;
@@ -129,6 +129,36 @@ class PaymentSuccessPage {
     title.textContent = 'Pagamento confirmado!';
     msg.textContent = `Plano ${planName} ativado. Bora fazer música!`;
     btn.classList.add('visible');
+
+    // Incrementar uso do cupom (se teve)
+    await this.incrementCouponUse();
+  }
+
+  private async incrementCouponUse(): Promise<void> {
+    try {
+      const pending = localStorage.getItem('gdrums-pending-order');
+      if (!pending) return;
+      const order = JSON.parse(pending);
+      const couponCode = order.coupon?.code;
+      if (!couponCode) return;
+
+      // Buscar cupom atual
+      const { data: coupon } = await supabase
+        .from('gdrums_coupons')
+        .select('id, current_uses')
+        .eq('code', couponCode)
+        .single();
+
+      if (!coupon) return;
+
+      // Incrementar current_uses
+      await supabase
+        .from('gdrums_coupons')
+        .update({ current_uses: (coupon.current_uses || 0) + 1 })
+        .eq('id', coupon.id);
+    } catch {
+      // Não bloquear o fluxo de sucesso se falhar
+    }
   }
 
   private showPending(): void {
