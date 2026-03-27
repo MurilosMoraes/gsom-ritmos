@@ -1827,6 +1827,15 @@ class RhythmSequencer {
             </div>
           </div>
 
+          <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:12px;padding:1rem;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,212,255,0.6);margin-bottom:0.5rem;">Configuração do Pedal BT</div>
+            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.7;">
+              <strong style="color:#fff;">M-VAVE / similares:</strong> Use o modo <strong style="color:var(--cyan,#00D4FF);">Left/Right</strong> (4º LED)<br>
+              <strong style="color:#fff;">Outros pedais:</strong> Coloque no modo que emita setas (←→)<br>
+              <strong style="color:#fff;">Não funciona?</strong> Vá em "Mapear pedal" e pise no pedal para ver o que ele envia. Use qualquer modo que o app detectar.
+            </div>
+          </div>
+
           <div style="background:rgba(0,230,140,0.05);border:1px solid rgba(0,230,140,0.15);border-radius:12px;padding:1rem;">
             <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,230,140,0.6);margin-bottom:0.5rem;">Dicas</div>
             <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.7;">
