@@ -52,7 +52,7 @@ class PlansPage {
     if (status !== 'active') {
       const { data: pendingTx } = await supabase
         .from('gdrums_transactions')
-        .select('order_nsu')
+        .select('order_nsu, transaction_nsu')
         .eq('user_id', user.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
@@ -61,12 +61,15 @@ class PlansPage {
 
       if (pendingTx?.order_nsu) {
         try {
+          const webhookBody: Record<string, string> = { order_nsu: pendingTx.order_nsu };
+          if (pendingTx.transaction_nsu) webhookBody.transaction_nsu = pendingTx.transaction_nsu;
+
           const res = await fetch(
             'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/payment-webhook',
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ order_nsu: pendingTx.order_nsu }),
+              body: JSON.stringify(webhookBody),
             }
           );
           const result = await res.json();

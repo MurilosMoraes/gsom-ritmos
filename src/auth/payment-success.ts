@@ -54,9 +54,17 @@ class PaymentSuccessPage {
       return;
     }
 
-    // 2. Se temos dados do redirect, chamar o webhook diretamente
+    // 2. Se temos dados do redirect, salvar no banco e chamar o webhook
     if (finalOrderNsu && (transactionNsu || slug)) {
       this.updateProgress('Verificando pagamento...');
+
+      // Salvar transaction_nsu e slug no banco pra recuperação futura
+      await supabase.from('gdrums_transactions')
+        .update({
+          transaction_nsu: transactionNsu || '',
+          payment_method: captureMethod || '',
+        })
+        .eq('order_nsu', finalOrderNsu);
 
       try {
         const webhookResponse = await fetch(`${SUPABASE_URL}/functions/v1/payment-webhook`, {
