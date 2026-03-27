@@ -97,9 +97,9 @@ export default defineConfig({
         ]
       },
       manifest: {
-        name: 'GDrums — Sequenciador de Ritmos',
+        name: 'GDrums',
         short_name: 'GDrums',
-        description: 'Sequenciador de bateria profissional com 12 canais',
+        description: 'Seu baterista virtual no palco',
         theme_color: '#030014',
         background_color: '#030014',
         display: 'standalone',
