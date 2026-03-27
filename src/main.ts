@@ -224,7 +224,7 @@ class RhythmSequencer {
 
     // ─── Modo offline: se não tem rede, usar cache local ────────────
     if (OfflineCache.isOffline()) {
-      if (OfflineCache.hasValidOfflineAccess() && !OfflineCache.isAdmin()) {
+      if (OfflineCache.hasValidOfflineAccess()) {
         const cached = OfflineCache.getProfile();
         if (cached?.subscriptionExpiresAt) {
           this.showSubscriptionBanner(
@@ -252,8 +252,6 @@ class RhythmSequencer {
           reason = 'Sua assinatura expirou. Conecte-se à internet para renovar seu plano.';
         } else if (cacheAge > maxAge) {
           reason = 'Faz mais de 7 dias sem conexão. Conecte-se à internet para revalidar seu acesso.';
-        } else if (cached.role === 'admin') {
-          reason = 'O modo admin não funciona offline. Conecte-se à internet.';
         }
       }
 
@@ -285,7 +283,7 @@ class RhythmSequencer {
     } catch {
       // Falha de rede — navigator.onLine mentiu (comum no Capacitor)
       // Fallback pro cache offline
-      if (OfflineCache.hasValidOfflineAccess() && !OfflineCache.isAdmin()) {
+      if (OfflineCache.hasValidOfflineAccess()) {
         const cached = OfflineCache.getProfile();
         if (cached?.subscriptionExpiresAt) {
           this.showSubscriptionBanner(cached.subscriptionStatus, new Date(cached.subscriptionExpiresAt), cached.subscriptionPlan);
@@ -299,7 +297,7 @@ class RhythmSequencer {
 
     if (!session) {
       // Sem sessão mas pode ter cache offline válido
-      if (OfflineCache.hasValidOfflineAccess() && !OfflineCache.isAdmin()) {
+      if (OfflineCache.hasValidOfflineAccess()) {
         const cached = OfflineCache.getProfile();
         if (cached?.subscriptionExpiresAt) {
           this.showSubscriptionBanner(cached.subscriptionStatus, new Date(cached.subscriptionExpiresAt), cached.subscriptionPlan);
@@ -317,7 +315,7 @@ class RhythmSequencer {
       userError = result.error;
     } catch {
       // Rede caiu durante validação — usar cache
-      if (OfflineCache.hasValidOfflineAccess() && !OfflineCache.isAdmin()) {
+      if (OfflineCache.hasValidOfflineAccess()) {
         const cached = OfflineCache.getProfile();
         if (cached?.subscriptionExpiresAt) {
           this.showSubscriptionBanner(cached.subscriptionStatus, new Date(cached.subscriptionExpiresAt), cached.subscriptionPlan);
