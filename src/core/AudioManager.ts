@@ -15,10 +15,19 @@ export interface AudioSnapshot {
   fillReturnBuffer: AudioBuffer | null;
 }
 
+interface ActiveSource {
+  source: AudioBufferSourceNode;
+  gain: GainNode;
+  endTime: number; // quando o sample termina naturalmente
+}
+
 export class AudioManager {
   private audioContext: AudioContext;
   private readonly FADE_TIME: number;
   private bufferCache = new Map<string, AudioBuffer>();
+
+  // Rastrear source ativo por canal para cortar sample anterior sem estralo
+  private activeSources = new Map<number, ActiveSource>();
 
   constructor(audioContext: AudioContext) {
     this.audioContext = audioContext;
@@ -81,6 +90,63 @@ export class AudioManager {
     };
   }
 
+  // ─── Play com corte do sample anterior no mesmo canal ─────────────
+
+  private playSoundOnChannel(channel: number, buffer: AudioBuffer, time: number, volume: number): void {
+    if (!buffer || volume <= 0) return;
+
+    // Cortar sample anterior deste canal com fade-out rápido (evita estralo)
+    const prev = this.activeSources.get(channel);
+    if (prev) {
+      try {
+        // Cancelar qualquer rampa pendente e fazer fade-out rápido
+        prev.gain.gain.cancelScheduledValues(time);
+        prev.gain.gain.setValueAtTime(prev.gain.gain.value, time);
+        prev.gain.gain.linearRampToValueAtTime(0, time + this.FADE_TIME);
+        prev.source.stop(time + this.FADE_TIME + 0.001);
+      } catch {
+        // Source já parou naturalmente — ignorar
+      }
+    }
+
+    const source = this.audioContext.createBufferSource();
+    source.buffer = buffer;
+
+    const gainNode = this.audioContext.createGain();
+    const clampedVolume = Math.max(0, Math.min(4, volume));
+
+    // Fade in suave
+    gainNode.gain.setValueAtTime(0, time);
+    gainNode.gain.linearRampToValueAtTime(clampedVolume, time + this.FADE_TIME);
+
+    // Fade out no final do sample
+    const duration = buffer.duration;
+    if (duration > this.FADE_TIME * 3) {
+      gainNode.gain.setValueAtTime(clampedVolume, time + duration - this.FADE_TIME);
+      gainNode.gain.linearRampToValueAtTime(0, time + duration);
+    }
+
+    source.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+    source.start(time);
+
+    const endTime = time + duration;
+
+    // Rastrear como source ativo deste canal
+    this.activeSources.set(channel, { source, gain: gainNode, endTime });
+
+    // Auto-cleanup
+    source.onended = () => {
+      source.disconnect();
+      gainNode.disconnect();
+      // Só limpar do map se ainda for o source atual (não foi substituído)
+      const current = this.activeSources.get(channel);
+      if (current && current.source === source) {
+        this.activeSources.delete(channel);
+      }
+    };
+  }
+
   // ─── Método principal: agenda step a partir de snapshot imutável ────
 
   scheduleStepFromSnapshot(snapshot: AudioSnapshot, time: number): void {
@@ -96,7 +162,7 @@ export class AudioManager {
       this.playSound(snapshot.fillReturnBuffer, time, masterVolume);
     }
 
-    // Sons dos canais ativos
+    // Sons dos canais ativos — com corte de sample anterior por canal
     for (let channel = 0; channel < MAX_CHANNELS; channel++) {
       if (!pattern[channel] || !pattern[channel][step]) continue;
 
@@ -107,7 +173,7 @@ export class AudioManager {
       const finalVolume = stepVolume * masterVolume;
 
       if (finalVolume > 0) {
-        this.playSound(buffer, time, finalVolume);
+        this.playSoundOnChannel(channel, buffer, time, finalVolume);
       }
     }
   }
@@ -134,9 +200,13 @@ export class AudioManager {
     return this.audioContext.currentTime;
   }
 
-  async resume(): Promise<void> {
+  resume(): void {
+    // Chamar resume() sincronamente — no iOS, qualquer await antes quebra
+    // a cadeia de gesto do usuário e o áudio fica mudo permanentemente.
+    // audioContext.resume() retorna Promise mas a chamada síncrona já
+    // é suficiente para desbloquear o contexto dentro do gesto.
     if (this.audioContext.state === 'suspended') {
-      await this.audioContext.resume();
+      this.audioContext.resume();
     }
   }
 }

@@ -33,6 +33,18 @@ interface Transaction {
   coupon_code: string | null;
 }
 
+interface Coupon {
+  id: string;
+  code: string;
+  discount_percent: number;
+  max_uses: number;
+  current_uses: number;
+  valid_from: string;
+  valid_until: string;
+  active: boolean;
+  created_at: string;
+}
+
 // Helper pra chamar Supabase com service_role (admin precisa ver todos os dados)
 async function adminFetch(table: string, params: string = ''): Promise<any[]> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
@@ -60,6 +72,7 @@ async function adminUpdate(table: string, id: string, data: Record<string, any>)
 class AdminDashboard {
   private profiles: Profile[] = [];
   private transactions: Transaction[] = [];
+  private coupons: Coupon[] = [];
   private currentSection = 'dashboard';
   private userSearch = '';
   private userFilter = 'all';
@@ -86,6 +99,7 @@ class AdminDashboard {
 
     this.setupEvents();
     this.setupEditForm();
+    this.setupCouponForm();
     await this.loadData();
     this.render();
   }
@@ -96,7 +110,7 @@ class AdminDashboard {
       window.location.href = '/login.html';
     });
 
-    document.querySelectorAll('.nav-item').forEach(item => {
+    document.querySelectorAll('.adm-nav-item').forEach(item => {
       item.addEventListener('click', (e) => {
         e.preventDefault();
         const section = (item as HTMLElement).dataset.section;
@@ -135,14 +149,15 @@ class AdminDashboard {
   private async loadData(): Promise<void> {
     this.profiles = await adminFetch('gdrums_profiles', 'select=*&order=created_at.desc');
     this.transactions = await adminFetch('gdrums_transactions', 'select=*&order=created_at.desc');
+    this.coupons = await adminFetch('gdrums_coupons', 'select=*&order=created_at.desc');
   }
 
   private switchSection(section: string): void {
     this.currentSection = section;
-    document.querySelectorAll('.nav-item').forEach(i => {
+    document.querySelectorAll('.adm-nav-item').forEach(i => {
       i.classList.toggle('active', (i as HTMLElement).dataset.section === section);
     });
-    document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.adm-section').forEach(s => s.classList.remove('active'));
     document.getElementById(`${section}Section`)?.classList.add('active');
     this.render();
   }
@@ -152,6 +167,7 @@ class AdminDashboard {
       case 'dashboard': this.renderDashboard(); break;
       case 'users': this.renderUsers(); break;
       case 'subscriptions': this.renderTransactions(); break;
+      case 'coupons': this.renderCoupons(); break;
     }
   }
 
@@ -343,7 +359,8 @@ class AdminDashboard {
     (document.getElementById('editUserName') as HTMLInputElement).value = profile.name || '';
     (document.getElementById('editUserStatus') as HTMLSelectElement).value = profile.subscription_status;
     (document.getElementById('editUserPlan') as HTMLSelectElement).value = profile.subscription_plan || 'free';
-    (document.getElementById('editUserExpiry') as HTMLInputElement).value = profile.subscription_expires_at
+    const expiryInput = document.getElementById('editUserExpiry') as HTMLInputElement;
+    expiryInput.value = profile.subscription_expires_at
       ? new Date(profile.subscription_expires_at).toISOString().split('T')[0]
       : '';
 
@@ -385,7 +402,7 @@ class AdminDashboard {
     });
 
     // Close buttons
-    modal.querySelectorAll('.modal-close, [data-modal]').forEach(btn => {
+    modal.querySelectorAll('.adm-modal-close, [data-modal]').forEach(btn => {
       btn.addEventListener('click', () => modal.classList.remove('active'));
     });
   }
@@ -441,6 +458,151 @@ class AdminDashboard {
         <span style="color:rgba(255,255,255,0.3);margin-left:1.5rem;">${filtered.length} transações</span>
       `;
     }
+  }
+
+  // ─── Cupons ────────────────────────────────────────────────────────
+
+  private setupCouponForm(): void {
+    const modal = document.getElementById('couponModal');
+    const form = document.getElementById('couponForm');
+    if (!modal || !form) return;
+
+    // Abrir modal de novo cupom
+    document.getElementById('addCouponBtn')?.addEventListener('click', () => {
+      (document.getElementById('couponModalTitle') as HTMLElement).textContent = 'Novo Cupom';
+      (document.getElementById('couponEditId') as HTMLInputElement).value = '';
+      (document.getElementById('couponCode') as HTMLInputElement).value = '';
+      (document.getElementById('couponCode') as HTMLInputElement).disabled = false;
+      (document.getElementById('couponDiscount') as HTMLInputElement).value = '';
+      (document.getElementById('couponMaxUses') as HTMLInputElement).value = '';
+      (document.getElementById('couponValidFrom') as HTMLInputElement).value = new Date().toISOString().split('T')[0];
+      (document.getElementById('couponValidUntil') as HTMLInputElement).value = '';
+      modal.classList.add('active');
+    });
+
+    // Submit
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const editId = (document.getElementById('couponEditId') as HTMLInputElement).value;
+      const code = (document.getElementById('couponCode') as HTMLInputElement).value.trim().toUpperCase();
+      const discount = parseInt((document.getElementById('couponDiscount') as HTMLInputElement).value);
+      const maxUses = parseInt((document.getElementById('couponMaxUses') as HTMLInputElement).value);
+      const validFrom = (document.getElementById('couponValidFrom') as HTMLInputElement).value;
+      const validUntil = (document.getElementById('couponValidUntil') as HTMLInputElement).value;
+
+      if (!code || !discount || !maxUses || !validFrom || !validUntil) return;
+
+      const payload = {
+        code,
+        discount_percent: discount,
+        max_uses: maxUses,
+        valid_from: new Date(validFrom).toISOString(),
+        valid_until: new Date(validUntil + 'T23:59:59').toISOString(),
+        active: true,
+      };
+
+      if (editId) {
+        await adminUpdate('gdrums_coupons', editId, payload);
+      } else {
+        // Insert
+        await fetch(`${SUPABASE_URL}/rest/v1/gdrums_coupons`, {
+          method: 'POST',
+          headers: {
+            'apikey': SERVICE_KEY,
+            'Authorization': `Bearer ${SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      modal.classList.remove('active');
+      await this.loadData();
+      this.renderCoupons();
+      modalManager.show('Admin', editId ? 'Cupom atualizado!' : `Cupom ${code} criado!`, 'success');
+    });
+
+    // Close
+    modal.querySelectorAll('[data-modal]').forEach(btn => {
+      btn.addEventListener('click', () => modal.classList.remove('active'));
+    });
+  }
+
+  private renderCoupons(): void {
+    const tbody = document.getElementById('couponsTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = this.coupons.map(c => {
+      const now = new Date();
+      const isExpired = new Date(c.valid_until) < now;
+      const isFull = c.current_uses >= c.max_uses;
+      const isActive = c.active && !isExpired && !isFull;
+
+      const statusBadge = isActive
+        ? '<span class="badge badge-success">Ativo</span>'
+        : isExpired
+          ? '<span class="badge badge-error">Expirado</span>'
+          : isFull
+            ? '<span class="badge badge-warning">Esgotado</span>'
+            : '<span class="badge badge-error">Inativo</span>';
+
+      const from = new Date(c.valid_from).toLocaleDateString('pt-BR');
+      const until = new Date(c.valid_until).toLocaleDateString('pt-BR');
+
+      return `
+        <tr>
+          <td><strong style="letter-spacing:0.5px;">${c.code}</strong></td>
+          <td>${c.discount_percent}%</td>
+          <td>${c.current_uses} / ${c.max_uses}</td>
+          <td>${from}</td>
+          <td>${until}</td>
+          <td>${statusBadge}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-action btn-edit" data-coupon-edit="${c.id}">Editar</button>
+              <button class="btn-action ${c.active ? 'btn-delete' : 'btn-edit'}" data-coupon-toggle="${c.id}">
+                ${c.active ? 'Desativar' : 'Ativar'}
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Bind edit
+    tbody.querySelectorAll('[data-coupon-edit]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = (btn as HTMLElement).dataset.couponEdit!;
+        const coupon = this.coupons.find(c => c.id === id);
+        if (!coupon) return;
+
+        const modal = document.getElementById('couponModal')!;
+        (document.getElementById('couponModalTitle') as HTMLElement).textContent = 'Editar Cupom';
+        (document.getElementById('couponEditId') as HTMLInputElement).value = coupon.id;
+        (document.getElementById('couponCode') as HTMLInputElement).value = coupon.code;
+        (document.getElementById('couponCode') as HTMLInputElement).disabled = true;
+        (document.getElementById('couponDiscount') as HTMLInputElement).value = coupon.discount_percent.toString();
+        (document.getElementById('couponMaxUses') as HTMLInputElement).value = coupon.max_uses.toString();
+        (document.getElementById('couponValidFrom') as HTMLInputElement).value = new Date(coupon.valid_from).toISOString().split('T')[0];
+        (document.getElementById('couponValidUntil') as HTMLInputElement).value = new Date(coupon.valid_until).toISOString().split('T')[0];
+        modal.classList.add('active');
+      });
+    });
+
+    // Bind toggle active
+    tbody.querySelectorAll('[data-coupon-toggle]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.couponToggle!;
+        const coupon = this.coupons.find(c => c.id === id);
+        if (!coupon) return;
+
+        await adminUpdate('gdrums_coupons', id, { active: !coupon.active });
+        await this.loadData();
+        this.renderCoupons();
+        modalManager.show('Admin', `Cupom ${coupon.code} ${coupon.active ? 'desativado' : 'ativado'}!`, 'success');
+      });
+    });
   }
 }
 
