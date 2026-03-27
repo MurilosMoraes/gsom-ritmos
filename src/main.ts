@@ -895,8 +895,11 @@ class RhythmSequencer {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
 
+      // Identificar tecla — e.code é preferencial, e.key é fallback (iOS pedais BT)
+      const keyId = e.code || e.key;
+
       // Space = Play/Pause
-      if (e.code === 'Space' && !e.repeat) {
+      if ((keyId === 'Space' || keyId === ' ') && !e.repeat) {
         e.preventDefault();
         this.togglePlayStop();
         return;
@@ -907,7 +910,7 @@ class RhythmSequencer {
       // ─── ESQUERDO ─────────────────────────────────────────────────
       // Parado: 1x = play (com intro se ligada)
       // Tocando: 1x = virada + próximo ritmo, 2x = virada + ritmo anterior
-      if (e.code === this.pedalLeft) {
+      if (keyId === this.pedalLeft) {
         e.preventDefault();
         if (!this.stateManager.isPlaying()) {
           this.patternEngine.activateRhythm(0);
@@ -938,7 +941,7 @@ class RhythmSequencer {
       // ─── DIREITO ───────────────────────────────────────────────────
       // Parado: 1x = prato
       // Tocando: 1x = virada (volta pro mesmo ritmo), 2x = finalização
-      if (e.code === this.pedalRight) {
+      if (keyId === this.pedalRight) {
         e.preventDefault();
         if (!this.stateManager.isPlaying()) {
           this.playCymbal();
@@ -1848,10 +1851,13 @@ class RhythmSequencer {
 
   private showPedalMapper(): void {
     const keyLabels: Record<string, string> = {
+      // e.code values
       'ArrowLeft': 'Seta Esquerda', 'ArrowRight': 'Seta Direita',
       'ArrowUp': 'Seta Cima', 'ArrowDown': 'Seta Baixo',
       'Space': 'Espaco', 'Enter': 'Enter',
       'PageUp': 'Page Up', 'PageDown': 'Page Down',
+      // e.key values (fallback iOS pedais BT)
+      ' ': 'Espaco',
     };
     const getLabel = (code: string) => keyLabels[code] || code;
 
@@ -1924,12 +1930,24 @@ class RhythmSequencer {
       e.stopPropagation();
       if (!listening) return;
 
-      if (listening === 'left') tempLeft = e.code;
-      else tempRight = e.code;
+      // Usar e.code (preferencial) ou e.key como fallback (iOS com alguns pedais BT)
+      const code = e.code || e.key;
+      if (!code) return;
+
+      if (listening === 'left') tempLeft = code;
+      else tempRight = code;
+
+      // Mostrar info de debug pro usuário saber o que o pedal está enviando
+      const statusEl = overlay.querySelector('#pedalStatus');
+      if (statusEl) {
+        statusEl.innerHTML = `<span style="color:rgba(0,230,140,0.8);">Detectado: code="${e.code || '(vazio)'}" key="${e.key || '(vazio)'}"</span>`;
+      }
+
       listening = null;
       render();
     };
 
+    // keydown é o principal, mas keyup como fallback pra pedais que não emitem keydown
     document.addEventListener('keydown', keyHandler);
 
     const close = () => {
