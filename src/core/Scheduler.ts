@@ -71,6 +71,12 @@ export class Scheduler {
     try {
       const currentTime = this.audioManager.getCurrentTime();
 
+      // Se voltou do background e o scheduling ficou muito atrasado,
+      // pular pro tempo atual em vez de tentar agendar tudo de uma vez (causa estralos)
+      if (this.nextStepTime < currentTime - 0.5) {
+        this.nextStepTime = currentTime + 0.05;
+      }
+
       while (this.nextStepTime < currentTime + this.scheduleAheadTime) {
         if (!this.stateManager.isPlaying()) break;
 

@@ -79,6 +79,13 @@ class RhythmSequencer {
   }
 
   private setupCallbacks(): void {
+    // Resume AudioContext quando volta do background (evita estralos no mobile)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this.stateManager.isPlaying()) {
+        this.audioManager.resume();
+      }
+    });
+
     // Scheduler -> UI (step visual + beat marker + countdown)
     this.scheduler.setUpdateStepCallback((step: number, pattern: PatternType) => {
       this.uiManager.updateCurrentStepVisual();
