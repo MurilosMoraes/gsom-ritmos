@@ -204,7 +204,11 @@ class RhythmSequencer {
               { key: parsed.right, action: 'fill_end' },
             ];
           } else if (Array.isArray(parsed)) {
-            this.pedalBindings = parsed;
+            // Migrar ações do formato quebrado
+            this.pedalBindings = parsed.map((b: any) => ({
+              key: b.key,
+              action: b.action === 'play' ? 'play_stop' : b.action,
+            }));
           }
         } catch { /* usar padrão */ }
       }
