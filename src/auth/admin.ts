@@ -85,6 +85,7 @@ class AdminDashboard {
     if (adminName) adminName.textContent = user.user_metadata?.name || 'Admin';
 
     this.setupEvents();
+    this.setupEditForm();
     await this.loadData();
     this.render();
   }
@@ -329,74 +330,47 @@ class AdminDashboard {
     modalManager.show('Admin', `${profile?.name} ${block ? 'bloqueado' : 'desbloqueado'}!`, block ? 'warning' : 'success');
   }
 
+  private currentEditUserId: string | null = null;
+
   private editUser(userId: string): void {
     const profile = this.profiles.find(p => p.id === userId);
     if (!profile) return;
 
-    const modal = document.getElementById('editUserModal');
-    if (!modal) return;
+    this.currentEditUserId = userId;
 
+    const modal = document.getElementById('editUserModal')!;
     (document.getElementById('editUserId') as HTMLInputElement).value = profile.id;
     (document.getElementById('editUserName') as HTMLInputElement).value = profile.name || '';
     (document.getElementById('editUserStatus') as HTMLSelectElement).value = profile.subscription_status;
-
-    // Adicionar campo de plano e expiração se não existem
-    let planInput = document.getElementById('editUserPlan') as HTMLSelectElement;
-    let expiryInput = document.getElementById('editUserExpiry') as HTMLInputElement;
-
-    if (!planInput) {
-      const form = document.getElementById('editUserForm')!;
-      const extraFields = document.createElement('div');
-      extraFields.innerHTML = `
-        <div class="form-group" style="margin-top:1rem;">
-          <label>Plano</label>
-          <select id="editUserPlan" class="form-input">
-            <option value="free">Free</option>
-            <option value="trial">Trial</option>
-            <option value="mensal">Mensal</option>
-            <option value="trimestral">Trimestral</option>
-            <option value="semestral">Semestral</option>
-            <option value="anual">Anual</option>
-            <option value="rei-dos-palcos">Rei dos Palcos</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-        <div class="form-group" style="margin-top:0.5rem;">
-          <label>Expira em</label>
-          <input type="date" id="editUserExpiry" class="form-input">
-        </div>
-      `;
-      const submitBtn = form.querySelector('button[type="submit"]');
-      form.insertBefore(extraFields, submitBtn);
-      planInput = document.getElementById('editUserPlan') as HTMLSelectElement;
-      expiryInput = document.getElementById('editUserExpiry') as HTMLInputElement;
-    }
-
-    planInput.value = profile.subscription_plan || 'free';
-    expiryInput.value = profile.subscription_expires_at
+    (document.getElementById('editUserPlan') as HTMLSelectElement).value = profile.subscription_plan || 'free';
+    (document.getElementById('editUserExpiry') as HTMLInputElement).value = profile.subscription_expires_at
       ? new Date(profile.subscription_expires_at).toISOString().split('T')[0]
       : '';
 
-    // Remove old listener and add new
-    const form = document.getElementById('editUserForm')!;
-    const newForm = form.cloneNode(true) as HTMLFormElement;
-    form.parentNode!.replaceChild(newForm, form);
+    modal.classList.add('active');
+  }
 
-    newForm.addEventListener('submit', async (e) => {
+  private setupEditForm(): void {
+    const form = document.getElementById('editUserForm');
+    const modal = document.getElementById('editUserModal');
+    if (!form || !modal) return;
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!this.currentEditUserId) return;
+
       const status = (document.getElementById('editUserStatus') as HTMLSelectElement).value;
       const plan = (document.getElementById('editUserPlan') as HTMLSelectElement).value;
       const expiry = (document.getElementById('editUserExpiry') as HTMLInputElement).value;
 
-      await adminUpdate('gdrums_profiles', userId, {
+      await adminUpdate('gdrums_profiles', this.currentEditUserId, {
         subscription_status: status,
         subscription_plan: plan,
         subscription_expires_at: expiry ? new Date(expiry).toISOString() : null,
         updated_at: new Date().toISOString(),
       });
 
-      // Atualizar local
-      const idx = this.profiles.findIndex(p => p.id === userId);
+      const idx = this.profiles.findIndex(p => p.id === this.currentEditUserId);
       if (idx !== -1) {
         this.profiles[idx].subscription_status = status;
         this.profiles[idx].subscription_plan = plan;
@@ -406,12 +380,11 @@ class AdminDashboard {
       modal.classList.remove('active');
       this.renderUsers();
       this.renderDashboard();
-      modalManager.show('Admin', `Perfil de ${profile.name} atualizado!`, 'success');
+      const profile = this.profiles.find(p => p.id === this.currentEditUserId);
+      modalManager.show('Admin', `Perfil de ${profile?.name} atualizado!`, 'success');
     });
 
-    modal.classList.add('active');
-
-    // Close modal
+    // Close buttons
     modal.querySelectorAll('.modal-close, [data-modal]').forEach(btn => {
       btn.addEventListener('click', () => modal.classList.remove('active'));
     });

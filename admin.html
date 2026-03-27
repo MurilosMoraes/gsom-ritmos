@@ -188,13 +188,31 @@
               <input type="text" id="editUserName" class="form-input" disabled style="opacity:0.5;" />
             </div>
             <div class="form-group">
-              <label>Status da Assinatura</label>
+              <label>Status</label>
               <select id="editUserStatus" class="form-input">
                 <option value="active">Ativo</option>
                 <option value="trial">Trial</option>
                 <option value="expired">Expirado</option>
                 <option value="canceled">Cancelado</option>
+                <option value="blocked">Bloqueado</option>
               </select>
+            </div>
+            <div class="form-group">
+              <label>Plano</label>
+              <select id="editUserPlan" class="form-input">
+                <option value="free">Free</option>
+                <option value="trial">Trial</option>
+                <option value="mensal">Mensal</option>
+                <option value="trimestral">Trimestral</option>
+                <option value="semestral">Semestral</option>
+                <option value="anual">Anual</option>
+                <option value="rei-dos-palcos">Rei dos Palcos</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Expira em</label>
+              <input type="date" id="editUserExpiry" class="form-input" />
             </div>
           </div>
           <div class="modal-footer">
