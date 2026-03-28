@@ -1,10 +1,12 @@
 {
-  "version": 13,
+  "version": 14,
   "rhythms": [
     "Arrocha.json",
+    "Axe.json",
     "Baiao.json",
     "Balada 6-8.json",
     "Banda (bailao).json",
+    "Bolero.json",
     "Bossa Nova.json",
     "Bugio.json",
     "Chamame.json",
@@ -14,7 +16,9 @@
     "Guarania.json",
     "Katchaka.json",
     "Milonga.json",
+    "Pagode.json",
     "Pisadinha.json",
+    "Pop Lento.json",
     "Pop Rock.json",
     "Punk Rock.json",
     "Rancheira.json",
@@ -25,14 +29,18 @@
     "Valsa.json",
     "Vaneira.json",
     "Worship (tribal).json",
-    "Xote.json"
+    "Xote.json",
+    "Xote Nordestino.json"
   ],
   "categories": {
     "Brasileiro": [
       "Arrocha.json",
+      "Axe.json",
       "Baiao.json",
+      "Bolero.json",
       "Bossa Nova.json",
       "Forro.json",
+      "Pagode.json",
       "Pisadinha.json",
       "Samba.json",
       "Seresta.json"
@@ -40,6 +48,7 @@
     "Pop/Rock": [
       "Balada 6-8.json",
       "Country.json",
+      "Pop Lento.json",
       "Pop Rock.json",
       "Punk Rock.json",
       "Rock.json"
@@ -54,7 +63,8 @@
       "Rancheira.json",
       "Valsa.json",
       "Vaneira.json",
-      "Xote.json"
+      "Xote.json",
+      "Xote Nordestino.json"
     ],
     "Gospel": [
       "Gospel.json",
