@@ -902,7 +902,7 @@ class RhythmSequencer {
         }
       }
 
-      // Prevenir scroll/navegação do browser ao usar setas e pedal
+      // Prevenir scroll/navegação do browser
       if (keyId === this.pedalLeft || keyId === this.pedalRight ||
           keyId === 'Space' || keyId === ' ' ||
           keyId === 'ArrowLeft' || keyId === 'ArrowRight' ||
@@ -911,125 +911,28 @@ class RhythmSequencer {
         e.preventDefault();
       }
 
-      // Space = Play/Pause
-      if ((keyId === 'Space' || keyId === ' ') && !e.repeat) {
-        this.togglePlayStop();
-        return;
-      }
-
       if (e.repeat) return;
 
-      // ─── ESQUERDO ─────────────────────────────────────────────────
+      // ─── PEDAL TEM PRIORIDADE ─────────────────────────────────────
+      // Checar pedal ANTES do Space, senão quem mapeia Space/Enter
+      // como pedal nunca consegue usar (vira Play/Pause)
       if (keyId === this.pedalLeft) {
-        e.preventDefault();
         this.handlePedalLeft();
         return;
       }
-
-      // ─── DIREITO ───────────────────────────────────────────────────
       if (keyId === this.pedalRight) {
-        e.preventDefault();
         this.handlePedalRight();
+        return;
+      }
+
+      // Space = Play/Pause (só se NÃO é pedal mapeado)
+      if (keyId === 'Space' || keyId === ' ') {
+        this.togglePlayStop();
         return;
       }
 
     }, { capture: true, passive: false } as AddEventListenerOptions);
 
-    // ─── iOS Pedal BT: detectar via scroll ──────────────────────────
-    // No iOS 17+, pedais BT como M-VAVE não emitem keydown.
-    // O iOS intercepta o PageUp/PageDown/Arrow e faz scroll nativo.
-    // Detectamos scroll que NÃO veio de toque (= pedal BT).
-    this.setupPedalScrollDetection();
-  }
-
-  private setupPedalScrollDetection(): void {
-    // ─── iOS pedal BT: "scroll trap" ────────────────────────────────
-    // No iOS, pedais BT não emitem keydown (WebKit bug 149054).
-    // O iOS converte o input do pedal em scroll nativo.
-    // Criamos um div scrollável oculto que captura esse scroll.
-    // Quando detecta scroll sem touch, interpreta como pedal.
-
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (!isMobile) return; // Só no mobile — desktop usa keydown normal
-
-    // Criar trap scrollável invisível
-    const trap = document.createElement('div');
-    trap.id = 'pedalScrollTrap';
-    trap.setAttribute('tabindex', '0');
-    trap.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:100%;overflow-y:scroll;opacity:0;pointer-events:none;z-index:-1;-webkit-overflow-scrolling:touch;';
-
-    // Conteúdo interno grande pra ter espaço de scroll
-    const inner = document.createElement('div');
-    inner.style.height = '10000px';
-    trap.appendChild(inner);
-    document.body.appendChild(trap);
-
-    let touchActive = false;
-    let scrollDebounce: number | null = null;
-    const centerPosition = 5000; // Posição central do scroll
-
-    // Centralizar o scroll (pra poder detectar pra cima e pra baixo)
-    const resetTrap = () => { trap.scrollTop = centerPosition; };
-    resetTrap();
-
-    // Rastrear touch (pra não confundir toque com pedal)
-    window.addEventListener('touchstart', () => { touchActive = true; }, { passive: true });
-    window.addEventListener('touchend', () => {
-      setTimeout(() => { touchActive = false; }, 400);
-    }, { passive: true });
-
-    // Focar o trap quando a página recebe foco (pra capturar scroll do pedal)
-    const focusTrap = () => {
-      const active = document.activeElement as HTMLElement;
-      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
-      trap.focus({ preventScroll: true });
-    };
-
-    // Focar trap em momentos estratégicos
-    document.addEventListener('click', () => setTimeout(focusTrap, 100), { passive: true });
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(focusTrap, 200); });
-    setTimeout(focusTrap, 1000); // Foco inicial após carregar
-
-    // Detectar scroll no trap
-    trap.addEventListener('scroll', () => {
-      if (touchActive) { resetTrap(); return; }
-
-      if (scrollDebounce) clearTimeout(scrollDebounce);
-      scrollDebounce = window.setTimeout(() => {
-        const delta = trap.scrollTop - centerPosition;
-        if (Math.abs(delta) < 5) return; // Ignorar micro-scrolls
-
-        // Resetar posição imediatamente
-        resetTrap();
-
-        if (delta > 0) {
-          this.handlePedalRight();
-        } else {
-          this.handlePedalLeft();
-        }
-      }, 30);
-    }, { passive: true });
-
-    // Também ouvir scroll na window (caso o trap não capture)
-    let lastWindowScroll = window.scrollY;
-    window.addEventListener('scroll', () => {
-      if (touchActive) { lastWindowScroll = window.scrollY; return; }
-
-      const delta = window.scrollY - lastWindowScroll;
-      if (Math.abs(delta) < 10) { lastWindowScroll = window.scrollY; return; }
-
-      // Reverter scroll da página
-      window.scrollTo(0, lastWindowScroll);
-
-      if (scrollDebounce) clearTimeout(scrollDebounce);
-      scrollDebounce = window.setTimeout(() => {
-        if (delta > 0) {
-          this.handlePedalRight();
-        } else {
-          this.handlePedalLeft();
-        }
-      }, 30);
-    }, { passive: true });
   }
 
   // ─── Handlers de pedal reutilizáveis ──────────────────────────────
