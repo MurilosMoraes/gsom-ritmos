@@ -933,6 +933,39 @@ class RhythmSequencer {
 
     }, { capture: true, passive: false } as AddEventListenerOptions);
 
+    // ─── iOS: input oculto pra forçar keydown do pedal BT ───────────
+    // No iOS, se nenhum elemento editável tem foco, o Safari consome
+    // teclas como Space/setas pro scroll e NÃO dispara keydown.
+    // Com um input focado, o iOS entrega o evento pro JavaScript.
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      const pedalInput = document.createElement('input');
+      pedalInput.id = 'pedalBtInput';
+      pedalInput.setAttribute('readonly', 'true');
+      pedalInput.setAttribute('inputmode', 'none');
+      pedalInput.setAttribute('autocomplete', 'off');
+      pedalInput.setAttribute('autocorrect', 'off');
+      pedalInput.setAttribute('autocapitalize', 'off');
+      pedalInput.setAttribute('spellcheck', 'false');
+      pedalInput.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;border:none;padding:0;margin:0;font-size:16px;';
+      document.body.appendChild(pedalInput);
+
+      const focusPedalInput = () => {
+        const active = document.activeElement as HTMLElement;
+        // Não roubar foco de inputs reais do usuário
+        if (active && active !== pedalInput && active !== document.body &&
+            (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
+        pedalInput.focus({ preventScroll: true });
+      };
+
+      // Manter foco no input oculto
+      document.addEventListener('click', () => setTimeout(focusPedalInput, 150));
+      document.addEventListener('touchend', () => setTimeout(focusPedalInput, 300));
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(focusPedalInput, 300); });
+      setTimeout(focusPedalInput, 1000);
+
+      // Limpar qualquer texto que o iOS possa inserir
+      pedalInput.addEventListener('input', () => { pedalInput.value = ''; });
+    }
   }
 
   // ─── Handlers de pedal reutilizáveis ──────────────────────────────
