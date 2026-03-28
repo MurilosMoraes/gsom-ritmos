@@ -886,11 +886,6 @@ class RhythmSequencer {
   }
 
   private setupKeyboardShortcuts(): void {
-    let leftLastPress = 0;
-    let leftTimeout: number | null = null;
-    let rightLastPress = 0;
-    let rightTimeout: number | null = null;
-
     // capture:true + passive:false — essencial no iOS pra capturar antes do scroll do browser
     window.addEventListener('keydown', (e) => {
       // Identificar tecla — e.code é preferencial, e.key é fallback (iOS pedais BT)
@@ -925,62 +920,146 @@ class RhythmSequencer {
       if (e.repeat) return;
 
       // ─── ESQUERDO ─────────────────────────────────────────────────
-      // Parado: 1x = play (com intro se ligada)
-      // Tocando: 1x = virada + próximo ritmo, 2x = virada + ritmo anterior
       if (keyId === this.pedalLeft) {
         e.preventDefault();
-        if (!this.stateManager.isPlaying()) {
-          this.patternEngine.activateRhythm(0);
-          if (this.useIntro) {
-            this.patternEngine.playIntroAndStart();
-          } else {
-            this.stateManager.setShouldPlayStartSound(true);
-          }
-          this.play();
-        } else {
-          const now = Date.now();
-          if (now - leftLastPress < 500 && leftLastPress > 0) {
-            if (leftTimeout) { clearTimeout(leftTimeout); leftTimeout = null; }
-            this.playFillToPreviousRhythm();
-            leftLastPress = 0;
-          } else {
-            leftLastPress = now;
-            if (leftTimeout) clearTimeout(leftTimeout);
-            leftTimeout = window.setTimeout(() => {
-              this.patternEngine.playFillToNextRhythm();
-              leftTimeout = null;
-            }, 500);
-          }
-        }
+        this.handlePedalLeft();
         return;
       }
 
       // ─── DIREITO ───────────────────────────────────────────────────
-      // Parado: 1x = prato
-      // Tocando: 1x = virada (volta pro mesmo ritmo), 2x = finalização
       if (keyId === this.pedalRight) {
         e.preventDefault();
-        if (!this.stateManager.isPlaying()) {
-          this.playCymbal();
-        } else {
-          const now = Date.now();
-          if (now - rightLastPress < 500 && rightLastPress > 0) {
-            if (rightTimeout) { clearTimeout(rightTimeout); rightTimeout = null; }
-            if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stop(); }
-            rightLastPress = 0;
-          } else {
-            rightLastPress = now;
-            if (rightTimeout) clearTimeout(rightTimeout);
-            rightTimeout = window.setTimeout(() => {
-              this.patternEngine.playRotatingFill();
-              rightTimeout = null;
-            }, 500);
-          }
-        }
+        this.handlePedalRight();
         return;
       }
 
     }, { capture: true, passive: false } as AddEventListenerOptions);
+
+    // ─── iOS Pedal BT: detectar via scroll ──────────────────────────
+    // No iOS 17+, pedais BT como M-VAVE não emitem keydown.
+    // O iOS intercepta o PageUp/PageDown/Arrow e faz scroll nativo.
+    // Detectamos scroll que NÃO veio de toque (= pedal BT).
+    this.setupPedalScrollDetection();
+  }
+
+  private setupPedalScrollDetection(): void {
+    let touchActive = false;
+    let lastScrollY = window.scrollY;
+    let scrollDebounce: number | null = null;
+
+    // Rastrear se o scroll foi causado por toque do dedo
+    window.addEventListener('touchstart', () => { touchActive = true; }, { passive: true });
+    window.addEventListener('touchend', () => {
+      setTimeout(() => { touchActive = false; }, 400);
+    }, { passive: true });
+
+    // Detectar scroll do pedal BT (scroll sem touch)
+    window.addEventListener('scroll', () => {
+      if (touchActive) {
+        lastScrollY = window.scrollY;
+        return;
+      }
+
+      // Debounce — pedal pode gerar 1-3 eventos de scroll rápidos
+      if (scrollDebounce) clearTimeout(scrollDebounce);
+      scrollDebounce = window.setTimeout(() => {
+        const delta = window.scrollY - lastScrollY;
+        lastScrollY = window.scrollY;
+
+        // Scroll grande sem touch = pedal BT
+        // PageDown tipicamente scroll ~viewport height, Arrow scroll ~40px
+        // Aceitar qualquer delta > 20px como pedal
+        const threshold = 20;
+        if (Math.abs(delta) < threshold) return;
+
+        // Reverter o scroll (não queremos que a página se mova)
+        window.scrollTo(0, lastScrollY - delta);
+        lastScrollY = window.scrollY;
+
+        if (delta > 0) {
+          // Scroll pra baixo = pedal direito (virada/prato)
+          this.handlePedalRight();
+        } else {
+          // Scroll pra cima = pedal esquerdo (play/próximo ritmo)
+          this.handlePedalLeft();
+        }
+      }, 50);
+    }, { passive: true });
+
+    // Também capturar em elementos scrolláveis dentro do app
+    document.addEventListener('scroll', (e) => {
+      if (touchActive) return;
+      if (e.target === document || e.target === document.documentElement) return;
+
+      const el = e.target as HTMLElement;
+      if (!el || !el.scrollTop && el.scrollTop !== 0) return;
+
+      // Elemento interno scrollou sem touch = pode ser pedal
+      // Reverter scroll do elemento
+      if (scrollDebounce) clearTimeout(scrollDebounce);
+      scrollDebounce = window.setTimeout(() => {
+        const currentScroll = el.scrollTop;
+        if (Math.abs(currentScroll) > 20) {
+          el.scrollTop = 0;
+          // Considerar como pedal esquerdo (forward)
+          this.handlePedalLeft();
+        }
+      }, 50);
+    }, { capture: true, passive: true });
+  }
+
+  // ─── Handlers de pedal reutilizáveis ──────────────────────────────
+
+  private pedalLeftLastPress = 0;
+  private pedalLeftTimeout: number | null = null;
+  private pedalRightLastPress = 0;
+  private pedalRightTimeout: number | null = null;
+
+  private handlePedalLeft(): void {
+    if (!this.stateManager.isPlaying()) {
+      if (!this.hasRhythmLoaded()) return;
+      this.patternEngine.activateRhythm(0);
+      if (this.useIntro) {
+        this.patternEngine.playIntroAndStart();
+      } else {
+        this.stateManager.setShouldPlayStartSound(true);
+      }
+      this.play();
+    } else {
+      const now = Date.now();
+      if (now - this.pedalLeftLastPress < 500 && this.pedalLeftLastPress > 0) {
+        if (this.pedalLeftTimeout) { clearTimeout(this.pedalLeftTimeout); this.pedalLeftTimeout = null; }
+        this.playFillToPreviousRhythm();
+        this.pedalLeftLastPress = 0;
+      } else {
+        this.pedalLeftLastPress = now;
+        if (this.pedalLeftTimeout) clearTimeout(this.pedalLeftTimeout);
+        this.pedalLeftTimeout = window.setTimeout(() => {
+          this.patternEngine.playFillToNextRhythm();
+          this.pedalLeftTimeout = null;
+        }, 500);
+      }
+    }
+  }
+
+  private handlePedalRight(): void {
+    if (!this.stateManager.isPlaying()) {
+      this.playCymbal();
+    } else {
+      const now = Date.now();
+      if (now - this.pedalRightLastPress < 500 && this.pedalRightLastPress > 0) {
+        if (this.pedalRightTimeout) { clearTimeout(this.pedalRightTimeout); this.pedalRightTimeout = null; }
+        if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stop(); }
+        this.pedalRightLastPress = 0;
+      } else {
+        this.pedalRightLastPress = now;
+        if (this.pedalRightTimeout) clearTimeout(this.pedalRightTimeout);
+        this.pedalRightTimeout = window.setTimeout(() => {
+          this.patternEngine.playRotatingFill();
+          this.pedalRightTimeout = null;
+        }, 500);
+      }
+    }
   }
 
   private setupPerformanceGrid(): void {
