@@ -4,7 +4,7 @@
   "beatsPerBar": 4,
   "patternSteps": {
     "main": 16,
-    "fill": 16,
+    "fill": 8,
     "end": 16,
     "intro": 8
   },
@@ -1532,8 +1532,18 @@
           ],
           [
             true,
-            true,
             false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            true,
             false,
             false,
             false,
@@ -1543,29 +1553,9 @@
           [
             false,
             false,
-            true,
-            true,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
             false,
             false,
             true,
-            true,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
             false,
             false,
             false
@@ -1597,8 +1587,18 @@
             false,
             false,
             false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
             true,
-            true
+            false
           ],
           [
             true,
@@ -1775,14 +1775,14 @@
             "midiPath": "/midi/caixa.wav"
           },
           {
-            "fileName": "tom_2.wav",
+            "fileName": "t2 dp.wav",
             "audioData": "",
-            "midiPath": "/midi/tom_2.wav"
+            "midiPath": "/midi/t2 dp.wav"
           },
           {
-            "fileName": "t3.mp3",
+            "fileName": "t3 dp.wav",
             "audioData": "",
-            "midiPath": "/midi/t3.mp3"
+            "midiPath": "/midi/t3 dp.wav"
           },
           {
             "fileName": "chimbal_fechado.wav",
@@ -1800,9 +1800,9 @@
             "midiPath": "/midi/prato.mp3"
           },
           {
-            "fileName": "tom_2.wav",
+            "fileName": "surdo dp.wav",
             "audioData": "",
-            "midiPath": "/midi/tom_2.wav"
+            "midiPath": "/midi/surdo dp.wav"
           },
           {
             "fileName": "china.wav",
@@ -1826,7 +1826,7 @@
           }
         ],
         "steps": 8,
-        "speed": 1
+        "speed": 2
       },
       {
         "pattern": [
@@ -2553,9 +2553,9 @@
           [
             1,
             0.8,
+            0.5,
             0.8,
-            0.8,
-            0.8,
+            0.5,
             0,
             0,
             0,
@@ -3658,5 +3658,5 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-03-29T14:07:39.151Z"
+  "timestamp": "2026-03-29T15:23:00.615Z"
 }

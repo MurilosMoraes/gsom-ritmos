@@ -174,12 +174,16 @@ class AdminDashboard {
   // ─── Dashboard ──────────────────────────────────────────────────────
 
   private renderDashboard(): void {
-    const total = this.profiles.length;
-    const active = this.profiles.filter(p =>
+    // IDs dos admins/donos — excluir das métricas de negócio
+    const adminIds = new Set(this.profiles.filter(p => p.role === 'admin').map(p => p.id));
+
+    const realUsers = this.profiles.filter(p => p.role !== 'admin');
+    const total = realUsers.length;
+    const active = realUsers.filter(p =>
       p.subscription_status === 'active' && p.subscription_plan !== 'free' && p.subscription_plan !== 'trial'
     ).length;
-    const trials = this.profiles.filter(p => p.subscription_status === 'trial').length;
-    const confirmed = this.transactions.filter(t => t.status === 'confirmed');
+    const trials = realUsers.filter(p => p.subscription_status === 'trial').length;
+    const confirmed = this.transactions.filter(t => t.status === 'confirmed' && !adminIds.has(t.user_id));
     const revenue = confirmed.reduce((sum, t) => sum + (t.amount_cents || 0), 0);
 
     const el = (id: string) => document.getElementById(id);
@@ -188,9 +192,9 @@ class AdminDashboard {
     if (el('totalRevenue')) el('totalRevenue')!.textContent = `R$ ${(revenue / 100).toFixed(2)}`;
     if (el('growthRate')) el('growthRate')!.textContent = `${trials}`;
 
-    // Resumo por plano
+    // Resumo por plano (sem admins)
     const planCounts: Record<string, number> = {};
-    this.profiles.forEach(p => {
+    realUsers.forEach(p => {
       if (p.subscription_status === 'active' || p.subscription_status === 'trial') {
         planCounts[p.subscription_plan] = (planCounts[p.subscription_plan] || 0) + 1;
       }
@@ -214,7 +218,7 @@ class AdminDashboard {
     // Últimas transações
     const txChartEl = el('subscriptionsChart');
     if (txChartEl) {
-      const recent = this.transactions.slice(0, 5);
+      const recent = this.transactions.filter(t => !adminIds.has(t.user_id)).slice(0, 5);
       txChartEl.innerHTML = `
         <div style="padding:1rem;">
           <h4 style="color:#fff;margin:0 0 1rem;font-size:0.9rem;">Últimas transações</h4>
