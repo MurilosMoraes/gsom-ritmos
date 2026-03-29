@@ -442,6 +442,50 @@ input:checked + .slider:before {
 .account-action-upgrade:hover {
   box-shadow: 0 6px 28px rgba(249, 115, 22, 0.4);
 }
+.account-password-section {
+  margin-top: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 1rem;
+}
+.account-password-toggle {
+  width: 100%;
+  background: none; border: none;
+  color: rgba(255,255,255,0.35);
+  font-size: 0.78rem; font-weight: 500; font-family: inherit;
+  cursor: pointer; padding: 0.3rem 0;
+  transition: color 0.15s;
+}
+.account-password-toggle:hover { color: rgba(255,255,255,0.6); }
+.account-password-toggle.cancel { color: rgba(255,68,102,0.6); }
+.account-password-toggle.cancel:hover { color: rgba(255,68,102,0.9); }
+.account-password-form {
+  flex-direction: column; gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+.account-password-input {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  color: #fff; font-size: 0.84rem; font-family: inherit;
+  outline: none; transition: border-color 0.15s;
+}
+.account-password-input:focus { border-color: rgba(0,212,255,0.4); }
+.account-password-input::placeholder { color: rgba(255,255,255,0.2); }
+.account-password-status {
+  font-size: 0.72rem; min-height: 1rem; text-align: center;
+}
+.account-password-save {
+  width: 100%; padding: 0.6rem;
+  border: none; border-radius: 10px;
+  background: rgba(0,230,140,0.1);
+  border: 1px solid rgba(0,230,140,0.2);
+  color: rgba(0,230,140,0.9);
+  font-size: 0.82rem; font-weight: 600; font-family: inherit;
+  cursor: pointer; transition: all 0.15s;
+}
+.account-password-save:hover { background: rgba(0,230,140,0.18); }
 .account-upgrade-detail {
   background: rgba(255,255,255,0.02);
   border: 1px solid rgba(255,255,255,0.06);

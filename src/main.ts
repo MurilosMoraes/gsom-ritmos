@@ -2604,6 +2604,16 @@ class RhythmSequencer {
 
         ${upgradeSection}
         ${actionBtn ? `<div class="account-actions">${actionBtn}</div>` : ''}
+
+        <div class="account-password-section">
+          <button class="account-password-toggle" id="accountPasswordToggle">Alterar senha</button>
+          <div class="account-password-form" id="accountPasswordForm" style="display:none;">
+            <input type="password" class="account-password-input" id="accountNewPassword" placeholder="Nova senha (mín. 6 caracteres)" minlength="6" />
+            <input type="password" class="account-password-input" id="accountConfirmPassword" placeholder="Confirmar nova senha" minlength="6" />
+            <div class="account-password-status" id="accountPasswordStatus"></div>
+            <button class="account-password-save" id="accountPasswordSave">Salvar nova senha</button>
+          </div>
+        </div>
       </div>
     `;
 
@@ -2623,13 +2633,67 @@ class RhythmSequencer {
       if (e.target === overlay) close();
     });
 
-    // Ação do botão
+    // Toggle formulário de senha
+    overlay.querySelector('#accountPasswordToggle')?.addEventListener('click', () => {
+      const form = overlay.querySelector('#accountPasswordForm') as HTMLElement;
+      const toggle = overlay.querySelector('#accountPasswordToggle') as HTMLElement;
+      if (form.style.display === 'none') {
+        form.style.display = 'flex';
+        toggle.textContent = 'Cancelar';
+        toggle.classList.add('cancel');
+      } else {
+        form.style.display = 'none';
+        toggle.textContent = 'Alterar senha';
+        toggle.classList.remove('cancel');
+      }
+    });
+
+    // Salvar nova senha
+    overlay.querySelector('#accountPasswordSave')?.addEventListener('click', async () => {
+      const newPass = (overlay.querySelector('#accountNewPassword') as HTMLInputElement).value;
+      const confirmPass = (overlay.querySelector('#accountConfirmPassword') as HTMLInputElement).value;
+      const statusEl = overlay.querySelector('#accountPasswordStatus') as HTMLElement;
+
+      if (!newPass || newPass.length < 6) {
+        statusEl.textContent = 'A senha deve ter pelo menos 6 caracteres';
+        statusEl.style.color = 'var(--adm-red, #FF4466)';
+        return;
+      }
+      if (newPass !== confirmPass) {
+        statusEl.textContent = 'As senhas não coincidem';
+        statusEl.style.color = 'var(--adm-red, #FF4466)';
+        return;
+      }
+
+      statusEl.textContent = 'Salvando...';
+      statusEl.style.color = 'rgba(255,255,255,0.4)';
+
+      const { error } = await supabase.auth.updateUser({ password: newPass });
+
+      if (error) {
+        statusEl.textContent = error.message || 'Erro ao alterar senha';
+        statusEl.style.color = 'var(--adm-red, #FF4466)';
+      } else {
+        statusEl.textContent = 'Senha alterada com sucesso!';
+        statusEl.style.color = 'var(--adm-green, #00E68C)';
+        (overlay.querySelector('#accountNewPassword') as HTMLInputElement).value = '';
+        (overlay.querySelector('#accountConfirmPassword') as HTMLInputElement).value = '';
+        setTimeout(() => {
+          const form = overlay.querySelector('#accountPasswordForm') as HTMLElement;
+          const toggle = overlay.querySelector('#accountPasswordToggle') as HTMLElement;
+          form.style.display = 'none';
+          toggle.textContent = 'Alterar senha';
+          toggle.classList.remove('cancel');
+        }, 2000);
+      }
+    });
+
+    // Ação do botão de upgrade/renovar
     const actionBtnEl = overlay.querySelector('#accountActionBtn');
     if (actionBtnEl) {
       actionBtnEl.addEventListener('click', () => {
         close();
         if (status === 'active' && upgradeNextPlan) {
-          // Upgrade: ir pra plans com plano destacado e crédito calculado
           window.location.href = `/plans.html?upgrade=true&plan=${upgradeNextPlan.id}&credit=${upgradeCredit}`;
         } else {
           window.location.href = '/plans.html';
