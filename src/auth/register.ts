@@ -86,15 +86,10 @@ class RegisterPage {
     });
 
     if (response.success && response.user) {
-      // 4. Ativar trial e salvar CPF hash
+      // 4. Salvar CPF hash (trial já é setado pelo trigger do banco)
       await supabase
         .from('gdrums_profiles')
-        .update({
-          cpf_hash: cpfHash,
-          subscription_status: 'trial',
-          subscription_plan: 'trial',
-          subscription_expires_at: calculateTrialExpiry(),
-        })
+        .update({ cpf_hash: cpfHash })
         .eq('id', response.user.id);
 
       // 5. Gerar session ID único
