@@ -319,12 +319,19 @@ class RhythmSequencer {
 
     const { data: profile } = await supabase
       .from('gdrums_profiles')
-      .select('role, subscription_status, subscription_expires_at, subscription_plan, active_session_id')
+      .select('role, subscription_status, subscription_expires_at, subscription_plan, active_session_id, cpf_hash')
       .eq('id', session.user.id)
       .single();
 
     // Guardar role do usuário (vindo do banco, não do client)
     this.userRole = (profile?.role === 'admin') ? 'admin' : 'user';
+
+    // Bloquear acesso sem CPF (conta criada por API, bypass da UI)
+    if (profile && !profile.cpf_hash && profile.role !== 'admin') {
+      await supabase.auth.signOut();
+      window.location.href = '/register.html';
+      return false;
+    }
 
     // Sessão única — verificar se este device é o ativo
     const localSessionId = localStorage.getItem('gdrums-session-id');
