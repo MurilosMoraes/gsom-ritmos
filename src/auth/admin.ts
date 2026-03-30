@@ -1,11 +1,10 @@
-// Admin Dashboard — dados reais do Supabase
+// Admin Dashboard — chamadas via Edge Function (sem service key no frontend)
 
 import { supabase } from './supabase';
 import { ModalManager } from '../ui/ModalManager';
 
 const modalManager = new ModalManager();
-const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzZnppaXZ1YndkZ3Rtd3l6dGZ3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjUwNjk3NiwiZXhwIjoyMDg4MDgyOTc2fQ.n5oz5D9TqkHSoYGPT7G2hGFxO5mvkvC9yA39UbNs-CE';
+const ADMIN_API_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/admin-api';
 
 interface Profile {
   id: string;
@@ -45,28 +44,46 @@ interface Coupon {
   created_at: string;
 }
 
-// Helper pra chamar Supabase com service_role (admin precisa ver todos os dados)
-async function adminFetch(table: string, params: string = ''): Promise<any[]> {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+// ─── Helper: chamar Edge Function admin-api com token do usuário ────
+
+async function getAuthToken(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token || '';
+}
+
+async function adminCall(body: Record<string, any>): Promise<any> {
+  const token = await getAuthToken();
+  const res = await fetch(ADMIN_API_URL, {
+    method: 'POST',
     headers: {
-      'apikey': SERVICE_KEY,
-      'Authorization': `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
     },
+    body: JSON.stringify(body),
   });
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Erro na API admin');
+  return data;
+}
+
+async function adminFetch(table: string): Promise<any[]> {
+  return await adminCall({
+    action: 'fetch',
+    table,
+    params: { select: '*', order: { column: 'created_at', ascending: false } },
+  });
 }
 
 async function adminUpdate(table: string, id: string, data: Record<string, any>): Promise<void> {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
-    method: 'PATCH',
-    headers: {
-      'apikey': SERVICE_KEY,
-      'Authorization': `Bearer ${SERVICE_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal',
-    },
-    body: JSON.stringify(data),
-  });
+  await adminCall({ action: 'update', table, id, data });
+}
+
+async function adminInsert(table: string, data: Record<string, any>): Promise<void> {
+  await adminCall({ action: 'insert', table, data });
+}
+
+async function adminBanUser(userId: string, ban: boolean): Promise<void> {
+  await adminCall({ action: 'ban_user', id: userId, data: { ban } });
 }
 
 class AdminDashboard {
@@ -87,9 +104,19 @@ class AdminDashboard {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = '/login.html'; return; }
 
-    // Verificar admin via service_role (não confiar no client)
-    const profiles = await adminFetch('gdrums_profiles', `id=eq.${user.id}&select=role`);
-    if (!profiles[0] || profiles[0].role !== 'admin') {
+    // Verificar admin via Edge Function (service key fica no backend)
+    try {
+      const profiles = await adminCall({
+        action: 'fetch',
+        table: 'gdrums_profiles',
+        params: { select: 'role', order: { column: 'created_at', ascending: false } },
+      });
+      const myProfile = profiles.find((p: any) => p.id === user.id);
+      if (!myProfile || myProfile.role !== 'admin') {
+        window.location.href = '/';
+        return;
+      }
+    } catch {
       window.location.href = '/';
       return;
     }
@@ -147,9 +174,9 @@ class AdminDashboard {
   }
 
   private async loadData(): Promise<void> {
-    this.profiles = await adminFetch('gdrums_profiles', 'select=*&order=created_at.desc');
-    this.transactions = await adminFetch('gdrums_transactions', 'select=*&order=created_at.desc');
-    this.coupons = await adminFetch('gdrums_coupons', 'select=*&order=created_at.desc');
+    this.profiles = await adminFetch('gdrums_profiles');
+    this.transactions = await adminFetch('gdrums_transactions');
+    this.coupons = await adminFetch('gdrums_coupons');
   }
 
   private switchSection(section: string): void {
@@ -174,7 +201,6 @@ class AdminDashboard {
   // ─── Dashboard ──────────────────────────────────────────────────────
 
   private renderDashboard(): void {
-    // IDs dos admins/donos — excluir das métricas de negócio
     const adminIds = new Set(this.profiles.filter(p => p.role === 'admin').map(p => p.id));
 
     const realUsers = this.profiles.filter(p => p.role !== 'admin');
@@ -215,7 +241,6 @@ class AdminDashboard {
       `;
     }
 
-    // Últimas transações
     const txChartEl = el('subscriptionsChart');
     if (txChartEl) {
       const recent = this.transactions.filter(t => !adminIds.has(t.user_id)).slice(0, 5);
@@ -291,7 +316,6 @@ class AdminDashboard {
       `;
     }).join('');
 
-    // Bind edit buttons
     tbody.querySelectorAll('[data-user-id]').forEach(btn => {
       btn.addEventListener('click', () => {
         const userId = (btn as HTMLElement).dataset.userId!;
@@ -299,7 +323,6 @@ class AdminDashboard {
       });
     });
 
-    // Bind block buttons
     tbody.querySelectorAll('[data-block-id]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const userId = (btn as HTMLElement).dataset.blockId!;
@@ -309,7 +332,6 @@ class AdminDashboard {
       });
     });
 
-    // Bind unblock buttons
     tbody.querySelectorAll('[data-unblock-id]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const userId = (btn as HTMLElement).dataset.unblockId!;
@@ -319,29 +341,19 @@ class AdminDashboard {
   }
 
   private async blockUser(userId: string, block: boolean): Promise<void> {
-    // 1. Desativar/ativar no Supabase Auth (impede login)
-    await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
-      method: 'PUT',
-      headers: {
-        'apikey': SERVICE_KEY,
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ban_duration: block ? '876600h' : 'none', // 100 anos ou desbloquear
-      }),
-    });
+    // 1. Ban/unban no Supabase Auth via Edge Function
+    await adminBanUser(userId, block);
 
     // 2. Atualizar status no perfil
     await adminUpdate('gdrums_profiles', userId, {
-      subscription_status: block ? 'blocked' : 'expired',
+      subscription_status: block ? 'expired' : 'expired',
       updated_at: new Date().toISOString(),
     });
 
     // 3. Atualizar local
     const idx = this.profiles.findIndex(p => p.id === userId);
     if (idx !== -1) {
-      this.profiles[idx].subscription_status = block ? 'blocked' : 'expired';
+      this.profiles[idx].subscription_status = 'expired';
     }
 
     this.renderUsers();
@@ -405,7 +417,6 @@ class AdminDashboard {
       modalManager.show('Admin', `Perfil de ${profile?.name} atualizado!`, 'success');
     });
 
-    // Close buttons
     modal.querySelectorAll('.adm-modal-close, [data-modal]').forEach(btn => {
       btn.addEventListener('click', () => modal.classList.remove('active'));
     });
@@ -450,7 +461,6 @@ class AdminDashboard {
       `;
     }).join('');
 
-    // Totais
     const confirmedTotal = filtered.filter(t => t.status === 'confirmed').reduce((s, t) => s + t.amount_cents, 0);
     const pendingTotal = filtered.filter(t => t.status === 'pending').reduce((s, t) => s + t.amount_cents, 0);
 
@@ -471,7 +481,6 @@ class AdminDashboard {
     const form = document.getElementById('couponForm');
     if (!modal || !form) return;
 
-    // Abrir modal de novo cupom
     document.getElementById('addCouponBtn')?.addEventListener('click', () => {
       (document.getElementById('couponModalTitle') as HTMLElement).textContent = 'Novo Cupom';
       (document.getElementById('couponEditId') as HTMLInputElement).value = '';
@@ -484,7 +493,6 @@ class AdminDashboard {
       modal.classList.add('active');
     });
 
-    // Submit
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const editId = (document.getElementById('couponEditId') as HTMLInputElement).value;
@@ -508,17 +516,7 @@ class AdminDashboard {
       if (editId) {
         await adminUpdate('gdrums_coupons', editId, payload);
       } else {
-        // Insert
-        await fetch(`${SUPABASE_URL}/rest/v1/gdrums_coupons`, {
-          method: 'POST',
-          headers: {
-            'apikey': SERVICE_KEY,
-            'Authorization': `Bearer ${SERVICE_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal',
-          },
-          body: JSON.stringify(payload),
-        });
+        await adminInsert('gdrums_coupons', payload);
       }
 
       modal.classList.remove('active');
@@ -527,7 +525,6 @@ class AdminDashboard {
       modalManager.show('Admin', editId ? 'Cupom atualizado!' : `Cupom ${code} criado!`, 'success');
     });
 
-    // Close
     modal.querySelectorAll('[data-modal]').forEach(btn => {
       btn.addEventListener('click', () => modal.classList.remove('active'));
     });
@@ -574,7 +571,6 @@ class AdminDashboard {
       `;
     }).join('');
 
-    // Bind edit
     tbody.querySelectorAll('[data-coupon-edit]').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = (btn as HTMLElement).dataset.couponEdit!;
@@ -594,7 +590,6 @@ class AdminDashboard {
       });
     });
 
-    // Bind toggle active
     tbody.querySelectorAll('[data-coupon-toggle]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = (btn as HTMLElement).dataset.couponToggle!;
