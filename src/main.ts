@@ -326,8 +326,11 @@ class RhythmSequencer {
     // Guardar role do usuário (vindo do banco, não do client)
     this.userRole = (profile?.role === 'admin') ? 'admin' : 'user';
 
-    // Bloquear acesso sem CPF (conta criada por API, bypass da UI)
-    if (profile && !profile.cpf_hash && profile.role !== 'admin') {
+    // Bloquear acesso sem CPF — só contas criadas após 30/03/2026 (quando CPF virou obrigatório)
+    // Contas antigas sem CPF são legítimas (cadastraram antes da exigência)
+    const accountCreated = new Date(session.user.created_at || 0);
+    const cpfRequiredAfter = new Date('2026-03-30T04:00:00Z');
+    if (profile && !profile.cpf_hash && profile.role !== 'admin' && accountCreated > cpfRequiredAfter) {
       fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/security-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
