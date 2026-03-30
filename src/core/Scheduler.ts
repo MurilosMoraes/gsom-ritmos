@@ -14,8 +14,13 @@ export class Scheduler {
 
   // Timing — todos os valores são em segundos do AudioContext clock
   private nextStepTime = 0;
-  private readonly scheduleAheadTime = 0.25; // 250ms lookahead (seguro para mobile)
-  private readonly tickInterval = 12;         // 12ms tick (mais preciso que 25ms)
+  private readonly scheduleAheadTime: number;
+  private readonly tickInterval: number;
+
+  // Detectar mobile pra ajustar performance
+  private static readonly isMobile = /Android|iPhone|iPad|iPod/i.test(
+    typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  );
 
   // UI sync — usa rAF vinculado ao audio clock
   private pendingUISteps: Array<{ step: number; time: number; pattern: PatternType }> = [];
@@ -32,6 +37,11 @@ export class Scheduler {
     this.stateManager = stateManager;
     this.audioManager = audioManager;
     this.patternEngine = patternEngine;
+
+    // Mobile: lookahead maior + tick mais leve (CPU fraca engasga com 12ms)
+    // Desktop: mais preciso
+    this.scheduleAheadTime = Scheduler.isMobile ? 0.5 : 0.25;
+    this.tickInterval = Scheduler.isMobile ? 25 : 12;
   }
 
   setUpdateStepCallback(callback: (step: number, pattern: PatternType) => void): void {
