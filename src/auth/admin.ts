@@ -109,7 +109,7 @@ class AdminDashboard {
       const profiles = await adminCall({
         action: 'fetch',
         table: 'gdrums_profiles',
-        params: { select: 'role', order: { column: 'created_at', ascending: false } },
+        params: { select: 'id,role', order: { column: 'created_at', ascending: false } },
       });
       const myProfile = profiles.find((p: any) => p.id === user.id);
       if (!myProfile || myProfile.role !== 'admin') {
