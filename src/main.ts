@@ -328,6 +328,17 @@ class RhythmSequencer {
 
     // Bloquear acesso sem CPF (conta criada por API, bypass da UI)
     if (profile && !profile.cpf_hash && profile.role !== 'admin') {
+      fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/security-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: session.user.id,
+          email: session.user.email,
+          name: session.user.user_metadata?.name || '',
+          event: 'blocked_no_cpf',
+          details: 'Conta sem CPF tentou acessar — possível criação via API',
+        }),
+      }).catch(() => {});
       await supabase.auth.signOut();
       window.location.href = '/register.html';
       return false;
