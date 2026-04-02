@@ -319,7 +319,7 @@ class RhythmSequencer {
 
     const { data: profile } = await supabase
       .from('gdrums_profiles')
-      .select('role, subscription_status, subscription_expires_at, subscription_plan, active_session_id, cpf_hash')
+      .select('role, subscription_status, subscription_expires_at, subscription_plan, active_session_id, cpf_hash, phone')
       .eq('id', session.user.id)
       .single();
 
@@ -340,6 +340,11 @@ class RhythmSequencer {
           details: 'Conta sem CPF acessou o app',
         }),
       }).catch(() => {});
+    }
+
+    // Pedir telefone se não tem (usuários antigos)
+    if (profile && !profile.phone && profile.role !== 'admin') {
+      this.showPhoneModal(session.user.id);
     }
 
     // Sessão única — verificar se este device é o ativo
@@ -2344,6 +2349,85 @@ class RhythmSequencer {
   private cymbalBuffer: AudioBuffer | null = null;
 
   // ─── Modal BPM ──────────────────────────────────────────────────────
+
+  // ─── Modal de telefone (usuários antigos sem WhatsApp) ──────────
+
+  private showPhoneModal(userId: string): void {
+    const overlay = document.createElement('div');
+    overlay.className = 'account-modal-overlay';
+    overlay.innerHTML = `
+      <div class="account-modal" style="max-width:360px;">
+        <div class="account-header">
+          <div class="account-avatar" style="width:48px;height:48px;font-size:1.2rem;margin-bottom:0.5rem;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          </div>
+          <div class="account-name">Atualize seu WhatsApp</div>
+          <div class="account-email" style="max-width:280px;">Precisamos do seu número para enviar novidades e suporte. Leva 5 segundos.</div>
+        </div>
+
+        <div style="padding:0 0.5rem;">
+          <input type="tel" id="phoneModalInput" class="account-password-input" placeholder="(00) 00000-0000" inputmode="tel" maxlength="15" style="text-align:center;font-size:1.1rem;margin-bottom:0.5rem;" />
+          <div id="phoneModalStatus" style="font-size:0.72rem;min-height:1rem;text-align:center;"></div>
+          <button id="phoneModalSave" class="account-action-btn" style="margin-top:0.5rem;">Salvar</button>
+          <button id="phoneModalSkip" style="width:100%;background:none;border:none;color:rgba(255,255,255,0.2);font-size:0.72rem;font-family:inherit;cursor:pointer;padding:0.6rem 0;margin-top:0.25rem;">Depois</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    const input = overlay.querySelector('#phoneModalInput') as HTMLInputElement;
+    const statusEl = overlay.querySelector('#phoneModalStatus') as HTMLElement;
+
+    // Máscara
+    input.addEventListener('input', () => {
+      let v = input.value.replace(/\D/g, '').slice(0, 11);
+      if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+      else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
+      else if (v.length > 0) v = `(${v}`;
+      input.value = v;
+    });
+
+    const close = () => {
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 200);
+    };
+
+    // Salvar
+    overlay.querySelector('#phoneModalSave')!.addEventListener('click', async () => {
+      const phone = input.value.replace(/\D/g, '');
+      if (phone.length < 10 || phone.length > 11) {
+        statusEl.textContent = 'Número inválido';
+        statusEl.style.color = '#FF4466';
+        return;
+      }
+
+      statusEl.textContent = 'Salvando...';
+      statusEl.style.color = 'rgba(255,255,255,0.4)';
+
+      const { supabase } = await import('./auth/supabase');
+      const { error } = await supabase
+        .from('gdrums_profiles')
+        .update({ phone })
+        .eq('id', userId);
+
+      if (error) {
+        statusEl.textContent = 'Erro ao salvar. Tente novamente.';
+        statusEl.style.color = '#FF4466';
+      } else {
+        statusEl.textContent = 'Salvo!';
+        statusEl.style.color = '#00E68C';
+        setTimeout(close, 800);
+      }
+    });
+
+    // Pular
+    overlay.querySelector('#phoneModalSkip')!.addEventListener('click', close);
+
+    // Foco no input
+    setTimeout(() => input.focus(), 300);
+  }
 
   private showBpmModal(): void {
     const currentTempo = this.stateManager.getTempo();
