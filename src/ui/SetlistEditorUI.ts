@@ -141,36 +141,37 @@ export class SetlistEditorUI {
     }
 
     filtered.forEach(rhythm => {
-      const key = rhythm.userRhythmId || rhythm.path;
-      const inSetlist = rhythm.userRhythmId
-        ? this.setlistManager?.getItems().some(i => i.userRhythmId === rhythm.userRhythmId)
-        : setlistPaths.has(rhythm.path);
+      // Contar quantas vezes está no repertório
+      const items = this.setlistManager?.getItems() || [];
+      const count = rhythm.userRhythmId
+        ? items.filter(i => i.userRhythmId === rhythm.userRhythmId).length
+        : items.filter(i => i.path === rhythm.path && !i.userRhythmId).length;
 
       const item = document.createElement('div');
-      item.className = 'sle-catalog-item' + (inSetlist ? ' sle-in-setlist' : '');
+      item.className = 'sle-catalog-item';
 
       const name = document.createElement('span');
       name.className = 'sle-item-name';
-      name.innerHTML = rhythm.isPersonal
-        ? `<span style="color:#8B5CF6;">${rhythm.name}</span> <span style="font-size:0.6rem;color:rgba(139,92,246,0.5);">MEU</span>`
-        : rhythm.name;
+      const badge = rhythm.isPersonal
+        ? ' <span style="font-size:0.6rem;color:rgba(139,92,246,0.5);">MEU</span>'
+        : '';
+      const countBadge = count > 0
+        ? ` <span style="font-size:0.55rem;background:rgba(0,212,255,0.15);color:rgba(0,212,255,0.7);padding:0.1rem 0.35rem;border-radius:4px;">${count}x</span>`
+        : '';
+      name.innerHTML = (rhythm.isPersonal ? `<span style="color:#8B5CF6;">${rhythm.name}</span>` : rhythm.name) + badge + countBadge;
 
       const addBtn = document.createElement('button');
       addBtn.className = 'sle-add-btn';
-      addBtn.innerHTML = inSetlist
-        ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 3L6 13l-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-        : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+      addBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
-      if (!inSetlist) {
-        addBtn.addEventListener('click', () => {
-          const setlistItem: SetlistItem = { name: rhythm.name, path: rhythm.path };
-          if (rhythm.userRhythmId) setlistItem.userRhythmId = rhythm.userRhythmId;
-          this.setlistManager?.addItem(setlistItem);
-          const setlistList = this.overlay?.querySelector('.sle-setlist-list');
-          if (setlistList) this.renderSetlist(setlistList as HTMLElement);
-          this.renderCatalog(container, filter);
-        });
-      }
+      addBtn.addEventListener('click', () => {
+        const setlistItem: SetlistItem = { name: rhythm.name, path: rhythm.path };
+        if (rhythm.userRhythmId) setlistItem.userRhythmId = rhythm.userRhythmId;
+        this.setlistManager?.addItem(setlistItem);
+        const setlistList = this.overlay?.querySelector('.sle-setlist-list');
+        if (setlistList) this.renderSetlist(setlistList as HTMLElement);
+        this.renderCatalog(container, filter);
+      });
 
       item.append(name, addBtn);
       container.appendChild(item);
