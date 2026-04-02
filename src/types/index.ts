@@ -80,6 +80,7 @@ export interface SequencerState {
 export interface SetlistItem {
   name: string;
   path: string;
+  userRhythmId?: string; // Se presente, carrega do UserRhythmService em vez do path
 }
 
 export interface Setlist {

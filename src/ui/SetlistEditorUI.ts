@@ -3,10 +3,17 @@
 import type { SetlistManager } from '../core/SetlistManager';
 import type { SetlistItem } from '../types';
 
+export interface CatalogItem {
+  name: string;
+  path: string;
+  userRhythmId?: string;
+  isPersonal?: boolean;
+}
+
 export class SetlistEditorUI {
   private overlay: HTMLElement | null = null;
   private setlistManager: SetlistManager | null = null;
-  private catalog: Array<{ name: string; path: string }> = [];
+  private catalog: CatalogItem[] = [];
   private onClose?: () => void;
   private styleInjected = false;
   private dragSourceIndex: number = -1;
@@ -16,7 +23,7 @@ export class SetlistEditorUI {
   }
 
   open(
-    catalog: Array<{ name: string; path: string }>,
+    catalog: CatalogItem[],
     setlistManager: SetlistManager,
     onClose?: () => void
   ): void {
@@ -61,7 +68,7 @@ export class SetlistEditorUI {
     const header = document.createElement('div');
     header.className = 'sle-header';
     header.innerHTML = `
-      <h2 class="sle-title">Favoritos</h2>
+      <h2 class="sle-title">Repertório</h2>
       <button class="sle-close-btn" aria-label="Fechar">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -95,7 +102,7 @@ export class SetlistEditorUI {
     setlistPanel.className = 'sle-panel sle-setlist';
     setlistPanel.innerHTML = `
       <div class="sle-panel-header">
-        <span class="sle-panel-title">Seus favoritos</span>
+        <span class="sle-panel-title">Seu repertório</span>
         <button class="sle-clear-btn">Limpar</button>
       </div>
       <div class="sle-panel-list sle-setlist-list"></div>
@@ -134,13 +141,19 @@ export class SetlistEditorUI {
     }
 
     filtered.forEach(rhythm => {
-      const inSetlist = setlistPaths.has(rhythm.path);
+      const key = rhythm.userRhythmId || rhythm.path;
+      const inSetlist = rhythm.userRhythmId
+        ? this.setlistManager?.getItems().some(i => i.userRhythmId === rhythm.userRhythmId)
+        : setlistPaths.has(rhythm.path);
+
       const item = document.createElement('div');
       item.className = 'sle-catalog-item' + (inSetlist ? ' sle-in-setlist' : '');
 
       const name = document.createElement('span');
       name.className = 'sle-item-name';
-      name.textContent = rhythm.name;
+      name.innerHTML = rhythm.isPersonal
+        ? `<span style="color:#8B5CF6;">${rhythm.name}</span> <span style="font-size:0.6rem;color:rgba(139,92,246,0.5);">MEU</span>`
+        : rhythm.name;
 
       const addBtn = document.createElement('button');
       addBtn.className = 'sle-add-btn';
@@ -150,7 +163,9 @@ export class SetlistEditorUI {
 
       if (!inSetlist) {
         addBtn.addEventListener('click', () => {
-          this.setlistManager?.addItem({ name: rhythm.name, path: rhythm.path });
+          const setlistItem: SetlistItem = { name: rhythm.name, path: rhythm.path };
+          if (rhythm.userRhythmId) setlistItem.userRhythmId = rhythm.userRhythmId;
+          this.setlistManager?.addItem(setlistItem);
           const setlistList = this.overlay?.querySelector('.sle-setlist-list');
           if (setlistList) this.renderSetlist(setlistList as HTMLElement);
           this.renderCatalog(container, filter);
@@ -167,7 +182,7 @@ export class SetlistEditorUI {
     const items = this.setlistManager?.getItems() || [];
 
     if (items.length === 0) {
-      container.innerHTML = '<div class="sle-empty">Adicione ritmos aos favoritos</div>';
+      container.innerHTML = '<div class="sle-empty">Adicione ritmos ao repertório</div>';
       return;
     }
 
@@ -188,7 +203,9 @@ export class SetlistEditorUI {
 
       const name = document.createElement('span');
       name.className = 'sle-item-name';
-      name.textContent = item.name;
+      name.innerHTML = item.userRhythmId
+        ? `<span style="color:#8B5CF6;">${item.name}</span> <span style="font-size:0.55rem;color:rgba(139,92,246,0.4);">MEU</span>`
+        : item.name;
 
       const removeBtn = document.createElement('button');
       removeBtn.className = 'sle-remove-btn';

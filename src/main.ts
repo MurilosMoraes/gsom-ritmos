@@ -3401,8 +3401,17 @@ class RhythmSequencer {
     // Botão editar setlist
     const editBtn = document.getElementById('setlistEditBtn');
     editBtn?.addEventListener('click', () => {
+      // Juntar ritmos da biblioteca + ritmos pessoais no catálogo
+      const personalRhythms = this.userRhythmService.getAll().map(r => ({
+        name: r.name,
+        path: '', // não tem path — carrega via userRhythmId
+        userRhythmId: r.id,
+        isPersonal: true,
+      }));
+      const fullCatalog = [...personalRhythms, ...this.availableRhythms];
+
       this.setlistEditor.open(
-        this.availableRhythms,
+        fullCatalog,
         this.setlistManager,
         () => this.onSetlistEditorClose()
       );
@@ -3442,7 +3451,7 @@ class RhythmSequencer {
     const current = this.setlistManager.getCurrentItem();
     if (current) {
       if (this.stateManager.isPlaying()) this.stop();
-      await this.loadRhythm(current.name, current.path);
+      await this.loadSetlistItem(current);
     }
   }
 
@@ -3453,12 +3462,26 @@ class RhythmSequencer {
 
     if (!item) return;
 
-    // Parar reprodução antes de trocar
     if (this.stateManager.isPlaying()) {
       this.stop();
     }
 
-    await this.loadRhythm(item.name, item.path);
+    await this.loadSetlistItem(item);
+  }
+
+  private async loadSetlistItem(item: { name: string; path: string; userRhythmId?: string }): Promise<void> {
+    if (item.userRhythmId) {
+      // Ritmo pessoal do usuário
+      const rhythm = this.userRhythmService.getById(item.userRhythmId);
+      if (rhythm) {
+        await this.loadUserRhythm(rhythm.name, rhythm.bpm, rhythm.rhythm_data);
+      } else {
+        this.uiManager.showAlert(`Ritmo "${item.name}" não encontrado`);
+      }
+    } else {
+      // Ritmo da biblioteca
+      await this.loadRhythm(item.name, item.path);
+    }
   }
 
   private updateSetlistUI(): void {
@@ -3608,7 +3631,7 @@ class RhythmSequencer {
       if (!this.isAdminMode && !this.setlistManager.isEmpty()) {
         const current = this.setlistManager.getCurrentItem();
         if (current) {
-          await this.loadRhythm(current.name, current.path);
+          await this.loadSetlistItem(current);
         }
       }
     } catch (error) {
