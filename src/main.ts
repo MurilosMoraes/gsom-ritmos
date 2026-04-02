@@ -16,6 +16,7 @@ import { HapticsService } from './native/HapticsService';
 import { OfflineCache } from './native/OfflineCache';
 import { StatusBarService } from './native/StatusBarService';
 import { PushService } from './native/PushService';
+import { UserRhythmService } from './core/UserRhythmService';
 
 class RhythmSequencer {
   private audioContext: AudioContext;
@@ -28,6 +29,7 @@ class RhythmSequencer {
   private modalManager: ModalManager;
   private setlistManager: SetlistManager;
   private setlistEditor: SetlistEditorUI;
+  private userRhythmService: UserRhythmService;
   private isAdminMode = false;
   private userRole: 'user' | 'admin' = 'user';
   private rhythmVersion: number = 0;
@@ -49,6 +51,7 @@ class RhythmSequencer {
     this.modalManager = new ModalManager();
     this.setlistManager = new SetlistManager();
     this.setlistEditor = new SetlistEditorUI();
+    this.userRhythmService = new UserRhythmService();
 
     // Setlist onChange — não atualizar UI automaticamente durante navegação
     // A UI é atualizada explicitamente após cada ação
@@ -175,6 +178,7 @@ class RhythmSequencer {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           await this.setlistManager.initWithUser(session.user.id, supabase);
+          await this.userRhythmService.initWithUser(session.user.id, supabase);
         }
       } catch {
         // Offline — setlist usa cache local automaticamente
@@ -2352,6 +2356,197 @@ class RhythmSequencer {
 
   // ─── Modal de telefone (usuários antigos sem WhatsApp) ──────────
 
+  // ─── Meus Ritmos ───────────────────────────────────────────────────
+
+  private showSaveRhythmModal(): void {
+    if (!this.currentRhythmName && !this.stateManager.getState().patterns.main.some(r => r.some(s => s))) {
+      this.modalManager.show('Meus Ritmos', 'Carregue um ritmo antes de salvar.', 'warning');
+      return;
+    }
+
+    const currentBpm = this.stateManager.getTempo();
+    const suggestedName = this.currentRhythmName || 'Meu Ritmo';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'account-modal-overlay';
+    overlay.innerHTML = `
+      <div class="account-modal" style="max-width:380px;">
+        <button class="account-modal-close" id="saveRhythmClose">&times;</button>
+        <div class="account-header">
+          <div class="account-avatar" style="width:48px;height:48px;font-size:1.2rem;margin-bottom:0.5rem;background:linear-gradient(135deg,#8B5CF6,#EC4899);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          </div>
+          <div class="account-name">Salvar Meu Ritmo</div>
+          <div class="account-email">Crie uma versão personalizada com seu nome e BPM</div>
+        </div>
+
+        <div style="padding:0 0.5rem;display:flex;flex-direction:column;gap:0.75rem;">
+          <div>
+            <label style="font-size:0.65rem;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:0.3rem;">Nome do ritmo</label>
+            <input type="text" id="saveRhythmName" class="account-password-input" value="${suggestedName}" placeholder="Ex: Vaneira do João" style="text-align:center;" />
+          </div>
+          <div>
+            <label style="font-size:0.65rem;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:0.3rem;">BPM</label>
+            <input type="number" id="saveRhythmBpm" class="account-password-input" value="${currentBpm}" min="40" max="240" style="text-align:center;font-size:1.2rem;font-weight:700;" />
+          </div>
+          <div id="saveRhythmStatus" style="font-size:0.72rem;min-height:1rem;text-align:center;"></div>
+          <button id="saveRhythmConfirm" class="account-action-btn" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);box-shadow:0 4px 20px rgba(139,92,246,0.25);">Salvar</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    const close = () => {
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 200);
+    };
+
+    overlay.querySelector('#saveRhythmClose')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    const nameInput = overlay.querySelector('#saveRhythmName') as HTMLInputElement;
+    nameInput.select();
+
+    overlay.querySelector('#saveRhythmConfirm')?.addEventListener('click', async () => {
+      const name = nameInput.value.trim();
+      const bpm = parseInt((overlay.querySelector('#saveRhythmBpm') as HTMLInputElement).value);
+      const statusEl = overlay.querySelector('#saveRhythmStatus') as HTMLElement;
+
+      if (!name) {
+        statusEl.textContent = 'Dê um nome ao seu ritmo';
+        statusEl.style.color = '#FF4466';
+        return;
+      }
+      if (isNaN(bpm) || bpm < 40 || bpm > 240) {
+        statusEl.textContent = 'BPM deve ser entre 40 e 240';
+        statusEl.style.color = '#FF4466';
+        return;
+      }
+
+      statusEl.textContent = 'Salvando...';
+      statusEl.style.color = 'rgba(255,255,255,0.4)';
+
+      // Capturar estado atual como JSON do ritmo
+      const rhythmData = this.fileManager.exportProjectAsJSON();
+
+      await this.userRhythmService.save(name, bpm, rhythmData);
+
+      statusEl.textContent = 'Salvo!';
+      statusEl.style.color = '#00E68C';
+      setTimeout(close, 800);
+    });
+  }
+
+  private showMyRhythmsModal(): void {
+    const overlay = document.createElement('div');
+    overlay.className = 'account-modal-overlay';
+
+    const renderList = () => {
+      const list = this.userRhythmService.getAll();
+      const listHtml = list.length === 0
+        ? '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.2);font-size:0.82rem;">Nenhum ritmo salvo ainda.<br>Carregue um ritmo e toque no botão salvar.</div>'
+        : list.map(r => `
+          <div class="my-rhythm-item" data-id="${r.id}" style="display:flex;align-items:center;gap:0.75rem;padding:0.65rem 0.75rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;cursor:pointer;transition:all 0.12s;margin-bottom:0.4rem;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:0.85rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.name}</div>
+              <div style="font-size:0.68rem;color:rgba(255,255,255,0.3);">${r.bpm} BPM${!r.synced ? ' · pendente sync' : ''}</div>
+            </div>
+            <button class="my-rhythm-delete" data-delete-id="${r.id}" style="background:none;border:none;color:rgba(255,68,102,0.5);cursor:pointer;padding:0.3rem;font-size:1rem;line-height:1;" title="Deletar">&times;</button>
+          </div>
+        `).join('');
+
+      overlay.innerHTML = `
+        <div class="account-modal" style="max-width:400px;max-height:85vh;display:flex;flex-direction:column;">
+          <button class="account-modal-close" id="myRhythmsClose">&times;</button>
+          <div class="account-header" style="flex-shrink:0;">
+            <div class="account-avatar" style="width:48px;height:48px;font-size:1.2rem;margin-bottom:0.5rem;background:linear-gradient(135deg,#8B5CF6,#EC4899);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div class="account-name">Meus Ritmos</div>
+            <div class="account-email">${list.length} ritmo${list.length !== 1 ? 's' : ''} salvo${list.length !== 1 ? 's' : ''}</div>
+          </div>
+
+          <div style="flex:1;overflow-y:auto;padding:0 0.5rem 0.5rem;-webkit-overflow-scrolling:touch;">
+            ${listHtml}
+          </div>
+        </div>
+      `;
+
+      overlay.querySelector('#myRhythmsClose')?.addEventListener('click', close);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+      // Carregar ritmo ao clicar
+      overlay.querySelectorAll('.my-rhythm-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          if ((e.target as HTMLElement).closest('.my-rhythm-delete')) return;
+          const id = (item as HTMLElement).dataset.id!;
+          const rhythm = this.userRhythmService.getById(id);
+          if (!rhythm) return;
+
+          this.loadUserRhythm(rhythm.name, rhythm.bpm, rhythm.rhythm_data);
+          close();
+        });
+      });
+
+      // Deletar
+      overlay.querySelectorAll('.my-rhythm-delete').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = (btn as HTMLElement).dataset.deleteId!;
+          const rhythm = this.userRhythmService.getById(id);
+          if (!rhythm) return;
+          if (!confirm(`Deletar "${rhythm.name}"?`)) return;
+          await this.userRhythmService.delete(id);
+          renderList();
+        });
+      });
+    };
+
+    const close = () => {
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 200);
+    };
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+    renderList();
+  }
+
+  private async loadUserRhythm(name: string, bpm: number, rhythmData: any): Promise<void> {
+    try {
+      if (this.stateManager.isPlaying()) this.stop();
+
+      await this.fileManager.loadProjectFromData(rhythmData);
+      this.stateManager.setTempo(bpm);
+      this.currentRhythmOriginalBpm = bpm;
+
+      const patternType = this.stateManager.getEditingPattern();
+      this.stateManager.loadVariation(patternType, 0);
+
+      this.updateMIDISelectorsFromState();
+      this.updateSpecialSoundsSelectors();
+      this.updateBeatsPerBarUI();
+      this.uiManager.refreshGridDisplay();
+      this.uiManager.updateVariationButtons();
+
+      this.currentRhythmName = name;
+      const nameEl = document.getElementById('currentRhythmName');
+      if (nameEl) nameEl.textContent = name;
+
+      this.updateRhythmStripActive();
+
+      // Mostrar botão de salvar
+      const saveBtn = document.getElementById('saveAsMyRhythmBtn');
+      if (saveBtn) saveBtn.style.display = 'flex';
+
+      this.modalManager.show('Meus Ritmos', `${name} carregado!`, 'success');
+    } catch (err) {
+      this.modalManager.show('Erro', 'Não foi possível carregar o ritmo.', 'error');
+    }
+  }
+
   private showPhoneModal(userId: string): void {
     const overlay = document.createElement('div');
     overlay.className = 'account-modal-overlay';
@@ -3149,6 +3344,14 @@ class RhythmSequencer {
       );
     });
 
+    // Meus Ritmos
+    const myRhythmsBtn = document.getElementById('myRhythmsBtn');
+    myRhythmsBtn?.addEventListener('click', () => this.showMyRhythmsModal());
+
+    // Salvar como meu ritmo
+    const saveAsBtn = document.getElementById('saveAsMyRhythmBtn');
+    saveAsBtn?.addEventListener('click', () => this.showSaveRhythmModal());
+
     // Botão próximo
     const nextBtn = document.getElementById('setlistNext');
     nextBtn?.addEventListener('click', () => this.navigateSetlist('next'));
@@ -3508,6 +3711,10 @@ class RhythmSequencer {
         }
         this.updateRhythmStripActive();
         this.updateSetlistUI();
+
+        // Mostrar botão de salvar como meu ritmo
+        const saveBtn = document.getElementById('saveAsMyRhythmBtn');
+        if (saveBtn) saveBtn.style.display = 'flex';
       }
     } catch (error) {
       console.error(`Error loading rhythm ${name}:`, error);

@@ -57,10 +57,19 @@
                 <span class="fav-side-name" id="favNextName">--</span>
               </button>
             </div>
-            <button class="fav-edit-btn" id="setlistEditBtn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" opacity="0.7"/></svg>
-              FAVORITOS
-            </button>
+            <div style="display:flex;gap:0.35rem;width:100%;">
+              <button class="fav-edit-btn" id="setlistEditBtn" style="flex:1;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" opacity="0.7"/></svg>
+                FAVORITOS
+              </button>
+              <button class="fav-edit-btn" id="myRhythmsBtn" style="flex:1;color:rgba(139,92,246,0.7);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/></svg>
+                MEUS RITMOS
+              </button>
+              <button class="fav-edit-btn" id="saveAsMyRhythmBtn" style="flex:0;padding:0 0.6rem;color:rgba(0,230,140,0.7);display:none;" title="Salvar como meu ritmo">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2"/></svg>
+              </button>
+            </div>
             <div class="rhythm-strip-cards" id="rhythmStripCards" style="display:none"></div>
             <input type="text" id="rhythmSearchInput" style="display:none" />
             <button id="clearSearchBtn" style="display:none"></button>
