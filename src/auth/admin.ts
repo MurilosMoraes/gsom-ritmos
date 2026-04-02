@@ -630,13 +630,43 @@ class AdminDashboard {
 
     // Summary
     const withPhone = leads.filter(l => !!l.phone).length;
+    const withEmail = leads.filter(l => !!l.email).length;
     const summaryEl = document.getElementById('leadsSummary');
     if (summaryEl) {
       summaryEl.innerHTML = `
-        <span style="color:#FF4466;font-weight:600;">${leads.length} leads expirados</span>
+        <span style="color:#FF4466;font-weight:600;">${leads.length} leads</span>
+        <span style="color:#00D4FF;font-weight:600;">${withEmail} com email</span>
         <span style="color:#00E68C;font-weight:600;">${withPhone} com WhatsApp</span>
-        <span style="color:rgba(255,255,255,0.3);">${leads.length - withPhone} sem contato</span>
+        <button class="adm-btn adm-btn-sm adm-btn-primary" id="sendAllEmailsBtn" style="margin-left:auto;">Enviar cupom pra ${withEmail} emails</button>
+        <button class="adm-btn adm-btn-sm adm-btn-outline" id="sendTestEmailBtn">Teste</button>
       `;
+
+      // Enviar pra todos com email
+      summaryEl.querySelector('#sendAllEmailsBtn')?.addEventListener('click', async () => {
+        const emailLeads = leads.filter(l => !!l.email);
+        if (!confirm(`Enviar email de cupom LANCAMENTO pra ${emailLeads.length} leads?`)) return;
+        let sent = 0; let failed = 0;
+        for (const l of emailLeads) {
+          try {
+            await this.sendRecoveryEmail(l.email!, l.name);
+            sent++;
+          } catch { failed++; }
+        }
+        modalManager.show('Email', `${sent} enviados, ${failed} falharam`, sent > 0 ? 'success' : 'error');
+      });
+
+      // Teste — envia pro admin logado
+      summaryEl.querySelector('#sendTestEmailBtn')?.addEventListener('click', async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user?.email) return;
+        if (!confirm(`Enviar email de teste pra ${user.email}?`)) return;
+        try {
+          await this.sendRecoveryEmail(user.email, user.user_metadata?.name || 'Admin');
+          modalManager.show('Email', `Teste enviado pra ${user.email}!`, 'success');
+        } catch (e) {
+          modalManager.show('Email', `Erro: ${e}`, 'error');
+        }
+      });
     }
 
     const countEl = document.getElementById('leadsCount');
@@ -661,6 +691,10 @@ class AdminDashboard {
         ? `<a href="mailto:${l.email}" style="color:var(--adm-cyan,#00D4FF);text-decoration:none;font-size:0.78rem;">${l.email}</a>`
         : '<span style="color:rgba(255,255,255,0.15);">—</span>';
 
+      const emailBtn = l.email
+        ? `<button class="btn-action btn-edit" data-send-email="${l.id}" style="font-size:0.65rem;">Enviar cupom</button>`
+        : '';
+
       return `
         <tr>
           <td>${l.name || '—'}</td>
@@ -668,7 +702,7 @@ class AdminDashboard {
           <td>${phone}</td>
           <td><span class="badge badge-${l.subscription_plan === 'trial' ? 'warning' : 'primary'}">${l.subscription_plan}</span></td>
           <td style="color:#FF4466;">${expires}</td>
-          <td>${created}</td>
+          <td>${emailBtn}</td>
         </tr>
       `;
     }).join('');
@@ -684,6 +718,41 @@ class AdminDashboard {
       pagEl.querySelector('#leadsPrev')?.addEventListener('click', () => { this.leadsPage--; this.renderLeads(); });
       pagEl.querySelector('#leadsNext')?.addEventListener('click', () => { this.leadsPage++; this.renderLeads(); });
     }
+
+    // Bind botões individuais de email
+    tbody.querySelectorAll('[data-send-email]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.sendEmail!;
+        const lead = paged.find(l => l.id === id);
+        if (!lead?.email) return;
+        (btn as HTMLButtonElement).disabled = true;
+        (btn as HTMLElement).textContent = 'Enviando...';
+        try {
+          await this.sendRecoveryEmail(lead.email, lead.name);
+          (btn as HTMLElement).textContent = 'Enviado!';
+          (btn as HTMLElement).style.color = '#00E68C';
+        } catch {
+          (btn as HTMLElement).textContent = 'Falhou';
+          (btn as HTMLElement).style.color = '#FF4466';
+        }
+      });
+    });
+  }
+
+  // ─── Envio de email ───────────────────────────────────────────────
+
+  private async sendRecoveryEmail(to: string, name: string): Promise<void> {
+    const token = await getAuthToken();
+    const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/send-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ to, name }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Erro ao enviar');
   }
 
   // ─── Cupons ────────────────────────────────────────────────────────
