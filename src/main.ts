@@ -3531,7 +3531,6 @@ class RhythmSequencer {
 
   private async loadSetlistItem(item: { name: string; path: string; userRhythmId?: string }): Promise<void> {
     if (item.userRhythmId) {
-      // Ritmo pessoal do usuário
       const rhythm = this.userRhythmService.getById(item.userRhythmId);
       if (rhythm) {
         await this.loadUserRhythm(rhythm.name, rhythm.bpm, rhythm.rhythm_data);
@@ -3539,9 +3538,13 @@ class RhythmSequencer {
         this.uiManager.showAlert(`Ritmo "${item.name}" não encontrado`);
       }
     } else {
-      // Ritmo da biblioteca
       await this.loadRhythm(item.name, item.path);
     }
+    // Atualizar UI do setlist (posição, nomes dos vizinhos, strip)
+    this.updateSetlistUI();
+    this.uiManager.updatePerformanceGrid();
+    this.uiManager.updateTempoUI(this.stateManager.getTempo());
+    this.uiManager.updateVariationButtons();
   }
 
   private updateSetlistUI(): void {
