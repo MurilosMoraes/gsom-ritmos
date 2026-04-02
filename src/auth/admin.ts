@@ -16,6 +16,8 @@ interface Profile {
   created_at: string;
   updated_at: string;
   active_session_id: string | null;
+  phone: string | null;
+  email?: string;
 }
 
 interface Transaction {
@@ -95,6 +97,12 @@ class AdminDashboard {
   private userFilter = 'all';
   private txSearch = '';
   private txFilter = 'all';
+  private userPage = 0;
+  private txPage = 0;
+  private leadsPage = 0;
+  private leadsSearch = '';
+  private leadsFilter = 'all';
+  private readonly PAGE_SIZE = 20;
 
   constructor() {
     this.init();
@@ -165,6 +173,18 @@ class AdminDashboard {
       this.renderTransactions();
     });
 
+    // Leads
+    document.getElementById('leadsSearchInput')?.addEventListener('input', (e) => {
+      this.leadsSearch = (e.target as HTMLInputElement).value.toLowerCase();
+      this.leadsPage = 0;
+      this.renderLeads();
+    });
+    document.getElementById('leadsFilter')?.addEventListener('change', (e) => {
+      this.leadsFilter = (e.target as HTMLSelectElement).value;
+      this.leadsPage = 0;
+      this.renderLeads();
+    });
+
     // Refresh
     document.getElementById('refreshDataBtn')?.addEventListener('click', async () => {
       await this.loadData();
@@ -195,6 +215,7 @@ class AdminDashboard {
       case 'users': this.renderUsers(); break;
       case 'subscriptions': this.renderTransactions(); break;
       case 'coupons': this.renderCoupons(); break;
+      case 'leads': this.renderLeads(); break;
     }
   }
 
@@ -208,7 +229,13 @@ class AdminDashboard {
     const active = realUsers.filter(p =>
       p.subscription_status === 'active' && p.subscription_plan !== 'free' && p.subscription_plan !== 'trial'
     ).length;
-    const trials = realUsers.filter(p => p.subscription_status === 'trial').length;
+    const now = new Date();
+    const trials = realUsers.filter(p => p.subscription_status === 'trial' && p.subscription_expires_at && new Date(p.subscription_expires_at) > now).length;
+    const expired = realUsers.filter(p => {
+      if (p.subscription_status === 'expired' || p.subscription_status === 'canceled') return true;
+      if (p.subscription_expires_at && new Date(p.subscription_expires_at) <= now) return true;
+      return false;
+    }).length;
     const confirmed = this.transactions.filter(t => t.status === 'confirmed' && !adminIds.has(t.user_id));
     const revenue = confirmed.reduce((sum, t) => sum + (t.amount_cents || 0), 0);
 
@@ -217,6 +244,25 @@ class AdminDashboard {
     if (el('activeSubscriptions')) el('activeSubscriptions')!.textContent = active.toString();
     if (el('totalRevenue')) el('totalRevenue')!.textContent = `R$ ${(revenue / 100).toFixed(2)}`;
     if (el('growthRate')) el('growthRate')!.textContent = `${trials}`;
+
+    // KPIs extras (trial ativo vs expirado)
+    const kpiGrid = el('kpiGrid');
+    if (kpiGrid) {
+      const existingExtra = kpiGrid.querySelector('.adm-kpi-extra');
+      if (existingExtra) existingExtra.remove();
+      const extraKpi = document.createElement('div');
+      extraKpi.className = 'adm-kpi adm-kpi-extra';
+      extraKpi.innerHTML = `
+        <div class="adm-kpi-icon" style="background:rgba(255,68,102,0.1);color:#FF4466;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <div class="adm-kpi-body">
+          <span class="adm-kpi-value">${expired}</span>
+          <span class="adm-kpi-label">Expirados</span>
+        </div>
+      `;
+      kpiGrid.appendChild(extraKpi);
+    }
 
     // Resumo por plano (sem admins)
     const planCounts: Record<string, number> = {};
@@ -280,11 +326,22 @@ class AdminDashboard {
         p.name?.toLowerCase().includes(this.userSearch) ||
         p.id.toLowerCase().includes(this.userSearch);
       const matchFilter = this.userFilter === 'all' ||
-        p.subscription_status === this.userFilter;
+        p.subscription_status === this.userFilter ||
+        (this.userFilter === 'expired' && p.subscription_expires_at && new Date(p.subscription_expires_at) <= new Date());
       return matchSearch && matchFilter;
     });
 
-    tbody.innerHTML = filtered.map(p => {
+    // Paginação
+    const totalPages = Math.ceil(filtered.length / this.PAGE_SIZE);
+    if (this.userPage >= totalPages) this.userPage = Math.max(0, totalPages - 1);
+    const start = this.userPage * this.PAGE_SIZE;
+    const paged = filtered.slice(start, start + this.PAGE_SIZE);
+
+    // Counter
+    const countEl = document.getElementById('usersCount');
+    if (countEl) countEl.textContent = `${filtered.length} usuários`;
+
+    tbody.innerHTML = paged.map(p => {
       const statusColor = p.subscription_status === 'active' ? 'success' :
         p.subscription_status === 'trial' ? 'warning' : 'error';
       const expires = p.subscription_expires_at
@@ -338,6 +395,18 @@ class AdminDashboard {
         await this.blockUser(userId, false);
       });
     });
+
+    // Paginação
+    const pagEl = document.getElementById('usersPagination');
+    if (pagEl) {
+      pagEl.innerHTML = totalPages > 1 ? `
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.userPage === 0 ? 'disabled' : ''} id="userPrev">&laquo; Anterior</button>
+        <span style="font-size:0.78rem;color:rgba(255,255,255,0.4);">${this.userPage + 1} / ${totalPages}</span>
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.userPage >= totalPages - 1 ? 'disabled' : ''} id="userNext">Próximo &raquo;</button>
+      ` : '';
+      pagEl.querySelector('#userPrev')?.addEventListener('click', () => { this.userPage--; this.renderUsers(); });
+      pagEl.querySelector('#userNext')?.addEventListener('click', () => { this.userPage++; this.renderUsers(); });
+    }
   }
 
   private async blockUser(userId: string, block: boolean): Promise<void> {
@@ -438,7 +507,13 @@ class AdminDashboard {
       return matchSearch && matchFilter;
     });
 
-    tbody.innerHTML = filtered.map(t => {
+    // Paginação
+    const totalPages = Math.ceil(filtered.length / this.PAGE_SIZE);
+    if (this.txPage >= totalPages) this.txPage = Math.max(0, totalPages - 1);
+    const start = this.txPage * this.PAGE_SIZE;
+    const paged = filtered.slice(start, start + this.PAGE_SIZE);
+
+    tbody.innerHTML = paged.map(t => {
       const user = this.profiles.find(p => p.id === t.user_id);
       const statusColor = t.status === 'confirmed' ? 'success' : t.status === 'pending' ? 'warning' : 'error';
       const date = new Date(t.created_at).toLocaleDateString('pt-BR', {
@@ -463,14 +538,135 @@ class AdminDashboard {
 
     const confirmedTotal = filtered.filter(t => t.status === 'confirmed').reduce((s, t) => s + t.amount_cents, 0);
     const pendingTotal = filtered.filter(t => t.status === 'pending').reduce((s, t) => s + t.amount_cents, 0);
+    const pendingOld = this.transactions.filter(t => {
+      if (t.status !== 'pending') return false;
+      const age = Date.now() - new Date(t.created_at).getTime();
+      return age > 24 * 60 * 60 * 1000; // > 24h
+    }).length;
 
     const summaryEl = document.getElementById('transactionsSummary');
     if (summaryEl) {
       summaryEl.innerHTML = `
         <span style="color:#00D4FF;font-weight:600;">Confirmado: R$ ${(confirmedTotal / 100).toFixed(2)}</span>
-        <span style="color:#F97316;font-weight:600;margin-left:1.5rem;">Pendente: R$ ${(pendingTotal / 100).toFixed(2)}</span>
-        <span style="color:rgba(255,255,255,0.3);margin-left:1.5rem;">${filtered.length} transações</span>
+        <span style="color:#F97316;font-weight:600;">Pendente: R$ ${(pendingTotal / 100).toFixed(2)}</span>
+        <span style="color:rgba(255,255,255,0.3);">${filtered.length} transações</span>
+        ${pendingOld > 0 ? `<button class="adm-btn adm-btn-sm adm-btn-danger" id="expirePendingBtn" style="margin-left:auto;">Expirar ${pendingOld} pendentes &gt;24h</button>` : ''}
       `;
+
+      // Expirar pendentes antigas
+      summaryEl.querySelector('#expirePendingBtn')?.addEventListener('click', async () => {
+        if (!confirm(`Expirar ${pendingOld} transações pendentes com mais de 24h?`)) return;
+        const old = this.transactions.filter(t => {
+          if (t.status !== 'pending') return false;
+          return (Date.now() - new Date(t.created_at).getTime()) > 24 * 60 * 60 * 1000;
+        });
+        for (const t of old) {
+          await adminUpdate('gdrums_transactions', t.id, { status: 'expired' });
+        }
+        await this.loadData();
+        this.renderTransactions();
+        this.renderDashboard();
+        modalManager.show('Admin', `${old.length} transações expiradas!`, 'success');
+      });
+    }
+
+    // Paginação
+    const pagEl = document.getElementById('txPagination');
+    if (pagEl) {
+      pagEl.innerHTML = totalPages > 1 ? `
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.txPage === 0 ? 'disabled' : ''} id="txPrev">&laquo; Anterior</button>
+        <span style="font-size:0.78rem;color:rgba(255,255,255,0.4);">${this.txPage + 1} / ${totalPages}</span>
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.txPage >= totalPages - 1 ? 'disabled' : ''} id="txNext">Próximo &raquo;</button>
+      ` : '';
+      pagEl.querySelector('#txPrev')?.addEventListener('click', () => { this.txPage--; this.renderTransactions(); });
+      pagEl.querySelector('#txNext')?.addEventListener('click', () => { this.txPage++; this.renderTransactions(); });
+    }
+  }
+
+  // ─── Leads (expirados para contato) ─────────────────────────────────
+
+  private renderLeads(): void {
+    const tbody = document.getElementById('leadsTableBody');
+    if (!tbody) return;
+
+    const now = new Date();
+    // Leads = usuários não-admin que expiraram
+    let leads = this.profiles.filter(p => {
+      if (p.role === 'admin') return false;
+      if (p.subscription_status === 'expired' || p.subscription_status === 'canceled') return true;
+      if (p.subscription_expires_at && new Date(p.subscription_expires_at) <= now) return true;
+      return false;
+    });
+
+    // Filtros
+    if (this.leadsSearch) {
+      leads = leads.filter(l =>
+        l.name?.toLowerCase().includes(this.leadsSearch) ||
+        l.phone?.includes(this.leadsSearch) ||
+        l.id.toLowerCase().includes(this.leadsSearch)
+      );
+    }
+    if (this.leadsFilter === 'trial_expired') {
+      leads = leads.filter(l => l.subscription_plan === 'trial');
+    } else if (this.leadsFilter === 'sub_expired') {
+      leads = leads.filter(l => l.subscription_plan !== 'trial' && l.subscription_plan !== 'free');
+    } else if (this.leadsFilter === 'has_phone') {
+      leads = leads.filter(l => !!l.phone);
+    } else if (this.leadsFilter === 'no_phone') {
+      leads = leads.filter(l => !l.phone);
+    }
+
+    // Summary
+    const withPhone = leads.filter(l => !!l.phone).length;
+    const summaryEl = document.getElementById('leadsSummary');
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <span style="color:#FF4466;font-weight:600;">${leads.length} leads expirados</span>
+        <span style="color:#00E68C;font-weight:600;">${withPhone} com WhatsApp</span>
+        <span style="color:rgba(255,255,255,0.3);">${leads.length - withPhone} sem contato</span>
+      `;
+    }
+
+    const countEl = document.getElementById('leadsCount');
+    if (countEl) countEl.textContent = `${leads.length} leads`;
+
+    // Paginação
+    const totalPages = Math.ceil(leads.length / this.PAGE_SIZE);
+    if (this.leadsPage >= totalPages) this.leadsPage = Math.max(0, totalPages - 1);
+    const start = this.leadsPage * this.PAGE_SIZE;
+    const paged = leads.slice(start, start + this.PAGE_SIZE);
+
+    tbody.innerHTML = paged.map(l => {
+      const expires = l.subscription_expires_at
+        ? new Date(l.subscription_expires_at).toLocaleDateString('pt-BR')
+        : '—';
+      const created = new Date(l.created_at).toLocaleDateString('pt-BR');
+      const phone = l.phone
+        ? `<a href="https://wa.me/55${l.phone}" target="_blank" style="color:#00E68C;text-decoration:none;">${l.phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}</a>`
+        : '<span style="color:rgba(255,255,255,0.15);">—</span>';
+
+      return `
+        <tr>
+          <td>${l.name || '—'}</td>
+          <td style="font-size:0.75rem;color:rgba(255,255,255,0.4);">${l.id.slice(0, 8)}...</td>
+          <td>${phone}</td>
+          <td><span class="badge badge-${l.subscription_plan === 'trial' ? 'warning' : 'primary'}">${l.subscription_plan}</span></td>
+          <td style="color:#FF4466;">${expires}</td>
+          <td>${created}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // Paginação
+    const pagEl = document.getElementById('leadsPagination');
+    if (pagEl) {
+      pagEl.innerHTML = totalPages > 1 ? `
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.leadsPage === 0 ? 'disabled' : ''} id="leadsPrev">&laquo; Anterior</button>
+        <span style="font-size:0.78rem;color:rgba(255,255,255,0.4);">${this.leadsPage + 1} / ${totalPages}</span>
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.leadsPage >= totalPages - 1 ? 'disabled' : ''} id="leadsNext">Próximo &raquo;</button>
+      ` : '';
+      pagEl.querySelector('#leadsPrev')?.addEventListener('click', () => { this.leadsPage--; this.renderLeads(); });
+      pagEl.querySelector('#leadsNext')?.addEventListener('click', () => { this.leadsPage++; this.renderLeads(); });
     }
   }
 

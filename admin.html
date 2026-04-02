@@ -27,6 +27,7 @@
       <a href="#users" class="adm-nav-item" data-section="users"><span>Usuários</span></a>
       <a href="#subscriptions" class="adm-nav-item" data-section="subscriptions"><span>Transações</span></a>
       <a href="#coupons" class="adm-nav-item" data-section="coupons"><span>Cupons</span></a>
+      <a href="#leads" class="adm-nav-item" data-section="leads"><span>Leads</span></a>
     </nav>
 
     <div class="adm-shell">
@@ -49,6 +50,10 @@
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
             <span>Cupons</span>
           </a>
+          <a href="#leads" class="adm-nav-item" data-section="leads">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            <span>Leads</span>
+          </a>
         </nav>
       </aside>
 
@@ -65,7 +70,7 @@
             </button>
           </div>
 
-          <div class="adm-kpi-grid">
+          <div class="adm-kpi-grid" id="kpiGrid">
             <div class="adm-kpi">
               <div class="adm-kpi-icon adm-kpi-blue">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
@@ -120,6 +125,7 @@
         <section id="usersSection" class="adm-section">
           <div class="adm-section-top">
             <h2 class="adm-title">Usuários</h2>
+            <span id="usersCount" style="font-size:0.78rem;color:rgba(255,255,255,0.3);"></span>
           </div>
 
           <div class="adm-filters">
@@ -150,6 +156,7 @@
               <tbody id="usersTableBody"></tbody>
             </table>
           </div>
+          <div id="usersPagination" style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1rem;"></div>
         </section>
 
         <!-- ═══ Transações ═══ -->
@@ -186,6 +193,7 @@
               <tbody id="subscriptionsTableBody"></tbody>
             </table>
           </div>
+          <div id="txPagination" style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1rem;"></div>
         </section>
 
         <!-- ═══ Cupons ═══ -->
@@ -214,6 +222,44 @@
               <tbody id="couponsTableBody"></tbody>
             </table>
           </div>
+        </section>
+
+        <!-- ═══ Leads (expirados) ═══ -->
+        <section id="leadsSection" class="adm-section">
+          <div class="adm-section-top">
+            <h2 class="adm-title">Leads</h2>
+            <span id="leadsCount" style="font-size:0.78rem;color:rgba(255,255,255,0.3);"></span>
+          </div>
+
+          <div class="adm-summary" id="leadsSummary"></div>
+
+          <div class="adm-filters">
+            <input type="text" class="adm-input" id="leadsSearchInput" placeholder="Buscar por nome, email ou telefone..." />
+            <select class="adm-select" id="leadsFilter">
+              <option value="all">Todos os leads</option>
+              <option value="trial_expired">Trial expirado</option>
+              <option value="sub_expired">Assinatura expirada</option>
+              <option value="has_phone">Com telefone</option>
+              <option value="no_phone">Sem telefone</option>
+            </select>
+          </div>
+
+          <div class="adm-table-wrap">
+            <table class="adm-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Email</th>
+                  <th>WhatsApp</th>
+                  <th>Plano</th>
+                  <th>Expirou em</th>
+                  <th>Cadastro</th>
+                </tr>
+              </thead>
+              <tbody id="leadsTableBody"></tbody>
+            </table>
+          </div>
+          <div id="leadsPagination" style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1rem;"></div>
         </section>
 
       </main>
