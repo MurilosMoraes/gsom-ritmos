@@ -1,5 +1,5 @@
 {
-  "version": 16,
+  "version": 17,
   "rhythms": [
     "Arrocha.json",
     "Axe.json",
@@ -41,57 +41,5 @@
     "Worship (tribal).json",
     "Xote.json",
     "Xote Nordestino.json"
-  ],
-  "categories": {
-    "Brasileiro": [
-      "Arrocha.json",
-      "Axe.json",
-      "Baiao.json",
-      "Bolero.json",
-      "Bossa Nova.json",
-      "Calypso.json",
-      "Forro.json",
-      "Frevo.json",
-      "Lambada.json",
-      "MPB.json",
-      "Marcha de Carnaval.json",
-      "Pagode.json",
-      "Pisadinha.json",
-      "Pop MPB.json",
-      "Samba.json",
-      "Samba Rock.json",
-      "Seresta.json"
-    ],
-    "Pop/Rock": [
-      "Balada 6-8.json",
-      "Country.json",
-      "Disco.json",
-      "Hard Rock.json",
-      "Heavy Metal.json",
-      "Pop Lento.json",
-      "Pop Rock.json",
-      "Punk Rock.json",
-      "Rock.json"
-    ],
-    "Gaúcho": [
-      "Banda (bailao).json",
-      "Bugio.json",
-      "Chamame.json",
-      "Guarania.json",
-      "Katchaka.json",
-      "Milonga.json",
-      "Rancheira.json",
-      "Valsa.json",
-      "Vaneira.json",
-      "Xote.json",
-      "Xote Nordestino.json"
-    ],
-    "Gospel": [
-      "Gospel.json",
-      "Worship (tribal).json"
-    ],
-    "Reggae": [
-      "Reggae.json"
-    ]
-  }
+  ]
 }
