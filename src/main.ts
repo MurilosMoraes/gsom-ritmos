@@ -2715,6 +2715,12 @@ class RhythmSequencer {
           <input type="range" class="bpm-slider" id="bpmSlider" min="40" max="240" value="${currentTempo}" />
         </div>
 
+        <button class="bpm-tap-btn" id="bpmTapBtn">
+          <span class="bpm-tap-icon">👆</span>
+          <span class="bpm-tap-label">TAP TEMPO</span>
+          <span class="bpm-tap-hint" id="bpmTapHint">Toque no ritmo da música</span>
+        </button>
+
         <div class="bpm-presets" id="bpmPresets">
           ${presets.map(p => `<button class="bpm-preset${p === currentTempo ? ' active' : ''}" data-bpm="${p}">${p}</button>`).join('')}
         </div>
@@ -2761,6 +2767,50 @@ class RhythmSequencer {
       }
     });
     input.addEventListener('focus', () => input.select());
+
+    // Tap Tempo
+    const tapBtn = overlay.querySelector('#bpmTapBtn') as HTMLElement;
+    const tapHint = overlay.querySelector('#bpmTapHint') as HTMLElement;
+    const tapTimes: number[] = [];
+    let tapResetTimeout: number | null = null;
+
+    tapBtn.addEventListener('click', () => {
+      const now = performance.now();
+      tapTimes.push(now);
+
+      // Resetar se demorou mais de 2s entre taps
+      if (tapResetTimeout) clearTimeout(tapResetTimeout);
+      tapResetTimeout = window.setTimeout(() => {
+        tapTimes.length = 0;
+        tapHint.textContent = 'Toque no ritmo da música';
+      }, 2000);
+
+      // Precisa de pelo menos 2 taps pra calcular
+      if (tapTimes.length < 2) {
+        tapHint.textContent = 'Continue tocando...';
+        return;
+      }
+
+      // Manter só os últimos 8 taps (média mais estável)
+      if (tapTimes.length > 8) tapTimes.shift();
+
+      // Calcular média dos intervalos
+      let totalInterval = 0;
+      for (let i = 1; i < tapTimes.length; i++) {
+        totalInterval += tapTimes[i] - tapTimes[i - 1];
+      }
+      const avgInterval = totalInterval / (tapTimes.length - 1);
+      const bpm = Math.round(60000 / avgInterval);
+
+      if (bpm >= 40 && bpm <= 240) {
+        updateAll(bpm);
+        tapHint.textContent = `${bpm} BPM (${tapTimes.length - 1} taps)`;
+      }
+
+      // Feedback visual
+      tapBtn.classList.add('bpm-tap-active');
+      setTimeout(() => tapBtn.classList.remove('bpm-tap-active'), 100);
+    });
 
     // Presets
     presetsContainer.querySelectorAll('.bpm-preset').forEach(btn => {

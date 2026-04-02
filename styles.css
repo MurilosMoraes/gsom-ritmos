@@ -1246,6 +1246,39 @@ input:checked + .slider:before {
   color: var(--cyan);
 }
 
+/* Tap Tempo */
+.bpm-tap-btn {
+  width: 100%; padding: 0.75rem;
+  border: 2px dashed rgba(255,255,255,0.1);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.02);
+  cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+  transition: all 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  margin-bottom: 1rem;
+  font-family: inherit;
+}
+.bpm-tap-btn:hover {
+  border-color: rgba(0, 212, 255, 0.3);
+  background: rgba(0, 212, 255, 0.04);
+}
+.bpm-tap-btn:active, .bpm-tap-btn.bpm-tap-active {
+  border-color: rgba(0, 212, 255, 0.6);
+  background: rgba(0, 212, 255, 0.08);
+  transform: scale(0.97);
+}
+.bpm-tap-icon { font-size: 1.2rem; }
+.bpm-tap-label {
+  font-size: 0.7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.5);
+}
+.bpm-tap-hint {
+  font-size: 0.65rem; color: rgba(255,255,255,0.2);
+}
+
 /* Confirmar */
 .bpm-confirm {
   width: 100%; padding: 0.85rem;
