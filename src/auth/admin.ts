@@ -743,7 +743,7 @@ class AdminDashboard {
 
   private async sendRecoveryEmail(to: string, name: string): Promise<void> {
     const token = await getAuthToken();
-    const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/send-email', {
+    const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/send', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
