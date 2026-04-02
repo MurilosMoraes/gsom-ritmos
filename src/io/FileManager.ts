@@ -406,6 +406,81 @@ export class FileManager {
     }
   }
 
+  // ─── Export/Import como JSON (para ritmos pessoais) ────────────────
+
+  exportProjectAsJSON(): SavedProject {
+    const state = this.stateManager.getState();
+    return {
+      version: '1.5',
+      tempo: state.tempo,
+      beatsPerBar: state.beatsPerBar,
+      patternSteps: state.patternSteps,
+      variations: {
+        main: state.variations.main.map(v => ({
+          pattern: v.pattern,
+          volumes: v.volumes,
+          audioFiles: v.channels.map(ch => ({
+            fileName: ch.fileName,
+            audioData: '',
+            midiPath: ch.midiPath
+          })),
+          steps: v.steps,
+          speed: v.speed
+        })),
+        fill: state.variations.fill.map(v => ({
+          pattern: v.pattern,
+          volumes: v.volumes,
+          audioFiles: v.channels.map(ch => ({
+            fileName: ch.fileName,
+            audioData: '',
+            midiPath: ch.midiPath
+          })),
+          steps: v.steps,
+          speed: v.speed
+        })),
+        end: state.variations.end.map(v => ({
+          pattern: v.pattern,
+          volumes: v.volumes,
+          audioFiles: v.channels.map(ch => ({
+            fileName: ch.fileName,
+            audioData: '',
+            midiPath: ch.midiPath
+          })),
+          steps: v.steps,
+          speed: v.speed
+        })),
+        intro: state.variations.intro.map(v => ({
+          pattern: v.pattern,
+          volumes: v.volumes,
+          audioFiles: v.channels.map(ch => ({
+            fileName: ch.fileName,
+            audioData: '',
+            midiPath: ch.midiPath
+          })),
+          steps: v.steps,
+          speed: v.speed
+        }))
+      },
+      fillStartSound: {
+        fileName: state.fillStartSound.fileName,
+        midiPath: state.fillStartSound.midiPath
+      },
+      fillReturnSound: {
+        fileName: state.fillReturnSound.fileName,
+        midiPath: state.fillReturnSound.midiPath
+      },
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  async loadProjectFromData(data: SavedProject): Promise<void> {
+    if (data.patterns || data.variations) {
+      await this.loadProject(data);
+    } else {
+      throw new Error('Formato de dados não reconhecido');
+    }
+  }
+
   async savePattern(patternType: PatternType): Promise<void> {
     const state = this.stateManager.getState();
     const pattern: SavedPattern = {
