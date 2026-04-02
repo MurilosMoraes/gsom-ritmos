@@ -196,6 +196,26 @@ body {
   box-shadow: 0 8px 24px rgba(0, 212, 255, 0.4);
 }
 
+/* Hero Badge */
+.hero-badge {
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--cyan);
+  margin-bottom: 1.25rem;
+  letter-spacing: 0.3px;
+}
+
+.hero-subtext {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+}
+
 /* Hero Content */
 .hero-content {
   position: relative;
@@ -801,7 +821,9 @@ body {
   }
 
   .hero-visual {
-    order: -1;
+    order: 1;
+    max-width: 320px;
+    margin: 0 auto;
   }
 
   .demo-content {

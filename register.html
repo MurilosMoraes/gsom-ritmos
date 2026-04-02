@@ -31,6 +31,7 @@
       display: block; font-size: 0.7rem; font-weight: 600; color: rgba(255,255,255,0.4);
       text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem;
     }
+    .reg-field input[type="tel"],
     .reg-field input[type="text"],
     .reg-field input[type="email"],
     .reg-field input[type="password"] {
@@ -101,6 +102,10 @@
         <div class="reg-field">
           <label for="cpf">CPF</label>
           <input type="text" id="cpf" name="cpf" required placeholder="000.000.000-00" autocomplete="off" inputmode="numeric" maxlength="14" />
+        </div>
+        <div class="reg-field">
+          <label for="phone">WhatsApp</label>
+          <input type="tel" id="phone" name="phone" required placeholder="(00) 00000-0000" autocomplete="tel" inputmode="tel" maxlength="15" />
         </div>
         <div class="reg-field">
           <label for="email">E-mail</label>

@@ -9,6 +9,7 @@ class RegisterPage {
   private form: HTMLFormElement;
   private nameInput: HTMLInputElement;
   private cpfInput: HTMLInputElement;
+  private phoneInput: HTMLInputElement;
   private emailInput: HTMLInputElement;
   private passwordInput: HTMLInputElement;
   private confirmPasswordInput: HTMLInputElement;
@@ -21,6 +22,7 @@ class RegisterPage {
     this.form = document.getElementById('registerForm') as HTMLFormElement;
     this.nameInput = document.getElementById('name') as HTMLInputElement;
     this.cpfInput = document.getElementById('cpf') as HTMLInputElement;
+    this.phoneInput = document.getElementById('phone') as HTMLInputElement;
     this.emailInput = document.getElementById('email') as HTMLInputElement;
     this.passwordInput = document.getElementById('password') as HTMLInputElement;
     this.confirmPasswordInput = document.getElementById('confirmPassword') as HTMLInputElement;
@@ -45,6 +47,15 @@ class RegisterPage {
       this.cpfInput.value = formatCPF(this.cpfInput.value);
       const after = this.cpfInput.value.length;
       this.cpfInput.setSelectionRange(pos + (after - before), pos + (after - before));
+    });
+
+    // Máscara de telefone (00) 00000-0000
+    this.phoneInput.addEventListener('input', () => {
+      let v = this.phoneInput.value.replace(/\D/g, '').slice(0, 11);
+      if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+      else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
+      else if (v.length > 0) v = `(${v}`;
+      this.phoneInput.value = v;
     });
 
     this.setupEventListeners();
@@ -86,10 +97,11 @@ class RegisterPage {
     });
 
     if (response.success && response.user) {
-      // 4. Salvar CPF hash (trial já é setado pelo trigger do banco)
+      // 4. Salvar CPF hash e telefone (trial já é setado pelo trigger do banco)
+      const phone = this.phoneInput.value.replace(/\D/g, '');
       await supabase
         .from('gdrums_profiles')
-        .update({ cpf_hash: cpfHash })
+        .update({ cpf_hash: cpfHash, phone })
         .eq('id', response.user.id);
 
       // 5. Gerar session ID único
@@ -125,6 +137,13 @@ class RegisterPage {
     if (!validateCPF(cpf)) {
       this.showAlert('CPF inválido', 'error');
       this.cpfInput.focus();
+      return false;
+    }
+
+    const phone = this.phoneInput.value.replace(/\D/g, '');
+    if (phone.length < 10 || phone.length > 11) {
+      this.showAlert('WhatsApp inválido', 'error');
+      this.phoneInput.focus();
       return false;
     }
 
