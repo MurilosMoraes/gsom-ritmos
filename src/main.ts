@@ -205,7 +205,71 @@ class RhythmSequencer {
       this.audioManager.loadAudioFromPath('/midi/prato.mp3').then(buffer => {
         this.cymbalBuffer = buffer;
       }).catch(() => {});
+
+      // What's New — mostra novidades 1x por versão
+      setTimeout(() => this.showWhatsNew(), 1500);
     });
+  }
+
+  // ─── What's New ───────────────────────────────────────────────────
+
+  private static readonly WHATS_NEW = {
+    version: '2.0',
+    title: 'Novidades do GDrums!',
+    items: [
+      { icon: '🎵', text: '40 ritmos na biblioteca — 7 novos incluindo Frevo, Hard Rock, Heavy Metal, MPB e Samba Rock' },
+      { icon: '💾', text: 'Meus Ritmos — salve versões personalizadas com nome e BPM do seu jeito' },
+      { icon: '🎛️', text: 'Modal de BPM — ajuste com slider, presets e digitação direta' },
+      { icon: '👤', text: 'Minha Conta — veja seu plano, dias restantes e faça upgrade' },
+      { icon: '🔒', text: 'Segurança reforçada — proteção completa dos dados' },
+    ],
+  };
+
+  private showWhatsNew(): void {
+    const key = 'gdrums-whats-new-seen';
+    const seen = localStorage.getItem(key);
+    if (seen === RhythmSequencer.WHATS_NEW.version) return;
+
+    const wn = RhythmSequencer.WHATS_NEW;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'account-modal-overlay';
+    overlay.innerHTML = `
+      <div class="account-modal" style="max-width:400px;">
+        <button class="account-modal-close" id="whatsNewClose">&times;</button>
+        <div class="account-header">
+          <div class="account-avatar" style="width:52px;height:52px;font-size:1.5rem;margin-bottom:0.6rem;background:linear-gradient(135deg,var(--cyan,#00D4FF),var(--purple,#8B5CF6));">
+            🚀
+          </div>
+          <div class="account-name">${wn.title}</div>
+          <div class="account-email">Versão ${wn.version}</div>
+        </div>
+
+        <div style="padding:0 0.25rem;display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;">
+          ${wn.items.map(item => `
+            <div style="display:flex;align-items:flex-start;gap:0.6rem;padding:0.55rem 0.7rem;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:10px;">
+              <span style="font-size:1.1rem;flex-shrink:0;margin-top:0.05rem;">${item.icon}</span>
+              <span style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.4;">${item.text}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <button id="whatsNewOk" class="account-action-btn">Show! Vamos lá</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    const close = () => {
+      localStorage.setItem(key, wn.version);
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 200);
+    };
+
+    overlay.querySelector('#whatsNewClose')?.addEventListener('click', close);
+    overlay.querySelector('#whatsNewOk')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   }
 
   private async checkAccess(): Promise<boolean> {
