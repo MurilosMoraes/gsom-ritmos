@@ -55,8 +55,11 @@ export class SetlistEditorUI {
   // ─── Render ─────────────────────────────────────────────────────────
 
   private render(): void {
-    // Remover anterior
+    // Remover anterior (forçar limpeza)
     this.overlay?.remove();
+    this.overlay = null;
+    // Limpar qualquer overlay órfão
+    document.querySelectorAll('.sle-overlay').forEach(el => el.remove());
 
     this.overlay = document.createElement('div');
     this.overlay.className = 'sle-overlay';

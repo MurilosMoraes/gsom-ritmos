@@ -3451,20 +3451,30 @@ class RhythmSequencer {
     // Botão editar setlist
     const editBtn = document.getElementById('setlistEditBtn');
     editBtn?.addEventListener('click', () => {
-      // Juntar ritmos da biblioteca + ritmos pessoais no catálogo
-      const personalRhythms = this.userRhythmService.getAll().map(r => ({
-        name: r.name,
-        path: '', // não tem path — carrega via userRhythmId
-        userRhythmId: r.id,
-        isPersonal: true,
-      }));
-      const fullCatalog = [...personalRhythms, ...this.availableRhythms];
+      try {
+        // Juntar ritmos da biblioteca + ritmos pessoais no catálogo
+        const personalRhythms = (this.userRhythmService?.getAll() || []).map(r => ({
+          name: r.name,
+          path: '',
+          userRhythmId: r.id,
+          isPersonal: true,
+        }));
+        const fullCatalog = [...personalRhythms, ...this.availableRhythms];
 
-      this.setlistEditor.open(
-        fullCatalog,
-        this.setlistManager,
-        () => this.onSetlistEditorClose()
-      );
+        this.setlistEditor.open(
+          fullCatalog,
+          this.setlistManager,
+          () => this.onSetlistEditorClose()
+        );
+      } catch (err) {
+        console.error('Erro ao abrir repertório:', err);
+        // Fallback: abrir só com ritmos da biblioteca
+        this.setlistEditor.open(
+          this.availableRhythms,
+          this.setlistManager,
+          () => this.onSetlistEditorClose()
+        );
+      }
     });
 
     // Meus Ritmos
