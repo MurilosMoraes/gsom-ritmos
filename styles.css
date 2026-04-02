@@ -1279,6 +1279,24 @@ input:checked + .slider:before {
   font-size: 0.65rem; color: rgba(255,255,255,0.2);
 }
 
+/* Restaurar padrão */
+.bpm-restore {
+  width: 100%; padding: 0.55rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.4);
+  font-size: 0.75rem; font-weight: 500; font-family: inherit;
+  cursor: pointer; transition: all 0.15s;
+  margin-bottom: 0.5rem;
+  -webkit-tap-highlight-color: transparent;
+}
+.bpm-restore:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.7);
+  border-color: rgba(255,255,255,0.15);
+}
+
 /* Confirmar */
 .bpm-confirm {
   width: 100%; padding: 0.85rem;

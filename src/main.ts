@@ -2725,6 +2725,7 @@ class RhythmSequencer {
           ${presets.map(p => `<button class="bpm-preset${p === currentTempo ? ' active' : ''}" data-bpm="${p}">${p}</button>`).join('')}
         </div>
 
+        ${this.currentRhythmOriginalBpm > 0 && currentTempo !== this.currentRhythmOriginalBpm ? `<button class="bpm-restore" id="bpmRestore">Restaurar padrão (${this.currentRhythmOriginalBpm} BPM)</button>` : ''}
         <button class="bpm-confirm" id="bpmConfirm">Confirmar</button>
       </div>
     `;
@@ -2817,6 +2818,11 @@ class RhythmSequencer {
       btn.addEventListener('click', () => {
         updateAll(parseInt(btn.getAttribute('data-bpm') || '80'));
       });
+    });
+
+    // Restaurar BPM padrão do ritmo
+    overlay.querySelector('#bpmRestore')?.addEventListener('click', () => {
+      updateAll(this.currentRhythmOriginalBpm);
     });
 
     // Fechar
