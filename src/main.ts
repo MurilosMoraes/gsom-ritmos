@@ -411,7 +411,7 @@ class RhythmSequencer {
     }
 
     // Pedir telefone se não tem (usuários antigos)
-    if (profile && !profile.phone && profile.role !== 'admin') {
+    if (profile && !profile.phone) {
       this.showPhoneModal(session.user.id);
     }
 

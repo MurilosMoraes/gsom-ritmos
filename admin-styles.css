@@ -469,10 +469,18 @@ body {
 
 @media (max-width: 640px) {
   .adm-header-inner { padding: 0 1rem; }
+  .adm-main { padding: 1rem 0.75rem; }
   .adm-filters { flex-direction: column; }
   .adm-select { min-width: 100%; }
   .adm-kpi-grid { grid-template-columns: 1fr 1fr; }
   .adm-cards-row { grid-template-columns: 1fr; }
   .adm-section-top { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
   .adm-field-row { flex-direction: column; gap: 0; }
+  .adm-summary { flex-wrap: wrap; gap: 0.5rem 1rem; font-size: 0.75rem; }
+  .adm-table { min-width: 500px; }
+  .adm-table th, .adm-table td { padding: 0.5rem 0.6rem; font-size: 0.75rem; }
+  .adm-table-wrap { margin: 0 -0.75rem; border-radius: 0; border-left: none; border-right: none; }
 }
+
+/* Prevent body scroll on admin */
+body { overflow-x: hidden; max-width: 100vw; }
