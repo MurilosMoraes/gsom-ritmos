@@ -197,6 +197,17 @@ class AdminDashboard {
     this.profiles = await adminFetch('gdrums_profiles');
     this.transactions = await adminFetch('gdrums_transactions');
     this.coupons = await adminFetch('gdrums_coupons');
+
+    // Buscar emails via Edge Function
+    try {
+      const emails = await adminCall({ action: 'fetch_emails' });
+      if (Array.isArray(emails)) {
+        emails.forEach((u: { id: string; email: string }) => {
+          const p = this.profiles.find(pr => pr.id === u.id);
+          if (p) p.email = u.email;
+        });
+      }
+    } catch { /* continuar sem emails */ }
   }
 
   private switchSection(section: string): void {
@@ -602,6 +613,7 @@ class AdminDashboard {
     if (this.leadsSearch) {
       leads = leads.filter(l =>
         l.name?.toLowerCase().includes(this.leadsSearch) ||
+        l.email?.toLowerCase().includes(this.leadsSearch) ||
         l.phone?.includes(this.leadsSearch) ||
         l.id.toLowerCase().includes(this.leadsSearch)
       );
@@ -645,10 +657,14 @@ class AdminDashboard {
         ? `<a href="https://wa.me/55${l.phone}" target="_blank" style="color:#00E68C;text-decoration:none;">${l.phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}</a>`
         : '<span style="color:rgba(255,255,255,0.15);">—</span>';
 
+      const email = l.email
+        ? `<a href="mailto:${l.email}" style="color:var(--adm-cyan,#00D4FF);text-decoration:none;font-size:0.78rem;">${l.email}</a>`
+        : '<span style="color:rgba(255,255,255,0.15);">—</span>';
+
       return `
         <tr>
           <td>${l.name || '—'}</td>
-          <td style="font-size:0.75rem;color:rgba(255,255,255,0.4);">${l.id.slice(0, 8)}...</td>
+          <td>${email}</td>
           <td>${phone}</td>
           <td><span class="badge badge-${l.subscription_plan === 'trial' ? 'warning' : 'primary'}">${l.subscription_plan}</span></td>
           <td style="color:#FF4466;">${expires}</td>
