@@ -843,13 +843,40 @@ body {
     gap: 0.5rem;
   }
 
+  .navbar {
+    padding: 1rem 0;
+  }
+
+  .nav-content {
+    padding: 0 1rem;
+  }
+
+  .logo-text {
+    font-size: 1.5rem;
+  }
+
+  .logo-subtitle {
+    display: none;
+  }
+
+  .nav-links {
+    gap: 0.5rem;
+  }
+
   .nav-links a:not(.btn-nav):not(.btn-nav-secondary) {
     display: none;
   }
 
-  .btn-nav, .btn-nav-secondary {
-    padding: 0.5rem 0.8rem !important;
-    font-size: 0.8rem !important;
+  .btn-nav-secondary {
+    padding: 0.4rem 0.7rem !important;
+    font-size: 0.75rem !important;
+    border-width: 1px !important;
+  }
+
+  .btn-nav {
+    padding: 0.4rem 0.7rem !important;
+    font-size: 0.75rem !important;
+    white-space: nowrap;
   }
 
   .hero {
