@@ -111,12 +111,29 @@ class RegisterPage {
     });
 
     if (response.success && response.user) {
-      // 4. Salvar CPF hash e telefone (trial já é setado pelo trigger do banco)
+      // 4. Salvar CPF hash e telefone — com retry (trigger pode demorar pra criar o profile)
       const phone = this.phoneInput.value.replace(/\D/g, '');
-      await supabase
-        .from('gdrums_profiles')
-        .update({ cpf_hash: cpfHash, phone })
-        .eq('id', response.user.id);
+      let cpfSaved = false;
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 500));
+        const { error } = await supabase
+          .from('gdrums_profiles')
+          .update({ cpf_hash: cpfHash, phone })
+          .eq('id', response.user.id);
+        if (!error) {
+          cpfSaved = true;
+          break;
+        }
+      }
+
+      if (!cpfSaved) {
+        // CPF não salvou — deletar a conta pra não ficar sem CPF
+        await supabase.auth.signOut();
+        this.showAlert('Erro ao finalizar cadastro. Tente novamente.', 'error');
+        this.setLoading(false);
+        return;
+      }
 
       // 5. Gerar session ID único
       const sessionId = crypto.randomUUID();
