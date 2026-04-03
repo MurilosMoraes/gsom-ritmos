@@ -22,3 +22,6 @@ Thumbs.db
 .vercel
 www/
 android/local.properties
+
+# Backups (dados sensíveis)
+backup_*.json
