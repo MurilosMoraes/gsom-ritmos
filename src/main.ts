@@ -68,10 +68,12 @@ class RhythmSequencer {
   }
 
   private setupCallbacks(): void {
-    // Resume AudioContext quando volta do background (evita estralos no mobile)
+    // Retomar áudio e scheduler quando volta do background
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden && this.stateManager.isPlaying()) {
         this.audioManager.resume();
+        // Reiniciar o scheduler (timers morrem no background)
+        this.scheduler.restart();
       }
     });
 
