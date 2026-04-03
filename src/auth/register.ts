@@ -89,6 +89,20 @@ class RegisterPage {
       return;
     }
 
+    // 2b. Verificar se telefone já foi usado
+    const phone = this.phoneInput.value.replace(/\D/g, '');
+    const { data: existingPhone } = await supabase
+      .from('gdrums_profiles')
+      .select('id')
+      .eq('phone', phone)
+      .single();
+
+    if (existingPhone) {
+      this.showAlert('Este WhatsApp já possui uma conta cadastrada.', 'error');
+      this.setLoading(false);
+      return;
+    }
+
     // 3. Criar conta
     const response = await authService.register({
       name: this.nameInput.value.trim(),
