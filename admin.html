@@ -67,58 +67,34 @@
           <div class="adm-section-top">
             <h2 class="adm-title">Dashboard</h2>
             <button class="adm-btn adm-btn-outline" id="refreshDataBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
               Atualizar
             </button>
           </div>
 
-          <div class="adm-kpi-grid" id="kpiGrid">
-            <div class="adm-kpi">
-              <div class="adm-kpi-icon adm-kpi-blue">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-              </div>
-              <div class="adm-kpi-body">
-                <span class="adm-kpi-value" id="totalUsers">0</span>
-                <span class="adm-kpi-label">Usuários</span>
-              </div>
+          <div class="adm-kpi-grid" id="kpiGrid"></div>
+
+          <div class="adm-alerts" id="dashAlerts"></div>
+
+          <div class="adm-cards-row">
+            <div class="adm-card">
+              <h3 class="adm-card-title">Distribuicao por plano</h3>
+              <div class="adm-card-body" id="usersChart"></div>
             </div>
-            <div class="adm-kpi">
-              <div class="adm-kpi-icon adm-kpi-green">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              </div>
-              <div class="adm-kpi-body">
-                <span class="adm-kpi-value" id="activeSubscriptions">0</span>
-                <span class="adm-kpi-label">Assinantes Pagos</span>
-              </div>
-            </div>
-            <div class="adm-kpi">
-              <div class="adm-kpi-icon adm-kpi-gold">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-              </div>
-              <div class="adm-kpi-body">
-                <span class="adm-kpi-value" id="totalRevenue">R$ 0</span>
-                <span class="adm-kpi-label">Faturamento</span>
-              </div>
-            </div>
-            <div class="adm-kpi">
-              <div class="adm-kpi-icon adm-kpi-purple">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              </div>
-              <div class="adm-kpi-body">
-                <span class="adm-kpi-value" id="growthRate">0</span>
-                <span class="adm-kpi-label">Em Trial</span>
-              </div>
+            <div class="adm-card">
+              <h3 class="adm-card-title">Usuarios por regiao</h3>
+              <div class="adm-card-body" id="regionChart"></div>
             </div>
           </div>
 
           <div class="adm-cards-row">
             <div class="adm-card">
-              <h3 class="adm-card-title">Distribuição por Plano</h3>
-              <div class="adm-card-body" id="usersChart"></div>
+              <h3 class="adm-card-title">Ultimas transacoes</h3>
+              <div class="adm-card-body" id="subscriptionsChart"></div>
             </div>
             <div class="adm-card">
-              <h3 class="adm-card-title">Últimas Transações</h3>
-              <div class="adm-card-body" id="subscriptionsChart"></div>
+              <h3 class="adm-card-title">Completude dos dados</h3>
+              <div class="adm-card-body" id="dataChart"></div>
             </div>
           </div>
         </section>

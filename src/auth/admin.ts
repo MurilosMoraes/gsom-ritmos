@@ -17,6 +17,7 @@ interface Profile {
   updated_at: string;
   active_session_id: string | null;
   phone: string | null;
+  cpf_hash: string | null;
   email?: string;
 }
 
@@ -230,97 +231,235 @@ class AdminDashboard {
     }
   }
 
+  // ─── DDD → Estado ──────────────────────────────────────────────────
+
+  private static readonly DDD_STATE: Record<string, string> = {
+    '11':'SP','12':'SP','13':'SP','14':'SP','15':'SP','16':'SP','17':'SP','18':'SP','19':'SP',
+    '21':'RJ','22':'RJ','24':'RJ',
+    '27':'ES','28':'ES',
+    '31':'MG','32':'MG','33':'MG','34':'MG','35':'MG','37':'MG','38':'MG',
+    '41':'PR','42':'PR','43':'PR','44':'PR','45':'PR','46':'PR',
+    '47':'SC','48':'SC','49':'SC',
+    '51':'RS','53':'RS','54':'RS','55':'RS',
+    '61':'DF','62':'GO','63':'TO','64':'GO','65':'MT','66':'MT','67':'MS','68':'AC','69':'RO',
+    '71':'BA','73':'BA','74':'BA','75':'BA','77':'BA',
+    '79':'SE',
+    '81':'PE','82':'AL','83':'PB','84':'RN','85':'CE','86':'PI','87':'PE','88':'CE','89':'PI',
+    '91':'PA','92':'AM','93':'PA','94':'PA','95':'RR','96':'AP','97':'AM','98':'MA','99':'MA',
+  };
+
+  private getStateFromPhone(phone: string | null): string {
+    if (!phone || phone.length < 4) return '??';
+    // Remover código de país se tiver (55)
+    const clean = phone.startsWith('55') && phone.length > 11 ? phone.slice(2) : phone;
+    const ddd = clean.slice(0, 2);
+    return AdminDashboard.DDD_STATE[ddd] || '??';
+  }
+
   // ─── Dashboard ──────────────────────────────────────────────────────
 
   private renderDashboard(): void {
     const adminIds = new Set(this.profiles.filter(p => p.role === 'admin').map(p => p.id));
-
     const realUsers = this.profiles.filter(p => p.role !== 'admin');
-    const total = realUsers.length;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today.getTime() + 86400000);
+    const in3days = new Date(today.getTime() + 3 * 86400000);
+    const weekAgo = new Date(today.getTime() - 7 * 86400000);
+
+    // Classificar usuários
     const active = realUsers.filter(p =>
       p.subscription_status === 'active' && p.subscription_plan !== 'free' && p.subscription_plan !== 'trial'
-    ).length;
-    const now = new Date();
-    const trials = realUsers.filter(p => p.subscription_status === 'trial' && p.subscription_expires_at && new Date(p.subscription_expires_at) > now).length;
+    );
+    const trialsActive = realUsers.filter(p =>
+      p.subscription_status === 'trial' && p.subscription_expires_at && new Date(p.subscription_expires_at) > now
+    );
     const expired = realUsers.filter(p => {
       if (p.subscription_status === 'expired' || p.subscription_status === 'canceled') return true;
       if (p.subscription_expires_at && new Date(p.subscription_expires_at) <= now) return true;
       return false;
-    }).length;
+    });
+    const expiringToday = realUsers.filter(p => {
+      if (!p.subscription_expires_at) return false;
+      const exp = new Date(p.subscription_expires_at);
+      return exp >= today && exp < tomorrow;
+    });
+    const expiring3days = realUsers.filter(p => {
+      if (!p.subscription_expires_at) return false;
+      const exp = new Date(p.subscription_expires_at);
+      return exp > tomorrow && exp <= in3days;
+    });
+    const expiredRecent = expired.filter(p => {
+      if (!p.subscription_expires_at) return false;
+      return new Date(p.subscription_expires_at) >= weekAgo;
+    });
+    const withPhone = realUsers.filter(p => !!p.phone);
+    const withCpf = realUsers.filter(p => !!p.cpf_hash);
     const confirmed = this.transactions.filter(t => t.status === 'confirmed' && !adminIds.has(t.user_id));
     const revenue = confirmed.reduce((sum, t) => sum + (t.amount_cents || 0), 0);
+    const conversionRate = trialsActive.length + active.length + expired.length > 0
+      ? ((active.length / (trialsActive.length + active.length + expired.length)) * 100).toFixed(1)
+      : '0';
 
+    // Novos hoje
+    const newToday = realUsers.filter(p => new Date(p.created_at) >= today).length;
+
+    // ─── KPIs ─────────────────────────────────────────────────────
     const el = (id: string) => document.getElementById(id);
-    if (el('totalUsers')) el('totalUsers')!.textContent = total.toString();
-    if (el('activeSubscriptions')) el('activeSubscriptions')!.textContent = active.toString();
-    if (el('totalRevenue')) el('totalRevenue')!.textContent = `R$ ${(revenue / 100).toFixed(2)}`;
-    if (el('growthRate')) el('growthRate')!.textContent = `${trials}`;
-
-    // KPIs extras (trial ativo vs expirado)
     const kpiGrid = el('kpiGrid');
     if (kpiGrid) {
-      const existingExtra = kpiGrid.querySelector('.adm-kpi-extra');
-      if (existingExtra) existingExtra.remove();
-      const extraKpi = document.createElement('div');
-      extraKpi.className = 'adm-kpi adm-kpi-extra';
-      extraKpi.innerHTML = `
-        <div class="adm-kpi-icon" style="background:rgba(255,68,102,0.1);color:#FF4466;">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      kpiGrid.innerHTML = `
+        <div class="adm-kpi">
+          <div class="adm-kpi-icon adm-kpi-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+          <div class="adm-kpi-body"><span class="adm-kpi-value">${realUsers.length}</span><span class="adm-kpi-label">Total usuarios</span></div>
         </div>
-        <div class="adm-kpi-body">
-          <span class="adm-kpi-value">${expired}</span>
-          <span class="adm-kpi-label">Expirados</span>
+        <div class="adm-kpi">
+          <div class="adm-kpi-icon adm-kpi-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+          <div class="adm-kpi-body"><span class="adm-kpi-value">${active.length}</span><span class="adm-kpi-label">Assinantes pagos</span></div>
+        </div>
+        <div class="adm-kpi">
+          <div class="adm-kpi-icon adm-kpi-gold"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+          <div class="adm-kpi-body"><span class="adm-kpi-value">R$ ${(revenue / 100).toFixed(0)}</span><span class="adm-kpi-label">Faturamento</span></div>
+        </div>
+        <div class="adm-kpi">
+          <div class="adm-kpi-icon adm-kpi-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="adm-kpi-body"><span class="adm-kpi-value">${trialsActive.length}</span><span class="adm-kpi-label">Em trial</span></div>
+        </div>
+        <div class="adm-kpi">
+          <div class="adm-kpi-icon adm-kpi-red"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+          <div class="adm-kpi-body"><span class="adm-kpi-value">${expired.length}</span><span class="adm-kpi-label">Expirados</span></div>
+        </div>
+        <div class="adm-kpi">
+          <div class="adm-kpi-icon adm-kpi-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+          <div class="adm-kpi-body"><span class="adm-kpi-value">${conversionRate}%</span><span class="adm-kpi-label">Conversao</span></div>
         </div>
       `;
-      kpiGrid.appendChild(extraKpi);
     }
 
-    // Resumo por plano (sem admins)
-    const planCounts: Record<string, number> = {};
-    realUsers.forEach(p => {
-      if (p.subscription_status === 'active' || p.subscription_status === 'trial') {
-        planCounts[p.subscription_plan] = (planCounts[p.subscription_plan] || 0) + 1;
-      }
-    });
+    // ─── Alertas ──────────────────────────────────────────────────
+    const alertsEl = el('dashAlerts');
+    if (alertsEl) {
+      const alerts: string[] = [];
 
+      if (expiringToday.length > 0) {
+        alerts.push(`<div class="adm-alert adm-alert-danger">
+          <span class="adm-alert-count">${expiringToday.length}</span>
+          <span class="adm-alert-text">expirando hoje: ${expiringToday.map(p => p.name?.split(' ')[0]).join(', ')}</span>
+        </div>`);
+      }
+      if (expiring3days.length > 0) {
+        alerts.push(`<div class="adm-alert adm-alert-warn">
+          <span class="adm-alert-count">${expiring3days.length}</span>
+          <span class="adm-alert-text">expiram nos proximos 3 dias</span>
+        </div>`);
+      }
+      if (newToday > 0) {
+        alerts.push(`<div class="adm-alert adm-alert-info">
+          <span class="adm-alert-count">${newToday}</span>
+          <span class="adm-alert-text">novos cadastros hoje</span>
+        </div>`);
+      }
+      if (expiredRecent.length > 0) {
+        alerts.push(`<div class="adm-alert adm-alert-warn">
+          <span class="adm-alert-count">${expiredRecent.length}</span>
+          <span class="adm-alert-text">expiraram nos ultimos 7 dias — leads quentes</span>
+        </div>`);
+      }
+
+      alertsEl.innerHTML = alerts.join('');
+    }
+
+    // ─── Cards ────────────────────────────────────────────────────
+
+    // Distribuição por plano
     const chartEl = el('usersChart');
     if (chartEl) {
-      chartEl.innerHTML = `
-        <div style="padding:1rem;">
-          <h4 style="color:#fff;margin:0 0 1rem;font-size:0.9rem;">Distribuição por plano</h4>
-          ${Object.entries(planCounts).map(([plan, count]) => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-              <span style="color:rgba(255,255,255,0.7);font-size:0.85rem;text-transform:capitalize;">${plan || 'sem plano'}</span>
-              <span style="color:#00D4FF;font-weight:700;font-size:0.85rem;">${count}</span>
-            </div>
-          `).join('')}
-        </div>
-      `;
+      const planCounts: Record<string, number> = {};
+      realUsers.forEach(p => {
+        if (p.subscription_status === 'active' || (p.subscription_status === 'trial' && p.subscription_expires_at && new Date(p.subscription_expires_at) > now)) {
+          planCounts[p.subscription_plan] = (planCounts[p.subscription_plan] || 0) + 1;
+        }
+      });
+      const maxPlan = Math.max(...Object.values(planCounts), 1);
+
+      chartEl.innerHTML = Object.entries(planCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([plan, count]) => `
+          <div class="adm-bar-row">
+            <span class="adm-bar-label" style="width:60px;font-size:0.68rem;">${plan}</span>
+            <div class="adm-bar-track"><div class="adm-bar-fill" style="width:${(count/maxPlan*100)}%"></div></div>
+            <span class="adm-bar-count">${count}</span>
+          </div>
+        `).join('') || '<div style="color:var(--a-text3);font-size:0.75rem;">Nenhum ativo</div>';
     }
 
+    // Distribuição por região (DDD)
+    const regionEl = el('regionChart');
+    if (regionEl) {
+      const regionCounts: Record<string, number> = {};
+      withPhone.forEach(p => {
+        const state = this.getStateFromPhone(p.phone);
+        if (state !== '??') regionCounts[state] = (regionCounts[state] || 0) + 1;
+      });
+      const sorted = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      const maxRegion = sorted.length > 0 ? sorted[0][1] : 1;
+
+      regionEl.innerHTML = sorted.length > 0
+        ? sorted.map(([state, count]) => `
+          <div class="adm-bar-row">
+            <span class="adm-bar-label">${state}</span>
+            <div class="adm-bar-track"><div class="adm-bar-fill" style="width:${(count/maxRegion*100)}%;background:linear-gradient(90deg,var(--a-green),var(--a-cyan));"></div></div>
+            <span class="adm-bar-count">${count}</span>
+          </div>
+        `).join('')
+        : '<div style="color:var(--a-text3);font-size:0.75rem;">Sem dados de telefone</div>';
+    }
+
+    // Ultimas transações
     const txChartEl = el('subscriptionsChart');
     if (txChartEl) {
-      const recent = this.transactions.filter(t => !adminIds.has(t.user_id)).slice(0, 5);
-      txChartEl.innerHTML = `
-        <div style="padding:1rem;">
-          <h4 style="color:#fff;margin:0 0 1rem;font-size:0.9rem;">Últimas transações</h4>
-          ${recent.length === 0 ? '<p style="color:rgba(255,255,255,0.3);font-size:0.8rem;">Nenhuma transação</p>' : ''}
-          ${recent.map(t => {
-            const user = this.profiles.find(p => p.id === t.user_id);
-            const statusColor = t.status === 'confirmed' ? '#00D4FF' : t.status === 'pending' ? '#F97316' : '#ff3366';
-            return `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.8rem;">
-                <div>
-                  <span style="color:rgba(255,255,255,0.7);">${user?.name || 'Desconhecido'}</span>
-                  <span style="color:rgba(255,255,255,0.3);margin-left:0.5rem;">${t.plan}</span>
-                </div>
-                <div>
-                  <span style="color:${statusColor};font-weight:600;">R$ ${(t.amount_cents / 100).toFixed(2)}</span>
-                  <span style="color:rgba(255,255,255,0.2);margin-left:0.5rem;">${t.payment_method || ''}</span>
-                </div>
+      const recent = this.transactions.filter(t => !adminIds.has(t.user_id)).slice(0, 6);
+      txChartEl.innerHTML = recent.length === 0
+        ? '<div style="color:var(--a-text3);font-size:0.75rem;">Nenhuma transacao</div>'
+        : recent.map(t => {
+          const user = this.profiles.find(p => p.id === t.user_id);
+          const isConfirmed = t.status === 'confirmed';
+          return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.3rem 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:0.72rem;">
+              <div style="display:flex;align-items:center;gap:0.4rem;min-width:0;">
+                <span style="width:6px;height:6px;border-radius:50%;background:${isConfirmed ? 'var(--a-green)' : 'var(--a-orange)'};flex-shrink:0;"></span>
+                <span style="color:var(--a-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${user?.name?.split(' ')[0] || '?'}</span>
+                <span style="color:var(--a-text3);">${t.plan}</span>
               </div>
-            `;
-          }).join('')}
+              <span style="color:${isConfirmed ? 'var(--a-green)' : 'var(--a-orange)'};font-weight:700;flex-shrink:0;">R$ ${(t.amount_cents/100).toFixed(0)}</span>
+            </div>
+          `;
+        }).join('');
+    }
+
+    // Dados completude
+    const dataEl = el('dataChart');
+    if (dataEl) {
+      const total = realUsers.length || 1;
+      const cpfPct = Math.round((withCpf.length / total) * 100);
+      const phonePct = Math.round((withPhone.length / total) * 100);
+      const emailPct = Math.round((realUsers.filter(p => !!p.email).length / total) * 100);
+
+      dataEl.innerHTML = `
+        <div class="adm-bar-row">
+          <span class="adm-bar-label" style="width:40px;">CPF</span>
+          <div class="adm-bar-track"><div class="adm-bar-fill" style="width:${cpfPct}%;background:var(--a-purple);"></div></div>
+          <span class="adm-bar-count">${cpfPct}%</span>
+        </div>
+        <div class="adm-bar-row">
+          <span class="adm-bar-label" style="width:40px;">Tel</span>
+          <div class="adm-bar-track"><div class="adm-bar-fill" style="width:${phonePct}%;background:var(--a-green);"></div></div>
+          <span class="adm-bar-count">${phonePct}%</span>
+        </div>
+        <div class="adm-bar-row">
+          <span class="adm-bar-label" style="width:40px;">Email</span>
+          <div class="adm-bar-track"><div class="adm-bar-fill" style="width:${emailPct}%;background:var(--a-cyan);"></div></div>
+          <span class="adm-bar-count">${emailPct}%</span>
         </div>
       `;
     }
