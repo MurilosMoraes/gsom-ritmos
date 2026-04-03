@@ -56,6 +56,27 @@ export class Scheduler {
     this.startUISync();
   }
 
+  restart(): void {
+    // Limpar timers antigos (podem ter morrido no background)
+    if (this.timerId !== null) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    this.isScheduling = false;
+    this.pendingUISteps = [];
+
+    // Pular pro tempo atual (não tentar recuperar steps perdidos)
+    this.nextStepTime = this.audioManager.getCurrentTime() + 0.05;
+
+    // Reiniciar loops
+    this.tick();
+    this.startUISync();
+  }
+
   stop(): void {
     if (this.timerId !== null) {
       clearTimeout(this.timerId);
