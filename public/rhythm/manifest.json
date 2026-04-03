@@ -1,5 +1,5 @@
 {
-  "version": 18,
+  "version": 20,
   "rhythms": [
     "Arrocha.json",
     "Axe.json",
@@ -36,6 +36,7 @@
     "Samba.json",
     "Samba Rock.json",
     "Seresta.json",
+    "Seresta (Canindé).json",
     "Valsa.json",
     "Vaneira.json",
     "Worship (tribal).json",
@@ -60,7 +61,8 @@
       "Pop MPB.json",
       "Samba.json",
       "Samba Rock.json",
-      "Seresta.json"
+      "Seresta.json",
+      "Seresta (Canindé).json"
     ],
     "Pop/Rock": [
       "Balada 6-8.json",
