@@ -1,6 +1,6 @@
 {
   "version": "1.5",
-  "tempo": 122,
+  "tempo": 120,
   "beatsPerBar": 4,
   "patternSteps": {
     "main": 32,
@@ -51,13 +51,6 @@
             false,
             false,
             false,
-            true,
-            false,
-            false,
-            false,
-            false,
-            false,
-            true,
             false,
             false,
             false,
@@ -67,11 +60,18 @@
             false,
             false,
             false,
-            true,
             false,
             false,
             false,
-            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
             false,
             false,
             false,
@@ -465,11 +465,11 @@
             0,
             0.8,
             0.8,
-            0,
-            0,
+            0.14,
+            0.8,
             0.8,
             1,
-            1,
+            0.8,
             0.8,
             0.8,
             0,
@@ -483,7 +483,7 @@
             1,
             0.6,
             1,
-            1,
+            0.13,
             1,
             1,
             1,
@@ -539,8 +539,8 @@
             0,
             0,
             0,
+            0.3,
             0,
-            0,
             1,
             1,
             1,
@@ -555,7 +555,7 @@
             1,
             1,
             1,
-            1,
+            0.3,
             1
           ],
           [
@@ -838,19 +838,19 @@
             "midiPath": "/midi/bumbo.wav"
           },
           {
-            "fileName": "aro.wav",
+            "fileName": "caixa.wav",
             "audioData": "",
-            "midiPath": "/midi/aro.wav"
+            "midiPath": "/midi/caixa.wav"
           },
           {
-            "fileName": "Bloco 1.wav",
+            "fileName": "bloco 3.wav",
             "audioData": "",
-            "midiPath": "/midi/Bloco 1.wav"
+            "midiPath": "/midi/bloco 3.wav"
           },
           {
-            "fileName": "tom_2.wav",
+            "fileName": "chimbal_aberto.wav",
             "audioData": "",
-            "midiPath": "/midi/tom_2.wav"
+            "midiPath": "/midi/chimbal_aberto.wav"
           },
           {
             "fileName": "chimbal_fechado.wav",
@@ -941,7 +941,7 @@
             false,
             false,
             false,
-            false,
+            true,
             false,
             true,
             false,
@@ -959,7 +959,7 @@
             false,
             true,
             false,
-            false,
+            true,
             false,
             false,
             false,
@@ -1031,7 +1031,7 @@
             false,
             false,
             false,
-            false,
+            true,
             false
           ],
           [
@@ -1065,7 +1065,7 @@
             false,
             true,
             false,
-            true,
+            false,
             false
           ],
           [
@@ -1347,13 +1347,13 @@
             0,
             0.8,
             0.8,
-            0.8,
+            0.58,
             0,
             0.8,
             0.8,
-            0,
-            0,
+            0.14,
             0.8,
+            0.61,
             1,
             1,
             0.8,
@@ -1369,7 +1369,7 @@
             1,
             0.6,
             1,
-            1,
+            0.13,
             1,
             1,
             1,
@@ -1425,8 +1425,8 @@
             0,
             0,
             0,
+            0.3,
             0,
-            0,
             1,
             1,
             1,
@@ -1441,7 +1441,7 @@
             1,
             1,
             1,
-            1,
+            0.25,
             1
           ],
           [
@@ -1729,14 +1729,14 @@
             "midiPath": "/midi/aro.wav"
           },
           {
-            "fileName": "Bloco 1.wav",
+            "fileName": "bloco 3.wav",
             "audioData": "",
-            "midiPath": "/midi/Bloco 1.wav"
+            "midiPath": "/midi/bloco 3.wav"
           },
           {
-            "fileName": "tom_2.wav",
+            "fileName": "chimbal_aberto.wav",
             "audioData": "",
-            "midiPath": "/midi/tom_2.wav"
+            "midiPath": "/midi/chimbal_aberto.wav"
           },
           {
             "fileName": "chimbal_fechado.wav",
@@ -1823,10 +1823,6 @@
             false,
             false,
             false,
-            true,
-            false,
-            false,
-            false,
             false,
             false,
             true,
@@ -1839,11 +1835,15 @@
             false,
             false,
             false,
-            true,
+            false,
+            false,
+            false,
             false,
             false,
             false,
             true,
+            false,
+            false,
             false,
             false,
             false,
@@ -1897,6 +1897,11 @@
             false,
             false,
             false,
+            true,
+            false,
+            false,
+            false,
+            true,
             false,
             false,
             false,
@@ -1908,16 +1913,11 @@
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
+            true,
             false
           ],
           [
@@ -1931,27 +1931,27 @@
             false,
             true,
             false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            true,
             true,
             false,
             true,
             false,
             true,
             false,
-            true,
             false,
-            true,
-            true,
-            true,
             false,
             true,
             false,
-            true,
             false,
-            true,
-            false,
-            true,
-            false,
-            true,
             false
           ],
           [
@@ -2237,8 +2237,8 @@
             0,
             0.8,
             0.8,
-            0,
-            0,
+            0.14,
+            0.8,
             0.8,
             1,
             1,
@@ -2255,7 +2255,7 @@
             1,
             0.6,
             1,
-            1,
+            0.13,
             1,
             1,
             1,
@@ -2307,12 +2307,12 @@
             0,
             0,
             0,
+            0.22,
             0,
             0,
             0,
-            0,
-            0,
-            0,
+            0.24,
+            0.8,
             1,
             1,
             1,
@@ -2323,11 +2323,11 @@
             1,
             1,
             1,
+            0.23,
             1,
             1,
             1,
-            1,
-            1,
+            0.25,
             1
           ],
           [
@@ -2610,19 +2610,19 @@
             "midiPath": "/midi/bumbo.wav"
           },
           {
-            "fileName": "aro.wav",
+            "fileName": "caixa.wav",
             "audioData": "",
-            "midiPath": "/midi/aro.wav"
+            "midiPath": "/midi/caixa.wav"
           },
           {
-            "fileName": "Bloco 1.wav",
+            "fileName": "bloco 3.wav",
             "audioData": "",
-            "midiPath": "/midi/Bloco 1.wav"
+            "midiPath": "/midi/bloco 3.wav"
           },
           {
-            "fileName": "tom_2.wav",
+            "fileName": "chimbal_aberto.wav",
             "audioData": "",
-            "midiPath": "/midi/tom_2.wav"
+            "midiPath": "/midi/chimbal_aberto.wav"
           },
           {
             "fileName": "chimbal_fechado.wav",
@@ -2673,46 +2673,6 @@
       {
         "pattern": [
           [
-            true,
-            false,
-            true,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            true,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            true,
-            true,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            true,
-            true,
-            false
-          ],
-          [
             false,
             false,
             false,
@@ -2727,13 +2687,13 @@
             false,
             false,
             false,
-            false,
+            true,
             false,
             false,
             false
           ],
           [
-            false,
+            true,
             true,
             false,
             false,
@@ -2745,12 +2705,52 @@
           [
             false,
             false,
+            true,
+            true,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
             false,
             false,
             false,
             false,
             false,
-            true
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            true,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
           ],
           [
             false,
@@ -2799,7 +2799,7 @@
             0.8,
             0.8,
             0,
-            1,
+            0.5,
             1,
             1,
             1
@@ -2815,8 +2815,8 @@
             1
           ],
           [
-            0.8,
-            0.8,
+            0.63,
+            0.72,
             0.5,
             0.5,
             0.8,
@@ -2827,8 +2827,8 @@
           [
             0,
             0,
-            0.8,
-            0.8,
+            0.63,
+            0.69,
             1,
             0.5,
             0.5,
@@ -2841,7 +2841,7 @@
             0,
             1,
             1,
-            1,
+            0.5,
             1
           ],
           [
@@ -2855,13 +2855,13 @@
             1
           ],
           [
+            0.5,
             0.8,
-            0.8,
-            0,
-            0.8,
+            0.5,
+            0.5,
             1,
             1,
-            1,
+            0.5,
             1
           ],
           [
@@ -2937,14 +2937,324 @@
             "midiPath": "/midi/t3.mp3"
           },
           {
-            "fileName": "chimbal_fechado.wav",
+            "fileName": "t3 dp.wav",
             "audioData": "",
-            "midiPath": "/midi/chimbal_fechado.wav"
+            "midiPath": "/midi/t3 dp.wav"
           },
           {
-            "fileName": "chimbal_aberto.wav",
+            "fileName": "prato.mp3",
             "audioData": "",
-            "midiPath": "/midi/chimbal_aberto.wav"
+            "midiPath": "/midi/prato.mp3"
+          },
+          {
+            "fileName": "bloco 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/bloco 3.wav"
+          },
+          {
+            "fileName": "t3 dp.wav",
+            "audioData": "",
+            "midiPath": "/midi/t3 dp.wav"
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          }
+        ],
+        "steps": 8,
+        "speed": 1
+      },
+      {
+        "pattern": [
+          [
+            true,
+            false,
+            true,
+            false,
+            true,
+            true,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            true,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        ],
+        "volumes": [
+          [
+            0.8,
+            0.8,
+            0.8,
+            0,
+            0.5,
+            0.8,
+            1,
+            1
+          ],
+          [
+            0.5,
+            0.8,
+            0.8,
+            0.8,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0.63,
+            0.66,
+            0.5,
+            0.5,
+            0.8,
+            1,
+            1,
+            1
+          ],
+          [
+            0,
+            0,
+            0.63,
+            0.69,
+            1,
+            0.5,
+            0.5,
+            1
+          ],
+          [
+            0.5,
+            0,
+            0.6,
+            0.5,
+            1,
+            0.5,
+            0.5,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            0.5,
+            1
+          ],
+          [
+            0.8,
+            0.8,
+            0,
+            0.8,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0.9,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            0.5
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "audioFiles": [
+          {
+            "fileName": "bumbo.wav",
+            "audioData": "",
+            "midiPath": "/midi/bumbo.wav"
+          },
+          {
+            "fileName": "caixa.wav",
+            "audioData": "",
+            "midiPath": "/midi/caixa.wav"
+          },
+          {
+            "fileName": "t2 dp.wav",
+            "audioData": "",
+            "midiPath": "/midi/t2 dp.wav"
+          },
+          {
+            "fileName": "t3 dp.wav",
+            "audioData": "",
+            "midiPath": "/midi/t3 dp.wav"
+          },
+          {
+            "fileName": "bloco 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/bloco 3.wav"
+          },
+          {
+            "fileName": "china.wav",
+            "audioData": "",
+            "midiPath": "/midi/china.wav"
           },
           {
             "fileName": "prato.mp3",
@@ -2983,508 +3293,6 @@
       {
         "pattern": [
           [
-            true,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            true,
-            false,
-            false,
-            false,
-            true,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            true,
-            false,
-            true,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            true,
-            false,
-            false,
-            false,
-            true,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            true,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            true,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ]
-        ],
-        "volumes": [
-          [
-            0.5,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0,
-            0,
-            0,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            0.8,
-            0.8,
-            0.7,
-            0.75,
-            0,
-            0.8,
-            0.85,
-            0,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            0,
-            0,
-            0.34,
-            0.5,
-            0.5,
-            0,
-            0.34,
-            0.85,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            0,
-            0,
-            0.8,
-            0,
-            0,
-            0,
-            0.5,
-            0.8,
-            1,
-            1,
-            0.34,
-            1,
-            0.5,
-            1,
-            1,
-            1
-          ],
-          [
-            0.9,
-            0,
-            0.8,
-            0,
-            0.8,
-            0,
-            0,
-            0,
-            0.8,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            0.8,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            0.8,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0.8,
-            0,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            0.9,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            0.5,
-            1
-          ],
-          [
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ]
-        ],
-        "audioFiles": [
-          {
-            "fileName": "bumbo.wav",
-            "audioData": "",
-            "midiPath": "/midi/bumbo.wav"
-          },
-          {
-            "fileName": "caixa.wav",
-            "audioData": "",
-            "midiPath": "/midi/caixa.wav"
-          },
-          {
-            "fileName": "t1 dp.wav",
-            "audioData": "",
-            "midiPath": "/midi/t1 dp.wav"
-          },
-          {
-            "fileName": "t2 dp.wav",
-            "audioData": "",
-            "midiPath": "/midi/t2 dp.wav"
-          },
-          {
-            "fileName": "chimbal_fechado.wav",
-            "audioData": "",
-            "midiPath": "/midi/chimbal_fechado.wav"
-          },
-          {
-            "fileName": "chimbal_aberto.wav",
-            "audioData": "",
-            "midiPath": "/midi/chimbal_aberto.wav"
-          },
-          {
-            "fileName": "prato.mp3",
-            "audioData": "",
-            "midiPath": "/midi/prato.mp3"
-          },
-          {
-            "fileName": "surdo.wav",
-            "audioData": "",
-            "midiPath": "/midi/surdo.wav"
-          },
-          {
-            "fileName": "",
-            "audioData": "",
-            "midiPath": ""
-          },
-          {
-            "fileName": "",
-            "audioData": "",
-            "midiPath": ""
-          },
-          {
-            "fileName": "",
-            "audioData": "",
-            "midiPath": ""
-          },
-          {
-            "fileName": "",
-            "audioData": "",
-            "midiPath": ""
-          }
-        ],
-        "steps": 16,
-        "speed": 2
-      },
-      {
-        "pattern": [
-          [
             false,
             false,
             true,
@@ -3557,19 +3365,19 @@
             false
           ],
           [
+            true,
             false,
             false,
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
             false,
             false,
-            false,
-            false,
-            false,
+            true,
             false,
             false,
             false
@@ -3747,9 +3555,9 @@
             0,
             0.8,
             0.85,
-            0.25,
+            0.39,
             0.37,
-            0.47,
+            0.58,
             1,
             1,
             1,
@@ -3768,26 +3576,26 @@
             1,
             1,
             0.5,
-            0.41,
+            0.59,
             0.5,
             0.63,
             1,
             1
           ],
           [
-            0.9,
+            0.46,
             0,
             0.8,
-            0,
+            0.5,
             0.8,
+            0.5,
+            0.45,
             0,
-            0,
-            0,
             1,
             1,
             1,
             1,
-            1,
+            0.41,
             1,
             1,
             1
@@ -3842,7 +3650,7 @@
             1,
             1,
             1,
-            0.2,
+            0.57,
             0.65,
             1
           ],
@@ -3941,9 +3749,9 @@
             "midiPath": "/midi/t3.mp3"
           },
           {
-            "fileName": "chimbal_fechado.wav",
+            "fileName": "bloco 3.wav",
             "audioData": "",
-            "midiPath": "/midi/chimbal_fechado.wav"
+            "midiPath": "/midi/bloco 3.wav"
           },
           {
             "fileName": "chimbal_aberto.wav",
@@ -4091,7 +3899,61 @@
             false,
             false,
             false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
             true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
             false,
             false,
             false
@@ -4100,16 +3962,16 @@
             true,
             false,
             false,
+            true,
+            false,
+            false,
+            true,
             false,
             false,
             false,
+            true,
             false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
+            true,
             false,
             false,
             false
@@ -4129,62 +3991,8 @@
             false,
             false,
             false,
-            true,
+            false,
             true
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            true,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
           ],
           [
             false,
@@ -4327,7 +4135,7 @@
             1,
             1,
             1,
-            1,
+            0.66,
             1,
             1,
             1
@@ -4369,19 +4177,19 @@
             1
           ],
           [
+            0.44,
+            1,
+            1,
+            0.43,
+            1,
+            1,
+            0.4,
             1,
             1,
             1,
+            0.43,
             1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
+            0.45,
             1,
             1,
             1
@@ -4402,7 +4210,7 @@
             1,
             1,
             1,
-            1
+            0.5
           ],
           [
             1,
@@ -4470,14 +4278,14 @@
             "midiPath": "/midi/china.wav"
           },
           {
-            "fileName": "",
+            "fileName": "bloco 3.wav",
             "audioData": "",
-            "midiPath": ""
+            "midiPath": "/midi/bloco 3.wav"
           },
           {
-            "fileName": "",
+            "fileName": "surdo dp.wav",
             "audioData": "",
-            "midiPath": ""
+            "midiPath": "/midi/surdo dp.wav"
           },
           {
             "fileName": "",
@@ -4810,5 +4618,5 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-04-03T21:21:03.029Z"
+  "timestamp": "2026-04-03T22:03:42.223Z"
 }
