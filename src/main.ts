@@ -216,14 +216,14 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '2.0',
+    version: '2.1',
     title: 'Novidades do GDrums!',
     items: [
-      { icon: '🎵', text: '40 ritmos na biblioteca — 7 novos incluindo Frevo, Hard Rock, Heavy Metal, MPB e Samba Rock' },
-      { icon: '💾', text: 'Meus Ritmos — salve versões personalizadas com nome e BPM do seu jeito' },
-      { icon: '🎛️', text: 'Modal de BPM — ajuste com slider, presets e digitação direta' },
-      { icon: '👤', text: 'Minha Conta — veja seu plano, dias restantes e faça upgrade' },
-      { icon: '🔒', text: 'Segurança reforçada — proteção completa dos dados' },
+      { icon: '🎵', text: '41 ritmos na biblioteca — Seresta Caninde, Frevo, Hard Rock, Heavy Metal, MPB, Samba Rock e mais' },
+      { icon: '💾', text: 'Meus Ritmos — salve versoes personalizadas com nome e BPM do seu jeito' },
+      { icon: '🎼', text: 'Repertorio — monte a setlist do show misturando ritmos da biblioteca com os seus' },
+      { icon: '🎛️', text: 'Tap Tempo — toque no ritmo da musica e o BPM ajusta automaticamente' },
+      { icon: '👤', text: 'Minha Conta — veja seu plano, altere sua senha e faca upgrade' },
     ],
   };
 
