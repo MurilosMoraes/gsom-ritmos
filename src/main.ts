@@ -396,20 +396,29 @@ class RhythmSequencer {
     // Guardar role do usuário (vindo do banco, não do client)
     this.userRole = (profile?.role === 'admin') ? 'admin' : 'user';
 
-    // Registrar acesso sem CPF (monitoramento — não bloqueia)
-    // A segurança está no RLS (campos sensíveis imutáveis) e no registro (UI exige CPF)
+    // Bloquear contas sem CPF criadas após 03/04/2026 (trial farming)
+    // Contas antigas sem CPF passam (cadastraram antes da exigência)
     if (profile && !profile.cpf_hash && profile.role !== 'admin') {
-      fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/security-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: session.user.id,
-          email: session.user.email,
-          name: session.user.user_metadata?.name || '',
-          event: 'access_no_cpf',
-          details: 'Conta sem CPF acessou o app',
-        }),
-      }).catch(() => {});
+      const created = new Date(session.user.created_at || 0);
+      const cutoff = new Date('2026-04-03T00:00:00Z');
+
+      if (created >= cutoff) {
+        // Conta nova sem CPF = criada por API burlando a UI
+        fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/security-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: session.user.id,
+            email: session.user.email,
+            name: session.user.user_metadata?.name || '',
+            event: 'blocked_no_cpf',
+            details: 'Conta sem CPF bloqueada — possível trial farming',
+          }),
+        }).catch(() => {});
+        await supabase.auth.signOut();
+        window.location.href = '/register.html';
+        return false;
+      }
     }
 
     // Pedir telefone se não tem (usuários antigos)
