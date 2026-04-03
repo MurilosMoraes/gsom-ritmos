@@ -691,27 +691,27 @@ class AdminDashboard {
     const pendingOld = this.transactions.filter(t => {
       if (t.status !== 'pending') return false;
       const age = Date.now() - new Date(t.created_at).getTime();
-      return age > 24 * 60 * 60 * 1000; // > 24h
+      return age > 48 * 60 * 60 * 1000; // > 48h
     }).length;
 
     const summaryEl = document.getElementById('transactionsSummary');
     if (summaryEl) {
       summaryEl.innerHTML = `
-        <span style="color:#00D4FF;font-weight:600;">Confirmado: R$ ${(confirmedTotal / 100).toFixed(2)}</span>
-        <span style="color:#F97316;font-weight:600;">Pendente: R$ ${(pendingTotal / 100).toFixed(2)}</span>
-        <span style="color:rgba(255,255,255,0.3);">${filtered.length} transações</span>
-        ${pendingOld > 0 ? `<button class="adm-btn adm-btn-sm adm-btn-danger" id="expirePendingBtn" style="margin-left:auto;">Expirar ${pendingOld} pendentes &gt;24h</button>` : ''}
+        <span style="color:var(--a-cyan,#00D4FF);font-weight:600;">Confirmado: R$ ${(confirmedTotal / 100).toFixed(2)}</span>
+        <span style="color:var(--a-orange,#F97316);font-weight:600;">Pendente: R$ ${(pendingTotal / 100).toFixed(2)}</span>
+        <span style="color:var(--a-text3,rgba(255,255,255,0.3));">${filtered.length} transacoes</span>
+        ${pendingOld > 0 ? `<button class="adm-btn adm-btn-sm adm-btn-danger" id="expirePendingBtn" style="margin-left:auto;">Expirar ${pendingOld} pendentes &gt;48h</button>` : ''}
       `;
 
-      // Expirar pendentes antigas
+      // Expirar pendentes antigas via Edge Function (RLS bloqueia update de status)
       summaryEl.querySelector('#expirePendingBtn')?.addEventListener('click', async () => {
-        if (!confirm(`Expirar ${pendingOld} transações pendentes com mais de 24h?`)) return;
+        if (!confirm(`Expirar ${pendingOld} transacoes pendentes com mais de 48h?`)) return;
         const old = this.transactions.filter(t => {
           if (t.status !== 'pending') return false;
-          return (Date.now() - new Date(t.created_at).getTime()) > 24 * 60 * 60 * 1000;
+          return (Date.now() - new Date(t.created_at).getTime()) > 48 * 60 * 60 * 1000;
         });
         for (const t of old) {
-          await adminUpdate('gdrums_transactions', t.id, { status: 'expired' });
+          await adminCall({ action: 'update', table: 'gdrums_transactions', id: t.id, data: { status: 'expired' } });
         }
         await this.loadData();
         this.renderTransactions();
