@@ -3118,12 +3118,13 @@ class RhythmSequencer {
     const actionBtnEl = overlay.querySelector('#accountActionBtn');
     if (actionBtnEl) {
       actionBtnEl.addEventListener('click', () => {
-        close();
+        // Abrir em nova aba pra nao perder o estado do app
         if (status === 'active' && upgradeNextPlan) {
-          window.location.href = `/plans.html?upgrade=true&plan=${upgradeNextPlan.id}&credit=${upgradeCredit}`;
+          window.open(`/plans.html?upgrade=true&plan=${upgradeNextPlan.id}&credit=${upgradeCredit}`, '_blank');
         } else {
-          window.location.href = '/plans.html';
+          window.open('/plans.html', '_blank');
         }
+        close();
       });
     }
   }
