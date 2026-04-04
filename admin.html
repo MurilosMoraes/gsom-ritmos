@@ -30,6 +30,7 @@
       <a href="#subscriptions" class="adm-nav-item" data-section="subscriptions"><span>Transações</span></a>
       <a href="#coupons" class="adm-nav-item" data-section="coupons"><span>Cupons</span></a>
       <a href="#leads" class="adm-nav-item" data-section="leads"><span>Leads</span></a>
+      <a href="#affiliates" class="adm-nav-item" data-section="affiliates"><span>Afiliados</span></a>
     </nav>
 
     <div class="adm-shell">
@@ -55,6 +56,10 @@
           <a href="#leads" class="adm-nav-item" data-section="leads">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
             <span>Leads</span>
+          </a>
+          <a href="#affiliates" class="adm-nav-item" data-section="affiliates">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            <span>Afiliados</span>
           </a>
         </nav>
       </aside>
@@ -244,7 +249,88 @@
           <div id="leadsPagination" style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1rem;"></div>
         </section>
 
+        <!-- ═══ Afiliados ═══ -->
+        <section id="affiliatesSection" class="adm-section">
+          <div class="adm-section-top">
+            <h2 class="adm-title">Afiliados</h2>
+            <button class="adm-btn adm-btn-primary" id="addAffiliateBtn">Novo Afiliado</button>
+          </div>
+
+          <div class="adm-table-wrap">
+            <table class="adm-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Cupom</th>
+                  <th>Vendas</th>
+                  <th>Comissao</th>
+                  <th>Pago</th>
+                  <th>A pagar</th>
+                  <th>Acao</th>
+                </tr>
+              </thead>
+              <tbody id="affiliatesTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
       </main>
+    </div>
+
+    <!-- Modal: Novo Afiliado -->
+    <div class="adm-modal-overlay" id="affiliateModal">
+      <div class="adm-modal">
+        <div class="adm-modal-head">
+          <h3>Novo Afiliado</h3>
+          <button class="adm-modal-close" data-modal="affiliateModal">&times;</button>
+        </div>
+        <form id="affiliateForm">
+          <div class="adm-modal-body">
+            <div class="adm-field">
+              <label>Nome</label>
+              <input type="text" id="affName" class="adm-input" required placeholder="Nome do afiliado" />
+            </div>
+            <div class="adm-field-row">
+              <div class="adm-field">
+                <label>Email</label>
+                <input type="email" id="affEmail2" class="adm-input" required placeholder="email@exemplo.com" />
+              </div>
+              <div class="adm-field">
+                <label>Senha</label>
+                <input type="text" id="affPass" class="adm-input" required placeholder="Senha de acesso" />
+              </div>
+            </div>
+            <div class="adm-field-row">
+              <div class="adm-field">
+                <label>Telefone</label>
+                <input type="tel" id="affPhone" class="adm-input" placeholder="(00) 00000-0000" />
+              </div>
+              <div class="adm-field">
+                <label>Chave PIX</label>
+                <input type="text" id="affPix" class="adm-input" placeholder="CPF, email ou telefone" />
+              </div>
+            </div>
+            <div class="adm-field-row">
+              <div class="adm-field">
+                <label>Codigo do cupom</label>
+                <input type="text" id="affCoupon" class="adm-input" required placeholder="EX: JOAO10" style="text-transform:uppercase;" />
+              </div>
+              <div class="adm-field">
+                <label>Desconto (%)</label>
+                <input type="number" id="affDiscount" class="adm-input" value="10" min="1" max="50" />
+              </div>
+              <div class="adm-field">
+                <label>Comissao (%)</label>
+                <input type="number" id="affCommission2" class="adm-input" value="20" min="1" max="50" />
+              </div>
+            </div>
+          </div>
+          <div class="adm-modal-foot">
+            <button type="button" class="adm-btn adm-btn-ghost" data-modal="affiliateModal">Cancelar</button>
+            <button type="submit" class="adm-btn adm-btn-primary">Criar Afiliado</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- Modal: Editar Usuário -->

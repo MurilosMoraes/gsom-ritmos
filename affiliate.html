@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel do Afiliado — GDrums</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
+  <meta name="theme-color" content="#030014">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif; background:#08090d; color:#eef0f4; line-height:1.5; -webkit-font-smoothing:antialiased; }
+
+    .aff-header { background:rgba(8,9,13,0.92); backdrop-filter:blur(16px); border-bottom:1px solid rgba(255,255,255,0.06); padding:0 1.5rem; height:52px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+    .aff-brand { display:flex; align-items:center; gap:0.5rem; }
+    .aff-logo { height:22px; opacity:0.8; }
+    .aff-badge { font-size:0.55rem; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:#8B5CF6; opacity:0.6; }
+    .aff-user { font-size:0.75rem; color:#7c8091; }
+    .aff-logout { padding:0.3rem 0.7rem; background:rgba(240,68,102,0.06); border:1px solid rgba(240,68,102,0.15); border-radius:7px; color:#f04466; font-size:0.7rem; font-weight:600; cursor:pointer; font-family:inherit; border:1px solid rgba(240,68,102,0.15); margin-left:0.75rem; }
+
+    .aff-main { max-width:900px; margin:0 auto; padding:1.5rem; }
+
+    /* Login */
+    .aff-login { max-width:380px; margin:15vh auto; padding:2rem; background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.06); border-radius:18px; }
+    .aff-login h2 { text-align:center; font-size:1.1rem; margin-bottom:0.3rem; }
+    .aff-login p { text-align:center; font-size:0.78rem; color:#7c8091; margin-bottom:1.5rem; }
+    .aff-login input { width:100%; padding:0.55rem 0.8rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#eef0f4; font-size:0.85rem; font-family:inherit; outline:none; margin-bottom:0.75rem; }
+    .aff-login input:focus { border-color:rgba(139,92,246,0.4); }
+    .aff-login input::placeholder { color:#484c5e; }
+    .aff-login button { width:100%; padding:0.65rem; border:none; border-radius:10px; background:linear-gradient(135deg,#8B5CF6,#7C3AED); color:#fff; font-size:0.85rem; font-weight:700; font-family:inherit; cursor:pointer; margin-top:0.5rem; }
+    .aff-login-error { color:#f04466; font-size:0.75rem; text-align:center; min-height:1.2rem; margin-top:0.5rem; }
+
+    /* KPIs */
+    .aff-kpis { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:0.75rem; margin-bottom:1.5rem; }
+    .aff-kpi { padding:1rem; background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.06); border-radius:14px; }
+    .aff-kpi-value { font-size:1.5rem; font-weight:800; line-height:1.2; }
+    .aff-kpi-label { font-size:0.62rem; color:#484c5e; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
+
+    /* Cupom */
+    .aff-coupon { background:rgba(139,92,246,0.06); border:1px solid rgba(139,92,246,0.15); border-radius:14px; padding:1.25rem; margin-bottom:1.5rem; text-align:center; }
+    .aff-coupon-label { font-size:0.62rem; color:rgba(139,92,246,0.6); text-transform:uppercase; letter-spacing:2px; margin-bottom:0.4rem; font-weight:700; }
+    .aff-coupon-code { font-size:1.8rem; font-weight:900; color:#8B5CF6; letter-spacing:3px; margin-bottom:0.3rem; }
+    .aff-coupon-desc { font-size:0.78rem; color:#7c8091; }
+    .aff-coupon-copy { margin-top:0.75rem; padding:0.4rem 1rem; background:rgba(139,92,246,0.1); border:1px solid rgba(139,92,246,0.2); border-radius:8px; color:#8B5CF6; font-size:0.75rem; font-weight:600; cursor:pointer; font-family:inherit; }
+
+    /* Link */
+    .aff-link { background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:1rem; margin-bottom:1.5rem; }
+    .aff-link-label { font-size:0.65rem; color:#484c5e; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:0.4rem; }
+    .aff-link-url { display:flex; gap:0.5rem; align-items:center; }
+    .aff-link-url input { flex:1; padding:0.45rem 0.7rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:7px; color:#7c8091; font-size:0.75rem; font-family:inherit; outline:none; }
+    .aff-link-url button { padding:0.45rem 0.8rem; background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.15); border-radius:7px; color:#00d4ff; font-size:0.7rem; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
+
+    /* Tabela */
+    .aff-section-title { font-size:0.85rem; font-weight:700; margin-bottom:0.75rem; }
+    .aff-table-wrap { background:rgba(255,255,255,0.022); border:1px solid rgba(255,255,255,0.06); border-radius:14px; overflow-x:auto; }
+    .aff-table { width:100%; border-collapse:collapse; min-width:400px; }
+    .aff-table th { padding:0.5rem 0.75rem; text-align:left; font-size:0.6rem; font-weight:700; color:#484c5e; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .aff-table td { padding:0.5rem 0.75rem; font-size:0.78rem; border-bottom:1px solid rgba(255,255,255,0.02); }
+    .aff-table tbody tr:hover { background:rgba(255,255,255,0.02); }
+
+    .aff-empty { text-align:center; padding:2rem; color:#484c5e; font-size:0.82rem; }
+
+    /* PIX */
+    .aff-pix { background:rgba(0,230,140,0.04); border:1px solid rgba(0,230,140,0.12); border-radius:14px; padding:1rem; margin-bottom:1.5rem; }
+    .aff-pix-label { font-size:0.65rem; color:rgba(0,230,140,0.5); text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:0.3rem; }
+    .aff-pix-key { font-size:0.85rem; color:#00e68c; font-weight:600; }
+
+    .aff-footer { text-align:center; margin-top:2rem; padding:1rem; font-size:0.7rem; color:rgba(255,255,255,0.15); font-style:italic; }
+
+    @media (max-width:640px) {
+      .aff-main { padding:1rem 0.75rem; }
+      .aff-kpis { grid-template-columns:1fr 1fr; }
+      .aff-coupon-code { font-size:1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loginView">
+  <div class="aff-login">
+    <img src="/img/logo.png" alt="GDrums" style="display:block;margin:0 auto 1rem;height:32px;opacity:0.7;">
+    <h2>Painel do Afiliado</h2>
+    <p>Acesse com suas credenciais</p>
+    <input type="email" id="affEmail" placeholder="Email" autocomplete="email" />
+    <input type="password" id="affPassword" placeholder="Senha" autocomplete="current-password" />
+    <button id="affLoginBtn">Entrar</button>
+    <div class="aff-login-error" id="affLoginError"></div>
+  </div>
+</div>
+
+<div id="dashView" style="display:none;">
+  <header class="aff-header">
+    <div class="aff-brand">
+      <img src="/img/logo.png" alt="GDrums" class="aff-logo">
+      <span class="aff-badge">Afiliado</span>
+    </div>
+    <div style="display:flex;align-items:center;">
+      <span class="aff-user" id="affUserName"></span>
+      <button class="aff-logout" id="affLogoutBtn">Sair</button>
+    </div>
+  </header>
+
+  <main class="aff-main">
+    <div class="aff-kpis">
+      <div class="aff-kpi">
+        <div class="aff-kpi-value" id="affSales" style="color:#00d4ff;">0</div>
+        <div class="aff-kpi-label">Vendas</div>
+      </div>
+      <div class="aff-kpi">
+        <div class="aff-kpi-value" id="affRevenue" style="color:#f0b429;">R$ 0</div>
+        <div class="aff-kpi-label">Faturado</div>
+      </div>
+      <div class="aff-kpi">
+        <div class="aff-kpi-value" id="affCommission" style="color:#00e68c;">R$ 0</div>
+        <div class="aff-kpi-label">Comissao</div>
+      </div>
+      <div class="aff-kpi">
+        <div class="aff-kpi-value" id="affPending" style="color:#8B5CF6;">R$ 0</div>
+        <div class="aff-kpi-label">A receber</div>
+      </div>
+    </div>
+
+    <div class="aff-coupon">
+      <div class="aff-coupon-label">Seu cupom</div>
+      <div class="aff-coupon-code" id="affCouponCode">---</div>
+      <div class="aff-coupon-desc" id="affCouponDesc">---</div>
+      <button class="aff-coupon-copy" id="affCopyCoupon">Copiar cupom</button>
+    </div>
+
+    <div class="aff-link">
+      <div class="aff-link-label">Seu link de indicacao</div>
+      <div class="aff-link-url">
+        <input type="text" id="affLinkInput" readonly />
+        <button id="affCopyLink">Copiar</button>
+      </div>
+    </div>
+
+    <div class="aff-pix" id="affPixSection" style="display:none;">
+      <div class="aff-pix-label">Chave PIX cadastrada</div>
+      <div class="aff-pix-key" id="affPixKey"></div>
+    </div>
+
+    <h3 class="aff-section-title">Historico de vendas</h3>
+    <div class="aff-table-wrap">
+      <table class="aff-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Plano</th>
+            <th>Valor</th>
+            <th>Sua comissao</th>
+          </tr>
+        </thead>
+        <tbody id="affTransactions"></tbody>
+      </table>
+    </div>
+
+    <div class="aff-footer">Pra honra e gloria de Deus</div>
+  </main>
+</div>
+
+<script>
+const API = 'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api';
+
+let token = localStorage.getItem('gdrums_aff_token');
+if (token) loadDashboard();
+
+document.getElementById('affLoginBtn').addEventListener('click', login);
+document.getElementById('affPassword').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+async function login() {
+  const email = document.getElementById('affEmail').value.trim();
+  const password = document.getElementById('affPassword').value;
+  const errorEl = document.getElementById('affLoginError');
+  errorEl.textContent = '';
+
+  if (!email || !password) { errorEl.textContent = 'Preencha email e senha'; return; }
+
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'login', email, password }),
+    });
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      errorEl.textContent = data.error || 'Erro ao entrar';
+      return;
+    }
+
+    token = data.token;
+    localStorage.setItem('gdrums_aff_token', token);
+    loadDashboard();
+  } catch {
+    errorEl.textContent = 'Erro de conexao';
+  }
+}
+
+async function loadDashboard() {
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'dashboard', token }),
+    });
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      localStorage.removeItem('gdrums_aff_token');
+      token = null;
+      return;
+    }
+
+    const a = data.affiliate;
+    document.getElementById('loginView').style.display = 'none';
+    document.getElementById('dashView').style.display = 'block';
+
+    document.getElementById('affUserName').textContent = a.name;
+    document.getElementById('affSales').textContent = a.total_sales;
+    document.getElementById('affRevenue').textContent = 'R$ ' + (a.total_revenue / 100).toFixed(2);
+    document.getElementById('affCommission').textContent = 'R$ ' + (a.total_commission / 100).toFixed(2);
+    document.getElementById('affPending').textContent = 'R$ ' + ((a.total_commission - a.paid_commission) / 100).toFixed(2);
+
+    document.getElementById('affCouponCode').textContent = a.coupon_code;
+    document.getElementById('affCouponDesc').textContent = a.coupon_discount_percent + '% de desconto para o cliente | ' + a.commission_percent + '% de comissao para voce';
+
+    const link = 'https://gdrums.com.br/register.html?ref=' + a.coupon_code;
+    document.getElementById('affLinkInput').value = link;
+
+    if (a.pix_key) {
+      document.getElementById('affPixSection').style.display = 'block';
+      document.getElementById('affPixKey').textContent = a.pix_key;
+    }
+
+    // Transacoes
+    const tbody = document.getElementById('affTransactions');
+    if (data.transactions.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="aff-empty">Nenhuma venda ainda. Compartilhe seu cupom!</td></tr>';
+    } else {
+      tbody.innerHTML = data.transactions.map(t => {
+        const date = new Date(t.date).toLocaleDateString('pt-BR');
+        return '<tr><td>' + date + '</td><td>' + t.plan + '</td><td>R$ ' + (t.amount / 100).toFixed(2) + '</td><td style="color:#00e68c;font-weight:600;">R$ ' + (t.commission / 100).toFixed(2) + '</td></tr>';
+      }).join('');
+    }
+  } catch {
+    localStorage.removeItem('gdrums_aff_token');
+    token = null;
+  }
+}
+
+document.getElementById('affCopyCoupon')?.addEventListener('click', () => {
+  const code = document.getElementById('affCouponCode').textContent;
+  navigator.clipboard.writeText(code);
+  document.getElementById('affCopyCoupon').textContent = 'Copiado!';
+  setTimeout(() => document.getElementById('affCopyCoupon').textContent = 'Copiar cupom', 1500);
+});
+
+document.getElementById('affCopyLink')?.addEventListener('click', () => {
+  const link = document.getElementById('affLinkInput').value;
+  navigator.clipboard.writeText(link);
+  document.getElementById('affCopyLink').textContent = 'Copiado!';
+  setTimeout(() => document.getElementById('affCopyLink').textContent = 'Copiar', 1500);
+});
+
+document.getElementById('affLogoutBtn')?.addEventListener('click', () => {
+  localStorage.removeItem('gdrums_aff_token');
+  token = null;
+  document.getElementById('loginView').style.display = 'block';
+  document.getElementById('dashView').style.display = 'none';
+});
+</script>
+</body>
+</html>
