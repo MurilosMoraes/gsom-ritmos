@@ -15,7 +15,8 @@ export default defineConfig({
         register: './register.html',
         admin: './admin.html',
         plans: './plans.html',
-        paymentSuccess: './payment-success.html'
+        paymentSuccess: './payment-success.html',
+        affiliate: './affiliate.html'
       }
     }
   },

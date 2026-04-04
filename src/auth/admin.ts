@@ -138,7 +138,9 @@ class AdminDashboard {
     this.setupEvents();
     this.setupEditForm();
     this.setupCouponForm();
+    this.setupAffiliateForm();
     await this.loadData();
+    await this.loadAffiliates();
     this.render();
   }
 
@@ -230,6 +232,7 @@ class AdminDashboard {
       case 'subscriptions': this.renderTransactions(); break;
       case 'coupons': this.renderCoupons(); break;
       case 'leads': this.renderLeads(); break;
+      case 'affiliates': this.renderAffiliates(); break;
     }
   }
 
@@ -1124,6 +1127,162 @@ class AdminDashboard {
         await this.loadData();
         this.renderCoupons();
         modalManager.show('Admin', `Cupom ${coupon.code} ${coupon.active ? 'desativado' : 'ativado'}!`, 'success');
+      });
+    });
+  }
+
+  // ─── Afiliados ─────────────────────────────────────────────────────
+
+  private affiliates: any[] = [];
+
+  private setupAffiliateForm(): void {
+    const modal = document.getElementById('affiliateModal');
+    const form = document.getElementById('affiliateForm');
+    if (!modal || !form) return;
+
+    document.getElementById('addAffiliateBtn')?.addEventListener('click', () => {
+      modal.classList.add('active');
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = (document.getElementById('affName') as HTMLInputElement).value.trim();
+      const email = (document.getElementById('affEmail2') as HTMLInputElement).value.trim();
+      const password = (document.getElementById('affPass') as HTMLInputElement).value;
+      const phone = (document.getElementById('affPhone') as HTMLInputElement).value.replace(/\D/g, '') || null;
+      const pix_key = (document.getElementById('affPix') as HTMLInputElement).value.trim() || null;
+      const coupon_code = (document.getElementById('affCoupon') as HTMLInputElement).value.trim().toUpperCase();
+      const coupon_discount_percent = parseInt((document.getElementById('affDiscount') as HTMLInputElement).value) || 10;
+      const commission_percent = parseInt((document.getElementById('affCommission2') as HTMLInputElement).value) || 20;
+
+      if (!name || !email || !password || !coupon_code) return;
+
+      try {
+        const token = await getAuthToken();
+        const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: 'create',
+            name, email, password, phone, pix_key,
+            coupon_code, coupon_discount_percent, commission_percent,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          modalManager.show('Erro', data.error || 'Erro ao criar afiliado', 'error');
+          return;
+        }
+        modal.classList.remove('active');
+        (form as HTMLFormElement).reset();
+        await this.loadAffiliates();
+        this.renderAffiliates();
+        modalManager.show('Afiliados', `Afiliado ${name} criado com cupom ${coupon_code}!`, 'success');
+      } catch (e) {
+        modalManager.show('Erro', String(e), 'error');
+      }
+    });
+
+    modal.querySelectorAll('[data-modal]').forEach(btn => {
+      btn.addEventListener('click', () => modal.classList.remove('active'));
+    });
+  }
+
+  private async loadAffiliates(): Promise<void> {
+    try {
+      const token = await getAuthToken();
+      const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: 'list' }),
+      });
+      this.affiliates = await res.json();
+    } catch {
+      this.affiliates = [];
+    }
+  }
+
+  private renderAffiliates(): void {
+    const tbody = document.getElementById('affiliatesTableBody');
+    if (!tbody) return;
+
+    if (this.affiliates.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--a-text3);padding:2rem;">Nenhum afiliado cadastrado</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = this.affiliates.map(a => {
+      const commission = (a.total_commission || 0) / 100;
+      const paid = (a.paid_commission || 0) / 100;
+      const pending = commission - paid;
+
+      return `
+        <tr>
+          <td>
+            <div>${a.name}</div>
+            <div style="font-size:0.65rem;color:var(--a-text3);">${a.email}</div>
+          </td>
+          <td><span class="badge badge-purple" style="letter-spacing:1px;">${a.coupon_code}</span></td>
+          <td>${a.total_sales || 0}</td>
+          <td style="color:var(--a-green);">R$ ${commission.toFixed(2)}</td>
+          <td>R$ ${paid.toFixed(2)}</td>
+          <td style="color:${pending > 0 ? 'var(--a-gold)' : 'var(--a-text3)'};">R$ ${pending.toFixed(2)}</td>
+          <td>
+            <div class="action-buttons">
+              ${pending > 0 ? `<button class="btn-action btn-edit" data-pay-affiliate="${a.id}" data-pay-amount="${Math.round(pending * 100)}" style="font-size:0.6rem;">Pagar</button>` : ''}
+              <button class="btn-action ${a.active ? 'btn-delete' : 'btn-edit'}" data-toggle-affiliate="${a.id}" style="font-size:0.6rem;">${a.active ? 'Desativar' : 'Ativar'}</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Pagar comissao
+    tbody.querySelectorAll('[data-pay-affiliate]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.payAffiliate!;
+        const amount = parseInt((btn as HTMLElement).dataset.payAmount || '0');
+        const aff = this.affiliates.find(a => a.id === id);
+        if (!confirm(`Marcar pagamento de R$ ${(amount/100).toFixed(2)} pra ${aff?.name}?`)) return;
+
+        try {
+          const token = await getAuthToken();
+          await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ action: 'pay', affiliate_id: id, amount }),
+          });
+          await this.loadAffiliates();
+          this.renderAffiliates();
+          modalManager.show('Afiliados', `Pagamento de R$ ${(amount/100).toFixed(2)} registrado!`, 'success');
+        } catch {
+          modalManager.show('Erro', 'Erro ao registrar pagamento', 'error');
+        }
+      });
+    });
+
+    // Toggle ativo/inativo
+    tbody.querySelectorAll('[data-toggle-affiliate]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.toggleAffiliate!;
+        const aff = this.affiliates.find(a => a.id === id);
+        if (!aff) return;
+
+        await adminCall({
+          action: 'update',
+          table: 'gdrums_affiliates',
+          id,
+          data: { active: !aff.active, updated_at: new Date().toISOString() },
+        });
+        await this.loadAffiliates();
+        this.renderAffiliates();
+        modalManager.show('Afiliados', `${aff.name} ${aff.active ? 'desativado' : 'ativado'}`, 'success');
       });
     });
   }
