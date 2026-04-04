@@ -84,7 +84,7 @@ class RegisterPage {
       .single();
 
     if (existing) {
-      this.showAlert('Este CPF já possui uma conta cadastrada.', 'error');
+      this.showAlert('Este CPF ja possui uma conta cadastrada. Se nao consegue acessar, entre em contato pelo WhatsApp.', 'error');
       this.setLoading(false);
       return;
     }
@@ -98,7 +98,7 @@ class RegisterPage {
       .single();
 
     if (existingPhone) {
-      this.showAlert('Este WhatsApp já possui uma conta cadastrada.', 'error');
+      this.showAlert('Este WhatsApp ja possui uma conta cadastrada. Se nao consegue acessar, entre em contato pelo WhatsApp.', 'error');
       this.setLoading(false);
       return;
     }
