@@ -478,7 +478,10 @@ class RhythmSequencer {
       .limit(1)
       .single();
 
-    if (pendingTx?.order_nsu) {
+    // Tentar confirmar pedido pendente (max 1 tentativa por sessao)
+    const pendingChecked = sessionStorage.getItem('gdrums-pending-checked');
+    if (pendingTx?.order_nsu && !pendingChecked) {
+      sessionStorage.setItem('gdrums-pending-checked', '1');
       try {
         const webhookBody: Record<string, string> = { order_nsu: pendingTx.order_nsu };
         if (pendingTx.transaction_nsu) webhookBody.transaction_nsu = pendingTx.transaction_nsu;
@@ -2208,6 +2211,78 @@ class RhythmSequencer {
     return hasMainContent;
   }
 
+  private silentModeChecked = false;
+  private silentModeWarningShown = false;
+
+  private checkIOSSilentMode(): void {
+    // Tocar um oscilador de teste quase inaudível e medir volume de saída
+    // No modo silencioso do iOS, o AudioContext roda mas sem output real
+    try {
+      const ctx = this.audioContext;
+      const oscillator = ctx.createOscillator();
+      const analyser = ctx.createAnalyser();
+      const gain = ctx.createGain();
+
+      oscillator.frequency.value = 200;
+      gain.gain.value = 0.001; // quase inaudível
+      analyser.fftSize = 256;
+
+      oscillator.connect(gain);
+      gain.connect(analyser);
+      analyser.connect(ctx.destination);
+
+      oscillator.start();
+
+      // Verificar após 200ms se está produzindo output
+      setTimeout(() => {
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+        const sum = dataArray.reduce((a, b) => a + b, 0);
+
+        oscillator.stop();
+        oscillator.disconnect();
+        gain.disconnect();
+        analyser.disconnect();
+
+        // Se sum é 0, o iOS está em modo silencioso
+        if (sum === 0 && !this.silentModeWarningShown) {
+          this.silentModeWarningShown = true;
+          this.showSilentModeWarning();
+        }
+      }, 200);
+    } catch {
+      // Ignorar erros — não bloquear o play
+    }
+  }
+
+  private showSilentModeWarning(): void {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.85);backdrop-filter:blur(8px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+    overlay.innerHTML = `
+      <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,180,32,0.2);border-radius:20px;padding:2rem 1.5rem;max-width:340px;width:100%;text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:0.75rem;">🔇</div>
+        <h3 style="color:#fff;font-size:1.1rem;font-weight:700;margin:0 0 0.5rem;">Sem som?</h3>
+        <p style="color:rgba(255,255,255,0.5);font-size:0.85rem;line-height:1.6;margin:0 0 1.25rem;">
+          Verifique a <strong style="color:#FFB420;">chave de silencioso</strong> na lateral do seu iPhone.
+          Ela precisa estar desativada (sem a faixa laranja visivel) para o som funcionar.
+        </p>
+        <div style="background:rgba(255,180,32,0.06);border:1px solid rgba(255,180,32,0.15);border-radius:10px;padding:0.75rem;margin-bottom:1.25rem;">
+          <p style="color:rgba(255,255,255,0.4);font-size:0.75rem;margin:0;line-height:1.5;">
+            Tambem verifique se o volume do aparelho nao esta no minimo.
+          </p>
+        </div>
+        <button id="silentModeOk" style="width:100%;padding:0.75rem;border:none;border-radius:12px;background:linear-gradient(135deg,#FFB420,#F97316);color:#fff;font-size:0.9rem;font-weight:700;font-family:inherit;cursor:pointer;">Entendi</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.querySelector('#silentModeOk')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
   private play(): void {
     // IMPORTANTE: resume() DEVE ser chamado sincronamente dentro do gesto do usuário.
     // No iOS, qualquer await antes do resume() quebra a cadeia de gesto
@@ -2221,6 +2296,12 @@ class RhythmSequencer {
     this.uiManager.updatePerformanceGrid();
 
     this.scheduler.start();
+
+    // Detectar modo silencioso no iOS (chave lateral)
+    if (!this.silentModeChecked && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      this.silentModeChecked = true;
+      this.checkIOSSilentMode();
+    }
 
     // KeepAwake é fire-and-forget — não bloquear o play
     KeepAwake.keepAwake().catch(() => {});
