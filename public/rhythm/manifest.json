@@ -1,16 +1,18 @@
 {
-  "version": 21,
+  "version": 22,
   "rhythms": [
     "Arrocha.json",
     "Axe.json",
     "Baiao.json",
     "Balada 6-8.json",
     "Banda (bailao).json",
+    "Blues.json",
     "Bolero.json",
     "Bossa Nova.json",
     "Bugio.json",
     "Calypso.json",
     "Chamame.json",
+    "Corinho de fogo.json",
     "Country.json",
     "Disco.json",
     "Forro.json",
@@ -19,6 +21,7 @@
     "Guarania.json",
     "Hard Rock.json",
     "Heavy Metal.json",
+    "Jazz.json",
     "Katchaka.json",
     "Lambada.json",
     "MPB.json",
@@ -30,6 +33,7 @@
     "Pop MPB.json",
     "Pop Rock.json",
     "Punk Rock.json",
+    "Quadrilha.json",
     "Rancheira.json",
     "Reggae.json",
     "Rock.json",
@@ -37,6 +41,7 @@
     "Samba Rock.json",
     "Seresta.json",
     "Seresta (Canindé).json",
+    "Shuffle.json",
     "Valsa.json",
     "Vaneira.json",
     "Worship (tribal).json",
@@ -51,6 +56,7 @@
       "Bolero.json",
       "Bossa Nova.json",
       "Calypso.json",
+      "Corinho de fogo.json",
       "Forro.json",
       "Frevo.json",
       "Lambada.json",
@@ -59,6 +65,7 @@
       "Pagode.json",
       "Pisadinha.json",
       "Pop MPB.json",
+      "Quadrilha.json",
       "Samba.json",
       "Samba Rock.json",
       "Seresta.json",
@@ -66,14 +73,17 @@
     ],
     "Pop/Rock": [
       "Balada 6-8.json",
+      "Blues.json",
       "Country.json",
       "Disco.json",
       "Hard Rock.json",
       "Heavy Metal.json",
+      "Jazz.json",
       "Pop Lento.json",
       "Pop Rock.json",
       "Punk Rock.json",
-      "Rock.json"
+      "Rock.json",
+      "Shuffle.json"
     ],
     "Gaúcho": [
       "Banda (bailao).json",
@@ -89,6 +99,7 @@
       "Xote Nordestino.json"
     ],
     "Gospel": [
+      "Corinho de fogo.json",
       "Gospel.json",
       "Worship (tribal).json"
     ],
