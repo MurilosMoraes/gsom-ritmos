@@ -18,6 +18,8 @@ interface Profile {
   active_session_id: string | null;
   phone: string | null;
   cpf_hash: string | null;
+  last_contacted_at: string | null;
+  contact_method: string | null;
   email?: string;
 }
 
@@ -342,13 +344,13 @@ class AdminDashboard {
       const alerts: string[] = [];
 
       if (expiringToday.length > 0) {
-        alerts.push(`<div class="adm-alert adm-alert-danger">
+        alerts.push(`<div class="adm-alert adm-alert-danger" style="cursor:pointer;" data-goto-leads="expiring_today">
           <span class="adm-alert-count">${expiringToday.length}</span>
           <span class="adm-alert-text">expirando hoje: ${expiringToday.map(p => p.name?.split(' ')[0]).join(', ')}</span>
         </div>`);
       }
       if (expiring3days.length > 0) {
-        alerts.push(`<div class="adm-alert adm-alert-warn">
+        alerts.push(`<div class="adm-alert adm-alert-warn" style="cursor:pointer;" data-goto-leads="expiring_3days">
           <span class="adm-alert-count">${expiring3days.length}</span>
           <span class="adm-alert-text">expiram nos proximos 3 dias</span>
         </div>`);
@@ -360,13 +362,25 @@ class AdminDashboard {
         </div>`);
       }
       if (expiredRecent.length > 0) {
-        alerts.push(`<div class="adm-alert adm-alert-warn">
+        alerts.push(`<div class="adm-alert adm-alert-warn" style="cursor:pointer;" data-goto-leads="expired_7days">
           <span class="adm-alert-count">${expiredRecent.length}</span>
           <span class="adm-alert-text">expiraram nos ultimos 7 dias — leads quentes</span>
         </div>`);
       }
 
       alertsEl.innerHTML = alerts.join('');
+
+      // Clicar no alerta navega pra Leads com filtro
+      alertsEl.querySelectorAll('[data-goto-leads]').forEach(alert => {
+        alert.addEventListener('click', () => {
+          const filter = (alert as HTMLElement).dataset.gotoLeads!;
+          this.leadsFilter = filter;
+          this.leadsPage = 0;
+          const filterSelect = document.getElementById('leadsFilter') as HTMLSelectElement;
+          if (filterSelect) filterSelect.value = filter;
+          this.switchSection('leads');
+        });
+      });
     }
 
     // ─── Cards ────────────────────────────────────────────────────
@@ -740,12 +754,16 @@ class AdminDashboard {
     if (!tbody) return;
 
     const now = new Date();
-    // Leads = usuários não-admin que expiraram
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today.getTime() + 86400000);
+    const in3days = new Date(today.getTime() + 3 * 86400000);
+    const weekAgo = new Date(today.getTime() - 7 * 86400000);
+
+    // Leads = todos nao-admin (expirados + expirando)
     let leads = this.profiles.filter(p => {
       if (p.role === 'admin') return false;
-      if (p.subscription_status === 'expired' || p.subscription_status === 'canceled') return true;
-      if (p.subscription_expires_at && new Date(p.subscription_expires_at) <= now) return true;
-      return false;
+      if (p.subscription_status === 'active' && p.subscription_plan !== 'trial' && p.subscription_plan !== 'free') return false;
+      return true;
     });
 
     // Filtros
@@ -757,51 +775,82 @@ class AdminDashboard {
         l.id.toLowerCase().includes(this.leadsSearch)
       );
     }
-    if (this.leadsFilter === 'trial_expired') {
-      leads = leads.filter(l => l.subscription_plan === 'trial');
+
+    if (this.leadsFilter === 'expiring_today') {
+      leads = leads.filter(l => {
+        if (!l.subscription_expires_at) return false;
+        const exp = new Date(l.subscription_expires_at);
+        return exp >= today && exp < tomorrow;
+      });
+    } else if (this.leadsFilter === 'expiring_3days') {
+      leads = leads.filter(l => {
+        if (!l.subscription_expires_at) return false;
+        const exp = new Date(l.subscription_expires_at);
+        return exp >= today && exp <= in3days;
+      });
+    } else if (this.leadsFilter === 'expired_7days') {
+      leads = leads.filter(l => {
+        if (!l.subscription_expires_at) return false;
+        const exp = new Date(l.subscription_expires_at);
+        return exp < today && exp >= weekAgo;
+      });
+    } else if (this.leadsFilter === 'trial_expired') {
+      leads = leads.filter(l => l.subscription_plan === 'trial' && l.subscription_expires_at && new Date(l.subscription_expires_at) <= now);
     } else if (this.leadsFilter === 'sub_expired') {
-      leads = leads.filter(l => l.subscription_plan !== 'trial' && l.subscription_plan !== 'free');
+      leads = leads.filter(l => l.subscription_plan !== 'trial' && l.subscription_plan !== 'free' && l.subscription_expires_at && new Date(l.subscription_expires_at) <= now);
     } else if (this.leadsFilter === 'has_phone') {
       leads = leads.filter(l => !!l.phone);
-    } else if (this.leadsFilter === 'no_phone') {
-      leads = leads.filter(l => !l.phone);
+    } else if (this.leadsFilter === 'not_contacted') {
+      leads = leads.filter(l => !l.last_contacted_at);
+    } else if (this.leadsFilter === 'contacted') {
+      leads = leads.filter(l => !!l.last_contacted_at);
+    } else if (this.leadsFilter === 'all') {
+      // Mostrar so expirados por padrao
+      leads = leads.filter(l => {
+        if (l.subscription_status === 'expired' || l.subscription_status === 'canceled') return true;
+        if (l.subscription_expires_at && new Date(l.subscription_expires_at) <= now) return true;
+        return false;
+      });
     }
 
     // Summary
     const withPhone = leads.filter(l => !!l.phone).length;
     const withEmail = leads.filter(l => !!l.email).length;
+    const contacted = leads.filter(l => !!l.last_contacted_at).length;
     const summaryEl = document.getElementById('leadsSummary');
     if (summaryEl) {
       summaryEl.innerHTML = `
-        <span style="color:#FF4466;font-weight:600;">${leads.length} leads</span>
-        <span style="color:#00D4FF;font-weight:600;">${withEmail} com email</span>
-        <span style="color:#00E68C;font-weight:600;">${withPhone} com WhatsApp</span>
-        <button class="adm-btn adm-btn-sm adm-btn-primary" id="sendAllEmailsBtn" style="margin-left:auto;">Enviar cupom pra ${withEmail} emails</button>
+        <span style="color:var(--a-red);font-weight:600;">${leads.length} leads</span>
+        <span style="color:var(--a-cyan);font-weight:600;">${withEmail} email</span>
+        <span style="color:var(--a-green);font-weight:600;">${withPhone} whats</span>
+        <span style="color:var(--a-text3);">${contacted} contatados</span>
+        <button class="adm-btn adm-btn-sm adm-btn-primary" id="sendAllEmailsBtn" style="margin-left:auto;">Email pra ${withEmail - contacted}</button>
         <button class="adm-btn adm-btn-sm adm-btn-outline" id="sendTestEmailBtn">Teste</button>
       `;
 
-      // Enviar pra todos com email
       summaryEl.querySelector('#sendAllEmailsBtn')?.addEventListener('click', async () => {
-        const emailLeads = leads.filter(l => !!l.email);
-        if (!confirm(`Enviar email de cupom LANCAMENTO pra ${emailLeads.length} leads?`)) return;
+        const emailLeads = leads.filter(l => !!l.email && !l.last_contacted_at);
+        if (!confirm(`Enviar cupom pra ${emailLeads.length} leads nao contatados?`)) return;
         let sent = 0; let failed = 0;
         for (const l of emailLeads) {
           try {
             await this.sendRecoveryEmail(l.email!, l.name);
+            await this.markContacted(l.id, 'email');
             sent++;
           } catch { failed++; }
         }
+        await this.loadData();
+        this.renderLeads();
         modalManager.show('Email', `${sent} enviados, ${failed} falharam`, sent > 0 ? 'success' : 'error');
       });
 
-      // Teste — envia pro admin logado
       summaryEl.querySelector('#sendTestEmailBtn')?.addEventListener('click', async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user?.email) return;
-        if (!confirm(`Enviar email de teste pra ${user.email}?`)) return;
+        if (!confirm(`Enviar teste pra ${user.email}?`)) return;
         try {
           await this.sendRecoveryEmail(user.email, user.user_metadata?.name || 'Admin');
-          modalManager.show('Email', `Teste enviado pra ${user.email}!`, 'success');
+          modalManager.show('Email', `Teste enviado!`, 'success');
         } catch (e) {
           modalManager.show('Email', `Erro: ${e}`, 'error');
         }
@@ -811,70 +860,125 @@ class AdminDashboard {
     const countEl = document.getElementById('leadsCount');
     if (countEl) countEl.textContent = `${leads.length} leads`;
 
-    // Paginação
+    // Paginacao
     const totalPages = Math.ceil(leads.length / this.PAGE_SIZE);
     if (this.leadsPage >= totalPages) this.leadsPage = Math.max(0, totalPages - 1);
     const start = this.leadsPage * this.PAGE_SIZE;
     const paged = leads.slice(start, start + this.PAGE_SIZE);
 
+    // Mensagem WhatsApp pronta
+    const whatsMsg = (name: string) => {
+      const first = (name || '').split(' ')[0] || 'Boa tarde';
+      return encodeURIComponent(`Boa tarde ${first}! Tudo bem?\n\nVi que seu periodo de teste no GDrums acabou. Gostou da experiencia? Conseguiu testar com o pedal no ensaio?\n\nQueria te avisar que a gente ta com um cupom de lancamento com 30% de desconto em qualquer plano. O mensal sai por R$ 20 e pouco.\n\nO cupom e LANCAMENTO e vale ate dia 21/04.\n\nSe tiver alguma duvida sobre o app, pode me chamar aqui que te ajudo na hora.\n\nAbraco!`);
+    };
+
     tbody.innerHTML = paged.map(l => {
       const expires = l.subscription_expires_at
         ? new Date(l.subscription_expires_at).toLocaleDateString('pt-BR')
-        : '—';
-      const created = new Date(l.created_at).toLocaleDateString('pt-BR');
-      const phone = l.phone
-        ? `<a href="https://wa.me/55${l.phone}" target="_blank" style="color:#00E68C;text-decoration:none;">${l.phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}</a>`
-        : '<span style="color:rgba(255,255,255,0.15);">—</span>';
+        : '--';
+      const isExpired = l.subscription_expires_at && new Date(l.subscription_expires_at) <= now;
+      const expiresColor = isExpired ? 'var(--a-red)' : 'var(--a-gold)';
 
-      const email = l.email
-        ? `<a href="mailto:${l.email}" style="color:var(--adm-cyan,#00D4FF);text-decoration:none;font-size:0.78rem;">${l.email}</a>`
-        : '<span style="color:rgba(255,255,255,0.15);">—</span>';
-
-      const emailBtn = l.email
-        ? `<button class="btn-action btn-edit" data-send-email="${l.id}" style="font-size:0.65rem;">Enviar cupom</button>`
+      // Contato (WhatsApp com mensagem pronta + email)
+      const phoneLink = l.phone
+        ? `<a href="https://wa.me/55${l.phone}?text=${whatsMsg(l.name)}" target="_blank" style="color:var(--a-green);text-decoration:none;font-size:0.7rem;" title="Abrir WhatsApp com mensagem">WhatsApp</a>`
         : '';
+      const emailLink = l.email
+        ? `<a href="mailto:${l.email}" style="color:var(--a-cyan);text-decoration:none;font-size:0.7rem;" title="${l.email}">Email</a>`
+        : '';
+      const contactLinks = [phoneLink, emailLink].filter(Boolean).join(' ');
+
+      // Status de contato
+      let contactStatus = '';
+      if (l.last_contacted_at) {
+        const method = l.contact_method === 'whatsapp' ? 'W' : l.contact_method === 'email' ? 'E' : '?';
+        const date = new Date(l.last_contacted_at).toLocaleDateString('pt-BR');
+        contactStatus = `<span class="badge badge-success" title="Contatado em ${date}">${method} ${date}</span>`;
+      } else {
+        contactStatus = '<span style="color:var(--a-text3);font-size:0.65rem;">Pendente</span>';
+      }
+
+      // Acoes
+      const actions: string[] = [];
+      if (l.phone) {
+        actions.push(`<button class="btn-action btn-edit" data-whats-id="${l.id}" style="font-size:0.6rem;">WhatsApp</button>`);
+      }
+      if (l.email) {
+        actions.push(`<button class="btn-action btn-edit" data-email-id="${l.id}" style="font-size:0.6rem;">Email</button>`);
+      }
 
       return `
         <tr>
-          <td>${l.name || '—'}</td>
-          <td>${email}</td>
-          <td>${phone}</td>
+          <td>${l.name || '--'}</td>
+          <td>${contactLinks || '<span style="color:var(--a-text3);">--</span>'}</td>
           <td><span class="badge badge-${l.subscription_plan === 'trial' ? 'warning' : 'primary'}">${l.subscription_plan}</span></td>
-          <td style="color:#FF4466;">${expires}</td>
-          <td>${emailBtn}</td>
+          <td style="color:${expiresColor};">${expires}</td>
+          <td>${contactStatus}</td>
+          <td><div class="action-buttons">${actions.join('')}</div></td>
         </tr>
       `;
     }).join('');
 
-    // Paginação
+    // Paginacao
     const pagEl = document.getElementById('leadsPagination');
     if (pagEl) {
       pagEl.innerHTML = totalPages > 1 ? `
-        <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.leadsPage === 0 ? 'disabled' : ''} id="leadsPrev">&laquo; Anterior</button>
-        <span style="font-size:0.78rem;color:rgba(255,255,255,0.4);">${this.leadsPage + 1} / ${totalPages}</span>
-        <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.leadsPage >= totalPages - 1 ? 'disabled' : ''} id="leadsNext">Próximo &raquo;</button>
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.leadsPage === 0 ? 'disabled' : ''} id="leadsPrev">&laquo;</button>
+        <span style="font-size:0.72rem;color:var(--a-text3);">${this.leadsPage + 1} / ${totalPages}</span>
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.leadsPage >= totalPages - 1 ? 'disabled' : ''} id="leadsNext">&raquo;</button>
       ` : '';
       pagEl.querySelector('#leadsPrev')?.addEventListener('click', () => { this.leadsPage--; this.renderLeads(); });
       pagEl.querySelector('#leadsNext')?.addEventListener('click', () => { this.leadsPage++; this.renderLeads(); });
     }
 
-    // Bind botões individuais de email
-    tbody.querySelectorAll('[data-send-email]').forEach(btn => {
+    // Bind WhatsApp (abre + marca como contatado)
+    tbody.querySelectorAll('[data-whats-id]').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const id = (btn as HTMLElement).dataset.sendEmail!;
+        const id = (btn as HTMLElement).dataset.whatsId!;
+        const lead = paged.find(l => l.id === id);
+        if (!lead?.phone) return;
+        window.open(`https://wa.me/55${lead.phone}?text=${whatsMsg(lead.name)}`, '_blank');
+        await this.markContacted(id, 'whatsapp');
+        this.renderLeads();
+      });
+    });
+
+    // Bind Email (envia + marca)
+    tbody.querySelectorAll('[data-email-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.emailId!;
         const lead = paged.find(l => l.id === id);
         if (!lead?.email) return;
         (btn as HTMLButtonElement).disabled = true;
-        (btn as HTMLElement).textContent = 'Enviando...';
+        (btn as HTMLElement).textContent = '...';
         try {
           await this.sendRecoveryEmail(lead.email, lead.name);
-          (btn as HTMLElement).textContent = 'Enviado!';
-          (btn as HTMLElement).style.color = '#00E68C';
+          await this.markContacted(id, 'email');
+          (btn as HTMLElement).textContent = 'OK';
+          (btn as HTMLElement).style.color = 'var(--a-green)';
+          this.renderLeads();
         } catch {
-          (btn as HTMLElement).textContent = 'Falhou';
-          (btn as HTMLElement).style.color = '#FF4466';
+          (btn as HTMLElement).textContent = 'Erro';
+          (btn as HTMLElement).style.color = 'var(--a-red)';
         }
       });
+    });
+  }
+
+  private async markContacted(userId: string, method: string): Promise<void> {
+    const profile = this.profiles.find(p => p.id === userId);
+    if (profile) {
+      profile.last_contacted_at = new Date().toISOString();
+      profile.contact_method = method;
+    }
+    await adminCall({
+      action: 'update',
+      table: 'gdrums_profiles',
+      id: userId,
+      data: {
+        last_contacted_at: new Date().toISOString(),
+        contact_method: method,
+      },
     });
   }
 
