@@ -36,6 +36,7 @@ class RhythmSequencer {
   // Pedal fixo — esquerdo e direito
   private pedalLeft = 'ArrowLeft';
   private pedalRight = 'ArrowRight';
+  private pedalMapperOpen = false;
 
   constructor() {
     // Inicializar contexto de áudio
@@ -1036,47 +1037,59 @@ class RhythmSequencer {
   }
 
   private setupKeyboardShortcuts(): void {
+    // Converter pedalLeft/Right pra keyCode numérico pra comparação rápida
+    const KEY_CODES: Record<string, number> = {
+      'ArrowLeft': 37, 'ArrowUp': 38, 'ArrowRight': 39, 'ArrowDown': 40,
+      'Space': 32, ' ': 32, 'Enter': 13, 'PageUp': 33, 'PageDown': 34,
+    };
+    const pedalLeftCode = KEY_CODES[this.pedalLeft] || 0;
+    const pedalRightCode = KEY_CODES[this.pedalRight] || 0;
+
     // capture:true + passive:false — essencial no iOS pra capturar antes do scroll do browser
     window.addEventListener('keydown', (e) => {
-      // Identificar tecla — e.code é preferencial, e.key é fallback (iOS pedais BT)
-      const keyId = e.code || e.key;
-      if (!keyId) return;
+      // Se o mapper de pedal está aberto, deixar ele capturar
+      if (this.pedalMapperOpen) return;
 
-      // Se um input/select está focado E a tecla é do pedal, tirar foco e processar
+      // Identificar via keyCode (funciona em TUDO, inclusive pedais BT)
+      // Fallback pra e.code/e.key só se keyCode não veio
+      const kc = e.keyCode || e.which || 0;
+      const keyId = e.code || e.key || '';
+
+      // Se um input/select está focado, só processar se for tecla de pedal/seta
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
-        if (keyId === this.pedalLeft || keyId === this.pedalRight) {
-          (target as HTMLElement).blur();
+        const isPedal = kc === pedalLeftCode || kc === pedalRightCode ||
+                        kc === 37 || kc === 38 || kc === 39 || kc === 40 ||
+                        keyId === this.pedalLeft || keyId === this.pedalRight;
+        if (isPedal) {
+          target.blur();
         } else {
-          return; // Outra tecla dentro de input, deixar o browser tratar
+          return;
         }
       }
 
       // Prevenir scroll/navegação do browser
-      if (keyId === this.pedalLeft || keyId === this.pedalRight ||
-          keyId === 'Space' || keyId === ' ' ||
-          keyId === 'ArrowLeft' || keyId === 'ArrowRight' ||
-          keyId === 'ArrowUp' || keyId === 'ArrowDown' ||
-          keyId === 'PageUp' || keyId === 'PageDown') {
+      if (kc === 32 || kc === 33 || kc === 34 || // Space, PageUp, PageDown
+          kc === 37 || kc === 38 || kc === 39 || kc === 40 || // Setas
+          kc === pedalLeftCode || kc === pedalRightCode ||
+          keyId === this.pedalLeft || keyId === this.pedalRight) {
         e.preventDefault();
       }
 
       if (e.repeat) return;
 
       // ─── PEDAL TEM PRIORIDADE ─────────────────────────────────────
-      // Checar pedal ANTES do Space, senão quem mapeia Space/Enter
-      // como pedal nunca consegue usar (vira Play/Pause)
-      if (keyId === this.pedalLeft) {
-        this.handlePedalLeft();
-        return;
-      }
-      if (keyId === this.pedalRight) {
-        this.handlePedalRight();
-        return;
-      }
+      // Checar pedal mapeado primeiro (por keyCode E por keyId)
+      if (kc === pedalLeftCode || keyId === this.pedalLeft) { this.handlePedalLeft(); return; }
+      if (kc === pedalRightCode || keyId === this.pedalRight) { this.handlePedalRight(); return; }
+
+      // Todas as setas ativam pedal (pedais BT enviam Up/Down ou Left/Right)
+      // Down/Left = pedal esquerdo, Up/Right = pedal direito
+      if (kc === 40 || kc === 37) { this.handlePedalLeft(); return; }  // ArrowDown(40) ArrowLeft(37)
+      if (kc === 38 || kc === 39) { this.handlePedalRight(); return; } // ArrowUp(38) ArrowRight(39)
 
       // Space = Play/Pause (só se NÃO é pedal mapeado)
-      if (keyId === 'Space' || keyId === ' ') {
+      if (kc === 32 || keyId === 'Space' || keyId === ' ') {
         this.togglePlayStop();
         return;
       }
@@ -2138,6 +2151,7 @@ class RhythmSequencer {
     };
 
     document.body.appendChild(overlay);
+    this.pedalMapperOpen = true;
     render();
 
     const handleDetected = (code: string, debugInfo: string) => {
@@ -2162,27 +2176,38 @@ class RhythmSequencer {
       render();
     };
 
-    // Capturar keydown (principal)
+    // Mapa keyCode → nome legível
+    const KC_MAP: Record<number, string> = {
+      37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown',
+      32: 'Space', 13: 'Enter', 33: 'PageUp', 34: 'PageDown',
+    };
+
+    // Capturar keydown (principal) — usa keyCode pra máxima compatibilidade
     const keyHandler = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      const code = e.code || e.key;
-      if (!code) return;
-      handleDetected(code, `keydown: code="${e.code || ''}" key="${e.key || ''}"`);
+      const kc = e.keyCode || e.which || 0;
+      const code = e.code || e.key || KC_MAP[kc] || '';
+      if (!code && !kc) return;
+      const finalCode = code || KC_MAP[kc] || `KeyCode${kc}`;
+      handleDetected(finalCode, `keyCode=${kc} code="${e.code || ''}" key="${e.key || ''}"`);
     };
 
     // Capturar keyup como fallback (alguns pedais BT no iOS só emitem keyup)
     const keyUpHandler = (e: KeyboardEvent) => {
-      const code = e.code || e.key;
-      if (!code || !listening) return;
+      const kc = e.keyCode || e.which || 0;
+      const code = e.code || e.key || KC_MAP[kc] || '';
+      if ((!code && !kc) || !listening) return;
       e.preventDefault();
-      handleDetected(code, `keyup: code="${e.code || ''}" key="${e.key || ''}"`);
+      const finalCode = code || KC_MAP[kc] || `KeyCode${kc}`;
+      handleDetected(finalCode, `keyup: keyCode=${kc} code="${e.code || ''}" key="${e.key || ''}"`);
     };
 
     document.addEventListener('keydown', keyHandler, true);
     document.addEventListener('keyup', keyUpHandler, true);
 
     const close = () => {
+      this.pedalMapperOpen = false;
       document.removeEventListener('keydown', keyHandler, true);
       document.removeEventListener('keyup', keyUpHandler, true);
       overlay.remove();
