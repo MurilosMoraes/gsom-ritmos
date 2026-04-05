@@ -116,7 +116,7 @@ class LoginPage {
 
   private showAlert(message: string, type: 'success' | 'error'): void {
     this.alertMessage.textContent = message;
-    this.alertMessage.className = `alert-message ${type}`;
+    this.alertMessage.className = `login-alert ${type}`;
     this.alertMessage.style.display = 'block';
     if (type === 'success') setTimeout(() => this.hideAlert(), 5000);
   }
