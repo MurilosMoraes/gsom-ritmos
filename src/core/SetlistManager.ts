@@ -29,7 +29,7 @@ export class SetlistManager {
         .from('gdrums_favorites')
         .select('items, current_index')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (data) {
         this.setlist = {

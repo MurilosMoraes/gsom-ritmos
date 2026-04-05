@@ -3057,51 +3057,17 @@ class RhythmSequencer {
       progressPercent = Math.min(100, Math.max(0, (elapsed / totalDays) * 100));
     }
 
-    // ─── Cálculo de upgrade proporcional ────────────────────────────
-    // Crédito = valor pago × (dias restantes / dias totais do plano)
-    // Upgrade = preço novo plano − crédito (mínimo R$ 0)
-    // Prazo do novo plano começa do zero (não soma dias antigos)
+    // ─── Upgrade: calcular crédito e planos disponíveis ─────────────
 
     let upgradeCredit = 0;
-    let upgradeNextPlan: typeof PLANS[0] | null = null;
-    let upgradePrice = 0;
-    let upgradeSection = '';
-
+    let upgradeAvailable = false;
     const planOrder = ['mensal', 'trimestral', 'semestral', 'anual', 'rei-dos-palcos'];
 
     if (status === 'active' && currentPlan && daysLeft > 0) {
       const totalDays = currentPlan.durationMonths * 30;
-      const paidCents = currentPlan.priceCents;
-      // Crédito proporcional ao tempo não usado
-      upgradeCredit = Math.round(paidCents * (daysLeft / totalDays));
-
+      upgradeCredit = Math.round(currentPlan.priceCents * (daysLeft / totalDays));
       const currentIdx = planOrder.indexOf(planId);
-      if (currentIdx < planOrder.length - 1) {
-        upgradeNextPlan = PLANS.find(p => p.id === planOrder[currentIdx + 1]) || null;
-        if (upgradeNextPlan) {
-          upgradePrice = Math.max(0, upgradeNextPlan.priceCents - upgradeCredit);
-          const creditDisplay = (upgradeCredit / 100).toFixed(2).replace('.', ',');
-          const priceDisplay = (upgradePrice / 100).toFixed(2).replace('.', ',');
-
-          upgradeSection = `
-            <div class="account-upgrade-detail">
-              <div class="account-upgrade-row">
-                <span>${upgradeNextPlan.displayName}</span>
-                <span>R$ ${(upgradeNextPlan.priceCents / 100).toFixed(2).replace('.', ',')}</span>
-              </div>
-              <div class="account-upgrade-row account-upgrade-credit">
-                <span>Crédito do plano atual (${daysLeft}d restantes)</span>
-                <span>− R$ ${creditDisplay}</span>
-              </div>
-              <div class="account-upgrade-divider"></div>
-              <div class="account-upgrade-row account-upgrade-total">
-                <span>Valor do upgrade</span>
-                <span>R$ ${priceDisplay}</span>
-              </div>
-            </div>
-          `;
-        }
-      }
+      upgradeAvailable = currentIdx < planOrder.length - 1;
     }
 
     // Botão de ação inteligente
@@ -3110,12 +3076,8 @@ class RhythmSequencer {
       actionBtn = `<button class="account-action-btn" id="accountActionBtn">Renovar Assinatura</button>`;
     } else if (status === 'trial') {
       actionBtn = `<button class="account-action-btn" id="accountActionBtn">Assinar Agora</button>`;
-    } else if (status === 'active' && currentPlan) {
-      const planOrder = ['mensal', 'trimestral', 'semestral', 'anual', 'rei-dos-palcos'];
-      const currentIdx = planOrder.indexOf(planId);
-      if (currentIdx < planOrder.length - 1) {
-        actionBtn = `<button class="account-action-btn account-action-upgrade" id="accountActionBtn">Fazer upgrade de plano</button>`;
-      }
+    } else if (upgradeAvailable) {
+      actionBtn = `<button class="account-action-btn account-action-upgrade" id="accountActionBtn">Fazer upgrade de plano</button>`;
     }
 
     // Montar modal
@@ -3159,7 +3121,6 @@ class RhythmSequencer {
           </div>
         </div>
 
-        ${upgradeSection}
         ${actionBtn ? `<div class="account-actions">${actionBtn}</div>` : ''}
 
         <div class="account-password-section">
@@ -3249,12 +3210,156 @@ class RhythmSequencer {
     const actionBtnEl = overlay.querySelector('#accountActionBtn');
     if (actionBtnEl) {
       actionBtnEl.addEventListener('click', () => {
-        const url = status === 'active'
-          ? `/plans.html?upgrade=true&credit=${upgradeCredit}`
-          : '/plans.html';
-        window.location.assign(url);
+        if (status === 'active' && upgradeAvailable) {
+          close();
+          this.showUpgradeModal(planId, upgradeCredit, daysLeft, PLANS, supabase, user!);
+        } else {
+          window.location.assign('/plans.html');
+        }
       });
     }
+  }
+
+  // ─── Modal de Upgrade ──────────────────────────────────────────────
+
+  private async showUpgradeModal(
+    currentPlanId: string,
+    credit: number,
+    daysLeft: number,
+    plans: any[],
+    supabase: any,
+    user: any
+  ): Promise<void> {
+    const { createCheckoutLink, generateOrderNsu } = await import('./auth/PaymentService');
+
+    const planOrder = ['mensal', 'trimestral', 'semestral', 'anual', 'rei-dos-palcos'];
+    const currentIdx = planOrder.indexOf(currentPlanId);
+
+    // Só planos maiores que o atual
+    const availablePlans = plans.filter(p => {
+      const idx = planOrder.indexOf(p.id);
+      return idx > currentIdx;
+    });
+
+    const overlay = document.createElement('div');
+    overlay.className = 'account-modal-overlay';
+
+    const buildCards = () => availablePlans.map(plan => {
+      const finalPrice = Math.max(0, plan.priceCents - credit);
+      const totalDisplay = (finalPrice / 100).toFixed(2).replace('.', ',');
+      const originalDisplay = (plan.priceCents / 100).toFixed(2).replace('.', ',');
+      const creditDisplay = (credit / 100).toFixed(2).replace('.', ',');
+      const perMonth = plan.durationMonths > 0 ? (finalPrice / plan.durationMonths / 100).toFixed(0) : (finalPrice / 100).toFixed(0);
+
+      return `
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1rem;margin-bottom:0.6rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+            <span style="font-size:0.9rem;font-weight:700;color:#fff;">${plan.displayName}${plan.durationMonths >= 36 ? ' — 3 Anos' : ''}</span>
+            <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);">R$ ${perMonth}/mês</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0.2rem;font-size:0.72rem;color:rgba(255,255,255,0.5);margin-bottom:0.6rem;">
+            <div style="display:flex;justify-content:space-between;">
+              <span>Valor do plano</span>
+              <span>R$ ${originalDisplay}</span>
+            </div>
+            ${credit > 0 ? `<div style="display:flex;justify-content:space-between;color:#00E68C;">
+              <span>Crédito (${daysLeft}d restantes)</span>
+              <span>- R$ ${creditDisplay}</span>
+            </div>` : ''}
+            <div style="display:flex;justify-content:space-between;font-weight:700;color:#fff;font-size:0.82rem;padding-top:0.3rem;border-top:1px solid rgba(255,255,255,0.06);">
+              <span>Você paga</span>
+              <span>R$ ${totalDisplay}</span>
+            </div>
+          </div>
+          <button class="account-action-btn" data-upgrade-plan="${plan.id}" data-upgrade-price="${finalPrice}" style="font-size:0.8rem;padding:0.6rem;">Fazer upgrade</button>
+        </div>
+      `;
+    }).join('');
+
+    overlay.innerHTML = `
+      <div class="account-modal" style="max-width:420px;max-height:85vh;overflow-y:auto;">
+        <button class="account-modal-close" id="upgradeClose">&times;</button>
+        <div class="account-header">
+          <div class="account-name">Upgrade de plano</div>
+          <div class="account-email">Escolha o plano que deseja migrar</div>
+        </div>
+        <div style="padding:0 0.25rem;" id="upgradeCards">
+          ${buildCards()}
+        </div>
+        <div id="upgradeStatus" style="text-align:center;font-size:0.75rem;min-height:1.5rem;padding:0.5rem;"></div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    const close = () => {
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 200);
+    };
+
+    overlay.querySelector('#upgradeClose')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    // Bind botões de upgrade
+    overlay.querySelectorAll('[data-upgrade-plan]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const targetPlanId = (btn as HTMLElement).dataset.upgradePlan!;
+        const targetPrice = parseInt((btn as HTMLElement).dataset.upgradePrice || '0');
+        const targetPlan = plans.find(p => p.id === targetPlanId);
+        if (!targetPlan) return;
+
+        const statusEl = overlay.querySelector('#upgradeStatus') as HTMLElement;
+        statusEl.textContent = 'Gerando checkout...';
+        statusEl.style.color = 'rgba(255,255,255,0.4)';
+
+        // Desabilitar todos os botões
+        overlay.querySelectorAll('[data-upgrade-plan]').forEach(b => {
+          (b as HTMLButtonElement).disabled = true;
+          (b as HTMLElement).style.opacity = '0.5';
+        });
+
+        try {
+          const orderNsu = generateOrderNsu(user.id, targetPlanId);
+          const redirectUrl = `${window.location.origin}/payment-success.html`;
+
+          // Salvar transação pendente
+          await supabase.from('gdrums_transactions').insert({
+            user_id: user.id,
+            order_nsu: orderNsu,
+            plan: targetPlanId,
+            amount_cents: targetPrice,
+            original_amount_cents: targetPlan.priceCents,
+            status: 'pending',
+          });
+
+          // Criar checkout com preço com crédito
+          const checkoutPlan = { ...targetPlan, priceCents: targetPrice };
+          const result = await createCheckoutLink(checkoutPlan, orderNsu, redirectUrl, {
+            name: user.user_metadata?.name || '',
+            email: user.email || '',
+          });
+
+          if (result.success && result.url) {
+            window.location.href = result.url;
+          } else {
+            statusEl.textContent = result.error || 'Erro ao gerar pagamento';
+            statusEl.style.color = '#FF4466';
+            overlay.querySelectorAll('[data-upgrade-plan]').forEach(b => {
+              (b as HTMLButtonElement).disabled = false;
+              (b as HTMLElement).style.opacity = '1';
+            });
+          }
+        } catch (e) {
+          statusEl.textContent = 'Erro ao processar. Tente novamente.';
+          statusEl.style.color = '#FF4466';
+          overlay.querySelectorAll('[data-upgrade-plan]').forEach(b => {
+            (b as HTMLButtonElement).disabled = false;
+            (b as HTMLElement).style.opacity = '1';
+          });
+        }
+      });
+    });
   }
 
   private playCymbal(): void {
