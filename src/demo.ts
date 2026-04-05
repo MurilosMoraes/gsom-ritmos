@@ -15,7 +15,8 @@ const DEMO_RHYTHMS = [
   { name: 'Pop Rock', path: '/rhythm/Pop Rock.json' },
 ];
 
-const DEMO_TIME_SECONDS = 2 * 60; // 2 minutos
+const MAX_RHYTHMS = 2; // Maximo de ritmos que pode testar
+const IDLE_TIMEOUT = 3 * 60 * 1000; // 3 minutos sem tocar = expira
 const STORAGE_KEY = 'gdrums_demo_used';
 const FP_KEY = 'gdrums_demo_fp';
 
@@ -27,15 +28,14 @@ class DemoPlayer {
   private patternEngine!: PatternEngine;
   private fileManager!: FileManager;
   private currentRhythm = '';
-  private timeRemaining: number;
-  private timerInterval: number | null = null;
+  private rhythmsUsed = new Set<string>();
+  private idleTimer: number | null = null;
   private isPlaying = false;
+  private expired = false;
 
   constructor() {
     // Verificar se ja usou o demo
-    this.timeRemaining = this.getTimeRemaining();
-
-    if (this.timeRemaining <= 0) {
+    if (this.isDemoExpired()) {
       this.showExpired();
       return;
     }
@@ -49,30 +49,19 @@ class DemoPlayer {
 
     this.setupCallbacks();
     this.setupUI();
-    this.updateTimerDisplay();
-
-    // Salvar fingerprint
+    this.updateCounterDisplay();
+    this.resetIdleTimer();
     this.saveFingerprint();
   }
 
-  // ─── Fingerprint simples ──────────────────────────────────────────
+  // ─── Fingerprint + persistencia ────────────────────────────────────
 
   private getFingerprint(): string {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.textBaseline = 'top';
-      ctx.font = '14px Arial';
-      ctx.fillText('gdrums_demo', 2, 2);
-    }
     const nav = [
-      navigator.language,
-      screen.width,
-      screen.height,
-      screen.colorDepth,
-      new Date().getTimezoneOffset(),
+      navigator.language, screen.width, screen.height,
+      screen.colorDepth, new Date().getTimezoneOffset(),
     ].join('_');
-    return btoa(nav + canvas.toDataURL()).slice(0, 32);
+    return btoa(nav).slice(0, 24);
   }
 
   private saveFingerprint(): void {
@@ -83,79 +72,47 @@ class DemoPlayer {
     } catch {}
   }
 
-  private getTimeRemaining(): number {
-    // Checar localStorage
+  private isDemoExpired(): boolean {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const remaining = parseInt(stored);
-      if (!isNaN(remaining)) return Math.max(0, remaining);
-    }
-
-    // Checar cookie (fallback se limpou localStorage)
-    const cookies = document.cookie.split(';');
-    for (const c of cookies) {
-      const [key, val] = c.trim().split('=');
-      if (key === 'gdrums_demo_time') {
-        const remaining = parseInt(val);
-        if (!isNaN(remaining)) return Math.max(0, remaining);
-      }
-    }
-
-    // Checar fingerprint (se ja usou antes em modo incognito)
-    const fp = this.getFingerprint();
-    const storedFp = localStorage.getItem(FP_KEY);
-    if (storedFp && storedFp !== fp) {
-      // Fingerprint diferente — pode ser device diferente, dar tempo total
-      return DEMO_TIME_SECONDS;
-    }
-
-    return DEMO_TIME_SECONDS;
+    if (stored === 'expired') return true;
+    // Cookie fallback
+    if (document.cookie.includes('gdrums_demo_used=expired')) return true;
+    return false;
   }
 
-  private saveTimeRemaining(): void {
+  private markExpired(): void {
+    this.expired = true;
     try {
-      localStorage.setItem(STORAGE_KEY, this.timeRemaining.toString());
-      document.cookie = `gdrums_demo_time=${this.timeRemaining};max-age=31536000;path=/`;
+      localStorage.setItem(STORAGE_KEY, 'expired');
+      document.cookie = 'gdrums_demo_used=expired;max-age=31536000;path=/';
     } catch {}
   }
 
-  // ─── Timer ────────────────────────────────────────────────────────
+  // ─── Idle timer ───────────────────────────────────────────────────
 
-  private startTimer(): void {
-    if (this.timerInterval) return;
-    this.timerInterval = window.setInterval(() => {
-      if (!this.isPlaying) return;
-
-      this.timeRemaining--;
-      this.saveTimeRemaining();
-      this.updateTimerDisplay();
-
-      if (this.timeRemaining <= 0) {
-        this.stop();
+  private resetIdleTimer(): void {
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = window.setTimeout(() => {
+      if (!this.isPlaying && !this.expired) {
+        this.markExpired();
         this.showExpired();
       }
-    }, 1000);
+    }, IDLE_TIMEOUT);
   }
 
-  private stopTimer(): void {
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-      this.timerInterval = null;
-    }
-  }
+  // ─── Counter display ─────────────────────────────────────────────
 
-  private updateTimerDisplay(): void {
-    const minutes = Math.floor(this.timeRemaining / 60);
-    const seconds = this.timeRemaining % 60;
+  private updateCounterDisplay(): void {
     const clock = document.getElementById('demoTimerClock');
-    if (clock) clock.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-
     const bar = document.getElementById('demoTimerBar');
-    if (bar) bar.style.width = `${(this.timeRemaining / DEMO_TIME_SECONDS) * 100}%`;
+    const remaining = MAX_RHYTHMS - this.rhythmsUsed.size;
 
-    // Vermelho quando falta menos de 1 minuto
-    if (this.timeRemaining < 60 && clock) {
-      clock.style.color = '#f04466';
+    if (clock) {
+      clock.textContent = `${remaining} ritmo${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`;
+      if (remaining <= 1) clock.style.color = '#f04466';
+    }
+    if (bar) {
+      bar.style.width = `${(remaining / MAX_RHYTHMS) * 100}%`;
     }
   }
 
@@ -241,6 +198,22 @@ class DemoPlayer {
   // ─── Ritmo ────────────────────────────────────────────────────────
 
   private async loadRhythm(rhythm: { name: string; path: string }): Promise<void> {
+    if (this.expired) { this.showExpired(); return; }
+
+    // Verificar limite de ritmos
+    if (!this.rhythmsUsed.has(rhythm.name)) {
+      if (this.rhythmsUsed.size >= MAX_RHYTHMS) {
+        // Limite atingido
+        this.stop();
+        this.markExpired();
+        this.showExpired();
+        return;
+      }
+      this.rhythmsUsed.add(rhythm.name);
+      this.updateCounterDisplay();
+    }
+
+    this.resetIdleTimer();
     if (this.isPlaying) this.stop();
 
     try {
@@ -329,18 +302,15 @@ class DemoPlayer {
   // ─── Play/Stop ────────────────────────────────────────────────────
 
   private play(): void {
-    if (this.timeRemaining <= 0) {
-      this.showExpired();
-      return;
-    }
+    if (this.expired) { this.showExpired(); return; }
 
+    this.resetIdleTimer();
     this.audioManager.resume();
     this.stateManager.setPlaying(true);
     this.isPlaying = true;
 
     this.stateManager.setShouldPlayStartSound(true);
     this.scheduler.start();
-    this.startTimer();
 
     const btn = document.getElementById('demoPlayBtn');
     if (btn) {
@@ -371,15 +341,19 @@ class DemoPlayer {
   // ─── Expired ──────────────────────────────────────────────────────
 
   private showExpired(): void {
-    this.stopTimer();
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    if (this.isPlaying) this.stop();
+
+    // Remover overlay anterior se existir
+    document.querySelectorAll('.demo-expired-overlay').forEach(el => el.remove());
 
     const overlay = document.createElement('div');
     overlay.className = 'demo-expired-overlay';
     overlay.innerHTML = `
       <div class="demo-expired-card">
         <img src="/img/logo.png" alt="GDrums" style="height:36px;opacity:0.7;margin-bottom:1.5rem;">
-        <h2>Gostou do GDrums?</h2>
-        <p>Seu tempo de demonstracao acabou. Cadastre-se gratis e tenha 48h pra testar todos os 50 ritmos, pedal Bluetooth, repertorio e muito mais.</p>
+        <h2>Gostou do que ouviu?</h2>
+        <p>Cadastre-se gratis e tenha 48h pra testar todos os 50 ritmos, pedal Bluetooth, repertorio e muito mais. Sem cartao de credito.</p>
         <a href="/register.html" class="demo-expired-cta">Cadastrar gratis — 48h</a>
         <div class="demo-expired-sub">
           Ja tem conta? <a href="/login.html">Fazer login</a>
