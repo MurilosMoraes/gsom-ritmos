@@ -2150,13 +2150,16 @@ class RhythmSequencer {
         close();
         this.modalManager.show('Pedal', 'Mapeamento salvo!', 'success');
       });
+
+      // Refocar input do mapper após cada render (botões roubam foco no iOS)
+      setTimeout(() => mapperInput.focus({ preventScroll: true }), 100);
     };
 
     document.body.appendChild(overlay);
     this.pedalMapperOpen = true;
-    render();
 
     // ─── iOS: input receptor dentro do mapper pra capturar keydown BT ──
+    // Criado ANTES do render() pra que os botões possam refocar nele
     const mapperInput = document.createElement('input');
     mapperInput.type = 'text';
     mapperInput.setAttribute('inputmode', 'none');
@@ -2166,7 +2169,7 @@ class RhythmSequencer {
     mapperInput.setAttribute('spellcheck', 'false');
     mapperInput.placeholder = 'Pise no pedal...';
     mapperInput.style.cssText = 'position:fixed;bottom:0;left:0;right:0;width:100%;height:36px;font-size:12px;font-family:inherit;background:rgba(0,0,0,0.9);color:rgba(0,212,255,0.5);border:none;border-top:1px solid rgba(0,212,255,0.2);text-align:center;padding:0;margin:0;z-index:999999;outline:none;caret-color:transparent;';
-    overlay.appendChild(mapperInput);
+    document.body.appendChild(mapperInput);
 
     let mapperAlive = true;
     const focusMapperInput = () => {
@@ -2178,6 +2181,8 @@ class RhythmSequencer {
     const mapperFocusInterval = setInterval(focusMapperInput, 800);
     setTimeout(focusMapperInput, 200);
     setTimeout(focusMapperInput, 500);
+
+    render();
 
     const handleDetected = (code: string, debugInfo: string) => {
       if (!listening) {
@@ -2237,6 +2242,7 @@ class RhythmSequencer {
       clearInterval(mapperFocusInterval);
       document.removeEventListener('keydown', keyHandler, true);
       document.removeEventListener('keyup', keyUpHandler, true);
+      mapperInput.remove();
       overlay.remove();
     };
 
