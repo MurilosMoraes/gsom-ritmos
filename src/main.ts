@@ -1119,14 +1119,21 @@ class RhythmSequencer {
         pedalInput.focus({ preventScroll: true });
       };
 
-      document.addEventListener('click', () => setTimeout(focusPedalInput, 100));
-      document.addEventListener('touchend', () => setTimeout(focusPedalInput, 200), { passive: true });
-      window.addEventListener('keydown', () => setTimeout(focusPedalInput, 50), true);
-      window.addEventListener('keyup', () => setTimeout(focusPedalInput, 50), true);
-      setInterval(focusPedalInput, 1500);
-      setTimeout(focusPedalInput, 500);
+      document.addEventListener('click', () => setTimeout(focusPedalInput, 50));
+      document.addEventListener('touchstart', () => setTimeout(focusPedalInput, 50), { passive: true });
+      document.addEventListener('touchend', () => setTimeout(focusPedalInput, 100), { passive: true });
+      window.addEventListener('keydown', () => setTimeout(focusPedalInput, 10), true);
+      window.addEventListener('keyup', () => setTimeout(focusPedalInput, 10), true);
+      setInterval(focusPedalInput, 1000);
+      setTimeout(focusPedalInput, 300);
+      setTimeout(focusPedalInput, 800);
       pedalInput.addEventListener('input', () => { pedalInput.value = ''; });
-      pedalInput.addEventListener('blur', () => setTimeout(focusPedalInput, 100));
+      // Refoco IMEDIATO no blur — sem delay, o gap é o que mata o pedal
+      pedalInput.addEventListener('blur', () => {
+        focusPedalInput();
+        setTimeout(focusPedalInput, 10);
+        setTimeout(focusPedalInput, 50);
+      });
     }
   }
 
