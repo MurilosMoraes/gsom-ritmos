@@ -1096,94 +1096,38 @@ class RhythmSequencer {
 
     }, { capture: true, passive: false } as AddEventListenerOptions);
 
-    // ─── DEBUG: painel de diagnóstico de pedal BT (temporário) ───────
-    // Mostra TUDO que chega no app: keydown, keyup, focus, blur
-    const debugPanel = document.createElement('div');
-    debugPanel.id = 'pedalDebug';
-    debugPanel.style.cssText = `
-      position:fixed; bottom:0; left:0; right:0;
-      height:120px; overflow-y:auto;
-      background:rgba(0,0,0,0.95); color:#0f0;
-      font-family:monospace; font-size:11px; line-height:1.4;
-      padding:8px; z-index:99999;
-      border-top:2px solid #0f0;
-    `;
-    debugPanel.innerHTML = '<div style="color:#ff0;font-weight:bold;">DEBUG PEDAL — pise no pedal pra ver eventos aqui</div>';
-    document.body.appendChild(debugPanel);
-
-    let debugCount = 0;
-    const debugLog = (msg: string, color = '#0f0') => {
-      debugCount++;
-      const line = document.createElement('div');
-      line.style.color = color;
-      line.textContent = `[${debugCount}] ${msg}`;
-      debugPanel.appendChild(line);
-      debugPanel.scrollTop = debugPanel.scrollHeight;
-    };
-
-    // Logar TODOS os keydown no window (capture)
-    window.addEventListener('keydown', (e) => {
-      debugLog(`keydown: keyCode=${e.keyCode} code="${e.code}" key="${e.key}" which=${e.which} target=${(e.target as HTMLElement)?.tagName}`, '#0ff');
-    }, true);
-
-    window.addEventListener('keyup', (e) => {
-      debugLog(`keyup: keyCode=${e.keyCode} code="${e.code}" key="${e.key}"`, '#888');
-    }, true);
-
-    // Logar focus/blur
-    document.addEventListener('focusin', (e) => {
-      debugLog(`focusin: ${(e.target as HTMLElement)?.tagName}#${(e.target as HTMLElement)?.id}`, '#ff0');
-    });
-    document.addEventListener('focusout', (e) => {
-      debugLog(`focusout: ${(e.target as HTMLElement)?.tagName}#${(e.target as HTMLElement)?.id}`, '#f80');
-    });
-
-    // ─── iOS: input REAL e VISÍVEL pra capturar keydown do pedal BT ──
+    // ─── iOS: input pra capturar keydown do pedal BT ──────────────────
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
                   (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-    debugLog(`iOS detectado: ${isIOS} | UA: ${navigator.userAgent.substring(0, 80)}`, '#f0f');
+    if (isIOS) {
+      const pedalInput = document.createElement('input');
+      pedalInput.id = 'pedalBtInput';
+      pedalInput.type = 'text';
+      pedalInput.setAttribute('inputmode', 'none');
+      pedalInput.setAttribute('autocomplete', 'off');
+      pedalInput.setAttribute('autocorrect', 'off');
+      pedalInput.setAttribute('autocapitalize', 'off');
+      pedalInput.setAttribute('spellcheck', 'false');
+      pedalInput.style.cssText = 'position:fixed;bottom:0;left:0;right:0;width:100%;height:1px;opacity:0.01;border:none;padding:0;margin:0;font-size:16px;z-index:1;background:transparent;color:transparent;caret-color:transparent;outline:none;';
+      document.body.appendChild(pedalInput);
 
-    // Criar input SEMPRE (pra debug), não só no iOS
-    const pedalInput = document.createElement('input');
-    pedalInput.id = 'pedalBtInput';
-    pedalInput.type = 'text';
-    pedalInput.placeholder = 'Toque aqui e pise no pedal';
-    pedalInput.setAttribute('inputmode', 'none');
-    pedalInput.setAttribute('autocomplete', 'off');
-    pedalInput.setAttribute('autocorrect', 'off');
-    pedalInput.setAttribute('autocapitalize', 'off');
-    pedalInput.setAttribute('spellcheck', 'false');
-    pedalInput.style.cssText = `
-      position:fixed; bottom:120px; left:0; right:0; width:100%;
-      height:44px; font-size:14px; font-family:monospace;
-      background:#111; color:#0f0;
-      border:2px solid #0f0; border-radius:0;
-      text-align:center; padding:0 8px; margin:0; z-index:99999;
-      outline:none;
-    `;
-    document.body.appendChild(pedalInput);
+      const focusPedalInput = () => {
+        if (this.pedalMapperOpen) return;
+        const active = document.activeElement as HTMLElement;
+        if (active && active !== pedalInput && active !== document.body &&
+            (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
+        pedalInput.focus({ preventScroll: true });
+      };
 
-    pedalInput.addEventListener('focus', () => debugLog('INPUT FOCADO', '#0f0'));
-    pedalInput.addEventListener('blur', () => debugLog('INPUT PERDEU FOCO', '#f00'));
-    pedalInput.addEventListener('input', () => {
-      debugLog(`input event: value="${pedalInput.value}"`, '#ff0');
-      pedalInput.value = '';
-    });
-
-    // Foco automático
-    const focusPedalInput = () => {
-      if (this.pedalMapperOpen) return;
-      const active = document.activeElement as HTMLElement;
-      if (active && active !== pedalInput && active !== document.body &&
-          active.id !== 'pedalBtInput' &&
-          (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
-      pedalInput.focus({ preventScroll: true });
-    };
-
-    document.addEventListener('click', () => setTimeout(focusPedalInput, 100));
-    document.addEventListener('touchend', () => setTimeout(focusPedalInput, 200), { passive: true });
-    setInterval(focusPedalInput, 2000);
-    setTimeout(focusPedalInput, 500);
+      document.addEventListener('click', () => setTimeout(focusPedalInput, 100));
+      document.addEventListener('touchend', () => setTimeout(focusPedalInput, 200), { passive: true });
+      window.addEventListener('keydown', () => setTimeout(focusPedalInput, 50), true);
+      window.addEventListener('keyup', () => setTimeout(focusPedalInput, 50), true);
+      setInterval(focusPedalInput, 1500);
+      setTimeout(focusPedalInput, 500);
+      pedalInput.addEventListener('input', () => { pedalInput.value = ''; });
+      pedalInput.addEventListener('blur', () => setTimeout(focusPedalInput, 100));
+    }
   }
 
   // ─── Handlers de pedal reutilizáveis ──────────────────────────────
