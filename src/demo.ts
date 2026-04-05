@@ -15,7 +15,7 @@ const DEMO_RHYTHMS = [
   { name: 'Pop Rock', path: '/rhythm/Pop Rock.json' },
 ];
 
-const DEMO_TIME_SECONDS = 5 * 60; // 5 minutos
+const DEMO_TIME_SECONDS = 2 * 60; // 2 minutos
 const STORAGE_KEY = 'gdrums_demo_used';
 const FP_KEY = 'gdrums_demo_fp';
 
@@ -379,8 +379,8 @@ class DemoPlayer {
       <div class="demo-expired-card">
         <img src="/img/logo.png" alt="GDrums" style="height:36px;opacity:0.7;margin-bottom:1.5rem;">
         <h2>Gostou do GDrums?</h2>
-        <p>Seu tempo de demonstracao acabou. Cadastre-se gratis e tenha 7 dias pra testar todos os 50 ritmos, pedal Bluetooth, repertorio e muito mais.</p>
-        <a href="/register.html" class="demo-expired-cta">Cadastrar gratis — 7 dias</a>
+        <p>Seu tempo de demonstracao acabou. Cadastre-se gratis e tenha 48h pra testar todos os 50 ritmos, pedal Bluetooth, repertorio e muito mais.</p>
+        <a href="/register.html" class="demo-expired-cta">Cadastrar gratis — 48h</a>
         <div class="demo-expired-sub">
           Ja tem conta? <a href="/login.html">Fazer login</a>
         </div>
