@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /affiliate
+
+Sitemap: https://gdrums.com.br/sitemap.xml
