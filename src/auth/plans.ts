@@ -245,26 +245,39 @@ class PlansPage {
         savingsText = plan.savings;
       }
 
+      // Mostrar valor total em destaque pra planos > 1 mes
+      const isMultiMonth = plan.durationMonths > 1;
+      const totalDisplay = (finalPrice / 100).toFixed(0);
+      const perMonthDisplay = (hasDiscount || hasCredit) ? finalPerMonth : plan.pricePerMonth;
+      const periodLabel = isMultiMonth
+        ? (plan.durationMonths >= 36 ? 'total' : `/ ${plan.durationMonths} meses`)
+        : '/mes';
+      const amountDisplay = isMultiMonth ? totalDisplay : perMonthDisplay;
+      const perMonthRef = isMultiMonth
+        ? `R$ ${perMonthDisplay}/mes${plan.savings && !hasDiscount && !hasCredit ? ' — ' + plan.savings : ''}`
+        : '';
+
       card.innerHTML = `
         ${isHighlighted ? '<div class="plan-badge">' + (hasCredit ? 'Upgrade' : 'Mais Popular') + '</div>' : ''}
-        <span class="plan-name">${plan.displayName}</span>
-        ${(hasDiscount || hasCredit) ? `<div class="plan-original-price">R$ ${plan.pricePerMonth}/mês</div>` : ''}
+        <span class="plan-name">${plan.durationMonths >= 36 ? plan.displayName + ' — 3 Anos' : plan.displayName}</span>
+        ${(hasDiscount || hasCredit) && isMultiMonth ? `<div class="plan-original-price">R$ ${(originalPrice / 100).toFixed(0)}</div>` : ''}
+        ${(hasDiscount || hasCredit) && !isMultiMonth ? `<div class="plan-original-price">R$ ${plan.pricePerMonth}/mes</div>` : ''}
         <div class="plan-price">
           <span class="plan-currency">R$</span>
-          <span class="plan-amount">${(hasDiscount || hasCredit) ? finalPerMonth : plan.pricePerMonth}</span>
-          <span class="plan-period">/mês</span>
+          <span class="plan-amount">${amountDisplay}</span>
+          <span class="plan-period">${periodLabel}</span>
         </div>
         ${savingsText ? `<span class="plan-savings">${savingsText}</span>` : ''}
-        ${plan.durationMonths > 1 ? `<span class="plan-total">Total: R$ ${(finalPrice / 100).toFixed(0)}</span>` : '<span class="plan-total">&nbsp;</span>'}
+        ${perMonthRef ? `<span class="plan-total">${perMonthRef}</span>` : '<span class="plan-total">&nbsp;</span>'}
         <ul class="plan-features">
-          <li>Todos os ritmos da biblioteca</li>
-          <li>Performance ao vivo (viradas, intro, final)</li>
-          <li>Pedal Bluetooth personalizável</li>
-          <li>Favoritos e setlist</li>
+          <li>Acesso completo a todos os ritmos</li>
+          <li>Acompanhamento ao vivo com viradas e finalizacoes</li>
+          <li>Pedal Bluetooth</li>
+          <li>Repertorio e ritmos personalizados</li>
           <li>Modo offline</li>
           <li>Ritmos novos toda semana</li>
-          ${plan.durationMonths >= 6 ? '<li>Suporte prioritário</li>' : ''}
-          ${plan.durationMonths >= 36 ? '<li>3 anos garantidos — metade do mensal</li>' : ''}
+          ${plan.durationMonths >= 6 ? '<li>Suporte prioritario</li>' : ''}
+          ${plan.durationMonths >= 36 ? '<li>Pague uma vez, toque por 3 anos</li>' : ''}
         </ul>
         <button class="plan-btn" data-plan="${plan.id}">${hasCredit ? 'Upgrade para' : 'Assinar'} ${plan.displayName}</button>
       `;
