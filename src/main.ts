@@ -1121,15 +1121,17 @@ class RhythmSequencer {
         pedalInput.focus({ preventScroll: true });
       };
 
-      // Delays maiores pra não roubar foco de botões do app
-      document.addEventListener('click', () => setTimeout(focusPedalInput, 300));
-      document.addEventListener('touchend', () => setTimeout(focusPedalInput, 400), { passive: true });
-      window.addEventListener('keydown', () => setTimeout(focusPedalInput, 50), true);
-      window.addEventListener('keyup', () => setTimeout(focusPedalInput, 50), true);
+      // SÍNCRONO no touch/click — iOS exige user gesture pra focus()
+      document.addEventListener('touchend', () => focusPedalInput(), { passive: true });
+      document.addEventListener('click', () => focusPedalInput());
+      // Após keydown do pedal, refocar pra próxima pisada
+      window.addEventListener('keydown', () => focusPedalInput(), true);
+      window.addEventListener('keyup', () => focusPedalInput(), true);
+      // Safety net periódico
       setInterval(focusPedalInput, 1500);
       setTimeout(focusPedalInput, 500);
       pedalInput.addEventListener('input', () => { pedalInput.value = ''; });
-      pedalInput.addEventListener('blur', () => setTimeout(focusPedalInput, 200));
+      pedalInput.addEventListener('blur', () => focusPedalInput());
     }
   }
 
@@ -2133,14 +2135,19 @@ class RhythmSequencer {
         </div>
       `;
 
-      overlay.querySelector('#pedalLeftBtn')!.addEventListener('click', (ev) => { ev.stopPropagation(); listening = 'left'; render(); });
-      overlay.querySelector('#pedalRightBtn')!.addEventListener('click', (ev) => { ev.stopPropagation(); listening = 'right'; render(); });
+      // Focar mapperInput SÍNCRONO no click (iOS exige user gesture pra focus)
+      overlay.querySelector('#pedalLeftBtn')!.addEventListener('click', (ev) => {
+        ev.stopPropagation(); listening = 'left'; render();
+        mapperInput.focus({ preventScroll: true });
+      });
+      overlay.querySelector('#pedalRightBtn')!.addEventListener('click', (ev) => {
+        ev.stopPropagation(); listening = 'right'; render();
+        mapperInput.focus({ preventScroll: true });
+      });
 
       overlay.querySelector('#pedalReset')!.addEventListener('click', () => {
-        tempLeft = 'ArrowLeft';
-        tempRight = 'ArrowRight';
-        listening = null;
-        render();
+        tempLeft = 'ArrowLeft'; tempRight = 'ArrowRight'; listening = null; render();
+        mapperInput.focus({ preventScroll: true });
       });
 
       overlay.querySelector('#pedalSave')!.addEventListener('click', () => {
@@ -2151,8 +2158,8 @@ class RhythmSequencer {
         this.modalManager.show('Pedal', 'Mapeamento salvo!', 'success');
       });
 
-      // Refocar input do mapper após cada render (botões roubam foco no iOS)
-      setTimeout(() => mapperInput.focus({ preventScroll: true }), 100);
+      // Qualquer toque no overlay refoca o input (user gesture)
+      overlay.addEventListener('click', () => mapperInput.focus({ preventScroll: true }));
     };
 
     document.body.appendChild(overlay);
@@ -2244,6 +2251,9 @@ class RhythmSequencer {
       document.removeEventListener('keyup', keyUpHandler, true);
       mapperInput.remove();
       overlay.remove();
+      // Refocar o input principal do app (síncrono = dentro de user gesture)
+      const mainInput = document.getElementById('pedalBtInput') as HTMLInputElement;
+      if (mainInput) mainInput.focus({ preventScroll: true });
     };
 
     overlay.addEventListener('click', (e) => {
