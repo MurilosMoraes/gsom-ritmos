@@ -17,7 +17,9 @@ export default defineConfig({
         plans: './plans.html',
         paymentSuccess: './payment-success.html',
         affiliate: './affiliate.html',
-        demo: './demo.html'
+        demo: './demo.html',
+        terms: './terms.html',
+        privacy: './privacy.html'
       }
     }
   },
