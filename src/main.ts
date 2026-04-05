@@ -412,9 +412,21 @@ class RhythmSequencer {
     }
 
     if (userError) {
-      await supabase.auth.signOut();
-      window.location.href = '/login.html';
-      return false;
+      // Tentar refresh do token antes de deslogar
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        // Refresh falhou — se tem cache offline valido, usar
+        if (OfflineCache.hasValidOfflineAccess()) {
+          const cached = OfflineCache.getProfile();
+          if (cached?.subscriptionExpiresAt) {
+            this.showSubscriptionBanner(cached.subscriptionStatus, new Date(cached.subscriptionExpiresAt), cached.subscriptionPlan);
+          }
+          return true;
+        }
+        await supabase.auth.signOut();
+        window.location.href = '/login.html';
+        return false;
+      }
     }
 
     const { data: profile } = await supabase
@@ -458,12 +470,22 @@ class RhythmSequencer {
 
     // Sessão única — verificar se este device é o ativo
     const localSessionId = localStorage.getItem('gdrums-session-id');
-    if (profile?.active_session_id && localSessionId !== profile.active_session_id) {
+    if (profile?.active_session_id && localSessionId && localSessionId !== profile.active_session_id) {
       // Outra sessão está ativa — deslogar este device
       await supabase.auth.signOut();
       localStorage.clear();
       window.location.href = '/login.html';
       return false;
+    }
+
+    // Se não tem session ID local (primeiro acesso ou limpou cache), gerar um
+    if (!localSessionId) {
+      const newId = crypto.randomUUID();
+      localStorage.setItem('gdrums-session-id', newId);
+      supabase.from('gdrums_profiles')
+        .update({ active_session_id: newId })
+        .eq('id', session.user.id)
+        .then();
     }
 
     const status = profile?.subscription_status;
@@ -472,13 +494,6 @@ class RhythmSequencer {
     if ((status === 'active' || status === 'trial') && expires) {
       const expiresDate = new Date(expires);
       if (expiresDate > new Date()) {
-        // Rotacionar session ID a cada acesso online (invalida sessões copiadas)
-        const newSessionId = crypto.randomUUID();
-        localStorage.setItem('gdrums-session-id', newSessionId);
-        supabase.from('gdrums_profiles')
-          .update({ active_session_id: newSessionId })
-          .eq('id', session.user.id)
-          .then(); // fire-and-forget
 
         // Salvar perfil no cache offline para próximo acesso sem rede
         OfflineCache.saveProfile({
