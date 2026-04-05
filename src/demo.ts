@@ -352,9 +352,9 @@ class DemoPlayer {
     overlay.innerHTML = `
       <div class="demo-expired-card">
         <img src="/img/logo.png" alt="GDrums" style="height:36px;opacity:0.7;margin-bottom:1.5rem;">
-        <h2>Gostou do que ouviu?</h2>
-        <p>Cadastre-se gratis e tenha 48h pra testar todos os 50 ritmos, pedal Bluetooth, repertorio e muito mais. Sem cartao de credito.</p>
-        <a href="/register.html" class="demo-expired-cta">Cadastrar gratis — 48h</a>
+        <h2>Sentiu a diferenca?</h2>
+        <p>Isso e so o comeco. Sao 50 ritmos profissionais que seguram sua musica do comeco ao fim. Viradas, intros, finalizacoes — tudo no seu controle.</p>
+        <a href="/register.html" class="demo-expired-cta">LIBERAR A BANDA COMPLETA</a>
         <div class="demo-expired-sub">
           Ja tem conta? <a href="/login.html">Fazer login</a>
         </div>
