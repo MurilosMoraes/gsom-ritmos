@@ -2186,10 +2186,10 @@ class RhythmSequencer {
     mapperInput.addEventListener('input', () => { mapperInput.value = ''; });
     mapperInput.addEventListener('blur', () => { focusMapperInput(); setTimeout(focusMapperInput, 10); });
     const mapperFocusInterval = setInterval(focusMapperInput, 800);
-    setTimeout(focusMapperInput, 200);
-    setTimeout(focusMapperInput, 500);
 
     render();
+    // Focar SÍNCRONO — ainda dentro da call stack do click que abriu o mapper
+    mapperInput.focus({ preventScroll: true });
 
     const handleDetected = (code: string, debugInfo: string) => {
       if (!listening) {
