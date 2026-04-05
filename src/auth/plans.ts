@@ -39,8 +39,17 @@ class PlansPage {
     });
 
     if (!(await authService.isAuthenticated())) {
-      window.location.href = '/login.html';
-      return;
+      // Tentar refresh antes de desistir
+      try {
+        const { error } = await supabase.auth.refreshSession();
+        if (error) {
+          window.location.href = '/login.html';
+          return;
+        }
+      } catch {
+        window.location.href = '/login.html';
+        return;
+      }
     }
 
     const { data: { user } } = await supabase.auth.getUser();
