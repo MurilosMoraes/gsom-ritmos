@@ -5,37 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>GDrums — Toque Agora</title>
   <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
+  <meta name="description" content="Teste o GDrums agora sem cadastro. Acompanhamento profissional pra tocar ao vivo.">
   <meta name="theme-color" content="#030014">
   <link rel="stylesheet" href="styles.css">
   <style>
-    .demo-timer {
+    .demo-topbar {
       position: fixed; top: 0; left: 0; right: 0; z-index: 9998;
-      background: rgba(2,0,15,0.95); backdrop-filter: blur(12px);
-      padding: 0.4rem 1rem; display: flex; align-items: center;
-      justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(3,0,20,0.92); backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 0 0.75rem; height: 3rem;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
     }
-    .demo-timer-left { display: flex; align-items: center; gap: 0.5rem; }
-    .demo-timer-badge {
-      font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1.5px; color: #F97316; background: rgba(249,115,22,0.1);
+    .demo-topbar-left { display: flex; align-items: center; gap: 0.5rem; }
+    .demo-topbar-logo { height: 18px; opacity: 0.7; }
+    .demo-topbar-badge {
+      font-size: 0.55rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.5px; color: var(--orange); background: rgba(249,115,22,0.1);
       border: 1px solid rgba(249,115,22,0.2); border-radius: 5px;
-      padding: 0.15rem 0.5rem;
+      padding: 0.1rem 0.4rem;
     }
-    .demo-timer-clock {
-      font-size: 0.82rem; font-weight: 700; color: #fff;
+    .demo-topbar-counter {
+      font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.5);
       font-variant-numeric: tabular-nums;
     }
-    .demo-timer-bar {
+    .demo-topbar-cta {
+      padding: 0.3rem 0.7rem; border: none; border-radius: 8px;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      color: #fff; font-size: 0.68rem; font-weight: 700;
+      font-family: inherit; cursor: pointer; text-decoration: none;
+      white-space: nowrap;
+    }
+    .demo-topbar-bar {
       position: absolute; bottom: 0; left: 0; height: 2px;
-      background: linear-gradient(90deg, #00D4FF, #8B5CF6);
-      transition: width 1s linear;
+      background: linear-gradient(90deg, var(--cyan), var(--purple));
+      transition: width 0.3s;
     }
-    .demo-cta-btn {
-      padding: 0.3rem 0.8rem; border: none; border-radius: 8px;
-      background: linear-gradient(135deg, #00D4FF, #8B5CF6);
-      color: #fff; font-size: 0.72rem; font-weight: 700;
-      font-family: inherit; cursor: pointer; white-space: nowrap;
-    }
+    .app-container { padding-top: 3rem; }
+
+    /* Esconder elementos que nao existem no demo */
+    #setlistPrev, #setlistNext, #setlistEditBtn, #myRhythmsBtn, #saveAsMyRhythmBtn { display: none !important; }
+    .fav-bar { justify-content: center; }
+
     .demo-expired-overlay {
       position: fixed; inset: 0; z-index: 99999;
       background: rgba(2,0,15,0.95); backdrop-filter: blur(16px);
@@ -50,26 +61,24 @@
     .demo-expired-card p { color: rgba(255,255,255,0.5); font-size: 0.9rem; line-height: 1.6; margin: 0 0 1.5rem; }
     .demo-expired-cta {
       display: inline-block; padding: 0.85rem 2rem;
-      background: linear-gradient(135deg, #00D4FF, #8B5CF6);
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
       color: #fff; text-decoration: none; border-radius: 14px;
       font-weight: 700; font-size: 1rem; box-shadow: 0 4px 20px rgba(0,212,255,0.3);
     }
     .demo-expired-sub { margin-top: 1rem; font-size: 0.75rem; color: rgba(255,255,255,0.25); }
-    .demo-expired-sub a { color: #00D4FF; text-decoration: none; }
-
-    /* Ajustar app pra caber com timer */
-    .app-container { padding-top: 2.5rem; }
+    .demo-expired-sub a { color: var(--cyan); text-decoration: none; }
   </style>
 </head>
 <body>
-  <!-- Timer do demo -->
-  <div class="demo-timer" id="demoTimer">
-    <div class="demo-timer-left">
-      <span class="demo-timer-badge">DEMO</span>
-      <span class="demo-timer-clock" id="demoTimerClock">2 ritmos restantes</span>
+  <!-- Demo topbar -->
+  <div class="demo-topbar">
+    <div class="demo-topbar-left">
+      <img src="/img/logo.png" alt="GDrums" class="demo-topbar-logo">
+      <span class="demo-topbar-badge">DEMO</span>
+      <span class="demo-topbar-counter" id="demoCounter">2 ritmos restantes</span>
     </div>
-    <a href="/register.html" class="demo-cta-btn">Liberar tudo</a>
-    <div class="demo-timer-bar" id="demoTimerBar" style="width:100%;"></div>
+    <a href="/register.html" class="demo-topbar-cta">Liberar tudo</a>
+    <div class="demo-topbar-bar" id="demoBar" style="width:100%;"></div>
   </div>
 
   <div class="app-container">
@@ -77,16 +86,19 @@
       <div id="userMode" class="mode-container active">
         <div class="user-layout">
 
-          <!-- Nome do ritmo -->
+          <!-- 1. Nome do ritmo -->
           <div class="fav-section">
             <div class="fav-bar">
               <div class="fav-center">
-                <span class="fav-current-name" id="demoRhythmName">Selecione um ritmo</span>
+                <span class="fav-current-name" id="currentRhythmName">Selecione um ritmo</span>
               </div>
+            </div>
+            <div class="rhythm-strip-cards" id="rhythmStripCards" style="display:block">
+              <div class="rhythm-cards-wrap" id="demoRhythmStrip"></div>
             </div>
           </div>
 
-          <!-- Beat Marker -->
+          <!-- 2. Beat Marker -->
           <div class="beat-section">
             <div class="beat-dots" id="beatDots">
               <div class="beat-dot" data-beat="0"></div>
@@ -96,34 +108,68 @@
             </div>
           </div>
 
-          <!-- Performance Grid -->
-          <div class="performance-section">
-            <div class="performance-grid" id="performanceGrid"></div>
-          </div>
-
-          <!-- Play -->
-          <div class="play-section">
-            <button class="play-btn" id="demoPlayBtn">
-              <span class="play-icon">&#9654;</span>
-              <span class="play-label">TOCAR</span>
-            </button>
-          </div>
-
-          <!-- BPM -->
-          <div class="controls-bar">
-            <div class="ctrl-group">
-              <span class="ctrl-label">BPM</span>
-              <div class="ctrl-row">
-                <button id="tempoDown" class="ctrl-btn ctrl-btn-bpm">&minus;</button>
-                <button id="tempoDisplay" class="ctrl-value ctrl-value-tap">80</button>
-                <button id="tempoUp" class="ctrl-btn ctrl-btn-bpm">+</button>
+          <!-- 3. Performance Grid (identico ao app) -->
+          <div class="user-grid-section">
+            <div class="user-performance-grid" id="performanceGrid">
+              <div class="grid-cell rhythm-cell" data-type="main" data-variation="0">
+                <span class="cell-number">1</span>
+                <span class="cell-label">RITMO</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell rhythm-cell" data-type="main" data-variation="1">
+                <span class="cell-number">2</span>
+                <span class="cell-label">RITMO</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell rhythm-cell" data-type="main" data-variation="2">
+                <span class="cell-number">3</span>
+                <span class="cell-label">RITMO</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell fill-cell" data-type="fill" data-variation="0">
+                <span class="cell-number">1</span>
+                <span class="cell-label">VIRADA</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell fill-cell" data-type="fill" data-variation="1">
+                <span class="cell-number">2</span>
+                <span class="cell-label">VIRADA</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell fill-cell" data-type="fill" data-variation="2">
+                <span class="cell-number">3</span>
+                <span class="cell-label">VIRADA</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell end-cell" data-type="end" data-variation="0">
+                <span class="cell-label">FINAL</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell cymbal-cell" id="cymbalBtn">
+                <span class="cell-label">PRATO</span>
+                <div class="cell-indicator"></div>
               </div>
             </div>
           </div>
 
-          <!-- Ritmos do demo -->
-          <div style="padding:0.5rem 0;">
-            <div style="display:flex;gap:0.4rem;overflow-x:auto;padding:0.25rem 0;" id="demoRhythmStrip"></div>
+          <!-- 4. Controles (identico ao app) -->
+          <div class="controls-bar">
+            <div class="ctrl-group">
+              <span class="ctrl-label">BPM</span>
+              <div class="ctrl-row">
+                <button id="tempoDownUser" class="ctrl-btn ctrl-btn-bpm">&minus;</button>
+                <button id="tempoDisplayUser" class="ctrl-value ctrl-value-tap">80</button>
+                <button id="tempoUpUser" class="ctrl-btn ctrl-btn-bpm">+</button>
+              </div>
+            </div>
+            <div class="ctrl-divider"></div>
+            <div class="ctrl-group ctrl-group-vol">
+              <span class="ctrl-label">VOL</span>
+              <div class="ctrl-row">
+                <input type="range" id="masterVolumeUser" min="0" max="200" value="200" step="5" class="ctrl-slider">
+                <span class="ctrl-value ctrl-value-sm" id="volumeDisplayUser">100%</span>
+              </div>
+            </div>
           </div>
 
         </div>
