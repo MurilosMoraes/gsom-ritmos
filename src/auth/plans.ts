@@ -19,6 +19,12 @@ class PlansPage {
   }
 
   private async init(): Promise<void> {
+    // Logout
+    document.getElementById('plansLogoutBtn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login.html';
+    });
+
     // Limpar loading se voltou do checkout (bfcache)
     window.addEventListener('pageshow', (e) => {
       if (e.persisted) {
@@ -271,12 +277,12 @@ class PlansPage {
         ${perMonthRef ? `<span class="plan-total">${perMonthRef}</span>` : '<span class="plan-total">&nbsp;</span>'}
         <ul class="plan-features">
           <li>Acesso completo a todos os ritmos</li>
-          <li>Acompanhamento ao vivo com viradas e finalizacoes</li>
+          <li>Acompanhamento ao vivo com viradas e finalizações</li>
           <li>Pedal Bluetooth</li>
-          <li>Repertorio e ritmos personalizados</li>
+          <li>Repertório e ritmos personalizados</li>
           <li>Modo offline</li>
           <li>Ritmos novos toda semana</li>
-          ${plan.durationMonths >= 6 ? '<li>Suporte prioritario</li>' : ''}
+          ${plan.durationMonths >= 6 ? '<li>Suporte prioritário</li>' : ''}
           ${plan.durationMonths >= 36 ? '<li>Pague uma vez, toque por 3 anos</li>' : ''}
         </ul>
         <button class="plan-btn" data-plan="${plan.id}">${hasCredit ? 'Upgrade para' : 'Assinar'} ${plan.displayName}</button>
