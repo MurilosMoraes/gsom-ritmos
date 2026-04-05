@@ -1096,23 +1096,27 @@ class RhythmSequencer {
 
     }, { capture: true, passive: false } as AddEventListenerOptions);
 
-    // ─── iOS: input oculto pra forçar keydown do pedal BT ───────────
-    // No iOS, se nenhum elemento editável tem foco, o Safari consome
-    // teclas como Space/setas pro scroll e NÃO dispara keydown.
-    // Com um input focado, o iOS entrega o evento pro JavaScript.
+    // ─── iOS: input receptor pra forçar keydown do pedal BT ─────────
+    // No iOS Safari, keydown de teclados BT só chega se um elemento
+    // editável tem foco. O input precisa estar DENTRO da viewport
+    // (não em -9999px) e NÃO ser readonly pro Safari respeitar.
     if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
       const pedalInput = document.createElement('input');
       pedalInput.id = 'pedalBtInput';
-      pedalInput.setAttribute('readonly', 'true');
+      pedalInput.type = 'text';
       pedalInput.setAttribute('inputmode', 'none');
       pedalInput.setAttribute('autocomplete', 'off');
       pedalInput.setAttribute('autocorrect', 'off');
       pedalInput.setAttribute('autocapitalize', 'off');
       pedalInput.setAttribute('spellcheck', 'false');
-      pedalInput.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;border:none;padding:0;margin:0;font-size:16px;';
+      pedalInput.setAttribute('aria-hidden', 'true');
+      pedalInput.tabIndex = -1;
+      // Dentro da viewport mas invisível — clip-rect mantém o Safari feliz
+      pedalInput.style.cssText = 'position:fixed;bottom:0;left:0;width:1px;height:1px;opacity:0.01;border:none;padding:0;margin:0;font-size:16px;z-index:-1;clip:rect(0,1px,1px,0);color:transparent;background:transparent;caret-color:transparent;';
       document.body.appendChild(pedalInput);
 
       const focusPedalInput = () => {
+        if (this.pedalMapperOpen) return;
         const active = document.activeElement as HTMLElement;
         // Não roubar foco de inputs reais do usuário
         if (active && active !== pedalInput && active !== document.body &&
@@ -1120,14 +1124,26 @@ class RhythmSequencer {
         pedalInput.focus({ preventScroll: true });
       };
 
-      // Manter foco no input oculto
-      document.addEventListener('click', () => setTimeout(focusPedalInput, 150));
-      document.addEventListener('touchend', () => setTimeout(focusPedalInput, 300));
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(focusPedalInput, 300); });
-      setTimeout(focusPedalInput, 1000);
+      // Manter foco agressivamente — o iOS tira foco em vários momentos
+      document.addEventListener('click', () => setTimeout(focusPedalInput, 100));
+      document.addEventListener('touchstart', () => setTimeout(focusPedalInput, 100), { passive: true });
+      document.addEventListener('touchend', () => setTimeout(focusPedalInput, 200), { passive: true });
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(focusPedalInput, 200); });
 
-      // Limpar qualquer texto que o iOS possa inserir
+      // Refoca APÓS cada keydown do pedal — crítico! Sem isso o iOS perde foco depois do primeiro evento
+      window.addEventListener('keydown', () => setTimeout(focusPedalInput, 50), true);
+      window.addEventListener('keyup', () => setTimeout(focusPedalInput, 50), true);
+
+      // Refoca periódico como safety net (a cada 2s)
+      setInterval(focusPedalInput, 2000);
+
+      // Foco inicial
+      setTimeout(focusPedalInput, 500);
+      setTimeout(focusPedalInput, 1500);
+
+      // Limpar qualquer texto que o iOS insira
       pedalInput.addEventListener('input', () => { pedalInput.value = ''; });
+      pedalInput.addEventListener('blur', () => setTimeout(focusPedalInput, 100));
     }
   }
 
