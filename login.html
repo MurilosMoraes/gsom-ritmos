@@ -1,94 +1,169 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login - GDrums</title>
-    <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
-    <link rel="apple-touch-icon" href="/img/icon-192.png">
-    <meta name="theme-color" content="#030014">
-    <link rel="stylesheet" href="auth-styles.css" />
-  </head>
-  <body>
-    <div class="auth-container">
-      <div class="auth-card">
-        <div class="auth-header">
-          <div class="logo-auth">
-            <img src="/img/logo.png" alt="GDrums" class="logo-img-auth" />
-          </div>
-          <p class="auth-subtitle">Bem-vindo de volta!</p>
-        </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entrar — GDrums</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <meta name="theme-color" content="#030014">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif; background:#030014; color:#fff; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
 
-        <form id="loginForm" class="auth-form">
-          <div class="form-group">
-            <label for="email">E-mail</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              required
-              placeholder="seu@email.com"
-              autocomplete="email"
-            />
-          </div>
+    .login-card {
+      width:100%; max-width:400px;
+      background:rgba(10,10,30,0.7); backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,0.06); border-radius:24px;
+      padding:2.5rem 2rem;
+    }
 
-          <div class="form-group">
-            <label for="password">Senha</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              required
-              placeholder="••••••••"
-              autocomplete="current-password"
-            />
-          </div>
+    .login-logo { display:block; height:36px; margin:0 auto 1.5rem; opacity:0.8; }
 
-          <div class="form-options">
-            <label class="checkbox-label">
-              <input type="checkbox" id="rememberMe" />
-              <span>Lembrar de mim</span>
-            </label>
-            <a href="#" class="forgot-link">Esqueceu a senha?</a>
-          </div>
+    .login-title {
+      font-size:1.2rem; font-weight:700; text-align:center; margin-bottom:0.3rem;
+    }
+    .login-sub {
+      font-size:0.82rem; color:rgba(255,255,255,0.4); text-align:center;
+      margin-bottom:1.75rem;
+    }
 
-          <button type="submit" class="btn-primary-auth" id="loginBtn">
-            <span class="btn-text">Entrar</span>
-            <span class="btn-loader" style="display: none;">
-              <svg class="spinner" viewBox="0 0 50 50">
-                <circle cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
-              </svg>
-            </span>
-          </button>
+    .login-field { margin-bottom:1rem; }
+    .login-field label {
+      display:block; font-size:0.68rem; font-weight:600;
+      color:rgba(255,255,255,0.4); text-transform:uppercase;
+      letter-spacing:0.5px; margin-bottom:0.3rem;
+    }
+    .login-field input {
+      width:100%; padding:0.7rem 0.9rem;
+      background:rgba(255,255,255,0.04); border:1.5px solid rgba(255,255,255,0.08);
+      border-radius:10px; color:#fff; font-size:0.9rem; font-family:inherit;
+      outline:none; transition:border-color 0.15s;
+    }
+    .login-field input:focus { border-color:rgba(0,212,255,0.4); }
+    .login-field input::placeholder { color:rgba(255,255,255,0.2); }
 
-          <div class="auth-divider">
-            <span>ou</span>
-          </div>
+    .login-options {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:1.25rem; font-size:0.78rem;
+    }
+    .login-options label {
+      display:flex; align-items:center; gap:0.4rem;
+      color:rgba(255,255,255,0.4); cursor:pointer;
+    }
+    .login-options input[type="checkbox"] {
+      width:14px; height:14px; accent-color:#00D4FF;
+    }
+    .login-options a {
+      color:rgba(0,212,255,0.7); text-decoration:none; font-weight:500;
+    }
+    .login-options a:hover { color:#00D4FF; }
 
-          <p class="auth-footer">
-            Não tem uma conta?
-            <a href="register.html">Criar conta</a>
-          </p>
-        </form>
+    .login-btn {
+      width:100%; padding:0.8rem; border:none; border-radius:12px;
+      background:linear-gradient(135deg,#00D4FF,#8B5CF6);
+      color:#fff; font-size:0.95rem; font-weight:700; font-family:inherit;
+      cursor:pointer; transition:all 0.15s;
+      box-shadow:0 4px 20px rgba(0,212,255,0.25);
+      position:relative;
+    }
+    .login-btn:hover { box-shadow:0 6px 28px rgba(0,212,255,0.4); transform:translateY(-1px); }
+    .login-btn:disabled { opacity:0.5; cursor:default; transform:none; }
+    .login-btn .btn-loader { display:none; }
+    .login-btn .btn-loader.active { display:block; }
+    .login-btn .btn-text.hidden { display:none; }
 
-        <div class="alert-message" id="alertMessage" style="display: none;"></div>
-        <p style="text-align:center;margin-top:1.5rem;font-size:0.7rem;color:rgba(255,255,255,0.4);font-style:italic;">Pra honra e glória de Deus</p>
+    .login-divider {
+      display:flex; align-items:center; gap:0.75rem;
+      margin:1.25rem 0; color:rgba(255,255,255,0.15); font-size:0.75rem;
+    }
+    .login-divider::before, .login-divider::after {
+      content:''; flex:1; height:1px; background:rgba(255,255,255,0.06);
+    }
+
+    .login-footer {
+      text-align:center; font-size:0.82rem; color:rgba(255,255,255,0.4);
+    }
+    .login-footer a { color:#00D4FF; text-decoration:none; font-weight:600; }
+
+    .login-alert {
+      margin-top:0.75rem; padding:0.6rem 0.8rem; border-radius:8px;
+      font-size:0.8rem; display:none; text-align:center;
+    }
+    .login-alert.error { background:rgba(255,68,102,0.1); color:#FF4466; border:1px solid rgba(255,68,102,0.2); }
+    .login-alert.success { background:rgba(0,230,140,0.1); color:#00E68C; border:1px solid rgba(0,230,140,0.2); }
+
+    .login-support {
+      text-align:center; margin-top:1.25rem; padding-top:1rem;
+      border-top:1px solid rgba(255,255,255,0.06);
+    }
+    .login-support a {
+      display:inline-flex; align-items:center; gap:0.35rem;
+      color:rgba(0,230,140,0.6); font-size:0.72rem; text-decoration:none;
+    }
+    .login-support a:hover { color:rgba(0,230,140,0.9); }
+
+    .login-glory {
+      text-align:center; margin-top:1rem; font-size:0.7rem;
+      color:rgba(255,255,255,0.4); font-style:italic;
+    }
+
+    .spinner-sm {
+      width:20px; height:20px; border:2.5px solid rgba(255,255,255,0.2);
+      border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite;
+      margin:0 auto;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <img src="/img/logo.png" alt="GDrums" class="login-logo" />
+    <h1 class="login-title">Bem-vindo de volta</h1>
+    <p class="login-sub">Sua banda está esperando</p>
+
+    <form id="loginForm">
+      <div class="login-field">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" name="email" required placeholder="seu@email.com" autocomplete="email" />
       </div>
 
-      <div class="auth-illustration">
-        <div class="illustration-content">
-          <h2>Crie ritmos profissionais</h2>
-          <p>Acesse agora a melhor ferramenta de sequenciamento de ritmos do Brasil</p>
-          <ul class="features-list">
-            <li>✓ 150+ ritmos prontos</li>
-            <li>✓ Editor avançado de padrões</li>
-            <li>✓ Sistema de variações</li>
-            <li>✓ Exportação MIDI</li>
-          </ul>
-        </div>
+      <div class="login-field">
+        <label for="password">Senha</label>
+        <input type="password" id="password" name="password" required placeholder="Sua senha" autocomplete="current-password" />
       </div>
+
+      <div class="login-options">
+        <label>
+          <input type="checkbox" id="rememberMe" />
+          <span>Lembrar de mim</span>
+        </label>
+      </div>
+
+      <button type="submit" class="login-btn" id="loginBtn">
+        <span class="btn-text">Entrar</span>
+        <span class="btn-loader"><div class="spinner-sm"></div></span>
+      </button>
+    </form>
+
+    <div class="login-divider"><span>ou</span></div>
+
+    <p class="login-footer">
+      Não tem conta? <a href="/register.html">Cadastrar grátis</a>
+    </p>
+
+    <div class="login-alert" id="alertMessage"></div>
+
+    <div class="login-support">
+      <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.25 0-4.322-.744-5.998-2l-.424-.314-3.282 1.1 1.1-3.282-.314-.424A9.935 9.935 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+        Precisa de ajuda? Fale conosco
+      </a>
     </div>
 
-    <script type="module" src="/src/auth/login.ts"></script>
-  </body>
+    <p class="login-glory">Pra honra e glória de Deus</p>
+  </div>
+
+  <script type="module" src="/src/auth/login.ts"></script>
+</body>
 </html>
