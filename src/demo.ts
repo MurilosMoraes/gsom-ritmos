@@ -1,12 +1,14 @@
-// Demo mode — sequenciador limitado sem auth
-// 4 ritmos, 5 minutos de reproducao, fingerprint pra evitar reset
+// Demo mode — app identico ao real mas com limite de ritmos
+// Usa mesma UI (styles.css), mesmos IDs, mesma experiencia
 
 import { StateManager } from './core/StateManager';
 import { AudioManager } from './core/AudioManager';
 import { Scheduler } from './core/Scheduler';
 import { PatternEngine } from './core/PatternEngine';
 import { FileManager } from './io/FileManager';
+import { UIManager } from './ui/UIManager';
 import { MAX_CHANNELS, type PatternType } from './types';
+import { HapticsService } from './native/HapticsService';
 
 const DEMO_RHYTHMS = [
   { name: 'Vaneira', path: '/rhythm/Vaneira.json' },
@@ -15,8 +17,8 @@ const DEMO_RHYTHMS = [
   { name: 'Pop Rock', path: '/rhythm/Pop Rock.json' },
 ];
 
-const MAX_RHYTHMS = 2; // Maximo de ritmos que pode testar
-const IDLE_TIMEOUT = 3 * 60 * 1000; // 3 minutos sem tocar = expira
+const MAX_RHYTHMS = 2;
+const IDLE_TIMEOUT = 3 * 60 * 1000;
 const STORAGE_KEY = 'gdrums_demo_used';
 const FP_KEY = 'gdrums_demo_fp';
 
@@ -27,14 +29,14 @@ class DemoPlayer {
   private scheduler!: Scheduler;
   private patternEngine!: PatternEngine;
   private fileManager!: FileManager;
-  private currentRhythm = '';
+  private uiManager!: UIManager;
   private rhythmsUsed = new Set<string>();
   private idleTimer: number | null = null;
-  private isPlaying = false;
   private expired = false;
+  private cymbalBuffer: AudioBuffer | null = null;
+  private currentRhythmName = '';
 
   constructor() {
-    // Verificar se ja usou o demo
     if (this.isDemoExpired()) {
       this.showExpired();
       return;
@@ -46,38 +48,34 @@ class DemoPlayer {
     this.patternEngine = new PatternEngine(this.stateManager);
     this.scheduler = new Scheduler(this.stateManager, this.audioManager, this.patternEngine);
     this.fileManager = new FileManager(this.stateManager, this.audioManager);
+    this.uiManager = new UIManager(this.stateManager);
 
     this.setupCallbacks();
     this.setupUI();
-    this.updateCounterDisplay();
+    this.updateCounter();
     this.resetIdleTimer();
     this.saveFingerprint();
+
+    // Pre-carregar prato
+    this.audioManager.loadAudioFromPath('/midi/prato.mp3').then(b => { this.cymbalBuffer = b; }).catch(() => {});
   }
 
-  // ─── Fingerprint + persistencia ────────────────────────────────────
+  // ─── Persistencia ─────────────────────────────────────────────────
 
   private getFingerprint(): string {
-    const nav = [
-      navigator.language, screen.width, screen.height,
-      screen.colorDepth, new Date().getTimezoneOffset(),
-    ].join('_');
+    const nav = [navigator.language, screen.width, screen.height, screen.colorDepth, new Date().getTimezoneOffset()].join('_');
     return btoa(nav).slice(0, 24);
   }
 
   private saveFingerprint(): void {
-    const fp = this.getFingerprint();
     try {
-      localStorage.setItem(FP_KEY, fp);
-      document.cookie = `gdrums_fp=${fp};max-age=31536000;path=/`;
+      localStorage.setItem(FP_KEY, this.getFingerprint());
+      document.cookie = `gdrums_fp=${this.getFingerprint()};max-age=31536000;path=/`;
     } catch {}
   }
 
   private isDemoExpired(): boolean {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'expired') return true;
-    // Cookie fallback
-    if (document.cookie.includes('gdrums_demo_used=expired')) return true;
-    return false;
+    return localStorage.getItem(STORAGE_KEY) === 'expired' || document.cookie.includes('gdrums_demo_used=expired');
   }
 
   private markExpired(): void {
@@ -88,47 +86,56 @@ class DemoPlayer {
     } catch {}
   }
 
-  // ─── Idle timer ───────────────────────────────────────────────────
-
   private resetIdleTimer(): void {
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.idleTimer = window.setTimeout(() => {
-      if (!this.isPlaying && !this.expired) {
+      if (!this.stateManager.isPlaying() && !this.expired) {
         this.markExpired();
         this.showExpired();
       }
     }, IDLE_TIMEOUT);
   }
 
-  // ─── Counter display ─────────────────────────────────────────────
-
-  private updateCounterDisplay(): void {
-    const clock = document.getElementById('demoTimerClock');
-    const bar = document.getElementById('demoTimerBar');
+  private updateCounter(): void {
     const remaining = MAX_RHYTHMS - this.rhythmsUsed.size;
-
-    if (clock) {
-      clock.textContent = `${remaining} ritmo${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`;
-      if (remaining <= 1) clock.style.color = '#f04466';
+    const el = document.getElementById('demoCounter');
+    const bar = document.getElementById('demoBar');
+    if (el) {
+      el.textContent = remaining > 0 ? `${remaining} ritmo${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}` : 'Limite atingido';
+      if (remaining <= 1) el.style.color = 'var(--orange)';
     }
-    if (bar) {
-      bar.style.width = `${(remaining / MAX_RHYTHMS) * 100}%`;
-    }
+    if (bar) bar.style.width = `${(remaining / MAX_RHYTHMS) * 100}%`;
   }
 
   // ─── Callbacks ────────────────────────────────────────────────────
 
   private setupCallbacks(): void {
     this.scheduler.setUpdateStepCallback((step: number, pattern: PatternType) => {
+      this.uiManager.updateCurrentStepVisual();
       this.updateBeatMarker(step, pattern);
     });
 
     this.patternEngine.setOnPatternChange((pattern: PatternType) => {
-      // noop no demo
+      this.uiManager.updateStatusUI(pattern);
+      this.uiManager.updatePerformanceGrid();
     });
 
     this.patternEngine.setOnStop(() => {
       this.stop();
+    });
+
+    this.patternEngine.setOnEndCymbal((time: number) => {
+      if (this.cymbalBuffer) {
+        this.audioManager.playSound(this.cymbalBuffer, time, this.stateManager.getState().masterVolume);
+      }
+    });
+
+    // Retomar ao voltar do background
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this.stateManager.isPlaying()) {
+        this.audioManager.resume();
+        this.scheduler.restart();
+      }
     });
   }
 
@@ -151,48 +158,79 @@ class DemoPlayer {
   // ─── UI ───────────────────────────────────────────────────────────
 
   private setupUI(): void {
-    // Ritmos
+    // Ritmos strip
     const strip = document.getElementById('demoRhythmStrip');
     if (strip) {
       DEMO_RHYTHMS.forEach(r => {
         const btn = document.createElement('button');
-        btn.style.cssText = 'padding:0.5rem 1rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:rgba(255,255,255,0.7);font-size:0.82rem;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;transition:all 0.12s;flex-shrink:0;';
+        btn.className = 'rhythm-card-btn';
         btn.textContent = r.name;
         btn.addEventListener('click', () => this.loadRhythm(r));
         strip.appendChild(btn);
       });
     }
 
-    // Play/Stop
-    const playBtn = document.getElementById('demoPlayBtn');
-    playBtn?.addEventListener('click', () => {
-      if (this.isPlaying) {
-        this.stop();
-      } else {
-        this.play();
+    // Performance grid cells
+    document.querySelectorAll('.grid-cell').forEach(cell => {
+      cell.addEventListener('click', () => {
+        if (this.expired) { this.showExpired(); return; }
+        this.resetIdleTimer();
+        HapticsService.medium();
+
+        const cellType = (cell as HTMLElement).getAttribute('data-type');
+        const variation = parseInt((cell as HTMLElement).getAttribute('data-variation') || '0');
+
+        if (cellType === 'main') {
+          if (!this.stateManager.isPlaying()) {
+            this.patternEngine.activateRhythm(variation);
+            this.stateManager.setShouldPlayStartSound(true);
+            this.play();
+          } else if (variation === this.stateManager.getCurrentVariation('main')) {
+            this.stop();
+          } else {
+            this.patternEngine.playFillToNextRhythm(variation);
+          }
+        } else if (cellType === 'fill' && this.stateManager.isPlaying()) {
+          this.patternEngine.activateFillWithTiming(variation);
+        } else if (cellType === 'end' && this.stateManager.isPlaying()) {
+          this.patternEngine.playEndAndStop();
+        }
+      });
+    });
+
+    // Prato
+    document.getElementById('cymbalBtn')?.addEventListener('click', () => {
+      this.resetIdleTimer();
+      HapticsService.heavy();
+      if (this.cymbalBuffer) {
+        this.audioManager.resume();
+        this.audioManager.playSound(this.cymbalBuffer, this.audioManager.getCurrentTime(), 1.0);
       }
     });
 
     // BPM
-    document.getElementById('tempoUp')?.addEventListener('click', () => {
-      const newTempo = Math.min(240, this.stateManager.getTempo() + 1);
-      this.stateManager.setTempo(newTempo);
-      this.updateTempoDisplay();
+    document.getElementById('tempoUpUser')?.addEventListener('click', () => {
+      this.stateManager.setTempo(Math.min(240, this.stateManager.getTempo() + 1));
+      this.uiManager.updateTempoUI(this.stateManager.getTempo());
+    });
+    document.getElementById('tempoDownUser')?.addEventListener('click', () => {
+      this.stateManager.setTempo(Math.max(40, this.stateManager.getTempo() - 1));
+      this.uiManager.updateTempoUI(this.stateManager.getTempo());
     });
 
-    document.getElementById('tempoDown')?.addEventListener('click', () => {
-      const newTempo = Math.max(40, this.stateManager.getTempo() - 1);
-      this.stateManager.setTempo(newTempo);
-      this.updateTempoDisplay();
-    });
+    // Volume
+    const volSlider = document.getElementById('masterVolumeUser') as HTMLInputElement;
+    const volDisplay = document.getElementById('volumeDisplayUser');
+    if (volSlider) {
+      volSlider.addEventListener('input', () => {
+        const val = parseInt(volSlider.value);
+        this.stateManager.getState().masterVolume = val / 100;
+        if (volDisplay) volDisplay.textContent = `${Math.round(val / 2)}%`;
+      });
+    }
 
     // Carregar primeiro ritmo
     this.loadRhythm(DEMO_RHYTHMS[0]);
-  }
-
-  private updateTempoDisplay(): void {
-    const el = document.getElementById('tempoDisplay');
-    if (el) el.textContent = this.stateManager.getTempo().toString();
   }
 
   // ─── Ritmo ────────────────────────────────────────────────────────
@@ -200,102 +238,41 @@ class DemoPlayer {
   private async loadRhythm(rhythm: { name: string; path: string }): Promise<void> {
     if (this.expired) { this.showExpired(); return; }
 
-    // Verificar limite de ritmos
+    // Verificar limite
     if (!this.rhythmsUsed.has(rhythm.name)) {
       if (this.rhythmsUsed.size >= MAX_RHYTHMS) {
-        // Limite atingido
         this.stop();
         this.markExpired();
         this.showExpired();
         return;
       }
       this.rhythmsUsed.add(rhythm.name);
-      this.updateCounterDisplay();
+      this.updateCounter();
     }
 
     this.resetIdleTimer();
-    if (this.isPlaying) this.stop();
+    if (this.stateManager.isPlaying()) this.stop();
 
     try {
       await this.fileManager.loadProjectFromPath(rhythm.path);
       this.stateManager.loadVariation('main', 0);
-      this.currentRhythm = rhythm.name;
+      this.currentRhythmName = rhythm.name;
 
-      const nameEl = document.getElementById('demoRhythmName');
+      const nameEl = document.getElementById('currentRhythmName');
       if (nameEl) nameEl.textContent = rhythm.name;
 
-      this.updateTempoDisplay();
+      this.uiManager.updateTempoUI(this.stateManager.getTempo());
+      this.uiManager.refreshGridDisplay();
+      this.uiManager.updateVariationButtons();
+      this.uiManager.updatePerformanceGrid();
 
-      // Highlight botao ativo
-      document.querySelectorAll('#demoRhythmStrip button').forEach(btn => {
-        const isActive = btn.textContent === rhythm.name;
-        (btn as HTMLElement).style.borderColor = isActive ? 'rgba(0,212,255,0.4)' : 'rgba(255,255,255,0.08)';
-        (btn as HTMLElement).style.color = isActive ? '#00D4FF' : 'rgba(255,255,255,0.7)';
-        (btn as HTMLElement).style.background = isActive ? 'rgba(0,212,255,0.08)' : 'rgba(255,255,255,0.04)';
+      // Highlight
+      document.querySelectorAll('#demoRhythmStrip .rhythm-card-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent === rhythm.name);
       });
-
-      // Build performance grid
-      this.buildPerformanceGrid();
     } catch {
-      const nameEl = document.getElementById('demoRhythmName');
+      const nameEl = document.getElementById('currentRhythmName');
       if (nameEl) nameEl.textContent = 'Erro ao carregar';
-    }
-  }
-
-  private buildPerformanceGrid(): void {
-    const grid = document.getElementById('performanceGrid');
-    if (!grid) return;
-
-    const state = this.stateManager.getState();
-    const hasMain = state.variations.main.filter((v, i) =>
-      v.pattern.some(row => row.some(s => s))
-    );
-
-    grid.innerHTML = '';
-
-    hasMain.forEach((_, i) => {
-      const cell = document.createElement('div');
-      cell.className = 'grid-cell main-cell';
-      cell.innerHTML = `<span class="cell-label">RITMO ${i + 1}</span><div class="cell-indicator"></div>`;
-      cell.addEventListener('click', () => {
-        if (!this.isPlaying) {
-          this.patternEngine.activateRhythm(i);
-          this.play();
-        } else if (i === this.stateManager.getCurrentVariation('main')) {
-          this.stop();
-        } else {
-          this.patternEngine.playFillToNextRhythm(i);
-        }
-      });
-      grid.appendChild(cell);
-    });
-
-    // Fill
-    const hasFill = state.variations.fill.some(v =>
-      v.pattern.some(row => row.some(s => s))
-    );
-    if (hasFill) {
-      const cell = document.createElement('div');
-      cell.className = 'grid-cell fill-cell';
-      cell.innerHTML = '<span class="cell-label">VIRADA</span><div class="cell-indicator"></div>';
-      cell.addEventListener('click', () => {
-        if (this.isPlaying) this.patternEngine.playRotatingFill();
-      });
-      grid.appendChild(cell);
-    }
-
-    // End
-    const hasEnd = state.variations.end.some(v =>
-      v.pattern.some(row => row.some(s => s))
-    );
-    if (hasEnd) {
-      const cell = document.createElement('div');
-      cell.className = 'grid-cell end-cell';
-      cell.innerHTML = '<span class="cell-label">FINAL</span><div class="cell-indicator"></div>';
-      cell.addEventListener('click', () => {
-        if (this.isPlaying) this.patternEngine.playEndAndStop();
-      });
-      grid.appendChild(cell);
     }
   }
 
@@ -303,20 +280,14 @@ class DemoPlayer {
 
   private play(): void {
     if (this.expired) { this.showExpired(); return; }
-
     this.resetIdleTimer();
     this.audioManager.resume();
     this.stateManager.setPlaying(true);
-    this.isPlaying = true;
 
-    this.stateManager.setShouldPlayStartSound(true);
+    this.uiManager.updatePlayStopUI(true);
+    this.uiManager.updateStatusUI(this.stateManager.getActivePattern());
+    this.uiManager.updatePerformanceGrid();
     this.scheduler.start();
-
-    const btn = document.getElementById('demoPlayBtn');
-    if (btn) {
-      btn.innerHTML = '<span class="play-icon">&#9632;</span><span class="play-label">PARAR</span>';
-      btn.classList.add('playing');
-    }
   }
 
   private stop(): void {
@@ -324,15 +295,10 @@ class DemoPlayer {
     this.stateManager.resetStep();
     this.stateManager.setActivePattern('main');
     this.scheduler.stop();
-    this.isPlaying = false;
 
-    const btn = document.getElementById('demoPlayBtn');
-    if (btn) {
-      btn.innerHTML = '<span class="play-icon">&#9654;</span><span class="play-label">TOCAR</span>';
-      btn.classList.remove('playing');
-    }
+    this.uiManager.updatePlayStopUI(false);
+    this.uiManager.updatePerformanceGrid();
 
-    // Resetar beat dots
     document.querySelectorAll('.beat-dot').forEach(d => {
       d.classList.remove('beat-active', 'beat-pulse');
     });
@@ -342,9 +308,8 @@ class DemoPlayer {
 
   private showExpired(): void {
     if (this.idleTimer) clearTimeout(this.idleTimer);
-    if (this.isPlaying) this.stop();
+    if (this.stateManager?.isPlaying()) this.stop();
 
-    // Remover overlay anterior se existir
     document.querySelectorAll('.demo-expired-overlay').forEach(el => el.remove());
 
     const overlay = document.createElement('div');
