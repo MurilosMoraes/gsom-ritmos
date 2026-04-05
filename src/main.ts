@@ -1121,21 +1121,15 @@ class RhythmSequencer {
         pedalInput.focus({ preventScroll: true });
       };
 
-      document.addEventListener('click', () => setTimeout(focusPedalInput, 50));
-      document.addEventListener('touchstart', () => setTimeout(focusPedalInput, 50), { passive: true });
-      document.addEventListener('touchend', () => setTimeout(focusPedalInput, 100), { passive: true });
-      window.addEventListener('keydown', () => setTimeout(focusPedalInput, 10), true);
-      window.addEventListener('keyup', () => setTimeout(focusPedalInput, 10), true);
-      setInterval(focusPedalInput, 1000);
-      setTimeout(focusPedalInput, 300);
-      setTimeout(focusPedalInput, 800);
+      // Delays maiores pra não roubar foco de botões do app
+      document.addEventListener('click', () => setTimeout(focusPedalInput, 300));
+      document.addEventListener('touchend', () => setTimeout(focusPedalInput, 400), { passive: true });
+      window.addEventListener('keydown', () => setTimeout(focusPedalInput, 50), true);
+      window.addEventListener('keyup', () => setTimeout(focusPedalInput, 50), true);
+      setInterval(focusPedalInput, 1500);
+      setTimeout(focusPedalInput, 500);
       pedalInput.addEventListener('input', () => { pedalInput.value = ''; });
-      // Refoco IMEDIATO no blur — sem delay, o gap é o que mata o pedal
-      pedalInput.addEventListener('blur', () => {
-        focusPedalInput();
-        setTimeout(focusPedalInput, 10);
-        setTimeout(focusPedalInput, 50);
-      });
+      pedalInput.addEventListener('blur', () => setTimeout(focusPedalInput, 200));
     }
   }
 
@@ -2174,13 +2168,13 @@ class RhythmSequencer {
     mapperInput.style.cssText = 'position:fixed;bottom:0;left:0;right:0;width:100%;height:36px;font-size:12px;font-family:inherit;background:rgba(0,0,0,0.9);color:rgba(0,212,255,0.5);border:none;border-top:1px solid rgba(0,212,255,0.2);text-align:center;padding:0;margin:0;z-index:999999;outline:none;caret-color:transparent;';
     overlay.appendChild(mapperInput);
 
+    let mapperAlive = true;
     const focusMapperInput = () => {
+      if (!mapperAlive) return;
       mapperInput.focus({ preventScroll: true });
     };
     mapperInput.addEventListener('input', () => { mapperInput.value = ''; });
-    mapperInput.addEventListener('blur', () => { focusMapperInput(); setTimeout(focusMapperInput, 10); setTimeout(focusMapperInput, 50); });
-    document.addEventListener('touchend', () => setTimeout(focusMapperInput, 100), { passive: true });
-    document.addEventListener('click', () => setTimeout(focusMapperInput, 100));
+    mapperInput.addEventListener('blur', () => { focusMapperInput(); setTimeout(focusMapperInput, 10); });
     const mapperFocusInterval = setInterval(focusMapperInput, 800);
     setTimeout(focusMapperInput, 200);
     setTimeout(focusMapperInput, 500);
@@ -2238,6 +2232,7 @@ class RhythmSequencer {
     document.addEventListener('keyup', keyUpHandler, true);
 
     const close = () => {
+      mapperAlive = false;
       this.pedalMapperOpen = false;
       clearInterval(mapperFocusInterval);
       document.removeEventListener('keydown', keyHandler, true);
