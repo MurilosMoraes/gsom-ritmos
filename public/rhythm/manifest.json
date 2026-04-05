@@ -1,6 +1,7 @@
 {
-  "version": 22,
+  "version": 23,
   "rhythms": [
+    "Anos 60.json",
     "Arrocha.json",
     "Axe.json",
     "Baiao.json",
@@ -28,6 +29,7 @@
     "Marcha de Carnaval.json",
     "Milonga.json",
     "Pagode.json",
+    "Pagodão.json",
     "Pisadinha.json",
     "Pop Lento.json",
     "Pop MPB.json",
@@ -37,11 +39,13 @@
     "Rancheira.json",
     "Reggae.json",
     "Rock.json",
+    "Salsa.json",
     "Samba.json",
     "Samba Rock.json",
     "Seresta.json",
     "Seresta (Canindé).json",
     "Shuffle.json",
+    "Ska.json",
     "Valsa.json",
     "Vaneira.json",
     "Worship (tribal).json",
@@ -63,15 +67,18 @@
       "MPB.json",
       "Marcha de Carnaval.json",
       "Pagode.json",
+      "Pagodão.json",
       "Pisadinha.json",
       "Pop MPB.json",
       "Quadrilha.json",
+      "Salsa.json",
       "Samba.json",
       "Samba Rock.json",
       "Seresta.json",
       "Seresta (Canindé).json"
     ],
     "Pop/Rock": [
+      "Anos 60.json",
       "Balada 6-8.json",
       "Blues.json",
       "Country.json",
@@ -83,7 +90,8 @@
       "Pop Rock.json",
       "Punk Rock.json",
       "Rock.json",
-      "Shuffle.json"
+      "Shuffle.json",
+      "Ska.json"
     ],
     "Gaúcho": [
       "Banda (bailao).json",
