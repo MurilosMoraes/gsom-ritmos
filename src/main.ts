@@ -171,6 +171,36 @@ class RhythmSequencer {
   }
 
   private init(): void {
+    // Detectar WebView (Instagram, Facebook, etc) e avisar pra abrir no navegador
+    const ua = navigator.userAgent || '';
+    if (/Instagram|FBAN|FBAV|Line|Twitter/i.test(ua)) {
+      document.body.innerHTML = `
+        <div style="position:fixed;inset:0;background:#030014;display:flex;align-items:center;justify-content:center;padding:2rem;z-index:99999;">
+          <div style="text-align:center;max-width:360px;">
+            <img src="/img/logo.png" alt="GDrums" style="height:36px;opacity:0.7;margin-bottom:1.5rem;">
+            <h2 style="color:#fff;font-size:1.1rem;margin:0 0 0.75rem;">Abra no navegador</h2>
+            <p style="color:rgba(255,255,255,0.5);font-size:0.85rem;line-height:1.6;margin:0 0 1.5rem;">
+              O GDrums precisa ser aberto no Safari ou Chrome pra funcionar corretamente.
+              Toque no icone de abrir no navegador (canto superior direito).
+            </p>
+            <div style="background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.15);border-radius:12px;padding:0.85rem;margin-bottom:1rem;">
+              <p style="color:rgba(0,212,255,0.8);font-size:0.8rem;margin:0;">No iPhone: toque nos 3 pontinhos e depois em "Abrir no Safari"</p>
+            </div>
+            <a href="https://gdrums.com.br" style="display:inline-block;padding:0.7rem 2rem;background:linear-gradient(135deg,#00D4FF,#8B5CF6);color:#fff;text-decoration:none;border-radius:12px;font-weight:700;font-size:0.9rem;">Copiar link</a>
+          </div>
+        </div>
+      `;
+      // Copiar link ao clicar
+      document.querySelector('a')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        navigator.clipboard?.writeText('https://gdrums.com.br').catch(() => {});
+        const btn = e.target as HTMLElement;
+        btn.textContent = 'Link copiado!';
+        setTimeout(() => { btn.textContent = 'Copiar link'; }, 2000);
+      });
+      return;
+    }
+
     this.checkAccess().then(async (allowed) => {
       if (!allowed) return;
 
@@ -3497,7 +3527,8 @@ class RhythmSequencer {
       // Carregar lista de MIDIs do manifest (dinâmico — basta editar manifest.json)
       let midiFiles: string[] = [];
       try {
-        const res = await fetch(`/midi/manifest.json?v=${Date.now()}`);
+        const midiManifestUrl = navigator.onLine ? `/midi/manifest.json?v=${Date.now()}` : '/midi/manifest.json';
+        const res = await fetch(midiManifestUrl);
         if (res.ok) {
           const manifest = await res.json();
           midiFiles = manifest.files || [];
@@ -3712,7 +3743,12 @@ class RhythmSequencer {
       let manifestVersion = 0;
 
       try {
-        const manifestResponse = await fetch(`/rhythm/manifest.json?t=${Date.now()}`);
+        // Online: buscar com cache bust pra pegar versao mais recente
+        // Offline: buscar sem cache bust pra usar o precache do SW
+        const manifestUrl = navigator.onLine
+          ? `/rhythm/manifest.json?t=${Date.now()}`
+          : '/rhythm/manifest.json';
+        const manifestResponse = await fetch(manifestUrl);
         if (manifestResponse.ok) {
           const manifest = await manifestResponse.json();
           rhythmFiles = manifest.rhythms || [];
@@ -3720,7 +3756,16 @@ class RhythmSequencer {
           this.rhythmCategories = manifest.categories || {};
         }
       } catch (e) {
-        // Manifest não existe
+        // Manifest nao acessivel — tentar sem cache bust
+        try {
+          const fallback = await fetch('/rhythm/manifest.json');
+          if (fallback.ok) {
+            const manifest = await fallback.json();
+            rhythmFiles = manifest.rhythms || [];
+            manifestVersion = manifest.version || 0;
+            this.rhythmCategories = manifest.categories || {};
+          }
+        } catch { /* sem manifest */ }
       }
 
       // Se não tiver manifest, usar lista de tentativa
