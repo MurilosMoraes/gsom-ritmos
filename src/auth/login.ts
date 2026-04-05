@@ -33,6 +33,26 @@ class LoginPage {
 
   private setupEventListeners(): void {
     this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+
+    document.getElementById('forgotPasswordBtn')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = this.emailInput.value.trim();
+      if (!email) {
+        this.showAlert('Digite seu e-mail primeiro', 'error');
+        this.emailInput.focus();
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/login.html`,
+      });
+
+      if (error) {
+        this.showAlert('Erro ao enviar e-mail de recuperação. Verifique o e-mail digitado.', 'error');
+      } else {
+        this.showAlert('E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'success');
+      }
+    });
   }
 
   private async handleSubmit(e: Event): Promise<void> {
