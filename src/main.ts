@@ -3110,9 +3110,12 @@ class RhythmSequencer {
       actionBtn = `<button class="account-action-btn" id="accountActionBtn">Renovar Assinatura</button>`;
     } else if (status === 'trial') {
       actionBtn = `<button class="account-action-btn" id="accountActionBtn">Assinar Agora</button>`;
-    } else if (status === 'active' && upgradeNextPlan) {
-      const priceDisplay = (upgradePrice / 100).toFixed(2).replace('.', ',');
-      actionBtn = `<button class="account-action-btn account-action-upgrade" id="accountActionBtn">Fazer upgrade — ${upgradeNextPlan.displayName} por R$ ${priceDisplay}</button>`;
+    } else if (status === 'active' && currentPlan) {
+      const planOrder = ['mensal', 'trimestral', 'semestral', 'anual', 'rei-dos-palcos'];
+      const currentIdx = planOrder.indexOf(planId);
+      if (currentIdx < planOrder.length - 1) {
+        actionBtn = `<button class="account-action-btn account-action-upgrade" id="accountActionBtn">Fazer upgrade de plano</button>`;
+      }
     }
 
     // Montar modal
@@ -3246,12 +3249,10 @@ class RhythmSequencer {
     const actionBtnEl = overlay.querySelector('#accountActionBtn');
     if (actionBtnEl) {
       actionBtnEl.addEventListener('click', () => {
-        close();
-        if (status === 'active' && upgradeNextPlan) {
-          window.location.href = `/plans.html?upgrade=true&plan=${upgradeNextPlan.id}&credit=${upgradeCredit}`;
-        } else {
-          window.location.href = '/plans.html';
-        }
+        const url = status === 'active'
+          ? `/plans.html?upgrade=true&credit=${upgradeCredit}`
+          : '/plans.html';
+        window.location.assign(url);
       });
     }
   }
