@@ -2160,6 +2160,30 @@ class RhythmSequencer {
     this.pedalMapperOpen = true;
     render();
 
+    // ─── iOS: input receptor dentro do mapper pra capturar keydown BT ──
+    const mapperInput = document.createElement('input');
+    mapperInput.type = 'text';
+    mapperInput.setAttribute('inputmode', 'none');
+    mapperInput.setAttribute('autocomplete', 'off');
+    mapperInput.setAttribute('autocorrect', 'off');
+    mapperInput.setAttribute('autocapitalize', 'off');
+    mapperInput.setAttribute('spellcheck', 'false');
+    mapperInput.placeholder = 'Pise no pedal...';
+    mapperInput.style.cssText = 'position:fixed;bottom:0;left:0;right:0;width:100%;height:36px;font-size:12px;font-family:inherit;background:rgba(0,0,0,0.9);color:rgba(0,212,255,0.5);border:none;border-top:1px solid rgba(0,212,255,0.2);text-align:center;padding:0;margin:0;z-index:999999;outline:none;caret-color:transparent;';
+    overlay.appendChild(mapperInput);
+
+    const focusMapperInput = () => {
+      const active = document.activeElement as HTMLElement;
+      if (active && active !== mapperInput && active !== document.body &&
+          active.tagName === 'INPUT' && active !== mapperInput) return;
+      mapperInput.focus({ preventScroll: true });
+    };
+    mapperInput.addEventListener('input', () => { mapperInput.value = ''; });
+    mapperInput.addEventListener('blur', () => { focusMapperInput(); setTimeout(focusMapperInput, 10); });
+    document.addEventListener('touchend', focusMapperInput, { passive: true });
+    const mapperFocusInterval = setInterval(focusMapperInput, 1000);
+    setTimeout(focusMapperInput, 200);
+
     const handleDetected = (code: string, debugInfo: string) => {
       if (!listening) {
         // Não está ouvindo, mas mostrar debug pra ajudar diagnóstico
@@ -2214,6 +2238,7 @@ class RhythmSequencer {
 
     const close = () => {
       this.pedalMapperOpen = false;
+      clearInterval(mapperFocusInterval);
       document.removeEventListener('keydown', keyHandler, true);
       document.removeEventListener('keyup', keyUpHandler, true);
       overlay.remove();
