@@ -553,11 +553,13 @@ class RhythmSequencer {
 
     const timeText = hoursLeft > 0 ? `${hoursLeft}h ${minutesLeft}min` : `${minutesLeft}min`;
 
+    const urgentMsg = hoursLeft <= 6
+      ? `Sua banda vai parar em <strong>${timeText}</strong>`
+      : `<strong>${timeText}</strong> restantes do seu teste`;
+
     banner.innerHTML = `
-      <span class="trial-banner-text">
-        ${status === 'trial' ? 'Teste grátis' : 'Seu plano'}: <strong>${timeText} restantes</strong>
-      </span>
-      <a href="/plans.html" class="trial-banner-btn">Assinar agora</a>
+      <span class="trial-banner-text">${urgentMsg}</span>
+      <a href="/plans.html" class="trial-banner-btn">${hoursLeft <= 6 ? 'Manter a banda tocando' : 'Assinar agora'}</a>
     `;
 
     document.body.appendChild(banner);
