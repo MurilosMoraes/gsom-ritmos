@@ -1108,7 +1108,9 @@ class RhythmSequencer {
       pedalInput.setAttribute('autocorrect', 'off');
       pedalInput.setAttribute('autocapitalize', 'off');
       pedalInput.setAttribute('spellcheck', 'false');
-      pedalInput.style.cssText = 'position:fixed;bottom:0;left:0;right:0;width:100%;height:1px;opacity:0.01;border:none;padding:0;margin:0;font-size:16px;z-index:1;background:transparent;color:transparent;caret-color:transparent;outline:none;';
+      // DEVE ser visível e com tamanho real — iOS ignora inputs com opacity~0 ou height<2px
+      pedalInput.style.cssText = 'position:fixed;bottom:0;left:0;right:0;width:100%;height:24px;font-size:10px;font-family:inherit;background:rgba(3,0,20,0.95);color:rgba(255,255,255,0.12);border:none;border-top:1px solid rgba(255,255,255,0.03);text-align:center;padding:0;margin:0;z-index:9998;outline:none;caret-color:transparent;';
+      pedalInput.placeholder = 'Pedal BT';
       document.body.appendChild(pedalInput);
 
       const focusPedalInput = () => {
@@ -2173,16 +2175,15 @@ class RhythmSequencer {
     overlay.appendChild(mapperInput);
 
     const focusMapperInput = () => {
-      const active = document.activeElement as HTMLElement;
-      if (active && active !== mapperInput && active !== document.body &&
-          active.tagName === 'INPUT' && active !== mapperInput) return;
       mapperInput.focus({ preventScroll: true });
     };
     mapperInput.addEventListener('input', () => { mapperInput.value = ''; });
-    mapperInput.addEventListener('blur', () => { focusMapperInput(); setTimeout(focusMapperInput, 10); });
-    document.addEventListener('touchend', focusMapperInput, { passive: true });
-    const mapperFocusInterval = setInterval(focusMapperInput, 1000);
+    mapperInput.addEventListener('blur', () => { focusMapperInput(); setTimeout(focusMapperInput, 10); setTimeout(focusMapperInput, 50); });
+    document.addEventListener('touchend', () => setTimeout(focusMapperInput, 100), { passive: true });
+    document.addEventListener('click', () => setTimeout(focusMapperInput, 100));
+    const mapperFocusInterval = setInterval(focusMapperInput, 800);
     setTimeout(focusMapperInput, 200);
+    setTimeout(focusMapperInput, 500);
 
     const handleDetected = (code: string, debugInfo: string) => {
       if (!listening) {
