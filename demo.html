@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GDrums — Teste Agora</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
+  <meta name="theme-color" content="#030014">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .demo-timer {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 9998;
+      background: rgba(2,0,15,0.95); backdrop-filter: blur(12px);
+      padding: 0.4rem 1rem; display: flex; align-items: center;
+      justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .demo-timer-left { display: flex; align-items: center; gap: 0.5rem; }
+    .demo-timer-badge {
+      font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.5px; color: #F97316; background: rgba(249,115,22,0.1);
+      border: 1px solid rgba(249,115,22,0.2); border-radius: 5px;
+      padding: 0.15rem 0.5rem;
+    }
+    .demo-timer-clock {
+      font-size: 0.82rem; font-weight: 700; color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+    .demo-timer-bar {
+      position: absolute; bottom: 0; left: 0; height: 2px;
+      background: linear-gradient(90deg, #00D4FF, #8B5CF6);
+      transition: width 1s linear;
+    }
+    .demo-cta-btn {
+      padding: 0.3rem 0.8rem; border: none; border-radius: 8px;
+      background: linear-gradient(135deg, #00D4FF, #8B5CF6);
+      color: #fff; font-size: 0.72rem; font-weight: 700;
+      font-family: inherit; cursor: pointer; white-space: nowrap;
+    }
+    .demo-expired-overlay {
+      position: fixed; inset: 0; z-index: 99999;
+      background: rgba(2,0,15,0.95); backdrop-filter: blur(16px);
+      display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+    }
+    .demo-expired-card {
+      background: rgba(10,10,30,0.95); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px; padding: 2.5rem 2rem; max-width: 400px; width: 100%;
+      text-align: center;
+    }
+    .demo-expired-card h2 { color: #fff; font-size: 1.3rem; margin: 0 0 0.5rem; }
+    .demo-expired-card p { color: rgba(255,255,255,0.5); font-size: 0.9rem; line-height: 1.6; margin: 0 0 1.5rem; }
+    .demo-expired-cta {
+      display: inline-block; padding: 0.85rem 2rem;
+      background: linear-gradient(135deg, #00D4FF, #8B5CF6);
+      color: #fff; text-decoration: none; border-radius: 14px;
+      font-weight: 700; font-size: 1rem; box-shadow: 0 4px 20px rgba(0,212,255,0.3);
+    }
+    .demo-expired-sub { margin-top: 1rem; font-size: 0.75rem; color: rgba(255,255,255,0.25); }
+    .demo-expired-sub a { color: #00D4FF; text-decoration: none; }
+
+    /* Ajustar app pra caber com timer */
+    .app-container { padding-top: 2.5rem; }
+  </style>
+</head>
+<body>
+  <!-- Timer do demo -->
+  <div class="demo-timer" id="demoTimer">
+    <div class="demo-timer-left">
+      <span class="demo-timer-badge">DEMO</span>
+      <span class="demo-timer-clock" id="demoTimerClock">5:00</span>
+    </div>
+    <a href="/register.html" class="demo-cta-btn">Cadastrar gratis</a>
+    <div class="demo-timer-bar" id="demoTimerBar" style="width:100%;"></div>
+  </div>
+
+  <div class="app-container">
+    <main class="app-main">
+      <div id="userMode" class="mode-container active">
+        <div class="user-layout">
+
+          <!-- Nome do ritmo -->
+          <div class="fav-section">
+            <div class="fav-bar">
+              <div class="fav-center">
+                <span class="fav-current-name" id="demoRhythmName">Selecione um ritmo</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Beat Marker -->
+          <div class="beat-section">
+            <div class="beat-dots" id="beatDots">
+              <div class="beat-dot" data-beat="0"></div>
+              <div class="beat-dot" data-beat="1"></div>
+              <div class="beat-dot" data-beat="2"></div>
+              <div class="beat-dot" data-beat="3"></div>
+            </div>
+          </div>
+
+          <!-- Performance Grid -->
+          <div class="performance-section">
+            <div class="performance-grid" id="performanceGrid"></div>
+          </div>
+
+          <!-- Play -->
+          <div class="play-section">
+            <button class="play-btn" id="demoPlayBtn">
+              <span class="play-icon">&#9654;</span>
+              <span class="play-label">TOCAR</span>
+            </button>
+          </div>
+
+          <!-- BPM -->
+          <div class="controls-bar">
+            <div class="ctrl-group">
+              <span class="ctrl-label">BPM</span>
+              <div class="ctrl-row">
+                <button id="tempoDown" class="ctrl-btn ctrl-btn-bpm">&minus;</button>
+                <button id="tempoDisplay" class="ctrl-value ctrl-value-tap">80</button>
+                <button id="tempoUp" class="ctrl-btn ctrl-btn-bpm">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ritmos do demo -->
+          <div style="padding:0.5rem 0;">
+            <div style="display:flex;gap:0.4rem;overflow-x:auto;padding:0.25rem 0;" id="demoRhythmStrip"></div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="/src/demo.ts"></script>
+</body>
+</html>
