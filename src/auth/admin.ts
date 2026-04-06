@@ -95,6 +95,8 @@ class AdminDashboard {
   private profiles: Profile[] = [];
   private transactions: Transaction[] = [];
   private coupons: Coupon[] = [];
+  private demoTotal = 0;
+  private demoUnique = 0;
   private currentSection = 'dashboard';
   private userSearch = '';
   private userFilter = 'all';
@@ -202,6 +204,13 @@ class AdminDashboard {
     this.profiles = await adminFetch('gdrums_profiles');
     this.transactions = await adminFetch('gdrums_transactions');
     this.coupons = await adminFetch('gdrums_coupons');
+
+    // Demo access stats
+    try {
+      const demoData = await adminFetch('gdrums_demo_access');
+      this.demoTotal = demoData.length;
+      this.demoUnique = new Set(demoData.map((d: any) => d.fingerprint)).size;
+    } catch { /* tabela pode não existir */ }
 
     // Buscar emails via Edge Function
     try {
@@ -337,6 +346,10 @@ class AdminDashboard {
         <div class="adm-kpi">
           <div class="adm-kpi-icon adm-kpi-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
           <div class="adm-kpi-body"><span class="adm-kpi-value">${conversionRate}%</span><span class="adm-kpi-label">Conversao</span></div>
+        </div>
+        <div class="adm-kpi">
+          <div class="adm-kpi-icon adm-kpi-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+          <div class="adm-kpi-body"><span class="adm-kpi-value">${this.demoUnique}<small style="font-size:0.6em;opacity:0.5;"> / ${this.demoTotal}</small></span><span class="adm-kpi-label">Demo (unicos / total)</span></div>
         </div>
       `;
     }
