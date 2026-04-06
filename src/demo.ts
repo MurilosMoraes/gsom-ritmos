@@ -55,6 +55,7 @@ class DemoPlayer {
     this.updateCounter();
     this.resetIdleTimer();
     this.saveFingerprint();
+    this.trackDemoAccess();
 
     // Pre-carregar prato
     this.audioManager.loadAudioFromPath('/midi/prato.mp3').then(b => { this.cymbalBuffer = b; }).catch(() => {});
@@ -71,6 +72,23 @@ class DemoPlayer {
     try {
       localStorage.setItem(FP_KEY, this.getFingerprint());
       document.cookie = `gdrums_fp=${this.getFingerprint()};max-age=31536000;path=/`;
+    } catch {}
+  }
+
+  private trackDemoAccess(): void {
+    try {
+      fetch('https://qsfziivubwdgtmwyztfw.supabase.co/rest/v1/gdrums_demo_access', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'sb_publishable_qjW2fGXMHtQvqVKgyyiiUg_HczRwmXy',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          fingerprint: this.getFingerprint(),
+          user_agent: navigator.userAgent.substring(0, 200),
+        }),
+      }).catch(() => {});
     } catch {}
   }
 
