@@ -37,6 +37,7 @@ class RhythmSequencer {
   private pedalLeft = 'ArrowLeft';
   private pedalRight = 'ArrowRight';
   private pedalMapperOpen = false;
+  private installPrompt: any = null;
 
   constructor() {
     // Inicializar contexto de áudio
@@ -56,6 +57,12 @@ class RhythmSequencer {
 
     // Setlist onChange — não atualizar UI automaticamente durante navegação
     // A UI é atualizada explicitamente após cada ação
+
+    // Capturar prompt de instalação do PWA (Android)
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      this.installPrompt = e;
+    });
 
     // Configurar callbacks
     this.setupCallbacks();
@@ -2261,6 +2268,82 @@ class RhythmSequencer {
     });
   }
 
+  private showInstallTutorial(): void {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                  (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(20px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+    if (isIOS) {
+      overlay.innerHTML = `
+        <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:2rem;max-width:380px;width:100%;">
+          <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.3rem;text-align:center;">Instalar GDrums</h2>
+          <p style="font-size:0.7rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.5rem;">Adicione o app na tela inicial do seu iPhone</p>
+
+          <div style="display:flex;flex-direction:column;gap:1rem;">
+            <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:12px;padding:1rem;">
+              <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,212,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;font-weight:700;color:rgba(0,212,255,0.8);">1</div>
+              <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.5;">
+                Toque no botao <strong style="color:#fff;">Compartilhar</strong>
+                <span style="display:inline-block;margin-left:4px;font-size:1.1em;">&#xFEFF;<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.8)" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></span>
+                na barra do Safari/Chrome
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.15);border-radius:12px;padding:1rem;">
+              <div style="width:32px;height:32px;border-radius:8px;background:rgba(139,92,246,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;font-weight:700;color:rgba(139,92,246,0.8);">2</div>
+              <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.5;">
+                Role pra baixo e toque em <strong style="color:#fff;">Adicionar a Tela de Inicio</strong>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(0,230,140,0.05);border:1px solid rgba(0,230,140,0.15);border-radius:12px;padding:1rem;">
+              <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,230,140,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;font-weight:700;color:rgba(0,230,140,0.8);">3</div>
+              <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.5;">
+                Toque em <strong style="color:#fff;">Adicionar</strong> no canto superior direito
+              </div>
+            </div>
+          </div>
+
+          <p style="font-size:0.65rem;color:rgba(255,255,255,0.2);text-align:center;margin:1.25rem 0 0;line-height:1.5;">O app vai ficar na sua tela inicial como um app normal, com icone e tela cheia.</p>
+          <button id="installTutorialClose" style="width:100%;margin-top:1rem;padding:0.7rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">Entendi</button>
+        </div>
+      `;
+    } else {
+      // Android/Desktop — instrução genérica (fallback se beforeinstallprompt não disparou)
+      overlay.innerHTML = `
+        <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:2rem;max-width:380px;width:100%;">
+          <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.3rem;text-align:center;">Instalar GDrums</h2>
+          <p style="font-size:0.7rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.5rem;">Adicione o app na tela inicial</p>
+
+          <div style="display:flex;flex-direction:column;gap:1rem;">
+            <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:12px;padding:1rem;">
+              <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,212,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;font-weight:700;color:rgba(0,212,255,0.8);">1</div>
+              <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.5;">
+                Toque no menu <strong style="color:#fff;">&#8942;</strong> (tres pontos) no canto superior do Chrome
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(0,230,140,0.05);border:1px solid rgba(0,230,140,0.15);border-radius:12px;padding:1rem;">
+              <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,230,140,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;font-weight:700;color:rgba(0,230,140,0.8);">2</div>
+              <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.5;">
+                Toque em <strong style="color:#fff;">Instalar aplicativo</strong> ou <strong style="color:#fff;">Adicionar a tela inicial</strong>
+              </div>
+            </div>
+          </div>
+
+          <button id="installTutorialClose" style="width:100%;margin-top:1.25rem;padding:0.7rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">Entendi</button>
+        </div>
+      `;
+    }
+
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.querySelector('#installTutorialClose')!.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
   private updateProjectBar(name: string): void {
     const nameEl = document.getElementById('projectName') as HTMLInputElement;
     const dotEl = document.getElementById('projectDot');
@@ -3191,6 +3274,13 @@ class RhythmSequencer {
 
         ${actionBtn ? `<div class="account-actions">${actionBtn}</div>` : ''}
 
+        ${!window.matchMedia('(display-mode: standalone)').matches ? `
+        <button class="account-install-btn" id="accountInstallBtn" style="width:100%;padding:0.7rem;margin-bottom:0.75rem;border:none;border-radius:12px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);color:rgba(0,212,255,0.9);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Instalar App
+        </button>
+        ` : ''}
+
         <div class="account-password-section">
           <button class="account-password-toggle" id="accountPasswordToggle">Alterar senha</button>
           <div class="account-password-form" id="accountPasswordForm" style="display:none;">
@@ -3217,6 +3307,24 @@ class RhythmSequencer {
     overlay.querySelector('#accountModalClose')?.addEventListener('click', close);
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) close();
+    });
+
+    // Instalar App
+    overlay.querySelector('#accountInstallBtn')?.addEventListener('click', () => {
+      if (this.installPrompt) {
+        // Android: disparar prompt nativo
+        this.installPrompt.prompt();
+        this.installPrompt.userChoice.then((choice: any) => {
+          if (choice.outcome === 'accepted') {
+            this.modalManager.show('App', 'App instalado com sucesso!', 'success');
+          }
+          this.installPrompt = null;
+        });
+      } else {
+        // iOS: mostrar tutorial
+        this.showInstallTutorial();
+      }
+      close();
     });
 
     // Toggle formulário de senha
