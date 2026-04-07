@@ -248,6 +248,9 @@ class RhythmSequencer {
 
       // What's New — mostra novidades 1x por versão
       setTimeout(() => this.showWhatsNew(), 1500);
+
+      // Sugerir instalação do app (1x, só se não está instalado)
+      setTimeout(() => this.showInstallSuggestion(), 4000);
     });
   }
 
@@ -2268,6 +2271,74 @@ class RhythmSequencer {
     });
   }
 
+  private showInstallSuggestion(): void {
+    // Não mostrar se já instalado
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    if (isStandalone) return;
+
+    // Não mostrar se já viu
+    if (localStorage.getItem('gdrums_install_seen')) return;
+    localStorage.setItem('gdrums_install_seen', '1');
+
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                  (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.88);backdrop-filter:blur(16px);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:1rem;';
+
+    overlay.innerHTML = `
+      <div style="background:rgba(10,10,30,0.97);border:1px solid rgba(255,255,255,0.08);border-radius:20px 20px 0 0;padding:1.5rem 1.5rem 2rem;max-width:400px;width:100%;animation:slideUp 0.3s ease-out;">
+        <style>@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}</style>
+        <div style="text-align:center;margin-bottom:1rem;">
+          <img src="/img/icon-192.png" alt="GDrums" style="width:56px;height:56px;border-radius:14px;margin-bottom:0.75rem;">
+          <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.25rem;">Instale o GDrums</h2>
+          <p style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin:0;">Acesso rapido, tela cheia e funciona offline</p>
+        </div>
+
+        ${isIOS ? `
+        <div style="display:flex;flex-direction:column;gap:0.6rem;margin-bottom:1rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.5);">
+            <span style="width:24px;height:24px;border-radius:6px;background:rgba(0,212,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.7rem;font-weight:700;color:rgba(0,212,255,0.8);">1</span>
+            Toque em <strong style="color:#fff;">Compartilhar</strong> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.7)" stroke-width="2" style="flex-shrink:0;"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.5);">
+            <span style="width:24px;height:24px;border-radius:6px;background:rgba(139,92,246,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.7rem;font-weight:700;color:rgba(139,92,246,0.8);">2</span>
+            <strong style="color:#fff;">Adicionar a Tela de Inicio</strong>
+          </div>
+        </div>
+        ` : `
+        <div style="font-size:0.78rem;color:rgba(255,255,255,0.5);text-align:center;margin-bottom:1rem;">
+          Toque em <strong style="color:#fff;">Instalar</strong> abaixo para adicionar a tela inicial
+        </div>
+        `}
+
+        <div style="display:flex;gap:0.5rem;">
+          <button id="installDismiss" style="flex:1;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Agora nao</button>
+          ${!isIOS && this.installPrompt ? `
+          <button id="installAccept" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.3);color:rgba(0,212,255,0.9);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">Instalar App</button>
+          ` : `
+          <button id="installDismiss2" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.3);color:rgba(0,212,255,0.9);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">Entendi</button>
+          `}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.querySelector('#installDismiss')?.addEventListener('click', close);
+    overlay.querySelector('#installDismiss2')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    overlay.querySelector('#installAccept')?.addEventListener('click', () => {
+      if (this.installPrompt) {
+        this.installPrompt.prompt();
+        this.installPrompt.userChoice.then(() => { this.installPrompt = null; });
+      }
+      close();
+    });
+  }
+
   private showInstallTutorial(): void {
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
                   (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
@@ -3231,6 +3302,9 @@ class RhythmSequencer {
       actionBtn = `<button class="account-action-btn account-action-upgrade" id="accountActionBtn">Fazer upgrade de plano</button>`;
     }
 
+    // Verificar se já está instalado como PWA
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+
     // Montar modal
     const overlay = document.createElement('div');
     overlay.className = 'account-modal-overlay';
@@ -3274,7 +3348,7 @@ class RhythmSequencer {
 
         ${actionBtn ? `<div class="account-actions">${actionBtn}</div>` : ''}
 
-        ${!window.matchMedia('(display-mode: standalone)').matches ? `
+        ${!isStandalone ? `
         <button class="account-install-btn" id="accountInstallBtn" style="width:100%;padding:0.7rem;margin-bottom:0.75rem;border:none;border-radius:12px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);color:rgba(0,212,255,0.9);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Instalar App
