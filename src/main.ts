@@ -1131,10 +1131,11 @@ class RhythmSequencer {
         pedalInput.focus({ preventScroll: true });
       };
 
-      // SÍNCRONO no touch/click — iOS exige user gesture pra focus()
-      document.addEventListener('touchend', () => focusPedalInput(), { passive: true });
-      document.addEventListener('click', () => focusPedalInput());
-      // Após keydown do pedal, refocar pra próxima pisada
+      // Delay pra dar tempo do browser transferir foco pro input tocado
+      // Sem delay, o activeElement ainda é o pedalInput quando o handler roda
+      document.addEventListener('touchend', () => setTimeout(focusPedalInput, 80), { passive: true });
+      document.addEventListener('click', () => setTimeout(focusPedalInput, 80));
+      // Após keydown do pedal, refocar pra próxima pisada (síncrono ok aqui)
       window.addEventListener('keydown', () => focusPedalInput(), true);
       window.addEventListener('keyup', () => focusPedalInput(), true);
       // Safety net periódico
