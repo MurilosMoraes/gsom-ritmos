@@ -1,5 +1,5 @@
 {
-  "version": 25,
+  "version": 26,
   "rhythms": [
     "Anos 60.json",
     "Arrocha.json",
@@ -47,6 +47,7 @@
     "Seresta (Canindé).json",
     "Shuffle.json",
     "Ska.json",
+    "Tango.json",
     "Valsa.json",
     "Vaneira.json",
     "Worship (tribal).json",
