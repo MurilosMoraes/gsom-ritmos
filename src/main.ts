@@ -1123,26 +1123,29 @@ class RhythmSequencer {
       pedalInput.placeholder = 'Pedal BT';
       document.body.appendChild(pedalInput);
 
+      const hasModalOpen = () => {
+        // Se tem overlay/modal aberto, não roubar foco
+        return !!document.querySelector('.account-modal-overlay, .bpm-modal-overlay, [style*="z-index: 99999"], [style*="z-index:99999"]');
+      };
+
       const focusPedalInput = () => {
         if (this.pedalMapperOpen) return;
+        if (hasModalOpen()) return;
         const active = document.activeElement as HTMLElement;
         if (active && active !== pedalInput && active !== document.body &&
             (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
         pedalInput.focus({ preventScroll: true });
       };
 
-      // Delay pra dar tempo do browser transferir foco pro input tocado
-      // Sem delay, o activeElement ainda é o pedalInput quando o handler roda
-      document.addEventListener('touchend', () => setTimeout(focusPedalInput, 80), { passive: true });
-      document.addEventListener('click', () => setTimeout(focusPedalInput, 80));
-      // Após keydown do pedal, refocar pra próxima pisada (síncrono ok aqui)
+      // Só refocar no keydown/keyup (pedal) — não no touch/click
+      // Touch/click podem ser no input de um modal
       window.addEventListener('keydown', () => focusPedalInput(), true);
       window.addEventListener('keyup', () => focusPedalInput(), true);
       // Safety net periódico
       setInterval(focusPedalInput, 1500);
       setTimeout(focusPedalInput, 500);
       pedalInput.addEventListener('input', () => { pedalInput.value = ''; });
-      pedalInput.addEventListener('blur', () => focusPedalInput());
+      pedalInput.addEventListener('blur', () => { if (!hasModalOpen()) focusPedalInput(); });
     }
   }
 
