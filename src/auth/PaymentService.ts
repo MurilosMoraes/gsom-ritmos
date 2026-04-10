@@ -1,7 +1,7 @@
 // PaymentService — InfinitePay checkout via API
 
 const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
-const INFINITEPAY_HANDLE = 'g-drums';
+const INFINITEPAY_HANDLE = 'checkout-gdrums';
 const INFINITEPAY_API = 'https://api.infinitepay.io/invoices/public/checkout';
 
 export interface Plan {
