@@ -1150,13 +1150,17 @@ class RhythmSequencer {
       window.addEventListener('keydown', () => focusPedalInput(), true);
       window.addEventListener('keyup', () => focusPedalInput(), true);
 
-      // iOS: qualquer toque na tela pode tirar o foco do pedalInput (click em
-      // célula, fechar modal, etc). O safety-net de 1500ms era lento demais.
-      // Listener PASSIVO (não bloqueia), SEM capture (roda DEPOIS do app),
-      // com atraso pra não competir com audioContext.resume e pra o ativeElement
-      // já estar estabilizado quando a função roda.
+      // iOS: qualquer toque na tela tira o foco do pedalInput. O setInterval de
+      // 1500ms era lento demais (pedal só voltava após 1.5s). O fix:
+      //
+      // 1) focus() SÍNCRONO dentro do touchend — iOS exige que .focus() seja
+      //    chamado dentro de user gesture, senão é silenciosamente ignorado.
+      // 2) Também em setTimeout 200ms — captura casos onde o handler do app
+      //    mudou DOM depois do touchend (modal fechando, loader animando).
+      // Sem capture, passive, pra não competir com audioContext.resume.
       document.addEventListener('touchend', () => {
-        setTimeout(focusPedalInput, 100);
+        focusPedalInput();
+        setTimeout(focusPedalInput, 200);
       }, { passive: true });
 
       // Safety net periódico
