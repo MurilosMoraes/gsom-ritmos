@@ -1066,13 +1066,9 @@ class RhythmSequencer {
       const kc = e.keyCode || e.which || 0;
       const keyId = e.code || e.key || '';
 
-      // Se um input/select está focado, só processar se for tecla de pedal/seta.
-      // Exceção: o nosso pedalBtInput é o input dedicado do pedal BT — não
-      // fazer blur nele, se não o próprio handler do pedal perde o foco e o
-      // segundo keydown do pedal não é capturado.
+      // Se um input/select está focado, só processar se for tecla de pedal/seta
       const target = e.target as HTMLElement;
-      const isOurPedalInput = target.id === 'pedalBtInput';
-      if (!isOurPedalInput && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
         const isPedal = kc === pedalLeftCode || kc === pedalRightCode ||
                         kc === 37 || kc === 38 || kc === 39 || kc === 40 ||
                         keyId === this.pedalLeft || keyId === this.pedalRight;
@@ -1140,61 +1136,24 @@ class RhythmSequencer {
         );
       };
 
-      const isUserInput = (el: Element | null): boolean => {
-        if (!el) return false;
-        const tag = (el as HTMLElement).tagName;
-        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-      };
-
       const focusPedalInput = () => {
         if (this.pedalMapperOpen) return;
         if (hasModalOpen()) return;
-        const active = document.activeElement;
-        // Se o usuário tá digitando em QUALQUER input (nosso pedalInput não conta),
-        // não roubar o foco — mesmo fora de modal (ex: search, etc).
-        if (active && active !== pedalInput && isUserInput(active)) return;
+        const active = document.activeElement as HTMLElement;
+        if (active && active !== pedalInput && active !== document.body &&
+            (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
         pedalInput.focus({ preventScroll: true });
       };
 
-      // Refocar só em keydown/keyup de pedal (setas/pageup/pagedown/space).
-      // Teclado virtual do iOS dispara keydown de cada letra digitada — se
-      // refocarmos nisso, roubamos o foco do input que o user tá preenchendo.
-      const isPedalKey = (e: KeyboardEvent): boolean => {
-        const kc = e.keyCode || e.which || 0;
-        // 37=Left 38=Up 39=Right 40=Down 32=Space 33=PageUp 34=PageDown 13=Enter
-        return kc === 37 || kc === 38 || kc === 39 || kc === 40 ||
-               kc === 32 || kc === 33 || kc === 34;
-      };
-      window.addEventListener('keydown', (e) => { if (isPedalKey(e)) focusPedalInput(); }, true);
-      window.addEventListener('keyup', (e) => { if (isPedalKey(e)) focusPedalInput(); }, true);
-
-      // ✱ Refocar logo após touchend/click no app (fora de inputs e modais).
-      //   É o que resolve o caso "cara clicou numa célula/botão e o pedal parou".
-      //   Usa múltiplos timeouts pra cobrir: (a) click handler síncrono, (b) mutações
-      //   de DOM que podem disparar blur, (c) animações.
-      const refocusAfterTap = (e: Event) => {
-        const target = e.target as Element | null;
-        if (target && isUserInput(target)) return;
-        if (hasModalOpen()) return;
-        // Refoca em múltiplos momentos — um deles vai pegar o estado certo
-        setTimeout(focusPedalInput, 0);
-        setTimeout(focusPedalInput, 50);
-        setTimeout(focusPedalInput, 150);
-      };
-      document.addEventListener('touchend', refocusAfterTap, { capture: true, passive: true });
-      document.addEventListener('click', refocusAfterTap, true);
-
-      // Safety net periódico — mas só age se nada tá focado e nenhum modal aberto
+      // Só refocar no keydown/keyup (pedal) — não no touch/click
+      // Touch/click podem ser no input de um modal
+      window.addEventListener('keydown', () => focusPedalInput(), true);
+      window.addEventListener('keyup', () => focusPedalInput(), true);
+      // Safety net periódico
       setInterval(focusPedalInput, 1500);
       setTimeout(focusPedalInput, 500);
-
       pedalInput.addEventListener('input', () => { pedalInput.value = ''; });
-      pedalInput.addEventListener('blur', () => {
-        // Pequeno delay: se o blur foi porque user tocou em outro input/modal,
-        // o activeElement já vai estar nesse outro elemento e focusPedalInput()
-        // decide corretamente não roubar.
-        setTimeout(focusPedalInput, 50);
-      });
+      pedalInput.addEventListener('blur', () => { if (!hasModalOpen()) focusPedalInput(); });
     }
   }
 
