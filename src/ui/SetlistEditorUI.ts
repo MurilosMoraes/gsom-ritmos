@@ -8,6 +8,8 @@ export interface CatalogItem {
   path: string;
   userRhythmId?: string;
   isPersonal?: boolean;
+  baseRhythmName?: string; // ritmo de referência (só personal)
+  bpm?: number;            // BPM salvo (só personal)
 }
 
 export class SetlistEditorUI {
@@ -170,6 +172,8 @@ export class SetlistEditorUI {
       addBtn.addEventListener('click', () => {
         const setlistItem: SetlistItem = { name: rhythm.name, path: rhythm.path };
         if (rhythm.userRhythmId) setlistItem.userRhythmId = rhythm.userRhythmId;
+        if (rhythm.baseRhythmName) setlistItem.baseRhythmName = rhythm.baseRhythmName;
+        if (rhythm.bpm) setlistItem.bpm = rhythm.bpm;
         this.setlistManager?.addItem(setlistItem);
         const setlistList = this.overlay?.querySelector('.sle-setlist-list');
         if (setlistList) this.renderSetlist(setlistList as HTMLElement);

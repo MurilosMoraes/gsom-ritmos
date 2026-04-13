@@ -124,6 +124,7 @@ class RhythmSequencer {
 
     this.stateManager.subscribe('tempo', (state) => {
       this.uiManager.updateTempoUI(state.tempo);
+      this.updateCurrentRhythmMeta();
     });
 
     this.stateManager.subscribe('patterns', () => {
@@ -1251,7 +1252,12 @@ class RhythmSequencer {
           }
         } else if (cellType === 'end') {
           if (this.stateManager.isPlaying()) {
-            this.patternEngine.activateEndWithTiming(variationIndex);
+            // Respeitar toggle de finalização (mesma regra do pedal direito duplo-tap)
+            if (this.useFinal) {
+              this.patternEngine.activateEndWithTiming(variationIndex);
+            } else {
+              this.stop();
+            }
           }
         }
       });
@@ -2860,7 +2866,14 @@ class RhythmSequencer {
       // Capturar estado atual como JSON do ritmo
       const rhythmData = this.fileManager.exportProjectAsJSON();
 
-      await this.userRhythmService.save(name, bpm, rhythmData);
+      // Se o ritmo atual vem da biblioteca, passar o nome como referência.
+      // Se já é um ritmo pessoal sendo re-salvo, this.currentRhythmName é o
+      // nome que o user deu — não serve como base. Usar só quando bate com
+      // um ritmo da biblioteca.
+      const isLibraryRhythm = this.availableRhythms.some(r => r.name === this.currentRhythmName);
+      const baseRhythmName = isLibraryRhythm ? this.currentRhythmName : undefined;
+
+      await this.userRhythmService.save(name, bpm, rhythmData, baseRhythmName);
 
       statusEl.textContent = 'Salvo!';
       statusEl.style.color = '#00E68C';
@@ -3964,6 +3977,8 @@ class RhythmSequencer {
           path: '',
           userRhythmId: r.id,
           isPersonal: true,
+          baseRhythmName: r.base_rhythm_name,
+          bpm: r.bpm,
         }));
         const fullCatalog = [...personalRhythms, ...this.availableRhythms];
 
@@ -3999,8 +4014,100 @@ class RhythmSequencer {
     const prevBtn = document.getElementById('setlistPrev');
     prevBtn?.addEventListener('click', () => this.navigateSetlist('previous'));
 
+    // Click no centro do fav-bar: abre picker do repertório (navegação rápida).
+    // Se a setlist estiver vazia, abre o editor pro user montá-la.
+    const favCenter = document.getElementById('favCenter');
+    if (favCenter) {
+      favCenter.classList.add('fav-center-clickable');
+      favCenter.addEventListener('click', () => {
+        if (this.setlistManager.isEmpty()) {
+          document.getElementById('setlistEditBtn')?.click();
+        } else {
+          this.showSetlistPicker();
+        }
+      });
+    }
+
     // Atualizar UI inicial
     this.updateSetlistUI();
+  }
+
+  /**
+   * Modal de seleção rápida — mostra toda a setlist com o atual destacado.
+   * Click num item pula pra ele (comportamento igual ao botão Próximo/Anterior:
+   * loadSetlistItem respeita o estado de play).
+   */
+  private showSetlistPicker(): void {
+    const items = this.setlistManager.getItems();
+    if (items.length === 0) return;
+    const currentIdx = this.setlistManager.getCurrentIndex();
+
+    // Limpar instâncias anteriores (click duplo)
+    document.querySelectorAll('.setlist-picker-overlay').forEach(el => el.remove());
+
+    const overlay = document.createElement('div');
+    overlay.className = 'account-modal-overlay setlist-picker-overlay';
+
+    const rows = items.map((item, i) => {
+      const isCurrent = i === currentIdx;
+      const baseLine = item.baseRhythmName
+        ? `<span style="color:rgba(0,212,255,0.6);">${item.baseRhythmName}</span>${item.bpm ? ` · ${item.bpm} BPM` : ''}`
+        : item.bpm ? `${item.bpm} BPM` : '';
+      const personalBadge = item.userRhythmId
+        ? '<span style="font-size:0.55rem;color:rgba(139,92,246,0.6);letter-spacing:0.5px;margin-left:0.35rem;">MEU</span>'
+        : '';
+      return `
+        <button class="sp-row ${isCurrent ? 'sp-row-current' : ''}" data-index="${i}">
+          <span class="sp-num">${i + 1}</span>
+          <span class="sp-main">
+            <span class="sp-name">${item.name}${personalBadge}</span>
+            ${baseLine ? `<span class="sp-sub">${baseLine}</span>` : ''}
+          </span>
+          ${isCurrent ? '<span class="sp-current-badge">tocando</span>' : ''}
+        </button>
+      `;
+    }).join('');
+
+    overlay.innerHTML = `
+      <div class="account-modal" style="max-width:420px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">
+        <button class="account-modal-close" id="spClose">&times;</button>
+        <div class="account-header">
+          <div class="account-name">Repertório</div>
+          <div class="account-email">${items.length} ritmo${items.length !== 1 ? 's' : ''} · toque pra pular</div>
+        </div>
+        <div class="sp-list" id="spList" style="overflow-y:auto;flex:1;padding:0 0.25rem 0.5rem;">${rows}</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    const close = () => {
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 200);
+    };
+    overlay.querySelector('#spClose')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    // Scroll pro atual
+    const list = overlay.querySelector('#spList') as HTMLElement;
+    const currentRow = list?.querySelector('.sp-row-current') as HTMLElement | null;
+    if (currentRow) {
+      setTimeout(() => currentRow.scrollIntoView({ block: 'center', behavior: 'auto' }), 0);
+    }
+
+    // Click → pular pra aquele item (usa mesmo caminho do botão próximo)
+    overlay.querySelectorAll<HTMLButtonElement>('.sp-row').forEach(row => {
+      row.addEventListener('click', async () => {
+        const targetIdx = parseInt(row.dataset.index || '-1');
+        if (targetIdx < 0 || targetIdx === this.setlistManager.getCurrentIndex()) {
+          close();
+          return;
+        }
+        close();
+        const target = this.setlistManager.goTo(targetIdx);
+        if (target) await this.loadSetlistItem(target);
+      });
+    });
   }
 
   private async onSetlistEditorClose(): Promise<void> {
@@ -4053,10 +4160,28 @@ class RhythmSequencer {
     this.uiManager.updateVariationButtons();
   }
 
+  /**
+   * Atualiza o subtítulo "Ritmo-base · BPM" (ou só "BPM") no centro do fav-bar.
+   * Chamado no load de ritmo, na troca de setlist e quando o tempo muda.
+   */
+  private updateCurrentRhythmMeta(): void {
+    const metaEl = document.getElementById('currentRhythmMeta');
+    if (!metaEl) return;
+    if (this.setlistManager.isEmpty()) { metaEl.textContent = ''; return; }
+
+    const current = this.setlistManager.getCurrentItem();
+    const currentBpm = Math.round(this.stateManager.getTempo());
+    const base = current?.baseRhythmName;
+    metaEl.textContent = base
+      ? `${base} · ${currentBpm} BPM`
+      : `${currentBpm} BPM`;
+  }
+
   private updateSetlistUI(): void {
     const numEl = document.getElementById('setlistNum');
     const positionEl = document.getElementById('setlistPosition');
     const nameEl = document.getElementById('currentRhythmName');
+    const metaEl = document.getElementById('currentRhythmMeta');
     const prevNameEl = document.getElementById('favPrevName');
     const nextNameEl = document.getElementById('favNextName');
     const prevBtn = document.getElementById('setlistPrev') as HTMLButtonElement;
@@ -4068,6 +4193,7 @@ class RhythmSequencer {
       if (numEl) numEl.textContent = '#';
       if (positionEl) positionEl.textContent = '';
       if (nameEl) nameEl.textContent = 'Monte seus favoritos';
+      if (metaEl) metaEl.textContent = '';
       if (prevNameEl) prevNameEl.textContent = '--';
       if (nextNameEl) nextNameEl.textContent = '--';
       if (prevBtn) { prevBtn.disabled = true; prevBtn.style.opacity = '0.25'; }
@@ -4091,6 +4217,8 @@ class RhythmSequencer {
     if (nameEl && current) nameEl.textContent = current.name;
     if (prevNameEl) prevNameEl.textContent = prev ? prev.name : '--';
     if (nextNameEl) nextNameEl.textContent = next ? next.name : '--';
+
+    this.updateCurrentRhythmMeta();
 
     if (prevBtn) {
       const hasPrev = idx > 0;

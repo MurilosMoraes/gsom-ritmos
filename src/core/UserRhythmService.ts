@@ -6,6 +6,7 @@ export interface UserRhythm {
   name: string;
   bpm: number;
   rhythm_data: any; // JSON completo do ritmo (SavedProject format)
+  base_rhythm_name?: string; // Nome do ritmo de referência (ex: "Vaneira") no momento do save
   created_at: string;
   updated_at: string;
   synced: boolean; // true = já está no Supabase
@@ -51,6 +52,7 @@ export class UserRhythmService {
           name: r.name,
           bpm: r.bpm,
           rhythm_data: r.rhythm_data,
+          base_rhythm_name: r.base_rhythm_name || undefined,
           created_at: r.created_at,
           updated_at: r.updated_at,
           synced: true,
@@ -71,13 +73,14 @@ export class UserRhythmService {
 
   // ─── CRUD ─────────────────────────────────────────────────────────
 
-  async save(name: string, bpm: number, rhythmData: any): Promise<UserRhythm> {
+  async save(name: string, bpm: number, rhythmData: any, baseRhythmName?: string): Promise<UserRhythm> {
     const now = new Date().toISOString();
     const rhythm: UserRhythm = {
       id: crypto.randomUUID(),
       name,
       bpm,
       rhythm_data: rhythmData,
+      base_rhythm_name: baseRhythmName,
       created_at: now,
       updated_at: now,
       synced: false,
@@ -89,15 +92,17 @@ export class UserRhythmService {
     // Tentar salvar no Supabase
     if (navigator.onLine && this.supabase && this.userId) {
       try {
+        const payload: Record<string, any> = {
+          id: rhythm.id,
+          user_id: this.userId,
+          name: rhythm.name,
+          bpm: rhythm.bpm,
+          rhythm_data: rhythm.rhythm_data,
+        };
+        if (baseRhythmName) payload.base_rhythm_name = baseRhythmName;
         const { error } = await this.supabase
           .from('gdrums_user_rhythms')
-          .insert({
-            id: rhythm.id,
-            user_id: this.userId,
-            name: rhythm.name,
-            bpm: rhythm.bpm,
-            rhythm_data: rhythm.rhythm_data,
-          });
+          .insert(payload);
         if (!error) {
           rhythm.synced = true;
           this.saveLocal();
@@ -162,17 +167,19 @@ export class UserRhythmService {
     const pending = this.rhythms.filter(r => !r.synced);
     for (const r of pending) {
       try {
+        const payload: Record<string, any> = {
+          id: r.id,
+          user_id: this.userId,
+          name: r.name,
+          bpm: r.bpm,
+          rhythm_data: r.rhythm_data,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        };
+        if (r.base_rhythm_name) payload.base_rhythm_name = r.base_rhythm_name;
         const { error } = await this.supabase
           .from('gdrums_user_rhythms')
-          .upsert({
-            id: r.id,
-            user_id: this.userId,
-            name: r.name,
-            bpm: r.bpm,
-            rhythm_data: r.rhythm_data,
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-          });
+          .upsert(payload);
         if (!error) {
           r.synced = true;
         }

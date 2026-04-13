@@ -81,6 +81,8 @@ export interface SetlistItem {
   name: string;
   path: string;
   userRhythmId?: string; // Se presente, carrega do UserRhythmService em vez do path
+  baseRhythmName?: string; // Nome do ritmo de referência (só para userRhythms); undefined em ritmos antigos
+  bpm?: number; // BPM salvo no momento; undefined em setlists antigas (cai pro state.tempo)
 }
 
 export interface Setlist {

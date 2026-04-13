@@ -608,10 +608,105 @@ input:checked + .slider:before {
   max-width: 100%;
   line-height: 1.3;
 }
+.fav-current-meta {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: rgba(0, 212, 255, 0.55);
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+  margin-top: 0.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.fav-current-meta:empty { display: none; }
 .fav-position {
   font-size: 0.6rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.25);
+}
+.fav-center.fav-center-clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.fav-center.fav-center-clickable:hover { background: rgba(0, 212, 255, 0.06); }
+.fav-center.fav-center-clickable:active { background: rgba(0, 212, 255, 0.1); }
+
+/* Setlist picker (modal de navegação rápida do repertório) */
+.setlist-picker-overlay .sp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.setlist-picker-overlay .sp-list::-webkit-scrollbar { width: 4px; }
+.setlist-picker-overlay .sp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+.sp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.022);
+  border: 1px solid rgba(255,255,255,0.05);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, border-color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+}
+.sp-row:hover { background: rgba(255,255,255,0.04); }
+.sp-row:active { transform: scale(0.995); }
+.sp-row-current {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.25);
+}
+.sp-row-current:hover { background: rgba(0, 212, 255, 0.12); }
+.sp-num {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: rgba(255,255,255,0.3);
+  min-width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.sp-row-current .sp-num { color: rgba(0, 212, 255, 0.7); }
+.sp-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.sp-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-sub {
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-current-badge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(0, 212, 255, 0.9);
+  background: rgba(0, 212, 255, 0.12);
+  padding: 0.2rem 0.5rem;
+  border-radius: 5px;
+  flex-shrink: 0;
 }
 
 /* Botão Favoritos */
