@@ -1,4 +1,4 @@
-package com.gsom.ritmos;
+package com.gdrums.app;
 
 import com.getcapacitor.BridgeActivity;
 
