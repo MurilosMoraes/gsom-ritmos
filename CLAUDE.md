@@ -4,6 +4,38 @@
 
 ---
 
+## 🚨 LEIA ANTES DE QUALQUER COISA — NÃO MEXA NO PEDAL iOS
+
+**O pedal Bluetooth funcionando no iOS é o diferencial de mercado do GDrums.** Se quebrar, o produto morre.
+
+O bloco `if (isIOS) { ... }` em `src/main.ts` (procura por "PEDAL BLUETOOTH NO iOS") é um hack frágil que foi reescrito múltiplas vezes. **A combinação atual é a única que funciona.** Se você precisar mexer, leia o comentário gigante em cima do bloco antes — ele lista todas as tentativas que já quebraram.
+
+**Resumo técnico:** pedais BT musicais se registram como teclado no iOS. iOS só dispara keydown se houver `<input>` de texto focado. Criamos um input invisível (mas com tamanho real, 24px — iOS ignora opacity:0) que fica sempre focado. Refocus deve ser **síncrono dentro de user gesture** (touchend/click/keydown) — qualquer `setTimeout` perde o contexto e iOS ignora.
+
+**Regras inquebráveis:**
+1. Input visível + height ≥ 2px (iOS ignora invisíveis)
+2. `focus()` síncrono — sem setTimeout, sem await, sem Promise
+3. Listeners necessários: `touchend`, `click`, `keydown`, `keyup`, `blur`, `setInterval(1500)` — todos obrigatórios
+4. `hasModalOpen()` **não pode** detectar overlays permanentes (ex: `.gm-overlay` do ModalManager fica no DOM com display:none — se entrar no query, pedal morre)
+5. Guards dentro de `focusPedalInput()`: `pedalMapperOpen`, `hasModalOpen()`, outro input focado
+6. **Não** usar `capture: true` nos listeners — compete com `audioContext.resume` do iOS e quebra áudio
+
+**Sintomas se quebrou:**
+- Pedal funciona só no primeiro comando e depois para → listener de `keydown` fazendo `blur` no próprio pedalInput, ou `hasModalOpen` retornando true sempre
+- Pedal para após tocar em célula/botão → faltou listener de `touchend`/`click`
+- Pedal funciona mas áudio fica mudo no iOS → listener com `capture: true` está competindo com `audioContext.resume`
+- Input não recebe keydown → input com opacity:0, height<2px, ou readonly
+
+**Commits históricos de referência:**
+- `2f0e838` — focus síncrono em user gesture
+- `a44affc` — guard de modal pra não roubar foco de inputs em modais
+- `de6f24e` — input visível 24px que iOS respeita
+- `e7d5e31` — combinação final (atual)
+
+**Regra final:** se algum claude/dev "otimizar" esse bloco achando que tá fazendo algo melhor, **reverte pra este estado**. O pedal funciona em produção. Não mexa.
+
+---
+
 ## 1. O que é este projeto
 
 **GDrums** é um **sequenciador de ritmos / baterista virtual** para músicos tocarem ao vivo. Oferece acompanhamento profissional com ritmos programados (vaneira, sertanejo, gospel, rock, forró, etc.), viradas (fills), intros, finalizações (ends) e controle via **pedal Bluetooth** (que simula teclado — setas).

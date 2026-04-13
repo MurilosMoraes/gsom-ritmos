@@ -1107,7 +1107,60 @@ class RhythmSequencer {
 
     }, { capture: true, passive: false } as AddEventListenerOptions);
 
-    // ─── iOS: input pra capturar keydown do pedal BT ──────────────────
+    // ═══════════════════════════════════════════════════════════════════════
+    // ⚠️⚠️⚠️  PEDAL BLUETOOTH NO iOS — NÃO MEXE SEM LER ISSO  ⚠️⚠️⚠️
+    // ═══════════════════════════════════════════════════════════════════════
+    //
+    // Este bloco é o HACK que faz o pedal Bluetooth funcionar no iOS.
+    // É o DIFERENCIAL DE MERCADO do GDrums. Se quebrar, o produto morre.
+    // Já foi reescrito várias vezes — a combinação atual é a ÚNICA que funciona.
+    //
+    // COMO FUNCIONA:
+    // No iOS/Safari, keydown/keyup de teclado Bluetooth SÓ dispara se houver
+    // um <input> de texto focado. Pedais BT musicais se registram como
+    // teclado. Então criamos um input invisível que fica sempre focado
+    // e captura as teclas do pedal.
+    //
+    // REGRAS SAGRADAS (não quebrar nenhuma):
+    //
+    // 1. INPUT VISÍVEL E COM TAMANHO REAL — iOS ignora inputs com opacity~0
+    //    ou height < 2px. Por isso height: 24px com fundo escuro.
+    //
+    // 2. focus() SÍNCRONO dentro de user gesture — iOS exige isso. Qualquer
+    //    setTimeout perde o contexto de gesture e o focus é ignorado.
+    //    Os listeners de touchend/click chamam focusPedalInput() direto
+    //    (sem setTimeout, sem await, sem Promise).
+    //
+    // 3. LISTENERS NECESSÁRIOS (todos os 4 — remover qualquer um quebra):
+    //    • touchend  → refocar após toque na tela (célula, botão)
+    //    • click     → redundância pra click sintético
+    //    • keydown   → refocar pra próxima tecla do pedal
+    //    • keyup     → idem
+    //    • blur      → refocar se input perde foco por qualquer motivo
+    //    • setInterval 1500ms → safety net pra casos não cobertos
+    //
+    // 4. hasModalOpen() NÃO PODE detectar overlays permanentes. O .gm-overlay
+    //    do ModalManager fica no DOM com display:none — se entrar no query,
+    //    retorna true sempre e o pedal nunca refoca. SÓ colocar classes de
+    //    overlays dinâmicos (criados no open, removidos no close).
+    //
+    // 5. focusPedalInput() TEM os guards necessários:
+    //    a) se mapper do pedal está aberto, não refoca (mapper tem input próprio)
+    //    b) se hasModalOpen() = true, não refoca (modal tem input próprio)
+    //    c) se outro INPUT/TEXTAREA/SELECT tá focado, não rouba (user digitando)
+    //    Esses guards fazem os listeners de touch/click serem seguros.
+    //
+    // HISTÓRICO DE TENTATIVAS QUE QUEBRARAM:
+    // - setTimeout no focus (50/100/150/200ms) → iOS ignora focus fora de gesture
+    // - capture:true nos listeners → compete com audioContext.resume
+    // - adicionar .gm-overlay no hasModalOpen → overlay permanente trava tudo
+    // - remover touch/click listeners → pedal só volta em 1.5s após tocar
+    // - readonly input / contentEditable div → iOS não manda keydown pra isso
+    // - input com opacity:0 ou height:1px → iOS ignora
+    //
+    // Commits de referência: 2f0e838 (focus síncrono), a44affc (guard modal),
+    // de6f24e (input visível 24px), e7d5e31 (combinação final).
+    // ═══════════════════════════════════════════════════════════════════════
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
                   (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
     if (isIOS) {
