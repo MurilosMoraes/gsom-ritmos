@@ -1149,20 +1149,6 @@ class RhythmSequencer {
       // Touch/click podem ser no input de um modal
       window.addEventListener('keydown', () => focusPedalInput(), true);
       window.addEventListener('keyup', () => focusPedalInput(), true);
-
-      // iOS: qualquer toque na tela tira o foco do pedalInput. O setInterval de
-      // 1500ms era lento demais (pedal só voltava após 1.5s). O fix:
-      //
-      // 1) focus() SÍNCRONO dentro do touchend — iOS exige que .focus() seja
-      //    chamado dentro de user gesture, senão é silenciosamente ignorado.
-      // 2) Também em setTimeout 200ms — captura casos onde o handler do app
-      //    mudou DOM depois do touchend (modal fechando, loader animando).
-      // Sem capture, passive, pra não competir com audioContext.resume.
-      document.addEventListener('touchend', () => {
-        focusPedalInput();
-        setTimeout(focusPedalInput, 200);
-      }, { passive: true });
-
       // Safety net periódico
       setInterval(focusPedalInput, 1500);
       setTimeout(focusPedalInput, 500);
@@ -3004,9 +2990,6 @@ class RhythmSequencer {
       this.modalManager.show('Meus Ritmos', `${name} carregado!`, 'success');
     } catch (err) {
       this.modalManager.show('Erro', 'Não foi possível carregar o ritmo.', 'error');
-    } finally {
-      // iOS: restaurar foco do pedal após mudanças no DOM
-      this.restoreIOSPedalFocus();
     }
   }
 
@@ -4187,8 +4170,6 @@ class RhythmSequencer {
     this.uiManager.updatePerformanceGrid();
     this.uiManager.updateTempoUI(this.stateManager.getTempo());
     this.uiManager.updateVariationButtons();
-    // iOS: garantir que o pedal volte a responder após atualizações de DOM
-    this.restoreIOSPedalFocus();
   }
 
   /**
@@ -4551,35 +4532,7 @@ class RhythmSequencer {
     } finally {
       this.isLoadingRhythm = false;
       this.hideRhythmLoader();
-      // iOS: trocar de ritmo mexe em muito DOM (loader, grid, strip) e o
-      // pedalInput pode perder foco durante. Forçar refocus ao terminar.
-      this.restoreIOSPedalFocus();
     }
-  }
-
-  /**
-   * Tenta re-focar o input escondido do pedal BT no iOS após operações que
-   * podem ter tirado o foco (troca de ritmo, updates massivos de DOM).
-   * Chama em múltiplos timeouts pra cobrir transições/animações.
-   * No-op em plataformas que não são iOS ou se não há pedalBtInput.
-   */
-  private restoreIOSPedalFocus(): void {
-    const pedalInput = document.getElementById('pedalBtInput') as HTMLInputElement | null;
-    if (!pedalInput) return;
-    const tryFocus = () => {
-      const active = document.activeElement as HTMLElement;
-      // Se o user está digitando em outro input real, não roubar
-      if (active && active !== pedalInput && active !== document.body &&
-          (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
-      // Se tem modal aberto, modal cuida
-      if (document.querySelector('.account-modal-overlay, .bpm-modal-overlay, [style*="z-index: 99999"], [style*="z-index:99999"]')) return;
-      pedalInput.focus({ preventScroll: true });
-    };
-    // Dispara em múltiplos momentos — DOM pode estar mutando
-    tryFocus();
-    setTimeout(tryFocus, 50);
-    setTimeout(tryFocus, 200);
-    setTimeout(tryFocus, 500);
   }
 
   // ─── Duplicate from Rhythm ───────────────────────────────────────────
