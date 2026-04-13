@@ -1125,28 +1125,56 @@ class RhythmSequencer {
       document.body.appendChild(pedalInput);
 
       const hasModalOpen = () => {
-        // Se tem overlay/modal aberto, não roubar foco
-        return !!document.querySelector('.account-modal-overlay, .bpm-modal-overlay, [style*="z-index: 99999"], [style*="z-index:99999"]');
+        // Qualquer overlay/modal do app — não roubar foco.
+        // Cobre: Minha Conta, What's New, Salvar Ritmo, Meus Ritmos, Upgrade,
+        // Setlist Picker, Phone Modal, BPM, Editor de Setlist (sle), ModalManager (gm),
+        // Demo Expired, Volume Popup, Pedal Mapper, Install Tutorial.
+        return !!document.querySelector(
+          '.account-modal-overlay, .bpm-modal-overlay, .sle-overlay, .gm-overlay, ' +
+          '.demo-expired-overlay, .volume-popup, .pedal-mapper-overlay, ' +
+          '.install-tutorial-overlay, [style*="z-index: 99999"], [style*="z-index:99999"]'
+        );
+      };
+
+      const isUserInput = (el: Element | null): boolean => {
+        if (!el) return false;
+        const tag = (el as HTMLElement).tagName;
+        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
       };
 
       const focusPedalInput = () => {
         if (this.pedalMapperOpen) return;
         if (hasModalOpen()) return;
-        const active = document.activeElement as HTMLElement;
-        if (active && active !== pedalInput && active !== document.body &&
-            (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
+        const active = document.activeElement;
+        // Se o usuário tá digitando em QUALQUER input (nosso pedalInput não conta),
+        // não roubar o foco — mesmo fora de modal (ex: search, etc).
+        if (active && active !== pedalInput && isUserInput(active)) return;
         pedalInput.focus({ preventScroll: true });
       };
 
-      // Só refocar no keydown/keyup (pedal) — não no touch/click
-      // Touch/click podem ser no input de um modal
-      window.addEventListener('keydown', () => focusPedalInput(), true);
-      window.addEventListener('keyup', () => focusPedalInput(), true);
-      // Safety net periódico
+      // Refocar só em keydown/keyup de pedal (setas/pageup/pagedown/space).
+      // Teclado virtual do iOS dispara keydown de cada letra digitada — se
+      // refocarmos nisso, roubamos o foco do input que o user tá preenchendo.
+      const isPedalKey = (e: KeyboardEvent): boolean => {
+        const kc = e.keyCode || e.which || 0;
+        // 37=Left 38=Up 39=Right 40=Down 32=Space 33=PageUp 34=PageDown 13=Enter
+        return kc === 37 || kc === 38 || kc === 39 || kc === 40 ||
+               kc === 32 || kc === 33 || kc === 34;
+      };
+      window.addEventListener('keydown', (e) => { if (isPedalKey(e)) focusPedalInput(); }, true);
+      window.addEventListener('keyup', (e) => { if (isPedalKey(e)) focusPedalInput(); }, true);
+
+      // Safety net periódico — mas só age se nada tá focado e nenhum modal aberto
       setInterval(focusPedalInput, 1500);
       setTimeout(focusPedalInput, 500);
+
       pedalInput.addEventListener('input', () => { pedalInput.value = ''; });
-      pedalInput.addEventListener('blur', () => { if (!hasModalOpen()) focusPedalInput(); });
+      pedalInput.addEventListener('blur', () => {
+        // Pequeno delay: se o blur foi porque user tocou em outro input/modal,
+        // o activeElement já vai estar nesse outro elemento e focusPedalInput()
+        // decide corretamente não roubar.
+        setTimeout(focusPedalInput, 50);
+      });
     }
   }
 
