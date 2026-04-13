@@ -1145,8 +1145,15 @@ class RhythmSequencer {
         pedalInput.focus({ preventScroll: true });
       };
 
-      // Só refocar no keydown/keyup (pedal) — não no touch/click
-      // Touch/click podem ser no input de um modal
+      // ✱ Refocar no touch/click síncrono DENTRO da user gesture (iOS exige isso).
+      //   focusPedalInput() já tem o guard de hasModalOpen() + input focado,
+      //   então não rouba foco de inputs em modais. Combina o fix do
+      //   commit 2f0e838 (refocus síncrono pra iOS) com o do a44affc
+      //   (guard de modal/input). Sem esse listener, após tocar em qualquer
+      //   célula/botão o pedal só voltaria a funcionar em 1.5s (setInterval).
+      document.addEventListener('touchend', () => focusPedalInput(), { passive: true });
+      document.addEventListener('click', () => focusPedalInput());
+      // Após keydown do pedal, refocar pra próxima pisada (síncrono ok aqui)
       window.addEventListener('keydown', () => focusPedalInput(), true);
       window.addEventListener('keyup', () => focusPedalInput(), true);
       // Safety net periódico
