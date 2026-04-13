@@ -258,10 +258,10 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '2.3',
+    version: '2.4',
     title: 'Novidades do GDrums!',
     items: [
-      { icon: '🎵', text: '50 ritmos na biblioteca — Anos 60, Pagodao, Salsa, Ska, Blues, Jazz e mais' },
+      { icon: '🎵', text: '72 ritmos na biblioteca — novos estilos toda semana (Pop Sertanejo, Trio Elétrico, Neo-Soul, Electro Funk e mais)' },
       { icon: '📶', text: 'Modo offline completo — todos os ritmos funcionam sem internet' },
       { icon: '🎼', text: 'Repertorio — monte a setlist do show misturando ritmos da biblioteca com os seus' },
       { icon: '🎛️', text: 'Tap Tempo — toque no ritmo da musica e o BPM ajusta automaticamente' },

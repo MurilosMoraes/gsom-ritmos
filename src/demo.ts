@@ -10,15 +10,19 @@ import { UIManager } from './ui/UIManager';
 import { MAX_CHANNELS, type PatternType } from './types';
 import { HapticsService } from './native/HapticsService';
 
+// Variedade de estilos pra cada público sentir algo familiar
 const DEMO_RHYTHMS = [
   { name: 'Vaneira', path: '/rhythm/Vaneira.json' },
   { name: 'Samba', path: '/rhythm/Samba.json' },
   { name: 'Seresta', path: '/rhythm/Seresta.json' },
   { name: 'Pop Rock', path: '/rhythm/Pop Rock.json' },
+  { name: 'Gospel', path: '/rhythm/Gospel.json' },
+  { name: 'Sertanejo Universitário', path: '/rhythm/Sertanejo Universitário.json' },
+  { name: 'Forró', path: '/rhythm/Forro.json' },
 ];
 
-const MAX_RHYTHMS = 2;
-const IDLE_TIMEOUT = 3 * 60 * 1000;
+const MAX_RHYTHMS = 5;
+const IDLE_TIMEOUT = 10 * 60 * 1000;
 const STORAGE_KEY = 'gdrums_demo_used';
 const FP_KEY = 'gdrums_demo_fp';
 
@@ -336,7 +340,7 @@ class DemoPlayer {
       <div class="demo-expired-card">
         <img src="/img/logo.png" alt="GDrums" style="height:36px;opacity:0.7;margin-bottom:1.5rem;">
         <h2>Curtiu tocar com banda?</h2>
-        <p>Você acabou de sentir como é ter acompanhamento profissional de verdade. São <strong style="color:#fff;">50 ritmos</strong> que seguram sua música do começo ao fim — vaneira, sertanejo, rock, forró, gospel e muito mais.</p>
+        <p>Você acabou de sentir como é ter acompanhamento profissional de verdade. São <strong style="color:#fff;">72 ritmos</strong> que seguram sua música do começo ao fim — vaneira, sertanejo, rock, forró, gospel e muito mais.</p>
         <p style="color:rgba(255,255,255,0.4);font-size:0.82rem;margin-bottom:1.5rem;">Cadastre grátis. Sem cartão. Acesso completo por 48h.</p>
         <a href="/register.html" class="demo-expired-cta">QUERO MINHA BANDA COMPLETA</a>
         <div class="demo-expired-sub">
