@@ -1149,6 +1149,16 @@ class RhythmSequencer {
       // Touch/click podem ser no input de um modal
       window.addEventListener('keydown', () => focusPedalInput(), true);
       window.addEventListener('keyup', () => focusPedalInput(), true);
+
+      // iOS: qualquer toque na tela pode tirar o foco do pedalInput (click em
+      // célula, fechar modal, etc). O safety-net de 1500ms era lento demais.
+      // Listener PASSIVO (não bloqueia), SEM capture (roda DEPOIS do app),
+      // com atraso pra não competir com audioContext.resume e pra o ativeElement
+      // já estar estabilizado quando a função roda.
+      document.addEventListener('touchend', () => {
+        setTimeout(focusPedalInput, 100);
+      }, { passive: true });
+
       // Safety net periódico
       setInterval(focusPedalInput, 1500);
       setTimeout(focusPedalInput, 500);
