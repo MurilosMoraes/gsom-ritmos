@@ -111,12 +111,13 @@ class RegisterPage {
     });
 
     if (response.success && response.user) {
-      // 4. Salvar CPF hash e telefone — com retry (trigger pode demorar pra criar o profile)
-      const phone = this.phoneInput.value.replace(/\D/g, '');
+      // 4. Salvar CPF hash e telefone — com retry (trigger pode demorar pra criar o profile).
+      //    Se o erro for duplicata (23505), abortar imediatamente — retry não resolve.
       let cpfSaved = false;
+      let duplicateField: 'cpf' | 'phone' | null = null;
 
-      for (let attempt = 0; attempt < 3; attempt++) {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 500));
+      for (let attempt = 0; attempt < 5; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 800));
         const { error } = await supabase
           .from('gdrums_profiles')
           .update({ cpf_hash: cpfHash, phone })
@@ -125,12 +126,49 @@ class RegisterPage {
           cpfSaved = true;
           break;
         }
+        // UNIQUE violation: não adianta retentar
+        if ((error as any).code === '23505') {
+          duplicateField = ((error as any).message || '').includes('phone') ? 'phone' : 'cpf';
+          break;
+        }
       }
 
-      if (!cpfSaved) {
-        // CPF não salvou — deletar a conta pra não ficar sem CPF
+      if (!cpfSaved && !duplicateField) {
+        // Último recurso — tentar upsert direto (profile ainda não existia)
+        const trialExpiry = calculateTrialExpiry();
+        const { error: upsertError } = await supabase
+          .from('gdrums_profiles')
+          .upsert({
+            id: response.user.id,
+            name: this.nameInput.value.trim(),
+            cpf_hash: cpfHash,
+            phone,
+            subscription_status: 'trial',
+            subscription_plan: 'trial',
+            subscription_expires_at: trialExpiry,
+            updated_at: new Date().toISOString(),
+          });
+        if (upsertError) {
+          if ((upsertError as any).code === '23505') {
+            duplicateField = ((upsertError as any).message || '').includes('phone') ? 'phone' : 'cpf';
+          } else {
+            await supabase.auth.signOut();
+            this.showAlert('Erro ao finalizar cadastro. Tente novamente.', 'error');
+            this.setLoading(false);
+            return;
+          }
+        } else {
+          cpfSaved = true;
+        }
+      }
+
+      if (duplicateField) {
+        // Alguém driblou o pré-check (race / bypass de UI). Banco é fonte de verdade.
         await supabase.auth.signOut();
-        this.showAlert('Erro ao finalizar cadastro. Tente novamente.', 'error');
+        const msg = duplicateField === 'phone'
+          ? 'Este WhatsApp já possui uma conta cadastrada. Se não consegue acessar, entre em contato pelo WhatsApp.'
+          : 'Este CPF já possui uma conta cadastrada. Se não consegue acessar, entre em contato pelo WhatsApp.';
+        this.showAlert(msg, 'error');
         this.setLoading(false);
         return;
       }

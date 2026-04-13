@@ -159,41 +159,20 @@ class PlansPage {
     status.textContent = 'Verificando...';
     status.className = 'coupon-status';
 
-    // Buscar cupom no banco
-    const { data: coupon, error } = await supabase
-      .from('gdrums_coupons')
-      .select('*')
-      .eq('code', code)
-      .eq('active', true)
-      .single();
+    // Validar via RPC — retorna só campos mínimos se o cupom for válido
+    // (ativo, na janela, com usos disponíveis). Evita expor tabela inteira pro anon.
+    const { data: rpcRows, error: rpcErr } = await supabase
+      .rpc('validate_coupon', { coupon_code: code });
 
     btn.disabled = false;
 
-    if (error || !coupon) {
+    const coupon = Array.isArray(rpcRows) ? rpcRows[0] : rpcRows;
+
+    if (rpcErr || !coupon) {
       status.textContent = 'Cupom inválido';
       status.className = 'coupon-status error';
       this.appliedCoupon = null;
       this.renderPlans(null);
-      return;
-    }
-
-    // Verificar validade
-    const now = new Date();
-    if (new Date(coupon.valid_from) > now) {
-      status.textContent = 'Cupom ainda não está ativo';
-      status.className = 'coupon-status error';
-      return;
-    }
-    if (new Date(coupon.valid_until) < now) {
-      status.textContent = 'Cupom expirado';
-      status.className = 'coupon-status error';
-      return;
-    }
-
-    // Verificar usos
-    if (coupon.current_uses >= coupon.max_uses) {
-      status.textContent = 'Cupom esgotado';
-      status.className = 'coupon-status error';
       return;
     }
 

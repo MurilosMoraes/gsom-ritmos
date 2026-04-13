@@ -142,20 +142,8 @@ class PaymentSuccessPage {
       const couponCode = order.coupon?.code;
       if (!couponCode) return;
 
-      // Buscar cupom atual
-      const { data: coupon } = await supabase
-        .from('gdrums_coupons')
-        .select('id, current_uses')
-        .eq('code', couponCode)
-        .single();
-
-      if (!coupon) return;
-
-      // Incrementar current_uses
-      await supabase
-        .from('gdrums_coupons')
-        .update({ current_uses: (coupon.current_uses || 0) + 1 })
-        .eq('id', coupon.id);
+      // Incremento atômico no banco — evita race condition com pagamentos simultâneos
+      await supabase.rpc('increment_coupon_uses', { coupon_code: couponCode });
     } catch {
       // Não bloquear o fluxo de sucesso se falhar
     }
