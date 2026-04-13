@@ -3034,10 +3034,16 @@ class RhythmSequencer {
     const input = overlay.querySelector('#phoneModalInput') as HTMLInputElement;
     const statusEl = overlay.querySelector('#phoneModalStatus') as HTMLElement;
 
-    // Máscara — se colou/digitou código país (+55), remove prefix pra não perder dígitos
+    // Máscara — remove prefix de código país (+55) pra não perder dígitos ao truncar
+    const VALID_DDDS = new Set(['11','12','13','14','15','16','17','18','19','21','22','24','27','28','31','32','33','34','35','37','38','41','42','43','44','45','46','47','48','49','51','53','54','55','61','62','63','64','65','66','67','68','69','71','73','74','75','77','79','81','82','83','84','85','86','87','88','89','91','92','93','94','95','96','97','98','99']);
     input.addEventListener('input', () => {
       let raw = input.value.replace(/\D/g, '');
+      // 12+ dígitos começando com 55: user claramente colou com código país
       if (raw.length >= 12 && raw.startsWith('55')) raw = raw.slice(2);
+      // 11 dígitos começando com 55 onde [2-3] é DDD válido + 5º é '9': +55 que truncou
+      else if (raw.length === 11 && raw.startsWith('55') && VALID_DDDS.has(raw.slice(2,4)) && raw[4] === '9') {
+        raw = raw.slice(2);
+      }
       let v = raw.slice(0, 11);
       if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
       else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;

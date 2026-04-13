@@ -50,12 +50,28 @@ class RegisterPage {
     });
 
     // Máscara de telefone (00) 00000-0000
+    const stripCountryCode = (raw: string): string => {
+      // Começando com "+" o user claramente digitou código de país — remove 55
+      // (já passou pelo replace(/\D/g, '')). Se começa com 55 e tem 12+ dígitos
+      // (55 + DDD 2d + pelo menos 8d) também remove.
+      if (raw.length >= 12 && raw.startsWith('55')) return raw.slice(2);
+      // Caso crítico que aparece em produção: user digita "+55" e a máscara
+      // corta em 11. Detecta: 11 dígitos começando com "55" onde o 3º e 5º
+      // dígito formam DDD válido + 9 (celular). Ex: "55119901522" = 55+11+9+6d
+      if (raw.length === 11 && raw.startsWith('55')) {
+        const ddd = raw.slice(2, 4);
+        const fifth = raw[4];
+        // DDDs BR válidos começam em 11-99 com pares específicos.
+        // Heurística: se o 3º-4º é DDD válido E o 5º é '9' (celular), é +55 colado
+        const validDdds = ['11','12','13','14','15','16','17','18','19','21','22','24','27','28','31','32','33','34','35','37','38','41','42','43','44','45','46','47','48','49','51','53','54','55','61','62','63','64','65','66','67','68','69','71','73','74','75','77','79','81','82','83','84','85','86','87','88','89','91','92','93','94','95','96','97','98','99'];
+        if (validDdds.includes(ddd) && fifth === '9') return raw.slice(2);
+      }
+      return raw;
+    };
+
     this.phoneInput.addEventListener('input', () => {
       let raw = this.phoneInput.value.replace(/\D/g, '');
-      // Se o cara colou/digitou o código do país (+55), remove o 55 prefix pra
-      // não perder os 2 últimos dígitos do celular ao truncar em 11.
-      // Padrão BR: 55(país) + DDD(2) + 9xxxxxxxx(9) = 13 dígitos.
-      if (raw.length >= 12 && raw.startsWith('55')) raw = raw.slice(2);
+      raw = stripCountryCode(raw);
       let v = raw.slice(0, 11);
       if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
       else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
