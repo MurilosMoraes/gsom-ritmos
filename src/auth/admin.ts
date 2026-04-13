@@ -623,7 +623,7 @@ class AdminDashboard {
     (document.getElementById('editUserId') as HTMLInputElement).value = profile.id;
     (document.getElementById('editUserName') as HTMLInputElement).value = profile.name || '';
     (document.getElementById('editUserStatus') as HTMLSelectElement).value = profile.subscription_status;
-    (document.getElementById('editUserPlan') as HTMLSelectElement).value = profile.subscription_plan || 'free';
+    (document.getElementById('editUserPlan') as HTMLSelectElement).value = profile.subscription_plan || 'trial';
     const expiryInput = document.getElementById('editUserExpiry') as HTMLInputElement;
     expiryInput.value = profile.subscription_expires_at
       ? new Date(profile.subscription_expires_at).toISOString().split('T')[0]
