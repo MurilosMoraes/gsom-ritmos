@@ -51,7 +51,12 @@ class RegisterPage {
 
     // Máscara de telefone (00) 00000-0000
     this.phoneInput.addEventListener('input', () => {
-      let v = this.phoneInput.value.replace(/\D/g, '').slice(0, 11);
+      let raw = this.phoneInput.value.replace(/\D/g, '');
+      // Se o cara colou/digitou o código do país (+55), remove o 55 prefix pra
+      // não perder os 2 últimos dígitos do celular ao truncar em 11.
+      // Padrão BR: 55(país) + DDD(2) + 9xxxxxxxx(9) = 13 dígitos.
+      if (raw.length >= 12 && raw.startsWith('55')) raw = raw.slice(2);
+      let v = raw.slice(0, 11);
       if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
       else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
       else if (v.length > 0) v = `(${v}`;

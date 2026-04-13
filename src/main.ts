@@ -1066,9 +1066,13 @@ class RhythmSequencer {
       const kc = e.keyCode || e.which || 0;
       const keyId = e.code || e.key || '';
 
-      // Se um input/select está focado, só processar se for tecla de pedal/seta
+      // Se um input/select está focado, só processar se for tecla de pedal/seta.
+      // Exceção: o nosso pedalBtInput é o input dedicado do pedal BT — não
+      // fazer blur nele, se não o próprio handler do pedal perde o foco e o
+      // segundo keydown do pedal não é capturado.
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+      const isOurPedalInput = target.id === 'pedalBtInput';
+      if (!isOurPedalInput && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
         const isPedal = kc === pedalLeftCode || kc === pedalRightCode ||
                         kc === 37 || kc === 38 || kc === 39 || kc === 40 ||
                         keyId === this.pedalLeft || keyId === this.pedalRight;
@@ -1166,17 +1170,16 @@ class RhythmSequencer {
 
       // ✱ Refocar logo após touchend/click no app (fora de inputs e modais).
       //   É o que resolve o caso "cara clicou numa célula/botão e o pedal parou".
-      //   O blur listener abaixo também cobre, mas esse é mais confiável porque
-      //   roda DEPOIS do click handler do app executar.
+      //   Usa múltiplos timeouts pra cobrir: (a) click handler síncrono, (b) mutações
+      //   de DOM que podem disparar blur, (c) animações.
       const refocusAfterTap = (e: Event) => {
         const target = e.target as Element | null;
-        // Se o toque foi num input real (ex: search no editor, senha no modal),
-        // deixa o foco lá.
         if (target && isUserInput(target)) return;
-        // Se tem modal aberto, o modal cuida do próprio foco.
         if (hasModalOpen()) return;
-        // Roda após o click handler do app executar (e depois do blur nativo).
+        // Refoca em múltiplos momentos — um deles vai pegar o estado certo
         setTimeout(focusPedalInput, 0);
+        setTimeout(focusPedalInput, 50);
+        setTimeout(focusPedalInput, 150);
       };
       document.addEventListener('touchend', refocusAfterTap, { capture: true, passive: true });
       document.addEventListener('click', refocusAfterTap, true);
@@ -3059,9 +3062,11 @@ class RhythmSequencer {
     const input = overlay.querySelector('#phoneModalInput') as HTMLInputElement;
     const statusEl = overlay.querySelector('#phoneModalStatus') as HTMLElement;
 
-    // Máscara
+    // Máscara — se colou/digitou código país (+55), remove prefix pra não perder dígitos
     input.addEventListener('input', () => {
-      let v = input.value.replace(/\D/g, '').slice(0, 11);
+      let raw = input.value.replace(/\D/g, '');
+      if (raw.length >= 12 && raw.startsWith('55')) raw = raw.slice(2);
+      let v = raw.slice(0, 11);
       if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
       else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
       else if (v.length > 0) v = `(${v}`;

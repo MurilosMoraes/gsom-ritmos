@@ -49,6 +49,36 @@ interface Coupon {
   created_at: string;
 }
 
+// ─── Helper: validar telefone BR ───────────────────────────────────
+// 82 usuários salvaram phone com prefix "55" (código país) e perderam 2
+// dígitos no final. Detectar e mostrar como inválido na UI pra não mandar
+// WhatsApp quebrado.
+interface PhoneValidation {
+  ok: boolean;
+  e164?: string;       // "5511999015522" (pronto pra wa.me)
+  display?: string;    // "(11) 99901-5522"
+  reason?: string;     // motivo da invalidez
+}
+function validateBrPhone(phone: string | null | undefined): PhoneValidation {
+  if (!phone) return { ok: false, reason: 'vazio' };
+  const raw = phone.replace(/\D/g, '');
+  // Formato salvo correto: 11 dígitos (DDD + 9xxxxxxxx) ou 10 (DDD fixo)
+  if (raw.length === 11 && raw[2] === '9') {
+    const display = `(${raw.slice(0,2)}) ${raw.slice(2,7)}-${raw.slice(7)}`;
+    return { ok: true, e164: `55${raw}`, display };
+  }
+  if (raw.length === 10) {
+    const display = `(${raw.slice(0,2)}) ${raw.slice(2,6)}-${raw.slice(6)}`;
+    return { ok: true, e164: `55${raw}`, display };
+  }
+  // 11 dígitos começando com "55" e 3º dígito não é "9" → prefix de país colado
+  // (cadastro antigo perdeu os 2 últimos dígitos). Não tenta corrigir.
+  if (raw.length === 11 && raw.startsWith('55')) {
+    return { ok: false, reason: 'incompleto (faltam 2 dígitos)' };
+  }
+  return { ok: false, reason: 'formato inválido' };
+}
+
 // ─── Helper: chamar Edge Function admin-api com token do usuário ────
 
 async function getAuthToken(): Promise<string> {
@@ -898,8 +928,11 @@ class AdminDashboard {
       const expiresColor = isExpired ? 'var(--a-red)' : 'var(--a-gold)';
 
       // Contato (WhatsApp com mensagem pronta + email)
+      const phoneValid = validateBrPhone(l.phone);
       const phoneLink = l.phone
-        ? `<a href="https://wa.me/55${l.phone}?text=${whatsMsg(l.name)}" target="_blank" style="color:var(--a-green);text-decoration:none;font-size:0.7rem;" title="Abrir WhatsApp com mensagem">WhatsApp</a>`
+        ? (phoneValid.ok
+          ? `<a href="https://wa.me/${phoneValid.e164}?text=${whatsMsg(l.name)}" target="_blank" style="color:var(--a-green);text-decoration:none;font-size:0.7rem;" title="Abrir WhatsApp: ${phoneValid.display}">WhatsApp</a>`
+          : `<span style="color:var(--a-red);font-size:0.7rem;opacity:0.7;" title="Número ${phoneValid.reason} — contate por email">⚠ tel inválido</span>`)
         : '';
       const emailLink = l.email
         ? `<a href="mailto:${l.email}" style="color:var(--a-cyan);text-decoration:none;font-size:0.7rem;" title="${l.email}">Email</a>`
@@ -918,7 +951,7 @@ class AdminDashboard {
 
       // Acoes
       const actions: string[] = [];
-      if (l.phone) {
+      if (l.phone && phoneValid.ok) {
         actions.push(`<button class="btn-action btn-edit" data-whats-id="${l.id}" style="font-size:0.6rem;">WhatsApp</button>`);
       }
       if (l.email) {
@@ -955,7 +988,12 @@ class AdminDashboard {
         const id = (btn as HTMLElement).dataset.whatsId!;
         const lead = paged.find(l => l.id === id);
         if (!lead?.phone) return;
-        window.open(`https://wa.me/55${lead.phone}?text=${whatsMsg(lead.name)}`, '_blank');
+        const v = validateBrPhone(lead.phone);
+        if (!v.ok || !v.e164) {
+          modalManager.show('WhatsApp', `Número inválido (${v.reason}). Contate por email.`, 'warning');
+          return;
+        }
+        window.open(`https://wa.me/${v.e164}?text=${whatsMsg(lead.name)}`, '_blank');
         await this.markContacted(id, 'whatsapp');
         this.renderLeads();
       });
