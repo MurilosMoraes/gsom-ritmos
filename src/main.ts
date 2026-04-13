@@ -1164,6 +1164,23 @@ class RhythmSequencer {
       window.addEventListener('keydown', (e) => { if (isPedalKey(e)) focusPedalInput(); }, true);
       window.addEventListener('keyup', (e) => { if (isPedalKey(e)) focusPedalInput(); }, true);
 
+      // ✱ Refocar logo após touchend/click no app (fora de inputs e modais).
+      //   É o que resolve o caso "cara clicou numa célula/botão e o pedal parou".
+      //   O blur listener abaixo também cobre, mas esse é mais confiável porque
+      //   roda DEPOIS do click handler do app executar.
+      const refocusAfterTap = (e: Event) => {
+        const target = e.target as Element | null;
+        // Se o toque foi num input real (ex: search no editor, senha no modal),
+        // deixa o foco lá.
+        if (target && isUserInput(target)) return;
+        // Se tem modal aberto, o modal cuida do próprio foco.
+        if (hasModalOpen()) return;
+        // Roda após o click handler do app executar (e depois do blur nativo).
+        setTimeout(focusPedalInput, 0);
+      };
+      document.addEventListener('touchend', refocusAfterTap, { capture: true, passive: true });
+      document.addEventListener('click', refocusAfterTap, true);
+
       // Safety net periódico — mas só age se nada tá focado e nenhum modal aberto
       setInterval(focusPedalInput, 1500);
       setTimeout(focusPedalInput, 500);
