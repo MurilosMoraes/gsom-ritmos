@@ -1236,12 +1236,9 @@ class RhythmSequencer {
             }
             this.play();
           } else if (variationIndex === currentVariation) {
-            // Tocando o mesmo ritmo → parar (com ou sem final)
-            if (this.useFinal) {
-              this.patternEngine.playEndAndStop();
-            } else {
-              this.stop();
-            }
+            // Clicou no ritmo que já está tocando — ignorar.
+            // Evita parar acidentalmente (cliques sem querer no pad ativo).
+            // Pra parar, usar o botão FINAL ou o pedal.
           } else {
             // Tocando outro ritmo → fazer virada antes de mudar
             this.patternEngine.playFillToNextRhythm(variationIndex);
