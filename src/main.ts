@@ -1125,15 +1125,15 @@ class RhythmSequencer {
       document.body.appendChild(pedalInput);
 
       const hasModalOpen = () => {
-        // Qualquer overlay/modal do app — não roubar foco.
-        // Cobre: Minha Conta, What's New, Salvar Ritmo, Meus Ritmos, Upgrade,
-        // Setlist Picker, Phone Modal, BPM, Editor de Setlist (sle), ModalManager (gm),
-        // Demo Expired, Volume Popup, Pedal Mapper, Install Tutorial.
-        return !!document.querySelector(
-          '.account-modal-overlay, .bpm-modal-overlay, .sle-overlay, .gm-overlay, ' +
-          '.demo-expired-overlay, .volume-popup, .pedal-mapper-overlay, ' +
-          '.install-tutorial-overlay, [style*="z-index: 99999"], [style*="z-index:99999"]'
-        );
+        // Se tem overlay/modal aberto, não roubar foco.
+        //
+        // ⚠️ CUIDADO: ModalManager cria .gm-overlay permanente no DOM com
+        // display:none. Se a gente adicionar .gm-overlay aqui, o query
+        // acha ele mesmo escondido e o pedal para de funcionar (bug 04/2026).
+        // Mesma coisa vale pra qualquer overlay criado uma vez e reusado.
+        // Só adicionar classe aqui se o overlay for criado on-demand e
+        // removido após o close (ex: account-modal-overlay é dinâmico).
+        return !!document.querySelector('.account-modal-overlay, .bpm-modal-overlay, [style*="z-index: 99999"], [style*="z-index:99999"]');
       };
 
       const focusPedalInput = () => {
