@@ -16,7 +16,14 @@ import { HapticsService } from './native/HapticsService';
 import { OfflineCache } from './native/OfflineCache';
 import { StatusBarService } from './native/StatusBarService';
 import { PushService } from './native/PushService';
+import { isNativeApp, openExternal } from './native/Platform';
 import { UserRhythmService } from './core/UserRhythmService';
+
+// Pra Google Play / App Store: app nativo não pode ter fluxo de pagamento
+// de produto digital (teria que usar Play Billing / IAP com taxa 30%).
+// Assinaturas do GDrums são feitas no SITE (https://gdrums.com.br/plans),
+// o app é "reader" — só mostra conteúdo pago fora dele.
+const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/plans';
 
 class RhythmSequencer {
   private audioContext: AudioContext;
@@ -727,8 +734,55 @@ class RhythmSequencer {
       } catch { /* pagamento não confirmado — seguir pro plans */ }
     }
 
+    // Trial expirou e não há pagamento confirmado.
+    // App nativo: mostra aviso pro user assinar no site (compliance Play/App Store).
+    // Web: redireciona pra plans.html normal.
+    if (isNativeApp()) {
+      this.showSubscribeOnWebsiteNotice();
+      return false;
+    }
     window.location.href = '/plans.html';
     return false;
+  }
+
+  /**
+   * Mostra aviso fullscreen pra user ir ao site pra assinar.
+   * Compliance Google Play / App Store: app nativo não pode ter fluxo de
+   * pagamento de produto digital.
+   */
+  private showSubscribeOnWebsiteNotice(): void {
+    document.body.innerHTML = `
+      <div style="position:fixed;inset:0;background:#030014;display:flex;align-items:center;justify-content:center;padding:2rem;z-index:99999;">
+        <div style="text-align:center;max-width:400px;width:100%;">
+          <img src="/img/logo.png" alt="GDrums" style="height:40px;opacity:0.9;margin-bottom:1.5rem;">
+          <h2 style="color:#fff;font-size:1.2rem;font-weight:700;margin:0 0 0.75rem;letter-spacing:-0.3px;">Seu teste acabou</h2>
+          <p style="color:rgba(255,255,255,0.55);font-size:0.9rem;line-height:1.6;margin:0 0 1.75rem;">
+            Pra continuar tocando com sua banda, assine no nosso site. Depois é só voltar aqui e fazer login.
+          </p>
+          <button id="goToSiteBtn" style="
+            width:100%;padding:1rem;border:none;border-radius:14px;
+            background:linear-gradient(135deg,#00D4FF,#8B5CF6);
+            color:#fff;font-size:0.95rem;font-weight:700;
+            font-family:inherit;cursor:pointer;margin-bottom:0.75rem;
+            box-shadow:0 8px 24px rgba(0,212,255,0.25);
+          ">Abrir gdrums.com.br</button>
+          <button id="logoutFromNoticeBtn" style="
+            width:100%;padding:0.85rem;border:none;border-radius:12px;
+            background:rgba(255,255,255,0.05);
+            border:1px solid rgba(255,255,255,0.08);
+            color:rgba(255,255,255,0.5);font-size:0.85rem;font-weight:600;
+            font-family:inherit;cursor:pointer;
+          ">Sair da conta</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('goToSiteBtn')?.addEventListener('click', () => {
+      openExternal(PLANS_URL_EXTERNAL);
+    });
+    document.getElementById('logoutFromNoticeBtn')?.addEventListener('click', async () => {
+      const { authService } = await import('./auth/AuthService');
+      await authService.logout();
+    });
   }
 
   private showSubscriptionBanner(status: string, expires: Date, plan: string): void {
@@ -751,12 +805,23 @@ class RhythmSequencer {
       ? `Sua banda vai parar em <strong>${timeText}</strong>`
       : `<strong>${timeText}</strong> restantes do seu teste`;
 
+    // App nativo: link com data-native pra abrir site no navegador externo
+    // (Play Store / App Store não permite fluxo de pagamento in-app).
+    const ctaLabel = hoursLeft <= 6 ? 'Manter a banda tocando' : 'Assinar agora';
     banner.innerHTML = `
       <span class="trial-banner-text">${urgentMsg}</span>
-      <a href="/plans.html" class="trial-banner-btn">${hoursLeft <= 6 ? 'Manter a banda tocando' : 'Assinar agora'}</a>
+      <a href="${isNativeApp() ? '#' : '/plans.html'}" class="trial-banner-btn" id="trialBannerCta">${ctaLabel}</a>
     `;
 
     document.body.appendChild(banner);
+
+    // Se nativo, interceptar clique e abrir no browser externo
+    if (isNativeApp()) {
+      banner.querySelector('#trialBannerCta')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openExternal(PLANS_URL_EXTERNAL);
+      });
+    }
 
     // Injetar CSS
     if (!document.getElementById('trial-banner-css')) {
@@ -3555,14 +3620,20 @@ class RhythmSequencer {
       upgradeAvailable = currentIdx < planOrder.length - 1;
     }
 
-    // Botão de ação inteligente
+    // Botão de ação inteligente.
+    // App nativo: rótulos mudam pra indicar abertura no site (Google Play / App
+    // Store exige que pagamento aconteça fora do WebView).
+    const native = isNativeApp();
     let actionBtn = '';
     if (status === 'expired' || status === 'canceled') {
-      actionBtn = `<button class="account-action-btn" id="accountActionBtn">Renovar Assinatura</button>`;
+      const label = native ? 'Renovar no site' : 'Renovar Assinatura';
+      actionBtn = `<button class="account-action-btn" id="accountActionBtn">${label}</button>`;
     } else if (status === 'trial') {
-      actionBtn = `<button class="account-action-btn" id="accountActionBtn">Assinar Agora</button>`;
+      const label = native ? 'Assinar no site' : 'Assinar Agora';
+      actionBtn = `<button class="account-action-btn" id="accountActionBtn">${label}</button>`;
     } else if (upgradeAvailable) {
-      actionBtn = `<button class="account-action-btn account-action-upgrade" id="accountActionBtn">Fazer upgrade de plano</button>`;
+      const label = native ? 'Fazer upgrade no site' : 'Fazer upgrade de plano';
+      actionBtn = `<button class="account-action-btn account-action-upgrade" id="accountActionBtn">${label}</button>`;
     }
 
     // Verificar se já está instalado como PWA
@@ -3625,6 +3696,41 @@ class RhythmSequencer {
             <input type="password" class="account-password-input" id="accountConfirmPassword" placeholder="Confirmar nova senha" minlength="6" />
             <div class="account-password-status" id="accountPasswordStatus"></div>
             <button class="account-password-save" id="accountPasswordSave">Salvar nova senha</button>
+          </div>
+        </div>
+
+        <!-- Excluir conta — obrigatório pelo Google Play (desde 2023) e App Store -->
+        <div style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,0.05);">
+          <button id="accountDeleteToggle" style="
+            width:100%;padding:0.6rem;border:none;border-radius:10px;
+            background:transparent;
+            color:rgba(255,68,102,0.6);font-size:0.75rem;font-weight:600;
+            font-family:inherit;cursor:pointer;text-align:center;
+          ">Excluir minha conta</button>
+          <div id="accountDeleteConfirm" style="display:none;margin-top:0.75rem;padding:0.85rem;background:rgba(255,68,102,0.06);border:1px solid rgba(255,68,102,0.2);border-radius:10px;">
+            <p style="color:rgba(255,255,255,0.7);font-size:0.78rem;line-height:1.5;margin:0 0 0.5rem;">
+              <strong style="color:#FF4466;">Esta ação é irreversível.</strong>
+              Seus ritmos pessoais, favoritos e dados de cadastro serão apagados. Você não poderá recuperar a conta depois.
+            </p>
+            <p style="color:rgba(255,255,255,0.4);font-size:0.7rem;line-height:1.4;margin:0 0 0.75rem;">
+              Se você tem assinatura ativa, ela não é automaticamente cancelada — fale conosco pelo WhatsApp pra solicitar reembolso se aplicável.
+            </p>
+            <div id="accountDeleteStatus" style="font-size:0.72rem;min-height:1rem;margin-bottom:0.5rem;text-align:center;"></div>
+            <div style="display:flex;gap:0.5rem;">
+              <button id="accountDeleteCancel" style="
+                flex:1;padding:0.55rem;border:none;border-radius:8px;
+                background:rgba(255,255,255,0.05);
+                border:1px solid rgba(255,255,255,0.08);
+                color:rgba(255,255,255,0.55);font-size:0.75rem;font-weight:600;
+                font-family:inherit;cursor:pointer;
+              ">Cancelar</button>
+              <button id="accountDeleteConfirmBtn" style="
+                flex:1.3;padding:0.55rem;border:none;border-radius:8px;
+                background:#FF4466;color:#fff;
+                font-size:0.75rem;font-weight:700;
+                font-family:inherit;cursor:pointer;
+              ">Excluir para sempre</button>
+            </div>
           </div>
         </div>
       </div>
@@ -3719,11 +3825,56 @@ class RhythmSequencer {
       }
     });
 
-    // Ação do botão de upgrade/renovar
+    // ─── Excluir conta ───
+    // Obrigatório Google Play (2023+) e App Store.
+    overlay.querySelector('#accountDeleteToggle')?.addEventListener('click', () => {
+      const confirm = overlay.querySelector('#accountDeleteConfirm') as HTMLElement;
+      if (confirm) confirm.style.display = 'block';
+    });
+    overlay.querySelector('#accountDeleteCancel')?.addEventListener('click', () => {
+      const confirm = overlay.querySelector('#accountDeleteConfirm') as HTMLElement;
+      if (confirm) confirm.style.display = 'none';
+    });
+    overlay.querySelector('#accountDeleteConfirmBtn')?.addEventListener('click', async () => {
+      const statusEl = overlay.querySelector('#accountDeleteStatus') as HTMLElement;
+      const btn = overlay.querySelector('#accountDeleteConfirmBtn') as HTMLButtonElement;
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      statusEl.textContent = 'Excluindo conta...';
+      statusEl.style.color = 'rgba(255,255,255,0.5)';
+
+      try {
+        // Chama RPC que limpa dados pessoais + marca profile como deletado
+        const { error } = await supabase.rpc('delete_my_account');
+        if (error) throw error;
+
+        statusEl.textContent = 'Conta excluída. Até mais!';
+        statusEl.style.color = '#00E68C';
+
+        // Logout + redirect pro login
+        setTimeout(async () => {
+          const { authService } = await import('./auth/AuthService');
+          await authService.logout();
+        }, 1200);
+      } catch (e: any) {
+        statusEl.textContent = 'Erro ao excluir. Tente novamente ou contate o suporte.';
+        statusEl.style.color = '#FF4466';
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        console.error('Delete account error:', e);
+      }
+    });
+
+    // Ação do botão de upgrade/renovar.
+    // App nativo: sempre abre o site (browser externo) — compliance Play/App Store.
+    // Web: modal de upgrade in-app ou redirect pra /plans.
     const actionBtnEl = overlay.querySelector('#accountActionBtn');
     if (actionBtnEl) {
       actionBtnEl.addEventListener('click', () => {
-        if (status === 'active' && upgradeAvailable) {
+        if (isNativeApp()) {
+          openExternal(PLANS_URL_EXTERNAL);
+          close();
+        } else if (status === 'active' && upgradeAvailable) {
           close();
           this.showUpgradeModal(planId, upgradeCredit, daysLeft, PLANS, supabase, user!);
         } else {
