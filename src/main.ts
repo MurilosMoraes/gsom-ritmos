@@ -60,18 +60,48 @@ class RhythmSequencer {
     // - Hack do input: captura keydown do pedal (sagrado, não mexer)
     // - Silent unlock: destrava o AudioContext (coisa diferente)
     // ═══════════════════════════════════════════════════════════════════════
-    const silentUnlock = () => {
+    // Unlock iOS AudioContext — mesmo pattern do Howler.js
+    // Roda em MÚLTIPLOS eventos de gesto até realmente destravar (onstatechange
+    // confirma 'running'). Vários iPhones exigem combinações diferentes de
+    // resume + playback de buffer silencioso. Mantemos os listeners ativos até
+    // o state = 'running' ser confirmado.
+    const unlockAudio = () => {
+      if ((this.audioContext.state as string) === 'running') return;
+      const ctx = this.audioContext;
+      // 1. Resume síncrono (iOS exige dentro do gesture)
+      try { ctx.resume(); } catch {}
+      // 2. Buffer silencioso com start em currentTime (não 0 — iOS ignora 0 às vezes)
       try {
-        this.audioContext.resume();
-        const buf = this.audioContext.createBuffer(1, 1, 22050);
-        const src = this.audioContext.createBufferSource();
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
         src.buffer = buf;
-        src.connect(this.audioContext.destination);
-        src.start(0);
-      } catch { /* se já está running, tudo bem */ }
+        src.connect(ctx.destination);
+        if (typeof src.start === 'function') src.start(ctx.currentTime);
+        else (src as any).noteOn(0);
+      } catch {}
+      // Tocar um oscilator também — alguns iPhones só liberam com isso
+      try {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        g.gain.value = 0;
+        osc.connect(g);
+        g.connect(ctx.destination);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.01);
+      } catch {}
     };
-    document.addEventListener('touchstart', silentUnlock, { once: true, passive: true });
-    document.addEventListener('click', silentUnlock, { once: true });
+
+    // Múltiplos tipos de evento. Removem-se quando state = 'running'.
+    // SEM capture:true — isso compete com audioContext.resume e com o hack
+    // do pedal BT. Listeners em bubbling phase, passivos quando possível.
+    const unlockEvents: Array<keyof DocumentEventMap> = ['touchstart', 'touchend', 'click', 'keydown'];
+    const onUnlock = () => {
+      unlockAudio();
+      if ((this.audioContext.state as string) === 'running') {
+        unlockEvents.forEach(ev => document.removeEventListener(ev, onUnlock));
+      }
+    };
+    unlockEvents.forEach(ev => document.addEventListener(ev, onUnlock));
 
     // ═══════════════════════════════════════════════════════════════════════
     // onstatechange — recovery automático se o contexto cair.
