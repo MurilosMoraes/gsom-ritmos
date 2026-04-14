@@ -271,15 +271,22 @@ class RhythmSequencer {
         if (wasPlayingBeforeHidden && this.stateManager.isPlaying()) {
           const awayMs = performance.now() - hiddenAt;
           this.audioManager.resume();
-          // Se ficou muito pouco tempo fora (< 300ms), o scheduler mal
-          // parou — tick() já deve voltar natural. Evitamos restart
-          // desnecessário que joga sync fora.
-          // Se ficou mais: restart garante ressincronização limpa.
           if (awayMs > 300) {
             // Fade-out de segurança em qualquer source que possa ter
-            // ficado pendurado pelo freeze (não afeta samples novos —
-            // o próximo step chega depois). Evita rajada ao retomar.
+            // ficado pendurado pelo freeze.
             this.audioManager.fadeOutAllActive(0.03);
+
+            // ANDROID: audioContext.currentTime continuou correndo em bg
+            // (hardware clock), mas o setTimeout do tick congelou. O
+            // currentStep ficou atrasado em relação ao que o user
+            // ouviu. Ressincronizar o step pro tempo real de áudio
+            // antes de reiniciar o tick. Isso resolve o bug de
+            // "ritmo volta no tempo" ao voltar do bg.
+            // iOS: WKWebView pausa currentTime junto com o áudio,
+            // não precisa ressincronizar.
+            if (!isIOSVis) {
+              this.scheduler.resyncToAudioClock();
+            }
             this.scheduler.restart();
           }
         }

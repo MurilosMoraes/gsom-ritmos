@@ -255,4 +255,58 @@ export class Scheduler {
     const variationIndex = this.stateManager.getCurrentVariation(activePattern);
     return this.stateManager.getVariationSpeed(activePattern, variationIndex);
   }
+
+  /**
+   * Ressincroniza currentStep com o tempo real de áudio que passou.
+   *
+   * Usado ao voltar do background no Android: o setTimeout do tick() pode ter
+   * ficado congelado (Page Lifecycle FROZEN) e o currentStep parou de avançar,
+   * MAS o audioContext.currentTime continuou correndo (hardware audio clock
+   * não congela). Resultado: ao voltar, currentStep está atrasado e o ritmo
+   * "retrocede no tempo" visualmente.
+   *
+   * Esta função calcula: "quantos steps o ritmo DEVERIA ter avançado no tempo
+   * real de áudio que passou desde o último nextStepTime registrado?" — e
+   * adianta o currentStep + nextStepTime até alcançar o tempo atual.
+   *
+   * Depois de chamar isto, chamar restart() pra reiniciar o tick() limpo.
+   */
+  resyncToAudioClock(): void {
+    if (!this.stateManager.isPlaying()) return;
+
+    const currentTime = this.audioManager.getCurrentTime();
+
+    // Se nextStepTime está no passado, precisa pular steps até alcançar o agora.
+    // Cada step tem duração variável dependendo de BPM + speed da variação atual,
+    // então avançamos um a um até alcançar, respeitando transições de padrão.
+    let safety = 0;
+    while (this.nextStepTime < currentTime && safety < 10000) {
+      // Calcular duração do step atual (com velocidade da variação ativa)
+      const activePattern = this.stateManager.getActivePattern();
+      const variationIndex = this.stateManager.getCurrentVariation(activePattern);
+      const speed = this.stateManager.getVariationSpeed(activePattern, variationIndex);
+      const secondsPerBeat = 60.0 / this.stateManager.getTempo();
+      const secondsPerStep = (secondsPerBeat / 2) / speed;
+
+      // Avançar o step no state (mesma lógica do advanceStep mas sem side-effects de áudio)
+      const currentStep = this.stateManager.getCurrentStep();
+      const maxSteps = this.getCurrentMaxSteps();
+      if (maxSteps <= 0) break;
+
+      const nextStep = (currentStep + 1) % maxSteps;
+      this.stateManager.setCurrentStep(nextStep);
+
+      // Processar transições pendentes (fill/end) mesmo no catch-up
+      this.patternEngine.checkPendingPatterns();
+
+      this.nextStepTime += secondsPerStep;
+
+      // Completude de padrão (volta no step 0)
+      if (nextStep === 0) {
+        this.patternEngine.handlePatternCompletion(this.nextStepTime);
+      }
+
+      safety++;
+    }
+  }
 }
