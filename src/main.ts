@@ -220,82 +220,35 @@ class RhythmSequencer {
 
   private setupCallbacks(): void {
     // ═══════════════════════════════════════════════════════════════════════
-    // Visibilitychange — minimizar/voltar com áudio intacto.
+    // Visibilitychange — minimizar/voltar.
     // ═══════════════════════════════════════════════════════════════════════
-    // REQUISITO: Android continua tocando em background (user olha cifra em
-    // outro app e o áudio não para). iOS pausa automaticamente (WKWebView
-    // não dá opção sem entitlements que Apple rejeita na review).
+    // Android: áudio continua em bg (user olha cifra em outro app).
+    // iOS: WKWebView pausa áudio automaticamente.
     //
-    // Problema dos estralos ao minimizar Android:
-    // Ao minimizar, Chromium WebView pode mover a página pra estado FROZEN
-    // (Page Lifecycle API) — setTimeout throttled ou congelado. O scheduler
-    // para de agendar novos steps, MAS os sources já agendados continuam
-    // tocando (audio é exempt do throttling por 30s após último som).
-    // Problema: quando o próximo step DEVERIA ter cortado o sample atual
-    // (via playSoundOnChannel fade-out), o setTimeout não chegou lá.
-    // Sample fica tocando INTEIRO até seu fade-out natural (linha 78-80
-    // do AudioManager), que é audível como "queda" = estralo.
-    //
-    // Solução: ao sair pro hidden, NÃO cortamos o áudio (user quer ouvir).
-    // Em vez disso, garantimos que o scheduler continue agendando enquanto
-    // conseguir, e o currentTime continua avançando normalmente. O audio
-    // exempt (áudio tocando nos últimos 30s) mantém timers menos throttled.
-    //
-    // Ao voltar pro foreground, dois cenários:
-    // - Scheduler conseguiu rodar (audio exempt funcionou): continua do
-    //   ponto exato, nada a fazer
-    // - Scheduler parou (FROZEN): restart() ressincroniza
-    // Em ambos: fade-out + restart garante transição limpa sem rajada.
-    //
-    // Refs:
-    // - https://developer.chrome.com/docs/web-platform/page-lifecycle-api
-    // - https://developer.chrome.com/blog/timer-throttling-in-chrome-88
+    // NOTA HISTÓRICA: antes de 14/abr, o código era só 4 linhas simples:
+    //   if (!document.hidden && isPlaying()) { resume(); restart(); }
+    // E isso FUNCIONAVA. As tentativas de "melhorar" (fade-out controlado,
+    // preScheduleAhead, resyncToAudioClock, resetStep) introduziram bugs
+    // maiores que o original. Mantemos o comportamento simples + fade-out
+    // só no iOS (que realmente ajudou lá pela pausa do WKWebView).
     // ═══════════════════════════════════════════════════════════════════════
     const isIOSVis = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
                      (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-    let wasPlayingBeforeHidden = false;
-    let hiddenAt = 0;
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        // Indo pro background
-        wasPlayingBeforeHidden = this.stateManager.isPlaying();
-        hiddenAt = performance.now();
-        // iOS: WKWebView pausa áudio automaticamente → fade-out evita
-        // "queda brusca" audível no último instante antes do pause.
-        // Android: deixamos tocando (user quer ouvir em background).
-        if (isIOSVis && wasPlayingBeforeHidden) {
+        // Indo pro background — iOS fade-out antes do WKWebView pausar
+        if (isIOSVis && this.stateManager.isPlaying()) {
           this.audioManager.fadeOutAllActive(0.03);
         }
+        // Android: não faz nada. Chromium mantém áudio rodando, scheduler
+        // pode ficar throttled mas continua agendando enquanto o audio
+        // exempt vale. Samples tocam limpos.
       } else {
-        // Voltou pro foreground
-        if (wasPlayingBeforeHidden && this.stateManager.isPlaying()) {
-          const awayMs = performance.now() - hiddenAt;
+        // Voltou pro foreground — comportamento original que funcionava
+        if (this.stateManager.isPlaying()) {
           this.audioManager.resume();
-          if (awayMs > 300) {
-            // Fade-out de segurança em qualquer source que possa ter
-            // ficado pendurado pelo freeze.
-            this.audioManager.fadeOutAllActive(0.03);
-
-            // ANDROID: audioContext.currentTime continuou correndo em bg
-            // (hardware clock), mas o setTimeout do tick congelou. O
-            // currentStep ficou atrasado em relação ao que o user
-            // ouviu. Ressincronizar o step pro tempo real de áudio
-            // antes de reiniciar o tick. Isso resolve o bug de
-            // "ritmo volta no tempo" ao voltar do bg.
-            // iOS: WKWebView pausa currentTime junto com o áudio,
-            // não precisa ressincronizar.
-            if (!isIOSVis) {
-              this.scheduler.resyncToAudioClock();
-              // preserveNextStepTime = true — resync já alinhou nextStepTime
-              // com o áudio real. Sobrescrever com currentTime+50ms causaria
-              // um "buraco" de silêncio no próximo step.
-              this.scheduler.restart(true);
-            } else {
-              this.scheduler.restart();
-            }
-          }
+          this.scheduler.restart();
         }
-        wasPlayingBeforeHidden = false;
       }
     });
 
