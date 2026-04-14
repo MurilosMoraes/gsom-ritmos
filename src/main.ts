@@ -104,6 +104,73 @@ class RhythmSequencer {
     unlockEvents.forEach(ev => document.addEventListener(ev, onUnlock));
 
     // ═══════════════════════════════════════════════════════════════════════
+    // MODAL DE INICIALIZAÇÃO iOS — garante unlock com botão explícito.
+    // ═══════════════════════════════════════════════════════════════════════
+    // Cliente premium reportou: mesmo com silent unlock nos touchstart, algumas
+    // sessões (cold start, app morto e reaberto) ainda precisavam de 1 toque
+    // na tela antes do pedal funcionar. O silent unlock cobre maioria, mas não
+    // 100% — depende do estado do iOS, versão, etc.
+    //
+    // Solução definitiva: modal blocante logo no load mostrando "Tudo pronto"
+    // com botão grande. User toca → unlock garantido dentro de user gesture →
+    // fecha modal → app já com áudio destravado. Abordagem de GarageBand,
+    // Drum Pad, e outros apps de música iOS.
+    //
+    // Só iOS. Só uma vez por sessão. Não atrapalha Android.
+    // ═══════════════════════════════════════════════════════════════════════
+    const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                        (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    if (isIOSDevice) {
+      // Aguardar DOM montado pra inserir overlay
+      const showStartupModal = () => {
+        // Se já destravou (user já tocou na tela antes do modal aparecer), skip
+        if ((this.audioContext.state as string) === 'running') return;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'iosStartupModal';
+        overlay.style.cssText = 'position:fixed;inset:0;background:#030014;display:flex;align-items:center;justify-content:center;z-index:100000;padding:2rem;';
+        overlay.innerHTML = `
+          <div style="text-align:center;max-width:360px;width:100%;">
+            <img src="/img/logo.png" alt="GDrums" style="height:48px;opacity:0.9;margin-bottom:2rem;">
+            <h2 style="color:#fff;font-size:1.3rem;font-weight:700;margin:0 0 0.5rem;letter-spacing:-0.3px;">Tudo pronto</h2>
+            <p style="color:rgba(255,255,255,0.5);font-size:0.9rem;line-height:1.6;margin:0 0 2rem;">
+              Toque pra começar a tocar. Seu pedal Bluetooth já vai estar funcionando.
+            </p>
+            <button id="iosStartupBtn" style="
+              width:100%;padding:1rem;border:none;border-radius:14px;
+              background:linear-gradient(135deg,#00D4FF,#8B5CF6);
+              color:#fff;font-size:1rem;font-weight:700;
+              font-family:inherit;cursor:pointer;
+              box-shadow:0 8px 24px rgba(0,212,255,0.25);
+            ">Começar</button>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const startBtn = overlay.querySelector('#iosStartupBtn') as HTMLButtonElement;
+        const closeModal = () => {
+          // Unlock síncrono dentro do click
+          unlockAudio();
+          // Remover overlay com fade
+          overlay.style.transition = 'opacity 0.25s ease';
+          overlay.style.opacity = '0';
+          setTimeout(() => overlay.remove(), 280);
+        };
+        startBtn.addEventListener('click', closeModal);
+        // Fallback: qualquer toque no overlay também destrava
+        overlay.addEventListener('touchstart', closeModal, { once: true, passive: true });
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', showStartupModal, { once: true });
+      } else {
+        // DOM já pronto — mostrar na próxima frame pra garantir que tudo
+        // foi renderizado e o user vê o modal em cima do app
+        requestAnimationFrame(showStartupModal);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // onstatechange — recovery automático se o contexto cair.
     // ═══════════════════════════════════════════════════════════════════════
     // iOS pode voltar pra 'interrupted' após ligação, minimize, troca de
