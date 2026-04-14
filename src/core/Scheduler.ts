@@ -90,48 +90,6 @@ export class Scheduler {
     this.isScheduling = false;
   }
 
-  /**
-   * Agenda steps pra MUITO à frente (em segundos) e retorna imediatamente.
-   * Usado ao detectar minimize no Android: Chromium vai congelar o setTimeout
-   * em poucos segundos, mas os sources já agendados no audio clock nativo
-   * continuam tocando. Pré-agendando vários segundos evita que o áudio "pare
-   * no meio" quando o scheduler congelar.
-   *
-   * @param seconds quantos segundos à frente agendar
-   */
-  preScheduleAhead(seconds: number): void {
-    if (!this.stateManager.isPlaying()) return;
-    if (this.isScheduling) return;
-    this.isScheduling = true;
-
-    try {
-      const currentTime = this.audioManager.getCurrentTime();
-      const targetTime = currentTime + seconds;
-
-      while (this.nextStepTime < targetTime) {
-        if (!this.stateManager.isPlaying()) break;
-
-        const step = this.stateManager.getCurrentStep();
-        const activePattern = this.stateManager.getActivePattern();
-        const state = this.stateManager.getState();
-        const snapshot = this.createSnapshot(step, activePattern, state);
-
-        if (snapshot.shouldPlayStartSound) {
-          this.stateManager.setShouldPlayStartSound(false);
-        }
-        if (snapshot.shouldPlayReturnSound) {
-          this.stateManager.setShouldPlayReturnSound(false);
-        }
-
-        this.audioManager.scheduleStepFromSnapshot(snapshot, this.nextStepTime);
-        this.pendingUISteps.push({ step, time: this.nextStepTime, pattern: activePattern });
-        this.advanceStep();
-      }
-    } finally {
-      this.isScheduling = false;
-    }
-  }
-
   // ─── Core scheduling loop ───────────────────────────────────────────
 
   private tick(): void {

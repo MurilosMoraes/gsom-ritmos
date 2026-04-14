@@ -196,35 +196,23 @@ class RhythmSequencer {
         // iOS: WKWebView pausa áudio automaticamente → fade-out evita
         // "queda brusca" audível no último instante antes do pause.
         // Android: deixamos tocando (user quer ouvir em background).
-        //   Pré-agendar 10s de steps AGORA, antes do Chromium congelar o
-        //   setTimeout. Sources agendados no audio clock nativo continuam
-        //   tocando mesmo com JS congelado — user ouve ritmo completo
-        //   enquanto olha cifra. Se voltar antes dos 10s, o restart
-        //   ressincroniza de qualquer forma.
         if (isIOSVis && wasPlayingBeforeHidden) {
           this.audioManager.fadeOutAllActive(0.03);
-        } else if (!isIOSVis && wasPlayingBeforeHidden) {
-          this.scheduler.preScheduleAhead(10);
         }
       } else {
         // Voltou pro foreground
         if (wasPlayingBeforeHidden && this.stateManager.isPlaying()) {
           const awayMs = performance.now() - hiddenAt;
           this.audioManager.resume();
-          // Se ficou muito pouco tempo fora (< 300ms): tick() volta natural,
-          // não mexemos. Evita micro-hiccup de sync.
-          // Entre 300ms e 1000ms: restart mantendo currentStep (user pode
-          // ter trocado rapidinho de app pra ver uma notif e voltou).
-          // Mais de 1000ms: o sync musical já foi pro espaço. Resetar pro
-          // DOWNBEAT DO PRÓXIMO COMPASSO — entrada limpa, igual baterista
-          // que perdeu o tempo e espera o "1" pra entrar de novo.
+          // Se ficou muito pouco tempo fora (< 300ms), o scheduler mal
+          // parou — tick() já deve voltar natural. Evitamos restart
+          // desnecessário que joga sync fora.
+          // Se ficou mais: restart garante ressincronização limpa.
           if (awayMs > 300) {
+            // Fade-out de segurança em qualquer source que possa ter
+            // ficado pendurado pelo freeze (não afeta samples novos —
+            // o próximo step chega depois). Evita rajada ao retomar.
             this.audioManager.fadeOutAllActive(0.03);
-            if (awayMs > 1000) {
-              // Resetar pro início do compasso — entrada musical limpa.
-              // Não mexe em activePattern (continua no main/fill/end que estava).
-              this.stateManager.resetStep();
-            }
             this.scheduler.restart();
           }
         }
