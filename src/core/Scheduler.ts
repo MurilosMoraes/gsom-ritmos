@@ -56,7 +56,7 @@ export class Scheduler {
     this.startUISync();
   }
 
-  restart(): void {
+  restart(preserveNextStepTime: boolean = false): void {
     // Limpar timers antigos (podem ter morrido no background)
     if (this.timerId !== null) {
       clearTimeout(this.timerId);
@@ -69,8 +69,20 @@ export class Scheduler {
     this.isScheduling = false;
     this.pendingUISteps = [];
 
-    // Pular pro tempo atual (não tentar recuperar steps perdidos)
-    this.nextStepTime = this.audioManager.getCurrentTime() + 0.05;
+    // Por padrão, pula pro tempo atual (descarta tudo, começa do zero).
+    // Se preserveNextStepTime = true, mantém o nextStepTime como estava —
+    // usado após resyncToAudioClock() que já deixou nextStepTime alinhado
+    // com o áudio real, então sobrescrever causaria "buraco" de silêncio.
+    if (!preserveNextStepTime) {
+      this.nextStepTime = this.audioManager.getCurrentTime() + 0.05;
+    } else {
+      // Safety: se resync deixou nextStepTime no passado (não deveria, mas)
+      // puxa pra 50ms à frente pra não agendar sample no passado.
+      const currentTime = this.audioManager.getCurrentTime();
+      if (this.nextStepTime < currentTime) {
+        this.nextStepTime = currentTime + 0.05;
+      }
+    }
 
     // Reiniciar loops
     this.tick();

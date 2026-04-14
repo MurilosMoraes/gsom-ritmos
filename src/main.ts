@@ -286,8 +286,13 @@ class RhythmSequencer {
             // não precisa ressincronizar.
             if (!isIOSVis) {
               this.scheduler.resyncToAudioClock();
+              // preserveNextStepTime = true — resync já alinhou nextStepTime
+              // com o áudio real. Sobrescrever com currentTime+50ms causaria
+              // um "buraco" de silêncio no próximo step.
+              this.scheduler.restart(true);
+            } else {
+              this.scheduler.restart();
             }
-            this.scheduler.restart();
           }
         }
         wasPlayingBeforeHidden = false;
