@@ -43,6 +43,52 @@ class RhythmSequencer {
     // Inicializar contexto de áudio
     this.audioContext = new AudioContext();
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // SILENT UNLOCK — destravar AudioContext no primeiro toque na tela.
+    // ═══════════════════════════════════════════════════════════════════════
+    // Cliente premium iOS reportava: abre app, pisa pedal, nada toca.
+    // Causa: iOS só aceita user gesture "forte" (touch/click) pra destravar
+    // o AudioContext. Keydown de teclado Bluetooth NÃO é confiável — Apple
+    // muda regras entre versões iOS sem documentar (WebKit Bug 180522).
+    //
+    // Hack usado por Howler.js, PlayCanvas, Phaser, Tone.js: no primeiro
+    // toque na tela (pra qualquer coisa — scroll, botão, etc), tocar um
+    // buffer silencioso de 1 sample. Isso força o iOS a liberar o contexto.
+    // { once: true } garante que roda uma vez só e se auto-remove.
+    //
+    // IMPORTANTE: isso é ORTOGONAL ao hack do input focado do pedal BT.
+    // - Hack do input: captura keydown do pedal (sagrado, não mexer)
+    // - Silent unlock: destrava o AudioContext (coisa diferente)
+    // ═══════════════════════════════════════════════════════════════════════
+    const silentUnlock = () => {
+      try {
+        this.audioContext.resume();
+        const buf = this.audioContext.createBuffer(1, 1, 22050);
+        const src = this.audioContext.createBufferSource();
+        src.buffer = buf;
+        src.connect(this.audioContext.destination);
+        src.start(0);
+      } catch { /* se já está running, tudo bem */ }
+    };
+    document.addEventListener('touchstart', silentUnlock, { once: true, passive: true });
+    document.addEventListener('click', silentUnlock, { once: true });
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // onstatechange — recovery automático se o contexto cair.
+    // ═══════════════════════════════════════════════════════════════════════
+    // iOS pode voltar pra 'interrupted' após ligação, minimize, troca de
+    // output (fone desconectou), etc. Android pode cair pra 'suspended' se
+    // o SO ficar com pouca memória. Sempre que detectar, tentar resume.
+    // ═══════════════════════════════════════════════════════════════════════
+    this.audioContext.addEventListener('statechange', () => {
+      const st = this.audioContext.state as string;
+      if (st === 'suspended' || st === 'interrupted') {
+        // Tenta resume silencioso. Se falhar (iOS exige user gesture),
+        // o silent unlock no próximo touch vai pegar.
+        this.audioContext.resume().catch(() => {});
+      }
+    });
+
     // Inicializar gerenciadores
     this.stateManager = new StateManager();
     this.audioManager = new AudioManager(this.audioContext);
@@ -76,12 +122,71 @@ class RhythmSequencer {
   }
 
   private setupCallbacks(): void {
-    // Retomar áudio e scheduler quando volta do background
+    // ═══════════════════════════════════════════════════════════════════════
+    // Visibilitychange — minimizar/voltar com áudio intacto.
+    // ═══════════════════════════════════════════════════════════════════════
+    // REQUISITO: Android continua tocando em background (user olha cifra em
+    // outro app e o áudio não para). iOS pausa automaticamente (WKWebView
+    // não dá opção sem entitlements que Apple rejeita na review).
+    //
+    // Problema dos estralos ao minimizar Android:
+    // Ao minimizar, Chromium WebView pode mover a página pra estado FROZEN
+    // (Page Lifecycle API) — setTimeout throttled ou congelado. O scheduler
+    // para de agendar novos steps, MAS os sources já agendados continuam
+    // tocando (audio é exempt do throttling por 30s após último som).
+    // Problema: quando o próximo step DEVERIA ter cortado o sample atual
+    // (via playSoundOnChannel fade-out), o setTimeout não chegou lá.
+    // Sample fica tocando INTEIRO até seu fade-out natural (linha 78-80
+    // do AudioManager), que é audível como "queda" = estralo.
+    //
+    // Solução: ao sair pro hidden, NÃO cortamos o áudio (user quer ouvir).
+    // Em vez disso, garantimos que o scheduler continue agendando enquanto
+    // conseguir, e o currentTime continua avançando normalmente. O audio
+    // exempt (áudio tocando nos últimos 30s) mantém timers menos throttled.
+    //
+    // Ao voltar pro foreground, dois cenários:
+    // - Scheduler conseguiu rodar (audio exempt funcionou): continua do
+    //   ponto exato, nada a fazer
+    // - Scheduler parou (FROZEN): restart() ressincroniza
+    // Em ambos: fade-out + restart garante transição limpa sem rajada.
+    //
+    // Refs:
+    // - https://developer.chrome.com/docs/web-platform/page-lifecycle-api
+    // - https://developer.chrome.com/blog/timer-throttling-in-chrome-88
+    // ═══════════════════════════════════════════════════════════════════════
+    const isIOSVis = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                     (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    let wasPlayingBeforeHidden = false;
+    let hiddenAt = 0;
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && this.stateManager.isPlaying()) {
-        this.audioManager.resume();
-        // Reiniciar o scheduler (timers morrem no background)
-        this.scheduler.restart();
+      if (document.hidden) {
+        // Indo pro background
+        wasPlayingBeforeHidden = this.stateManager.isPlaying();
+        hiddenAt = performance.now();
+        // iOS: WKWebView pausa áudio automaticamente → fade-out evita
+        // "queda brusca" audível no último instante antes do pause.
+        // Android: deixamos tocando (user quer ouvir em background).
+        if (isIOSVis && wasPlayingBeforeHidden) {
+          this.audioManager.fadeOutAllActive(0.03);
+        }
+      } else {
+        // Voltou pro foreground
+        if (wasPlayingBeforeHidden && this.stateManager.isPlaying()) {
+          const awayMs = performance.now() - hiddenAt;
+          this.audioManager.resume();
+          // Se ficou muito pouco tempo fora (< 300ms), o scheduler mal
+          // parou — tick() já deve voltar natural. Evitamos restart
+          // desnecessário que joga sync fora.
+          // Se ficou mais: restart garante ressincronização limpa.
+          if (awayMs > 300) {
+            // Fade-out de segurança em qualquer source que possa ter
+            // ficado pendurado pelo freeze (não afeta samples novos —
+            // o próximo step chega depois). Evita rajada ao retomar.
+            this.audioManager.fadeOutAllActive(0.03);
+            this.scheduler.restart();
+          }
+        }
+        wasPlayingBeforeHidden = false;
       }
     });
 
@@ -2744,6 +2849,7 @@ class RhythmSequencer {
   // ─── Countdown Overlay ──────────────────────────────────────────────
 
   private countdownOverlay: HTMLElement | null = null;
+  private countdownNumEl: HTMLElement | null = null;
   private countdownStyleInjected = false;
 
   private updateCountdown(step: number, pattern: PatternType): void {
@@ -2762,19 +2868,25 @@ class RhythmSequencer {
     // Só mostrar no downbeat de cada tempo
     if (step % stepsPerBeat !== 0) return;
 
+    // Criar overlay + span uma única vez (reuso evita garbage collection
+    // pesado no 3º ritmo — causava intro lenta em iPhone antigo).
     if (!this.countdownOverlay) {
       this.countdownOverlay = document.createElement('div');
       this.countdownOverlay.className = 'countdown-overlay';
+      this.countdownNumEl = document.createElement('span');
+      this.countdownNumEl.className = 'countdown-num';
+      this.countdownOverlay.appendChild(this.countdownNumEl);
       document.body.appendChild(this.countdownOverlay);
     }
 
     this.countdownOverlay.style.display = 'flex';
-    this.countdownOverlay.innerHTML = `<span class="countdown-num" key="${beatNum}">${beatNum}</span>`;
-
-    // Force reflow para reiniciar animação
-    const numEl = this.countdownOverlay.querySelector('.countdown-num') as HTMLElement;
-    void numEl.offsetHeight;
-    numEl.classList.add('countdown-animate');
+    if (this.countdownNumEl) {
+      this.countdownNumEl.textContent = String(beatNum);
+      // Reiniciar animação: remover + reflow + readicionar classe
+      this.countdownNumEl.classList.remove('countdown-animate');
+      void this.countdownNumEl.offsetHeight;
+      this.countdownNumEl.classList.add('countdown-animate');
+    }
   }
 
   private hideCountdown(): void {

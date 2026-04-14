@@ -29,11 +29,29 @@ export class AudioManager {
   // Rastrear source ativo por canal para cortar sample anterior sem estralo
   private activeSources = new Map<number, ActiveSource>();
 
+  // ✱ Rastrear TODOS os nodes criados (source + gain) pra cleanup forçado.
+  //   Chromium Android tem bug conhecido onde onended não dispara em sources
+  //   encerrados via stop() manual — GainNodes ficam pendurados com tail-time
+  //   reference e acumulam memória. Timeout de segurança garante disconnect.
+  //   Ref: https://issues.chromium.org/issues/41042431
+  private allNodes = new Set<{ source: AudioBufferSourceNode; gain: GainNode }>();
+
   constructor(audioContext: AudioContext) {
     this.audioContext = audioContext;
     // Mobile (PWA ou Capacitor) precisa de fade maior pra evitar estralos nas transições
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     this.FADE_TIME = isMobile ? 0.012 : 0.005; // 12ms mobile, 5ms desktop
+  }
+
+  /**
+   * Cleanup forçado de nodes que não dispararam onended.
+   * Chamado em timeout após endTime estimado. Safety net pro bug do Chromium.
+   */
+  private forceCleanup(entry: { source: AudioBufferSourceNode; gain: GainNode }): void {
+    if (!this.allNodes.has(entry)) return; // onended já limpou
+    try { entry.source.disconnect(); } catch {}
+    try { entry.gain.disconnect(); } catch {}
+    this.allNodes.delete(entry);
   }
 
   async loadAudioFromFile(file: File): Promise<AudioBuffer> {
@@ -83,10 +101,19 @@ export class AudioManager {
     gainNode.connect(this.audioContext.destination);
     source.start(time);
 
+    // Rastrear + safety cleanup (Chromium Android às vezes não dispara onended)
+    const entry = { source, gain: gainNode };
+    this.allNodes.add(entry);
+    const nowMs = performance.now();
+    const endMs = (time - this.audioContext.currentTime) * 1000 + duration * 1000 + 200;
+    const safetyDelay = Math.max(100, endMs - (performance.now() - nowMs));
+    setTimeout(() => this.forceCleanup(entry), safetyDelay);
+
     // Auto-cleanup: desconectar nodes após o sample terminar
     source.onended = () => {
-      source.disconnect();
-      gainNode.disconnect();
+      try { source.disconnect(); } catch {}
+      try { gainNode.disconnect(); } catch {}
+      this.allNodes.delete(entry);
     };
   }
 
@@ -135,10 +162,17 @@ export class AudioManager {
     // Rastrear como source ativo deste canal
     this.activeSources.set(channel, { source, gain: gainNode, endTime });
 
+    // Rastrear + safety cleanup (idem playSound)
+    const entry = { source, gain: gainNode };
+    this.allNodes.add(entry);
+    const endMs = (time - this.audioContext.currentTime) * 1000 + duration * 1000 + 200;
+    setTimeout(() => this.forceCleanup(entry), Math.max(100, endMs));
+
     // Auto-cleanup
     source.onended = () => {
-      source.disconnect();
-      gainNode.disconnect();
+      try { source.disconnect(); } catch {}
+      try { gainNode.disconnect(); } catch {}
+      this.allNodes.delete(entry);
       // Só limpar do map se ainda for o source atual (não foi substituído)
       const current = this.activeSources.get(channel);
       if (current && current.source === source) {
@@ -205,8 +239,47 @@ export class AudioManager {
     // a cadeia de gesto do usuário e o áudio fica mudo permanentemente.
     // audioContext.resume() retorna Promise mas a chamada síncrona já
     // é suficiente para desbloquear o contexto dentro do gesto.
-    if (this.audioContext.state === 'suspended') {
+    //
+    // Também tratar 'interrupted' — estado específico do iOS quando o app
+    // é minimizado ou tem interrupção externa (ligação, etc).
+    // Ref: https://github.com/Tonejs/Tone.js/issues/767
+    const state = this.audioContext.state as string;
+    if (state === 'suspended' || state === 'interrupted') {
       this.audioContext.resume();
     }
+  }
+
+  /**
+   * Fade-out controlado em TODOS os sources ativos no momento.
+   * Chamado antes de transições onde deixar samples morrerem sozinhos causa
+   * estralos (minimizar no Android, trocar de ritmo bruscamente).
+   *
+   * Não para o scheduler. Não para o state.isPlaying. Apenas aplica fade-out
+   * suave aos sources que já estão soando, pra que quando o próximo step
+   * chegar não tenha sobreposição com samples antigos decaindo naturalmente.
+   *
+   * @param fadeTime tempo do fade em segundos (default 30ms — audível mas curto)
+   */
+  fadeOutAllActive(fadeTime: number = 0.03): void {
+    const now = this.audioContext.currentTime;
+    this.activeSources.forEach((entry) => {
+      try {
+        entry.gain.gain.cancelScheduledValues(now);
+        entry.gain.gain.setValueAtTime(entry.gain.gain.value, now);
+        entry.gain.gain.linearRampToValueAtTime(0, now + fadeTime);
+        entry.source.stop(now + fadeTime + 0.001);
+      } catch {
+        // source já parou ou foi descartado
+      }
+    });
+    this.activeSources.clear();
+  }
+
+  /**
+   * Retorna o estado atual do AudioContext — usado em debug e fallbacks.
+   * iOS tem estado 'interrupted' não-padrão que o TypeScript não conhece.
+   */
+  getState(): string {
+    return this.audioContext.state as string;
   }
 }
