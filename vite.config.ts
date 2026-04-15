@@ -19,7 +19,8 @@ export default defineConfig({
         affiliate: './affiliate.html',
         demo: './demo.html',
         terms: './terms.html',
-        privacy: './privacy.html'
+        privacy: './privacy.html',
+        excluirConta: './excluir-conta.html'
       }
     }
   },

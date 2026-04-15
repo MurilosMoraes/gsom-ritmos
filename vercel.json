@@ -26,6 +26,10 @@
     {
       "source": "/admin",
       "destination": "/admin.html"
+    },
+    {
+      "source": "/excluir-conta",
+      "destination": "/excluir-conta.html"
     }
   ],
   "headers": [
