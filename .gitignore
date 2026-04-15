@@ -25,3 +25,8 @@ android/local.properties
 
 # Backups (dados sensíveis)
 backup_*.json
+
+# Android signing — NUNCA commitar (perda da chave = nunca mais publicar update)
+*.keystore
+*.jks
+key.properties
