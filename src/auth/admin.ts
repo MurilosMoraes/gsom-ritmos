@@ -147,19 +147,24 @@ class AdminDashboard {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = '/login.html'; return; }
 
-    // Verificar admin via Edge Function (service key fica no backend)
+    // Verificar admin via query direta (RLS libera select do próprio profile).
+    // Antes buscava 827 profiles via edge fn e procurava — lento e frágil.
+    // A própria edge fn valida role em cada chamada, então mesmo que essa
+    // check passe indevidamente (não passa), o backend bloqueia.
     try {
-      const profiles = await adminCall({
-        action: 'fetch',
-        table: 'gdrums_profiles',
-        params: { select: 'id,role', order: { column: 'created_at', ascending: false } },
-      });
-      const myProfile = profiles.find((p: any) => p.id === user.id);
-      if (!myProfile || myProfile.role !== 'admin') {
+      const { data: myProfile, error } = await supabase
+        .from('gdrums_profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (error || !myProfile || myProfile.role !== 'admin') {
+        console.error('[admin] not admin:', { error, myProfile, userId: user.id });
         window.location.href = '/';
         return;
       }
-    } catch {
+    } catch (e) {
+      console.error('[admin] role check failed:', e);
       window.location.href = '/';
       return;
     }
@@ -171,8 +176,19 @@ class AdminDashboard {
     this.setupEditForm();
     this.setupCouponForm();
     this.setupAffiliateForm();
-    await this.loadData();
-    await this.loadAffiliates();
+
+    // loadData/loadAffiliates podem falhar (edge fn, rede, tabela ausente).
+    // NÃO redirecionar — erros só logam. Dashboard parcial é melhor que kick.
+    try {
+      await this.loadData();
+    } catch (e) {
+      console.error('[admin] loadData failed:', e);
+    }
+    try {
+      await this.loadAffiliates();
+    } catch (e) {
+      console.error('[admin] loadAffiliates failed:', e);
+    }
     this.render();
   }
 
