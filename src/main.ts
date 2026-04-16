@@ -219,7 +219,7 @@ class RhythmSequencer {
 
     // Inicializar serviços nativos (iOS/Android)
     StatusBarService.init();
-    PushService.init();
+    // PushService.init(); // desativado até configurar Firebase — estava crashando Android
 
     // Inicializar UI
     this.init();
@@ -664,14 +664,23 @@ class RhythmSequencer {
       return false;
     }
 
-    // Se não tem session ID local (primeiro acesso ou limpou cache), gerar um
+    // Se não tem session ID local, adotar o do banco em vez de gerar um novo.
+    // Gerar novo aqui sobrescreveria o active_session_id e deslogaria outros
+    // devices legítimos (ex: admin abre /admin em outra aba, ou tá testando APK).
+    // Só login.ts/register.ts escrevem active_session_id (semântica: novo login
+    // invalida outros devices intencionalmente).
     if (!localSessionId) {
-      const newId = crypto.randomUUID();
-      localStorage.setItem('gdrums-session-id', newId);
-      supabase.from('gdrums_profiles')
-        .update({ active_session_id: newId })
-        .eq('id', session.user.id)
-        .then();
+      if (profile?.active_session_id) {
+        localStorage.setItem('gdrums-session-id', profile.active_session_id);
+      } else {
+        // Perfil realmente sem sessão ativa (conta antiga pré-feature) — gerar e gravar
+        const newId = crypto.randomUUID();
+        localStorage.setItem('gdrums-session-id', newId);
+        supabase.from('gdrums_profiles')
+          .update({ active_session_id: newId })
+          .eq('id', session.user.id)
+          .then();
+      }
     }
 
     const status = profile?.subscription_status;

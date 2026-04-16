@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "418659128480",
+    "project_id": "gdrums",
+    "storage_bucket": "gdrums.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:418659128480:android:31cd41f662562f111da5c5",
+        "android_client_info": {
+          "package_name": "com.gdrums.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwS8YYvm0DWKZQlOpsfE0F0jHJu34JG_E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
