@@ -147,9 +147,10 @@ class AdminDashboard {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = '/login.html'; return; }
 
-    // Verificar admin via RPC direto (mais rápido que fetch 827 profiles).
-    // A própria edge fn admin-api também valida role antes de qualquer action,
-    // então mesmo que essa check passe indevidamente, RLS no backend protege.
+    // Verificar admin via query direta (RLS libera select do próprio profile).
+    // Antes buscava 827 profiles via edge fn e procurava — lento e frágil.
+    // A própria edge fn valida role em cada chamada, então mesmo que essa
+    // check passe indevidamente (não passa), o backend bloqueia.
     try {
       const { data: myProfile, error } = await supabase
         .from('gdrums_profiles')
@@ -176,8 +177,8 @@ class AdminDashboard {
     this.setupCouponForm();
     this.setupAffiliateForm();
 
-    // loadData/loadAffiliates podem falhar (edge fn, rede) — não redirecionar.
-    // Erros aparecem no console; user vê dashboard vazio mas continua autenticado.
+    // loadData/loadAffiliates podem falhar (edge fn, rede, tabela ausente).
+    // NÃO redirecionar — erros só logam. Dashboard parcial é melhor que kick.
     try {
       await this.loadData();
     } catch (e) {
