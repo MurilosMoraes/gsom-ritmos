@@ -124,8 +124,12 @@ class LoginPage {
   private setupEventListeners(): void {
     this.form.addEventListener('submit', (e) => this.handleSubmit(e));
 
-    document.getElementById('forgotPasswordBtn')?.addEventListener('click', async (e) => {
+    const forgotBtn = document.getElementById('forgotPasswordBtn') as HTMLElement;
+    let forgotCooldown = false;
+    forgotBtn?.addEventListener('click', async (e) => {
       e.preventDefault();
+      if (forgotCooldown) return;
+
       const email = this.emailInput.value.trim();
       if (!email) {
         this.showAlert('Digite seu e-mail primeiro', 'error');
@@ -133,14 +137,33 @@ class LoginPage {
         return;
       }
 
+      // Bloquear cliques repetidos + feedback visual
+      forgotCooldown = true;
+      const originalText = forgotBtn.textContent || '';
+      forgotBtn.textContent = 'Enviando...';
+      forgotBtn.style.opacity = '0.5';
+      forgotBtn.style.pointerEvents = 'none';
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/login.html`,
       });
 
       if (error) {
         this.showAlert('Erro ao enviar e-mail de recuperação. Verifique o e-mail digitado.', 'error');
+        forgotBtn.textContent = originalText;
+        forgotBtn.style.opacity = '1';
+        forgotBtn.style.pointerEvents = 'auto';
+        forgotCooldown = false;
       } else {
         this.showAlert('E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'success');
+        forgotBtn.textContent = 'E-mail enviado!';
+        // Cooldown de 60s pra não martelar
+        setTimeout(() => {
+          forgotBtn.textContent = originalText;
+          forgotBtn.style.opacity = '1';
+          forgotBtn.style.pointerEvents = 'auto';
+          forgotCooldown = false;
+        }, 60000);
       }
     });
   }
