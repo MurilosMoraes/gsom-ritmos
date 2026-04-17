@@ -931,7 +931,7 @@ class AdminDashboard {
     // Mensagem WhatsApp pronta
     const whatsMsg = (name: string) => {
       const first = (name || '').split(' ')[0] || '';
-      return encodeURIComponent(`Oi${first ? ' ' + first : ''}! Tudo bem? 😊\n\nRecebemos seu cadastro no nosso Aplicativo de ritmos GDrums e liberamos um cupom especial de 50% OFF pra você 🎁\n\nPosso te enviar por aqui?`);
+      return encodeURIComponent(`Oi${first ? ' ' + first : ''}! Tudo bem?\n\nRecebemos seu cadastro no nosso Aplicativo de ritmos GDrums e liberamos um cupom especial de 50% OFF pra voce!\n\nPosso te enviar por aqui?`);
     };
 
     tbody.innerHTML = paged.map(l => {
