@@ -23,12 +23,102 @@ class LoginPage {
   }
 
   private async init(): Promise<void> {
+    // Detectar recovery token na URL (reset de senha via email)
+    const hash = window.location.hash;
+    if (hash.includes('type=recovery') || hash.includes('type=magiclink')) {
+      // Supabase coloca #access_token=...&type=recovery na URL.
+      // O client SDK detecta e faz login automático via onAuthStateChange.
+      // Esperar o Supabase processar o token e mostrar form de nova senha.
+      await this.handlePasswordRecovery();
+      return;
+    }
+
     // Se já logado, redirecionar direto
     if (await authService.isAuthenticated()) {
       window.location.href = await this.getDestination();
       return;
     }
     this.setupEventListeners();
+  }
+
+  private async handlePasswordRecovery(): Promise<void> {
+    // Aguardar Supabase processar o token do hash
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      // Token inválido ou expirado
+      this.showAlert('Link de recuperação inválido ou expirado. Peça outro.', 'error');
+      this.setupEventListeners();
+      return;
+    }
+
+    // Esconder formulário de login, mostrar form de nova senha
+    const card = document.querySelector('.login-card') as HTMLElement;
+    const title = card.querySelector('.login-title') as HTMLElement;
+    const sub = card.querySelector('.login-sub') as HTMLElement;
+
+    title.textContent = 'Nova senha';
+    sub.textContent = 'Digite sua nova senha abaixo';
+
+    this.form.innerHTML = `
+      <div class="login-field">
+        <label for="newPassword">Nova senha</label>
+        <input type="password" id="newPassword" required placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+      </div>
+      <div class="login-field">
+        <label for="confirmPassword">Confirmar senha</label>
+        <input type="password" id="confirmPassword" required placeholder="Repita a senha" autocomplete="new-password" />
+      </div>
+      <button type="submit" class="login-btn" id="resetBtn">
+        <span class="btn-text">Salvar nova senha</span>
+        <span class="btn-loader"><div class="spinner-sm"></div></span>
+      </button>
+    `;
+
+    // Esconder links irrelevantes
+    const options = card.querySelector('.login-options') as HTMLElement;
+    const divider = card.querySelector('.login-divider') as HTMLElement;
+    const footer = card.querySelector('.login-footer') as HTMLElement;
+    if (options) options.style.display = 'none';
+    if (divider) divider.style.display = 'none';
+    if (footer) footer.style.display = 'none';
+
+    this.form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPass = (document.getElementById('newPassword') as HTMLInputElement).value;
+      const confirm = (document.getElementById('confirmPassword') as HTMLInputElement).value;
+      const btn = document.getElementById('resetBtn') as HTMLButtonElement;
+
+      if (newPass.length < 6) {
+        this.showAlert('A senha precisa ter pelo menos 6 caracteres', 'error');
+        return;
+      }
+      if (newPass !== confirm) {
+        this.showAlert('As senhas não conferem', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      const btnText = btn.querySelector('.btn-text') as HTMLElement;
+      const btnLoader = btn.querySelector('.btn-loader') as HTMLElement;
+      if (btnText) btnText.style.display = 'none';
+      if (btnLoader) btnLoader.style.display = 'block';
+
+      const { error } = await supabase.auth.updateUser({ password: newPass });
+
+      if (error) {
+        this.showAlert('Erro ao atualizar senha. Tente novamente.', 'error');
+        btn.disabled = false;
+        if (btnText) btnText.style.display = 'block';
+        if (btnLoader) btnLoader.style.display = 'none';
+      } else {
+        this.showAlert('Senha atualizada! Redirecionando...', 'success');
+        // Limpar hash da URL
+        history.replaceState(null, '', '/login.html');
+        setTimeout(async () => {
+          window.location.href = await this.getDestination();
+        }, 1000);
+      }
+    });
   }
 
   private setupEventListeners(): void {
