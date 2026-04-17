@@ -931,9 +931,7 @@ class AdminDashboard {
     // Mensagem WhatsApp pronta
     const whatsMsg = (name: string) => {
       const first = (name || '').split(' ')[0] || '';
-      const h = new Date().getHours();
-      const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-      return encodeURIComponent(`${saudacao} ${first}! Tudo bem?\n\nVi que seu periodo de teste no GDrums acabou. Gostou da experiencia? Conseguiu testar com o pedal no ensaio?\n\nQueria te avisar que a gente ta com um cupom de lancamento com 30% de desconto em qualquer plano. O mensal sai por R$ 20 e pouco.\n\nO cupom e LANCAMENTO e vale ate dia 21/04.\n\nSe tiver alguma duvida sobre o app, pode me chamar aqui que te ajudo na hora.\n\nAbraco!`);
+      return encodeURIComponent(`Oi${first ? ' ' + first : ''}! Tudo bem? 😊\n\nRecebemos seu cadastro no nosso Aplicativo de ritmos GDrums e liberamos um cupom especial de 50% OFF pra você 🎁\n\nPosso te enviar por aqui?`);
     };
 
     tbody.innerHTML = paged.map(l => {
