@@ -10,64 +10,182 @@
   <link rel="canonical" href="https://gdrums.com.br/demo">
   <link rel="stylesheet" href="styles.css">
   <style>
+    /* ─── Topbar editorial ───
+       Paleta monocromática, sem gradiente. CTA branco sólido (peso visual
+       do único botão pago; toda a atenção dele). */
     .demo-topbar {
       position: fixed; top: 0; left: 0; right: 0; z-index: 9998;
-      background: rgba(3,0,20,0.92); backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      padding: 0 0.75rem; height: 3rem;
+      background: rgba(8, 8, 14, 0.92);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 0 1rem; height: 3.25rem;
       display: flex; align-items: center; justify-content: space-between;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
     }
-    .demo-topbar-left { display: flex; align-items: center; gap: 0.5rem; }
-    .demo-topbar-logo { height: 18px; opacity: 0.7; }
-    .demo-topbar-badge {
-      font-size: 0.55rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1.5px; color: var(--orange); background: rgba(249,115,22,0.1);
-      border: 1px solid rgba(249,115,22,0.2); border-radius: 5px;
-      padding: 0.1rem 0.4rem;
+    .demo-topbar-left { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+    .demo-topbar-logo { height: 18px; opacity: 0.78; flex-shrink: 0; }
+    .demo-topbar-sep {
+      width: 1px; height: 14px; background: rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
     }
-    .demo-topbar-counter {
-      font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.5);
-      font-variant-numeric: tabular-nums;
-    }
-    .demo-topbar-cta {
-      padding: 0.3rem 0.7rem; border: none; border-radius: 8px;
-      background: linear-gradient(135deg, var(--cyan), var(--purple));
-      color: #fff; font-size: 0.68rem; font-weight: 700;
-      font-family: inherit; cursor: pointer; text-decoration: none;
+    .demo-topbar-label {
+      font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.42); font-weight: 500;
       white-space: nowrap;
     }
-    .demo-topbar-bar {
-      position: absolute; bottom: 0; left: 0; height: 2px;
-      background: linear-gradient(90deg, var(--cyan), var(--purple));
-      transition: width 0.3s;
+    .demo-topbar-counter {
+      font-size: 0.72rem; color: rgba(255, 255, 255, 0.48);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
-    .app-container { padding-top: 3rem; }
+    .demo-topbar-counter.low { color: #fff; font-weight: 500; }
+    .demo-topbar-cta {
+      padding: 0.5rem 1rem; border: none; border-radius: 8px;
+      background: #fff; color: #0a0a0f;
+      font-size: 0.78rem; font-weight: 600; letter-spacing: -0.005em;
+      font-family: inherit; cursor: pointer; text-decoration: none;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .demo-topbar-cta:hover { opacity: 0.88; }
+    .demo-topbar-cta:active { transform: scale(0.98); }
+    .demo-topbar-bar {
+      position: absolute; bottom: 0; left: 0; height: 1px;
+      background: rgba(255, 255, 255, 0.35);
+      transition: width 0.3s ease;
+    }
+    .app-container { padding-top: 3.25rem; }
 
     /* Esconder elementos que nao existem no demo */
     #setlistPrev, #setlistNext, #setlistEditBtn, #myRhythmsBtn, #saveAsMyRhythmBtn { display: none !important; }
     .fav-bar { justify-content: center; }
 
+    /* ─── Tela de fim da demo ───
+       Estrutura editorial: overline → título → corpo → preço → CTA → link.
+       Sem caps lock, sem gradientes, sem glow. */
     .demo-expired-overlay {
       position: fixed; inset: 0; z-index: 99999;
-      background: rgba(2,0,15,0.95); backdrop-filter: blur(16px);
-      display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+      animation: demoOverlayIn 0.28s ease;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
     }
+    @keyframes demoOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+
     .demo-expired-card {
-      background: rgba(10,10,30,0.95); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 24px; padding: 2.5rem 2rem; max-width: 400px; width: 100%;
+      width: 100%;
+      max-width: 440px;
+      background: #0a0a0f;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 2.25rem 2rem 1.5rem;
+      color: #fff;
+      animation: demoCardIn 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    @keyframes demoCardIn {
+      from { transform: translateY(12px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .demo-expired-overline {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.4);
+      margin-bottom: 0.85rem;
+      font-weight: 500;
+    }
+    .demo-expired-card h2 {
+      color: #fff;
+      font-size: 1.45rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+      margin: 0 0 0.85rem;
+    }
+    .demo-expired-card p {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.92rem;
+      line-height: 1.55;
+      margin: 0 0 1rem;
+    }
+    .demo-expired-card p:last-of-type { margin-bottom: 1.5rem; }
+
+    .demo-expired-price {
+      display: flex; align-items: baseline; gap: 0.45rem;
+      padding: 1rem 0;
+      margin: 0 0 1.25rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .demo-expired-price-amount {
+      font-size: 1.85rem; font-weight: 600;
+      letter-spacing: -0.02em; color: #fff;
+    }
+    .demo-expired-price-unit {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.45);
+    }
+    .demo-expired-price-note {
+      margin-left: auto;
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.35);
+      letter-spacing: 0.01em;
+    }
+
+    .demo-expired-cta {
+      display: block;
+      width: 100%;
+      padding: 0.9rem;
+      background: #fff;
+      color: #0a0a0f;
+      text-decoration: none;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      text-align: center;
+      transition: opacity 0.15s;
+      box-shadow: none;
+    }
+    .demo-expired-cta:hover { opacity: 0.9; }
+    .demo-expired-cta:active { transform: scale(0.99); }
+
+    .demo-expired-sub {
+      text-align: center;
+      margin-top: 0.85rem;
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.4);
+    }
+    .demo-expired-sub a {
+      color: rgba(255, 255, 255, 0.75);
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 1px;
+    }
+    .demo-expired-sub a:hover { color: #fff; }
+
+    .demo-expired-support {
+      margin-top: 1.25rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
       text-align: center;
     }
-    .demo-expired-card h2 { color: #fff; font-size: 1.3rem; margin: 0 0 0.5rem; }
-    .demo-expired-card p { color: rgba(255,255,255,0.5); font-size: 0.9rem; line-height: 1.6; margin: 0 0 1.5rem; }
-    .demo-expired-cta {
-      display: inline-block; padding: 0.85rem 2rem;
-      background: linear-gradient(135deg, var(--cyan), var(--purple));
-      color: #fff; text-decoration: none; border-radius: 14px;
-      font-weight: 700; font-size: 1rem; box-shadow: 0 4px 20px rgba(0,212,255,0.3);
+    .demo-expired-support a {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      color: rgba(255, 255, 255, 0.35);
+      font-size: 0.75rem;
+      text-decoration: none;
+      transition: color 0.15s;
     }
-    .demo-expired-sub { margin-top: 1rem; font-size: 0.75rem; color: rgba(255,255,255,0.25); }
-    .demo-expired-sub a { color: var(--cyan); text-decoration: none; }
+    .demo-expired-support a:hover { color: rgba(255, 255, 255, 0.7); }
   </style>
 </head>
 <body>
@@ -75,10 +193,12 @@
   <div class="demo-topbar">
     <div class="demo-topbar-left">
       <img src="/img/logo.png" alt="GDrums" class="demo-topbar-logo">
-      <span class="demo-topbar-badge">DEMO</span>
-      <span class="demo-topbar-counter" id="demoCounter">2 ritmos restantes</span>
+      <span class="demo-topbar-sep"></span>
+      <span class="demo-topbar-label">Demonstração</span>
+      <span class="demo-topbar-sep"></span>
+      <span class="demo-topbar-counter" id="demoCounter">3 ritmos restantes</span>
     </div>
-    <a href="/register.html" class="demo-topbar-cta">Liberar tudo</a>
+    <a href="/register.html" class="demo-topbar-cta">Abrir conta</a>
     <div class="demo-topbar-bar" id="demoBar" style="width:100%;"></div>
   </div>
 
