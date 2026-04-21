@@ -93,6 +93,7 @@ export class UIManager {
 
     const isActive = state.patterns[pattern][channel][step];
     const volume = state.volumes[pattern][channel][step];
+    const offset = state.offsets?.[pattern]?.[channel]?.[step] || 0;
 
     if (isActive) {
       stepElement.classList.add('active');
@@ -107,6 +108,22 @@ export class UIManager {
 
       volumeIndicator.style.height = `${volume * 100}%`;
       volumeIndicator.style.opacity = '1';
+
+      // Indicador de offset (groove): ponto que desloca pra esquerda ou direita
+      if (Math.abs(offset) > 0.01) {
+        let offsetIndicator = stepElement.querySelector('.offset-indicator') as HTMLElement;
+        if (!offsetIndicator) {
+          offsetIndicator = document.createElement('div');
+          offsetIndicator.className = 'offset-indicator';
+          stepElement.appendChild(offsetIndicator);
+        }
+        // offset de -0.5 a +0.5 → translate em % do próprio step
+        offsetIndicator.style.transform = `translateX(${offset * 100}%)`;
+        offsetIndicator.style.opacity = '1';
+      } else {
+        const existing = stepElement.querySelector('.offset-indicator');
+        if (existing) existing.remove();
+      }
     } else {
       stepElement.classList.remove('active');
       const volumeIndicator = stepElement.querySelector('.volume-indicator') as HTMLElement;
@@ -114,6 +131,8 @@ export class UIManager {
         volumeIndicator.style.height = '0%';
         volumeIndicator.style.opacity = '0';
       }
+      const offsetIndicator = stepElement.querySelector('.offset-indicator');
+      if (offsetIndicator) offsetIndicator.remove();
     }
   }
 

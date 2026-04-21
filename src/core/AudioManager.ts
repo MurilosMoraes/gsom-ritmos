@@ -8,6 +8,8 @@ export interface AudioSnapshot {
   pattern: boolean[][];
   channels: AudioChannel[];
   volumes: number[][];
+  offsets?: number[][]; // -0.5 a +0.5 por célula (fração da duração do step)
+  stepDuration?: number; // segundos por step — necessário pra aplicar offset
   masterVolume: number;
   shouldPlayStartSound: boolean;
   shouldPlayReturnSound: boolean;
@@ -184,7 +186,7 @@ export class AudioManager {
   // ─── Método principal: agenda step a partir de snapshot imutável ────
 
   scheduleStepFromSnapshot(snapshot: AudioSnapshot, time: number): void {
-    const { step, pattern, channels, volumes, masterVolume } = snapshot;
+    const { step, pattern, channels, volumes, masterVolume, offsets, stepDuration } = snapshot;
 
     // Som de início de fill
     if (snapshot.shouldPlayStartSound && snapshot.fillStartBuffer) {
@@ -197,6 +199,7 @@ export class AudioManager {
     }
 
     // Sons dos canais ativos — com corte de sample anterior por canal
+    const audioNow = this.audioContext.currentTime;
     for (let channel = 0; channel < MAX_CHANNELS; channel++) {
       if (!pattern[channel] || !pattern[channel][step]) continue;
 
@@ -206,9 +209,19 @@ export class AudioManager {
       const stepVolume = volumes[channel]?.[step] ?? 1.0;
       const finalVolume = stepVolume * masterVolume;
 
-      if (finalVolume > 0) {
-        this.playSoundOnChannel(channel, buffer, time, finalVolume);
+      if (finalVolume <= 0) continue;
+
+      // Aplicar offset da célula (se existir): -0.5 = meio step antes, +0.5 = meio step depois
+      let cellTime = time;
+      const cellOffset = offsets?.[channel]?.[step];
+      if (cellOffset && stepDuration && stepDuration > 0) {
+        const clamped = Math.max(-0.5, Math.min(0.5, cellOffset));
+        cellTime = time + clamped * stepDuration;
+        // Safety: nunca agendar no passado (offset negativo grande + lookahead curto)
+        if (cellTime < audioNow + 0.005) cellTime = audioNow + 0.005;
       }
+
+      this.playSoundOnChannel(channel, buffer, cellTime, finalVolume);
     }
   }
 

@@ -2319,6 +2319,23 @@ input:checked + .slider:before {
   opacity: 1;
 }
 
+/* Indicador de offset (groove): ponto pequeno que desloca dentro do step
+   pra mostrar que a célula tem antecipação/atraso configurado */
+.offset-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #FFD166;
+  box-shadow: 0 0 6px rgba(255, 209, 102, 0.8);
+  transition: transform 0.15s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
 .step.playing {
   animation: stepPulse 0.3s ease-out;
 }
