@@ -1,7 +1,7 @@
 // Gerenciamento centralizado de estado
 
 import type { SequencerState, PatternType, AudioChannel, PendingPattern } from '../types';
-import { createEmptyPattern, createEmptyVolumes, createEmptyChannels } from '../utils/helpers';
+import { createEmptyPattern, createEmptyVolumes, createEmptyChannels, createEmptyOffsets } from '../utils/helpers';
 
 export class StateManager {
   private state: SequencerState;
@@ -15,6 +15,7 @@ export class StateManager {
     const emptyPattern = createEmptyPattern;
     const emptyVolumes = createEmptyVolumes;
     const emptyChannels = createEmptyChannels;
+    const emptyOffsets = createEmptyOffsets;
 
     return {
       isPlaying: false,
@@ -44,6 +45,13 @@ export class StateManager {
         end: emptyVolumes(),
         intro: emptyVolumes(),
         transition: emptyVolumes()
+      },
+      offsets: {
+        main: emptyOffsets(),
+        fill: emptyOffsets(),
+        end: emptyOffsets(8),
+        intro: emptyOffsets(),
+        transition: emptyOffsets()
       },
       activePattern: 'main',
       editingPattern: 'main',
@@ -200,6 +208,17 @@ export class StateManager {
     this.notify('volumes');
   }
 
+  getStepOffset(pattern: PatternType, channel: number, step: number): number {
+    return this.state.offsets?.[pattern]?.[channel]?.[step] || 0;
+  }
+
+  setStepOffset(pattern: PatternType, channel: number, step: number, offset: number): void {
+    if (!this.state.offsets[pattern]) return;
+    if (!this.state.offsets[pattern][channel]) return;
+    this.state.offsets[pattern][channel][step] = Math.max(-0.5, Math.min(0.5, offset));
+    this.notify('offsets');
+  }
+
   setPatternSteps(pattern: PatternType, steps: number): void {
     if (pattern === 'main' || pattern === 'fill' || pattern === 'end' || pattern === 'intro') {
       this.state.patternSteps[pattern] = steps;
@@ -228,6 +247,7 @@ export class StateManager {
   saveVariation(pattern: PatternType, index: number): void {
     const patternClone = this.state.patterns[pattern].map(row => [...row]);
     const volumesClone = this.state.volumes[pattern].map(row => [...row]);
+    const offsetsClone = this.state.offsets[pattern]?.map(row => [...row]) || createEmptyOffsets(this.getPatternSteps(pattern));
     const channelsClone = this.state.channels[pattern].map(ch => ({ ...ch }));
     const currentSteps = this.getPatternSteps(pattern);
     const currentSpeed = this.state.variations[pattern][index]?.speed || 1;
@@ -235,6 +255,7 @@ export class StateManager {
     this.state.variations[pattern][index] = {
       pattern: patternClone,
       volumes: volumesClone,
+      offsets: offsetsClone,
       channels: channelsClone,
       steps: currentSteps,
       speed: currentSpeed
@@ -248,15 +269,21 @@ export class StateManager {
 
     this.state.patterns[pattern] = variation.pattern.map(row => [...row]);
     this.state.volumes[pattern] = variation.volumes.map(row => [...row]);
+    // Offsets: backward-compat — variações antigas sem offsets assumem 0
+    const steps = variation.steps || 16;
+    this.state.offsets[pattern] = variation.offsets
+      ? variation.offsets.map(row => [...row])
+      : createEmptyOffsets(steps);
     this.state.channels[pattern] = variation.channels.map(ch => ({ ...ch }));
 
     // Carregar steps da variação
     if (pattern === 'main' || pattern === 'fill' || pattern === 'end' || pattern === 'intro') {
-      this.state.patternSteps[pattern] = variation.steps || 16;
+      this.state.patternSteps[pattern] = steps;
     }
 
     this.notify('patterns');
     this.notify('volumes');
+    this.notify('offsets');
     this.notify('channels');
     this.notify('patternSteps');
     return true;

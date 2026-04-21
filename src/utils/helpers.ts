@@ -14,6 +14,34 @@ export function createEmptyVolumes(numSteps: number = 16): number[][] {
   );
 }
 
+export function createEmptyOffsets(numSteps: number = 16): number[][] {
+  return Array(MAX_CHANNELS).fill(null).map(() =>
+    Array(numSteps).fill(0)
+  );
+}
+
+export function expandOffsets(offsets: number[][] | undefined, targetSteps: number = 16): number[][] {
+  if (!offsets || offsets.length === 0) return createEmptyOffsets(targetSteps);
+  const rows = offsets.length;
+  const cols = offsets[0]?.length || 0;
+
+  if (rows === MAX_CHANNELS && cols === targetSteps) return offsets;
+
+  const expanded: number[][] = [];
+  for (let i = 0; i < MAX_CHANNELS; i++) {
+    const row: number[] = [];
+    for (let j = 0; j < targetSteps; j++) {
+      if (i < rows && j < cols) {
+        row.push(offsets[i][j] || 0);
+      } else {
+        row.push(0);
+      }
+    }
+    expanded.push(row);
+  }
+  return expanded;
+}
+
 export function createEmptyChannels(): AudioChannel[] {
   return Array(MAX_CHANNELS).fill(null).map(() => ({
     buffer: null,

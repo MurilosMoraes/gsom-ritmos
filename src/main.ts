@@ -935,6 +935,27 @@ class RhythmSequencer {
           this.showVolumeControl(channel, step, stepDiv);
         });
 
+        // Long-press em mobile: abre popup de volume + groove (500ms)
+        let lpTimer: number | null = null;
+        let lpFired = false;
+        stepDiv.addEventListener('touchstart', () => {
+          lpFired = false;
+          lpTimer = window.setTimeout(() => {
+            lpFired = true;
+            HapticsService.medium();
+            this.showVolumeControl(channel, step, stepDiv);
+          }, 500);
+        }, { passive: true });
+        const cancelLp = () => {
+          if (lpTimer !== null) { clearTimeout(lpTimer); lpTimer = null; }
+        };
+        stepDiv.addEventListener('touchend', (e) => {
+          cancelLp();
+          if (lpFired) e.preventDefault(); // bloquear click após long-press
+        });
+        stepDiv.addEventListener('touchmove', cancelLp, { passive: true });
+        stepDiv.addEventListener('touchcancel', cancelLp);
+
         channelDiv.appendChild(stepDiv);
       }
 
@@ -4086,6 +4107,7 @@ class RhythmSequencer {
     if (!state.patterns[pattern][channel][step]) return;
 
     const currentVolume = state.volumes[pattern][channel][step];
+    const currentOffset = this.stateManager.getStepOffset(pattern, channel, step);
 
     // Remover popup anterior se existir
     document.querySelectorAll('.volume-popup').forEach(p => p.remove());
@@ -4102,6 +4124,20 @@ class RhythmSequencer {
           <button class="preset-btn" data-volume="100">Max</button>
         </div>
         <input type="range" id="volumeSlider" min="0" max="100" value="${currentVolume * 100}" step="1">
+
+        <label style="margin-top:0.8rem;display:block;">Groove: <span id="offsetValue">${currentOffset > 0 ? '+' : ''}${Math.round(currentOffset * 100)}%</span></label>
+        <div class="volume-presets">
+          <button class="preset-btn" data-offset="-50">←½</button>
+          <button class="preset-btn" data-offset="-25">←¼</button>
+          <button class="preset-btn" data-offset="0">0</button>
+          <button class="preset-btn" data-offset="25">¼→</button>
+          <button class="preset-btn" data-offset="50">½→</button>
+        </div>
+        <input type="range" id="offsetSlider" min="-50" max="50" value="${currentOffset * 100}" step="1">
+        <div style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-align:center;margin-top:0.3rem;">
+          Adianta ou atrasa em até meio step
+        </div>
+
         <button class="volume-close">Fechar</button>
       </div>
     `;
@@ -4114,6 +4150,8 @@ class RhythmSequencer {
 
     const slider = popup.querySelector('#volumeSlider') as HTMLInputElement;
     const valueDisplay = popup.querySelector('#volumeValue') as HTMLElement;
+    const offsetSlider = popup.querySelector('#offsetSlider') as HTMLInputElement;
+    const offsetDisplay = popup.querySelector('#offsetValue') as HTMLElement;
 
     const updateVolume = (value: number) => {
       this.stateManager.setStepVolume(pattern, channel, step, value);
@@ -4121,7 +4159,16 @@ class RhythmSequencer {
       slider.value = (value * 100).toString();
       this.uiManager.updateStepVisual(channel, step);
 
-      // Auto-salvar a variação atual
+      const currentSlot = this.stateManager.getCurrentVariation(pattern);
+      this.stateManager.saveVariation(pattern, currentSlot);
+    };
+
+    const updateOffset = (value: number) => {
+      this.stateManager.setStepOffset(pattern, channel, step, value);
+      offsetDisplay.textContent = `${value > 0 ? '+' : ''}${Math.round(value * 100)}%`;
+      offsetSlider.value = (value * 100).toString();
+      this.uiManager.updateStepVisual(channel, step);
+
       const currentSlot = this.stateManager.getCurrentVariation(pattern);
       this.stateManager.saveVariation(pattern, currentSlot);
     };
@@ -4131,12 +4178,23 @@ class RhythmSequencer {
       updateVolume(value);
     });
 
-    // Preset buttons — fecha imediatamente ao clicar
+    offsetSlider.addEventListener('input', (e) => {
+      const value = parseInt((e.target as HTMLInputElement).value) / 100;
+      updateOffset(value);
+    });
+
+    // Preset buttons — separar volume vs offset pelo atributo
     popup.querySelectorAll('.preset-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const presetValue = parseInt((e.target as HTMLElement).getAttribute('data-volume')!) / 100;
-        updateVolume(presetValue);
-        popup.remove();
+        const target = e.target as HTMLElement;
+        if (target.hasAttribute('data-volume')) {
+          const v = parseInt(target.getAttribute('data-volume')!) / 100;
+          updateVolume(v);
+          popup.remove();
+        } else if (target.hasAttribute('data-offset')) {
+          const v = parseInt(target.getAttribute('data-offset')!) / 100;
+          updateOffset(v);
+        }
       });
     });
 

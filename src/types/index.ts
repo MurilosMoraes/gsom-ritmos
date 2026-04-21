@@ -27,6 +27,7 @@ export interface PatternSteps {
 export interface PatternVariation {
   pattern: boolean[][];
   volumes: number[][];
+  offsets?: number[][]; // Offset por célula: -0.5 (meio step antes) a +0.5 (meio step depois). Undefined = 0.
   channels: AudioChannel[];
   steps: number;
   speed: number; // Velocidade individual da variação (1 = normal, 2 = 2x mais rápido, etc)
@@ -44,6 +45,7 @@ export interface SequencerState {
   fillSteps: number;
   patterns: Record<PatternType, boolean[][]>;
   volumes: Record<PatternType, number[][]>;
+  offsets: Record<PatternType, number[][]>; // Offset por célula: -0.5 a +0.5
   activePattern: PatternType;
   editingPattern: PatternType;
   nextPattern: PatternType | null;
@@ -113,6 +115,7 @@ export interface SavedPattern {
 export interface SavedVariation {
   pattern: boolean[][];
   volumes: number[][];
+  offsets?: number[][]; // v1.6+: groove por célula, undefined em JSONs antigos = 0
   audioFiles: AudioFileData[];
   steps: number;
   speed?: number; // Opcional para compatibilidade com arquivos antigos

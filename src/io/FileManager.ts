@@ -3,7 +3,7 @@
 import { MAX_CHANNELS, type SavedProject, type SavedPattern, type AudioFileData, type PatternType } from '../types';
 import type { StateManager } from '../core/StateManager';
 import type { AudioManager } from '../core/AudioManager';
-import { arrayBufferToBase64, expandPattern, expandVolumes, normalizeMidiPath } from '../utils/helpers';
+import { arrayBufferToBase64, expandPattern, expandVolumes, expandOffsets, normalizeMidiPath } from '../utils/helpers';
 
 export class FileManager {
   private stateManager: StateManager;
@@ -16,56 +16,35 @@ export class FileManager {
 
   async saveProject(): Promise<void> {
     const state = this.stateManager.getState();
+    // Helper: só inclui offsets se tiver ao menos uma célula != 0
+    // (mantém JSONs enxutos e diffs de git limpos nos 72 ritmos oficiais)
+    const hasOffsets = (grid?: number[][]): boolean => {
+      if (!grid) return false;
+      for (const row of grid) for (const v of row) if (v && Math.abs(v) > 0.001) return true;
+      return false;
+    };
+    const mapVar = (v: any) => ({
+      pattern: v.pattern,
+      volumes: v.volumes,
+      ...(hasOffsets(v.offsets) ? { offsets: v.offsets } : {}),
+      audioFiles: v.channels.map((ch: any) => ({
+        fileName: ch.fileName,
+        audioData: '',
+        midiPath: ch.midiPath
+      })),
+      steps: v.steps,
+      speed: v.speed
+    });
     const project: SavedProject = {
-      version: '1.5',
+      version: '1.6',
       tempo: state.tempo,
       beatsPerBar: state.beatsPerBar,
       patternSteps: state.patternSteps,
       variations: {
-        main: state.variations.main.map(v => ({
-          pattern: v.pattern,
-          volumes: v.volumes,
-          audioFiles: v.channels.map(ch => ({
-            fileName: ch.fileName,
-            audioData: '',
-            midiPath: ch.midiPath
-          })),
-          steps: v.steps,
-          speed: v.speed
-        })),
-        fill: state.variations.fill.map(v => ({
-          pattern: v.pattern,
-          volumes: v.volumes,
-          audioFiles: v.channels.map(ch => ({
-            fileName: ch.fileName,
-            audioData: '',
-            midiPath: ch.midiPath
-          })),
-          steps: v.steps,
-          speed: v.speed
-        })),
-        end: state.variations.end.map(v => ({
-          pattern: v.pattern,
-          volumes: v.volumes,
-          audioFiles: v.channels.map(ch => ({
-            fileName: ch.fileName,
-            audioData: '',
-            midiPath: ch.midiPath
-          })),
-          steps: v.steps,
-          speed: v.speed
-        })),
-        intro: state.variations.intro.map(v => ({
-          pattern: v.pattern,
-          volumes: v.volumes,
-          audioFiles: v.channels.map(ch => ({
-            fileName: ch.fileName,
-            audioData: '',
-            midiPath: ch.midiPath
-          })),
-          steps: v.steps,
-          speed: v.speed
-        }))
+        main: state.variations.main.map(mapVar),
+        fill: state.variations.fill.map(mapVar),
+        end: state.variations.end.map(mapVar),
+        intro: state.variations.intro.map(mapVar)
       },
       fillStartSound: {
         fileName: state.fillStartSound.fileName,
@@ -110,6 +89,7 @@ export class FileManager {
           state.variations.main[v] = {
             pattern: expandPattern(variation.pattern, targetSteps),
             volumes: expandVolumes(variation.volumes, targetSteps),
+            offsets: expandOffsets(variation.offsets, targetSteps),
             channels: state.channels.main.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
             steps: targetSteps,
             speed: variation.speed || 1
@@ -149,6 +129,7 @@ export class FileManager {
           state.variations.fill[v] = {
             pattern: expandPattern(variation.pattern, targetSteps),
             volumes: expandVolumes(variation.volumes, targetSteps),
+            offsets: expandOffsets(variation.offsets, targetSteps),
             channels: state.channels.fill.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
             steps: targetSteps,
             speed: variation.speed || 1
@@ -188,6 +169,7 @@ export class FileManager {
           state.variations.end[v] = {
             pattern: expandPattern(variation.pattern, targetSteps),
             volumes: expandVolumes(variation.volumes, targetSteps),
+            offsets: expandOffsets(variation.offsets, targetSteps),
             channels: state.channels.end.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
             steps: targetSteps,
             speed: variation.speed || 1
@@ -229,6 +211,7 @@ export class FileManager {
           state.variations.intro[v] = {
             pattern: expandPattern(variation.pattern, targetSteps),
             volumes: expandVolumes(variation.volumes, targetSteps),
+            offsets: expandOffsets(variation.offsets, targetSteps),
             channels: state.channels.intro.map(() => ({ buffer: null, fileName: '', midiPath: '' })),
             steps: targetSteps,
             speed: variation.speed || 1

@@ -230,11 +230,19 @@ export class Scheduler {
   // ─── Snapshot imutável para scheduling ──────────────────────────────
 
   private createSnapshot(step: number, activePattern: PatternType, state: any) {
+    // Calcular stepDuration (usado pra aplicar offset por célula)
+    const variationIndex = this.stateManager.getCurrentVariation(activePattern);
+    const speed = this.stateManager.getVariationSpeed(activePattern, variationIndex);
+    const secondsPerBeat = 60.0 / state.tempo;
+    const stepDuration = (secondsPerBeat / 2) / (speed || 1);
+
     return {
       step,
       pattern: state.patterns[activePattern],
       channels: state.channels[activePattern],
       volumes: state.volumes[activePattern],
+      offsets: state.offsets?.[activePattern],
+      stepDuration,
       masterVolume: state.masterVolume,
       shouldPlayStartSound: step === 0 && state.shouldPlayStartSound,
       shouldPlayReturnSound: step === 0 && state.shouldPlayReturnSound,

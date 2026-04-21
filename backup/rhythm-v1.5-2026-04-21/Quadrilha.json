@@ -1,0 +1,3278 @@
+{
+  "version": "1.5",
+  "tempo": 150,
+  "beatsPerBar": 4,
+  "patternSteps": {
+    "main": 16,
+    "fill": 8,
+    "end": 16,
+    "intro": 8
+  },
+  "variations": {
+    "main": [
+      {
+        "pattern": [
+          [
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        ],
+        "volumes": [
+          [
+            0.8,
+            0.8,
+            0.8,
+            0.48,
+            0.35,
+            0.8,
+            0.8,
+            0.5,
+            0.9,
+            0.8,
+            0.8,
+            0.5,
+            0.34,
+            0.8,
+            0.8,
+            0.5
+          ],
+          [
+            0.35,
+            0.8,
+            0.8,
+            0.42,
+            0.8,
+            0.8,
+            0.8,
+            0,
+            0.35,
+            0.8,
+            0.8,
+            0.5,
+            0.8,
+            0.42,
+            0.8,
+            0.8
+          ],
+          [
+            0,
+            0,
+            0.71,
+            0.8,
+            0.8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0.71,
+            0,
+            0.8,
+            0,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0,
+            0,
+            0,
+            0.5,
+            0.8,
+            0,
+            0,
+            0.5,
+            0.8,
+            0.8,
+            0,
+            0.5,
+            0,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0.5,
+            0.35,
+            0.2,
+            0.5,
+            0.5,
+            0.36,
+            0.2,
+            0.5,
+            0.5,
+            0.36,
+            0.2,
+            0.5,
+            0.5,
+            0.35,
+            0.2
+          ],
+          [
+            0.8,
+            0,
+            0.2,
+            0.5,
+            0,
+            0,
+            0.2,
+            0.5,
+            0,
+            0,
+            0.2,
+            0.5,
+            0.8,
+            0,
+            0.2,
+            0.5
+          ],
+          [
+            0.2,
+            0,
+            0,
+            0.8,
+            0.2,
+            0.8,
+            0.2,
+            0.8,
+            0.2,
+            0,
+            0,
+            0,
+            0.2,
+            0.8,
+            0.2,
+            0
+          ],
+          [
+            0.5,
+            0,
+            0,
+            0,
+            0.5,
+            0,
+            0.5,
+            0,
+            0.5,
+            0,
+            0,
+            0,
+            0.5,
+            0,
+            0.5,
+            0
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "audioFiles": [
+          {
+            "fileName": "Bloco 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 1.wav"
+          },
+          {
+            "fileName": "Bloco 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 2.wav"
+          },
+          {
+            "fileName": "Zabumba 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 3.wav"
+          },
+          {
+            "fileName": "Triangulo 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 1.wav"
+          },
+          {
+            "fileName": "Triangulo 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 2.wav"
+          },
+          {
+            "fileName": "Triangulo 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 3.wav"
+          },
+          {
+            "fileName": "Zabumba 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 2.wav"
+          },
+          {
+            "fileName": "bumbo.wav",
+            "audioData": "",
+            "midiPath": "/midi/bumbo.wav"
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          }
+        ],
+        "steps": 16,
+        "speed": 2
+      },
+      {
+        "pattern": [
+          [
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        ],
+        "volumes": [
+          [
+            0.8,
+            0.8,
+            0.8,
+            0.48,
+            0.35,
+            0.8,
+            0.8,
+            0.5,
+            0.9,
+            0.8,
+            0.8,
+            0.5,
+            0.34,
+            0.8,
+            0.8,
+            0.5
+          ],
+          [
+            0.35,
+            0.8,
+            0.8,
+            0.42,
+            0.8,
+            0.8,
+            0.8,
+            0,
+            0.35,
+            0.8,
+            0.8,
+            0.5,
+            0.8,
+            0.42,
+            0.8,
+            0.8
+          ],
+          [
+            0,
+            0,
+            0.71,
+            0.8,
+            0.8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0.71,
+            0,
+            0.8,
+            0,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0,
+            0,
+            0,
+            0.5,
+            0.8,
+            0,
+            0,
+            0.5,
+            0.8,
+            0.8,
+            0,
+            0.5,
+            0,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0.5,
+            0.35,
+            0.2,
+            0.5,
+            0.5,
+            0.36,
+            0.2,
+            0.5,
+            0.5,
+            0.36,
+            0.2,
+            0.5,
+            0.5,
+            0.35,
+            0.2
+          ],
+          [
+            0.8,
+            0,
+            0.2,
+            0.5,
+            0,
+            0,
+            0.2,
+            0.5,
+            0,
+            0,
+            0.2,
+            0.5,
+            0.8,
+            0,
+            0.2,
+            0.5
+          ],
+          [
+            0.2,
+            0,
+            0,
+            0.8,
+            0.2,
+            0.8,
+            0.2,
+            0.8,
+            0.2,
+            0,
+            0,
+            0,
+            0.2,
+            0.8,
+            0.2,
+            0
+          ],
+          [
+            0.5,
+            0,
+            0,
+            0,
+            0.5,
+            0,
+            0.5,
+            0,
+            0.5,
+            0,
+            0,
+            0,
+            0.5,
+            0,
+            0.5,
+            0
+          ],
+          [
+            1,
+            1,
+            0.14,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0.14,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            0.19,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "audioFiles": [
+          {
+            "fileName": "Bloco 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 1.wav"
+          },
+          {
+            "fileName": "Bloco 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 2.wav"
+          },
+          {
+            "fileName": "Zabumba 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 3.wav"
+          },
+          {
+            "fileName": "Triangulo 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 1.wav"
+          },
+          {
+            "fileName": "Triangulo 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 2.wav"
+          },
+          {
+            "fileName": "Triangulo 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 3.wav"
+          },
+          {
+            "fileName": "Zabumba 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 2.wav"
+          },
+          {
+            "fileName": "bumbo.wav",
+            "audioData": "",
+            "midiPath": "/midi/bumbo.wav"
+          },
+          {
+            "fileName": "Zabumba 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 3.wav"
+          },
+          {
+            "fileName": "caixa.wav",
+            "audioData": "",
+            "midiPath": "/midi/caixa.wav"
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          }
+        ],
+        "steps": 16,
+        "speed": 2
+      },
+      {
+        "pattern": [
+          [
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false
+          ]
+        ],
+        "volumes": [
+          [
+            0.8,
+            0.8,
+            0.8,
+            0.48,
+            0.35,
+            0.8,
+            0.8,
+            0.5,
+            0.9,
+            0.8,
+            0.8,
+            0.5,
+            0.34,
+            0.8,
+            0.8,
+            0.5
+          ],
+          [
+            0.35,
+            0.8,
+            0.8,
+            0.42,
+            0.8,
+            0.8,
+            0.8,
+            0,
+            0.35,
+            0.8,
+            0.8,
+            0.5,
+            0.8,
+            0.42,
+            0.8,
+            0.8
+          ],
+          [
+            0,
+            0,
+            0.71,
+            0.8,
+            0.8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0.71,
+            0,
+            0.8,
+            0,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0,
+            0,
+            0,
+            0.5,
+            0.8,
+            0,
+            0,
+            0.5,
+            0.8,
+            0.8,
+            0,
+            0.5,
+            0,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0.5,
+            0.45,
+            0.2,
+            0.5,
+            0.5,
+            0.48,
+            0.2,
+            0.5,
+            0.5,
+            0.49,
+            0.2,
+            0.5,
+            0.5,
+            0.35,
+            0.2
+          ],
+          [
+            0.8,
+            0,
+            0.2,
+            0.5,
+            0,
+            0,
+            0.2,
+            0.5,
+            0,
+            0,
+            0.2,
+            0.5,
+            0.8,
+            0,
+            0.2,
+            0.5
+          ],
+          [
+            0.2,
+            0,
+            0,
+            0.8,
+            0.2,
+            0.8,
+            0.16,
+            0.8,
+            0.2,
+            0,
+            0,
+            0,
+            0.2,
+            0.8,
+            0.15,
+            0
+          ],
+          [
+            0.8,
+            0,
+            0,
+            0,
+            0.8,
+            0,
+            0.5,
+            0,
+            0.8,
+            0,
+            0,
+            0,
+            0.8,
+            0,
+            0.5,
+            0
+          ],
+          [
+            1,
+            1,
+            0.14,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0.14,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            0.29,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0.8,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            0.5,
+            1,
+            1,
+            1,
+            0.5,
+            1,
+            1,
+            1,
+            0.5,
+            1,
+            1,
+            1,
+            0.5,
+            1
+          ]
+        ],
+        "audioFiles": [
+          {
+            "fileName": "Bloco 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 1.wav"
+          },
+          {
+            "fileName": "Bloco 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 2.wav"
+          },
+          {
+            "fileName": "Zabumba 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 3.wav"
+          },
+          {
+            "fileName": "Triangulo 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 1.wav"
+          },
+          {
+            "fileName": "Triangulo 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 2.wav"
+          },
+          {
+            "fileName": "Triangulo 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 3.wav"
+          },
+          {
+            "fileName": "Zabumba 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 2.wav"
+          },
+          {
+            "fileName": "bumbo.wav",
+            "audioData": "",
+            "midiPath": "/midi/bumbo.wav"
+          },
+          {
+            "fileName": "Zabumba 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 3.wav"
+          },
+          {
+            "fileName": "caixa.wav",
+            "audioData": "",
+            "midiPath": "/midi/caixa.wav"
+          },
+          {
+            "fileName": "caixa.wav",
+            "audioData": "",
+            "midiPath": "/midi/caixa.wav"
+          },
+          {
+            "fileName": "chimbal_aberto.wav",
+            "audioData": "",
+            "midiPath": "/midi/chimbal_aberto.wav"
+          }
+        ],
+        "steps": 16,
+        "speed": 2
+      }
+    ],
+    "fill": [
+      {
+        "pattern": [
+          [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        ],
+        "volumes": [
+          [
+            0.8,
+            0.8,
+            0.8,
+            0,
+            1,
+            1,
+            0.18,
+            1
+          ],
+          [
+            0.5,
+            0.8,
+            0.8,
+            0.8,
+            1,
+            0.4,
+            0.61,
+            0.8
+          ],
+          [
+            0.8,
+            0.47,
+            0.55,
+            0.8,
+            0.8,
+            1,
+            1,
+            1
+          ],
+          [
+            0.5,
+            0,
+            0.8,
+            0.8,
+            0.5,
+            0.5,
+            1,
+            1
+          ],
+          [
+            0.9,
+            0.5,
+            0.6,
+            0.5,
+            1,
+            0.5,
+            1,
+            0.5
+          ],
+          [
+            0,
+            0,
+            0.2,
+            0,
+            1,
+            1,
+            0.2,
+            1
+          ],
+          [
+            0.8,
+            0.8,
+            0,
+            0.8,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0.9,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "audioFiles": [
+          {
+            "fileName": "Zabumba 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 1.wav"
+          },
+          {
+            "fileName": "Zabumba 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 2.wav"
+          },
+          {
+            "fileName": "Zabumba 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 3.wav"
+          },
+          {
+            "fileName": "Triangulo 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 1.wav"
+          },
+          {
+            "fileName": "Triangulo 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 2.wav"
+          },
+          {
+            "fileName": "Triangulo 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 3.wav"
+          },
+          {
+            "fileName": "Bloco 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 1.wav"
+          },
+          {
+            "fileName": "Bloco 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 2.wav"
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          }
+        ],
+        "steps": 8,
+        "speed": 2
+      },
+      {
+        "pattern": [
+          [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        ],
+        "volumes": [
+          [
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0.5,
+            0.8,
+            0.8,
+            0.8,
+            0.5,
+            0.4,
+            0.61,
+            0.8
+          ],
+          [
+            0.8,
+            0.47,
+            0.7,
+            0.72,
+            0.8,
+            1,
+            1,
+            1
+          ],
+          [
+            0.5,
+            0,
+            0.8,
+            0.8,
+            0.5,
+            0.5,
+            1,
+            1
+          ],
+          [
+            0.9,
+            0.5,
+            0.6,
+            0.5,
+            1,
+            0.5,
+            1,
+            0.5
+          ],
+          [
+            0,
+            0,
+            0.2,
+            0,
+            1,
+            1,
+            0.2,
+            1
+          ],
+          [
+            0.8,
+            0.8,
+            0,
+            0.8,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0.9,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "audioFiles": [
+          {
+            "fileName": "Zabumba 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 1.wav"
+          },
+          {
+            "fileName": "Zabumba 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 2.wav"
+          },
+          {
+            "fileName": "Zabumba 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 3.wav"
+          },
+          {
+            "fileName": "Triangulo 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 1.wav"
+          },
+          {
+            "fileName": "Triangulo 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 2.wav"
+          },
+          {
+            "fileName": "Triangulo 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 3.wav"
+          },
+          {
+            "fileName": "Bloco 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 1.wav"
+          },
+          {
+            "fileName": "Bloco 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 2.wav"
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          }
+        ],
+        "steps": 8,
+        "speed": 2
+      },
+      {
+        "pattern": [
+          [
+            true,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        ],
+        "volumes": [
+          [
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            1,
+            0.8,
+            0.8,
+            0.8
+          ],
+          [
+            0.5,
+            0.8,
+            0.8,
+            0.8,
+            0.5,
+            0.4,
+            0.61,
+            0.8
+          ],
+          [
+            0.8,
+            0.47,
+            0.5,
+            0.8,
+            0.8,
+            0.5,
+            0.7,
+            1
+          ],
+          [
+            0.5,
+            0,
+            0.8,
+            0.8,
+            0.5,
+            0.5,
+            1,
+            1
+          ],
+          [
+            0.9,
+            0.5,
+            0.6,
+            0.5,
+            1,
+            0.5,
+            1,
+            0.5
+          ],
+          [
+            0,
+            0.8,
+            0.2,
+            0.8,
+            1,
+            1,
+            0.2,
+            1
+          ],
+          [
+            0.2,
+            0.2,
+            0,
+            0.8,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0.9,
+            0,
+            0,
+            0.14,
+            0.14,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "audioFiles": [
+          {
+            "fileName": "Zabumba 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 1.wav"
+          },
+          {
+            "fileName": "Zabumba 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 2.wav"
+          },
+          {
+            "fileName": "Zabumba 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 3.wav"
+          },
+          {
+            "fileName": "Triangulo 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 1.wav"
+          },
+          {
+            "fileName": "Triangulo 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 2.wav"
+          },
+          {
+            "fileName": "Triangulo 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 3.wav"
+          },
+          {
+            "fileName": "Bloco 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 1.wav"
+          },
+          {
+            "fileName": "Bloco 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 2.wav"
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          }
+        ],
+        "steps": 8,
+        "speed": 2
+      }
+    ],
+    "end": [
+      {
+        "pattern": [
+          [
+            true,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            true,
+            false,
+            true,
+            true,
+            false,
+            true,
+            true,
+            false,
+            true,
+            true,
+            false,
+            true,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        ],
+        "volumes": [
+          [
+            0.8,
+            0,
+            0.8,
+            0.8,
+            0,
+            0,
+            0.9,
+            1,
+            0.5,
+            1,
+            1,
+            1,
+            0.5,
+            1,
+            1,
+            1
+          ],
+          [
+            0.8,
+            0,
+            0.9,
+            0,
+            0.8,
+            0,
+            0.8,
+            1,
+            1,
+            1,
+            0.5,
+            1,
+            1,
+            1,
+            0.5,
+            1
+          ],
+          [
+            0.8,
+            0.8,
+            0.5,
+            0.74,
+            0.8,
+            0.5,
+            0.71,
+            0,
+            0.5,
+            0.8,
+            1,
+            0.5,
+            0.72,
+            1,
+            1,
+            1
+          ],
+          [
+            0.5,
+            0,
+            0,
+            0.8,
+            0.5,
+            0.8,
+            0.8,
+            0,
+            0.5,
+            1,
+            1,
+            1,
+            0.5,
+            1,
+            1,
+            1
+          ],
+          [
+            0,
+            0.5,
+            0,
+            0.5,
+            0,
+            0.5,
+            0,
+            0.5,
+            1,
+            0.5,
+            1,
+            0.5,
+            1,
+            0.5,
+            1,
+            0.5
+          ],
+          [
+            0,
+            0,
+            0.2,
+            0,
+            0,
+            0,
+            0.21,
+            0,
+            1,
+            1,
+            0.2,
+            1,
+            1,
+            1,
+            0.2,
+            1
+          ],
+          [
+            0.2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0.2,
+            0.2,
+            1,
+            1,
+            1,
+            1,
+            0.2,
+            1,
+            0.2
+          ],
+          [
+            1,
+            0,
+            0,
+            0.8,
+            0.2,
+            0,
+            0.9,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0.2,
+            1,
+            0.2,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "audioFiles": [
+          {
+            "fileName": "Zabumba 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 1.wav"
+          },
+          {
+            "fileName": "Zabumba 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 2.wav"
+          },
+          {
+            "fileName": "Zabumba 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 3.wav"
+          },
+          {
+            "fileName": "Triangulo 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 1.wav"
+          },
+          {
+            "fileName": "Triangulo 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 2.wav"
+          },
+          {
+            "fileName": "Triangulo 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 3.wav"
+          },
+          {
+            "fileName": "Bloco 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 1.wav"
+          },
+          {
+            "fileName": "Bloco 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Bloco 2.wav"
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          }
+        ],
+        "steps": 16,
+        "speed": 1
+      }
+    ],
+    "intro": [
+      {
+        "pattern": [
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true
+          ],
+          [
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        ],
+        "volumes": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0.8,
+            0,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8
+          ],
+          [
+            0.8,
+            0,
+            0.75,
+            0.8,
+            0.8,
+            0.8,
+            0.9,
+            0.8
+          ],
+          [
+            0,
+            0.8,
+            0,
+            0,
+            0.8,
+            0.8,
+            0.8,
+            0.8
+          ],
+          [
+            0.5,
+            0,
+            0.8,
+            0,
+            0.5,
+            0,
+            0.64,
+            0.8
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "audioFiles": [
+          {
+            "fileName": "bumbo.wav",
+            "audioData": "",
+            "midiPath": "/midi/bumbo.wav"
+          },
+          {
+            "fileName": "caixa.wav",
+            "audioData": "",
+            "midiPath": "/midi/caixa.wav"
+          },
+          {
+            "fileName": "tom_1.wav",
+            "audioData": "",
+            "midiPath": "/midi/tom_1.wav"
+          },
+          {
+            "fileName": "Triangulo 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 2.wav"
+          },
+          {
+            "fileName": "Triangulo 1.wav",
+            "audioData": "",
+            "midiPath": "/midi/Triangulo 1.wav"
+          },
+          {
+            "fileName": "Zabumba 3.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 3.wav"
+          },
+          {
+            "fileName": "Zabumba 2.wav",
+            "audioData": "",
+            "midiPath": "/midi/Zabumba 2.wav"
+          },
+          {
+            "fileName": "surdo.wav",
+            "audioData": "",
+            "midiPath": "/midi/surdo.wav"
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          },
+          {
+            "fileName": "",
+            "audioData": "",
+            "midiPath": ""
+          }
+        ],
+        "steps": 8,
+        "speed": 1
+      }
+    ]
+  },
+  "fillStartSound": {
+    "fileName": "prato.mp3",
+    "midiPath": "/midi/prato.mp3"
+  },
+  "fillReturnSound": {
+    "fileName": "prato.mp3",
+    "midiPath": "/midi/prato.mp3"
+  },
+  "timestamp": "2026-04-04T14:34:08.102Z"
+}
