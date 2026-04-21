@@ -9,119 +9,223 @@
   <meta name="theme-color" content="#030014">
   <link rel="canonical" href="https://gdrums.com.br/login">
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif; background:#030014; color:#fff; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: #030014;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
 
     .login-card {
-      width:100%; max-width:400px;
-      background:rgba(10,10,30,0.7); backdrop-filter:blur(20px);
-      border:1px solid rgba(255,255,255,0.06); border-radius:24px;
-      padding:2.5rem 2rem;
+      width: 100%;
+      max-width: 420px;
+      background: #0a0a0f;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 2.5rem 2rem 1.75rem;
     }
 
-    .login-logo { display:block; height:36px; margin:0 auto 1.5rem; opacity:0.8; }
+    .login-logo {
+      display: block;
+      height: 28px;
+      margin: 0 auto 1.75rem;
+      opacity: 0.85;
+    }
 
     .login-title {
-      font-size:1.2rem; font-weight:700; text-align:center; margin-bottom:0.3rem;
-    }
-    .login-sub {
-      font-size:0.82rem; color:rgba(255,255,255,0.4); text-align:center;
-      margin-bottom:1.75rem;
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      line-height: 1.2;
+      text-align: center;
+      margin-bottom: 0.4rem;
     }
 
-    .login-field { margin-bottom:1rem; }
+    .login-sub {
+      font-size: 0.88rem;
+      line-height: 1.45;
+      color: rgba(255, 255, 255, 0.5);
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+
+    .login-field { margin-bottom: 0.9rem; }
     .login-field label {
-      display:block; font-size:0.68rem; font-weight:600;
-      color:rgba(255,255,255,0.4); text-transform:uppercase;
-      letter-spacing:0.5px; margin-bottom:0.3rem;
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.35rem;
     }
     .login-field input {
-      width:100%; padding:0.7rem 0.9rem;
-      background:rgba(255,255,255,0.04); border:1.5px solid rgba(255,255,255,0.08);
-      border-radius:10px; color:#fff; font-size:0.9rem; font-family:inherit;
-      outline:none; transition:border-color 0.15s;
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.92rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s, background 0.15s;
     }
-    .login-field input:focus { border-color:rgba(0,212,255,0.4); }
-    .login-field input::placeholder { color:rgba(255,255,255,0.2); }
+    .login-field input:focus {
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .login-field input::placeholder { color: rgba(255, 255, 255, 0.22); }
 
     .login-options {
-      display:flex; justify-content:space-between; align-items:center;
-      margin-bottom:1.25rem; font-size:0.78rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      font-size: 0.78rem;
     }
     .login-options label {
-      display:flex; align-items:center; gap:0.4rem;
-      color:rgba(255,255,255,0.4); cursor:pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
     }
     .login-options input[type="checkbox"] {
-      width:14px; height:14px; accent-color:#00D4FF;
+      width: 14px;
+      height: 14px;
+      accent-color: #fff;
     }
     .login-options a {
-      color:rgba(0,212,255,0.7); text-decoration:none; font-weight:500;
+      color: rgba(255, 255, 255, 0.72);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.15s;
     }
-    .login-options a:hover { color:#00D4FF; }
+    .login-options a:hover { color: #fff; }
 
     .login-btn {
-      width:100%; padding:0.8rem; border:none; border-radius:12px;
-      background:linear-gradient(135deg,#00D4FF,#8B5CF6);
-      color:#fff; font-size:0.95rem; font-weight:700; font-family:inherit;
-      cursor:pointer; transition:all 0.15s;
-      box-shadow:0 4px 20px rgba(0,212,255,0.25);
-      position:relative;
+      width: 100%;
+      padding: 0.9rem;
+      border: none;
+      border-radius: 10px;
+      background: #fff;
+      color: #0a0a0f;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      position: relative;
     }
-    .login-btn:hover { box-shadow:0 6px 28px rgba(0,212,255,0.4); transform:translateY(-1px); }
-    .login-btn:disabled { opacity:0.5; cursor:default; transform:none; }
-    .login-btn .btn-loader { display:none; }
-    .login-btn .btn-loader.active { display:block; }
-    .login-btn .btn-text.hidden { display:none; }
+    .login-btn:hover { opacity: 0.9; }
+    .login-btn:active { transform: scale(0.99); }
+    .login-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+    .login-btn .btn-loader { display: none; }
+    .login-btn .btn-loader.active { display: block; }
+    .login-btn .btn-text.hidden { display: none; }
 
     .login-divider {
-      display:flex; align-items:center; gap:0.75rem;
-      margin:1.25rem 0; color:rgba(255,255,255,0.15); font-size:0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1.5rem 0;
+      color: rgba(255, 255, 255, 0.25);
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
     }
-    .login-divider::before, .login-divider::after {
-      content:''; flex:1; height:1px; background:rgba(255,255,255,0.06);
+    .login-divider::before,
+    .login-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.06);
     }
 
     .login-footer {
-      text-align:center; font-size:0.82rem; color:rgba(255,255,255,0.4);
+      text-align: center;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.5);
     }
-    .login-footer a { color:#00D4FF; text-decoration:none; font-weight:600; }
+    .login-footer a {
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 1px;
+    }
+    .login-footer a:hover { color: #fff; }
 
     .login-alert {
-      margin-top:0.75rem; padding:0.6rem 0.8rem; border-radius:8px;
-      font-size:0.8rem; display:none; text-align:center;
+      margin-top: 0.85rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      display: none;
+      text-align: center;
     }
-    .login-alert.error { background:rgba(255,68,102,0.1); color:#FF4466; border:1px solid rgba(255,68,102,0.2); }
-    .login-alert.success { background:rgba(0,230,140,0.1); color:#00E68C; border:1px solid rgba(0,230,140,0.2); }
+    .login-alert.error {
+      background: rgba(255, 68, 102, 0.08);
+      color: #ff6b83;
+      border: 1px solid rgba(255, 68, 102, 0.2);
+    }
+    .login-alert.success {
+      background: rgba(0, 230, 140, 0.08);
+      color: #3ee8a7;
+      border: 1px solid rgba(0, 230, 140, 0.2);
+    }
 
     .login-support {
-      text-align:center; margin-top:1.25rem; padding-top:1rem;
-      border-top:1px solid rgba(255,255,255,0.06);
+      text-align: center;
+      margin-top: 1.25rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
     .login-support a {
-      display:inline-flex; align-items:center; gap:0.35rem;
-      color:rgba(0,230,140,0.6); font-size:0.72rem; text-decoration:none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.76rem;
+      text-decoration: none;
+      transition: color 0.15s;
     }
-    .login-support a:hover { color:rgba(0,230,140,0.9); }
+    .login-support a:hover { color: rgba(255, 255, 255, 0.75); }
 
     .login-glory {
-      text-align:center; margin-top:1rem; font-size:0.7rem;
-      color:rgba(255,255,255,0.4); font-style:italic;
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.3);
+      font-style: italic;
     }
 
     .spinner-sm {
-      width:20px; height:20px; border:2.5px solid rgba(255,255,255,0.2);
-      border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite;
-      margin:0 auto;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(10, 10, 15, 0.3);
+      border-top-color: #0a0a0f;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
     }
-    @keyframes spin { to { transform:rotate(360deg); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
   <div class="login-card">
     <img src="/img/logo.png" alt="GDrums" class="login-logo" />
-    <h1 class="login-title">Bem-vindo de volta</h1>
-    <p class="login-sub">Sua banda está esperando</p>
+    <h1 class="login-title">Entrar na sua conta.</h1>
+    <p class="login-sub">Continue de onde parou.</p>
 
     <form id="loginForm">
       <div class="login-field">
@@ -139,7 +243,7 @@
           <input type="checkbox" id="rememberMe" />
           <span>Lembrar de mim</span>
         </label>
-        <a href="#" id="forgotPasswordBtn" style="color:rgba(0,212,255,0.7);text-decoration:none;font-size:0.78rem;font-weight:500;">Esqueci a senha</a>
+        <a href="#" id="forgotPasswordBtn">Esqueci a senha</a>
       </div>
 
       <button type="submit" class="login-btn" id="loginBtn">
@@ -148,18 +252,17 @@
       </button>
     </form>
 
+    <div class="login-alert" id="alertMessage"></div>
+
     <div class="login-divider"><span>ou</span></div>
 
     <p class="login-footer">
-      Não tem conta? <a href="/register.html">Cadastrar grátis</a>
+      Não tem conta? <a href="/register.html">Criar conta</a>
     </p>
-
-    <div class="login-alert" id="alertMessage"></div>
 
     <div class="login-support">
       <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.25 0-4.322-.744-5.998-2l-.424-.314-3.282 1.1 1.1-3.282-.314-.424A9.935 9.935 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-        Precisa de ajuda? Fale conosco
+        Precisa de ajuda? Falar com o suporte
       </a>
     </div>
 
