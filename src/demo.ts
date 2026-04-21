@@ -10,15 +10,13 @@ import { UIManager } from './ui/UIManager';
 import { MAX_CHANNELS, type PatternType } from './types';
 import { HapticsService } from './native/HapticsService';
 
-// Variedade de estilos pra cada público sentir algo familiar
+// Só 3 ritmos ficam liberados. O resto (69) aparece bloqueado na tira
+// pra mostrar ao user o tamanho REAL da biblioteca — peça central pra
+// evitar o engano de "só tem 3 ritmos, o app é fraco".
 const DEMO_RHYTHMS = [
   { name: 'Vaneira', path: '/rhythm/Vaneira.json' },
   { name: 'Samba', path: '/rhythm/Samba.json' },
-  { name: 'Seresta', path: '/rhythm/Seresta.json' },
-  { name: 'Pop Rock', path: '/rhythm/Pop Rock.json' },
-  { name: 'Gospel', path: '/rhythm/Gospel.json' },
   { name: 'Sertanejo Universitário', path: '/rhythm/Sertanejo Universitário.json' },
-  { name: 'Forró', path: '/rhythm/Forro.json' },
 ];
 
 // Demo curta de propósito: 3 ritmos + 8min forçam o user a se
@@ -185,17 +183,8 @@ class DemoPlayer {
   // ─── UI ───────────────────────────────────────────────────────────
 
   private setupUI(): void {
-    // Ritmos strip
-    const strip = document.getElementById('demoRhythmStrip');
-    if (strip) {
-      DEMO_RHYTHMS.forEach(r => {
-        const btn = document.createElement('button');
-        btn.className = 'rhythm-card-btn';
-        btn.textContent = r.name;
-        btn.addEventListener('click', () => this.loadRhythm(r));
-        strip.appendChild(btn);
-      });
-    }
+    // Ritmos strip — 3 liberados + 69 bloqueados (biblioteca completa)
+    this.renderRhythmStrip();
 
     // Performance grid cells
     document.querySelectorAll('.grid-cell').forEach(cell => {
@@ -261,6 +250,110 @@ class DemoPlayer {
   }
 
   // ─── Ritmo ────────────────────────────────────────────────────────
+
+  /**
+   * Renderiza tira de ritmos com os 3 liberados + o resto bloqueado.
+   * Mostra ao visitante o tamanho REAL da biblioteca (72 ritmos) pra ele
+   * não sair achando que 3 é tudo que existe. Cards bloqueados têm ícone
+   * de cadeado e clicar neles mostra a tela de fim antecipadamente.
+   */
+  private async renderRhythmStrip(): Promise<void> {
+    const strip = document.getElementById('demoRhythmStrip');
+    if (!strip) return;
+
+    // Monta os 3 liberados primeiro, na ordem
+    DEMO_RHYTHMS.forEach(r => {
+      const btn = document.createElement('button');
+      btn.className = 'rhythm-card-btn';
+      btn.textContent = r.name;
+      btn.addEventListener('click', () => this.loadRhythm(r));
+      strip.appendChild(btn);
+    });
+
+    // Depois busca o manifest real e adiciona o resto como locked
+    try {
+      const res = await fetch('/rhythm/manifest.json');
+      const manifest = await res.json();
+      const allNames: string[] = (manifest.rhythms || [])
+        .map((f: string) => f.replace(/\.json$/, ''));
+      const freeNames = new Set(DEMO_RHYTHMS.map(r => r.name));
+
+      // Ordena alfabético pra dar sensação de biblioteca completa
+      const lockedNames = allNames
+        .filter(n => !freeNames.has(n))
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+      lockedNames.forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = 'rhythm-card-btn rhythm-card-locked';
+        btn.innerHTML = `
+          <svg class="rhythm-lock-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="4" y="11" width="16" height="10" rx="2"></rect>
+            <path d="M8 11V8a4 4 0 018 0v3"></path>
+          </svg>
+          <span>${name}</span>
+        `;
+        btn.title = 'Disponível após cadastro';
+        btn.addEventListener('click', () => this.handleLockedClick());
+        strip.appendChild(btn);
+      });
+
+      // Marcador no final da tira: total da biblioteca
+      const total = document.createElement('div');
+      total.className = 'rhythm-strip-total';
+      total.textContent = `+${lockedNames.length} ritmos com cadastro`;
+      strip.appendChild(total);
+
+      // CSS dos locked + marcador (injetado uma vez)
+      this.injectLockedStyles();
+    } catch {
+      // Manifest falhou: segue sem os locked (pior cenário = igual antes)
+    }
+  }
+
+  private injectLockedStyles(): void {
+    if (document.getElementById('demo-locked-css')) return;
+    const style = document.createElement('style');
+    style.id = 'demo-locked-css';
+    style.textContent = `
+      .rhythm-card-btn.rhythm-card-locked {
+        opacity: 0.55;
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        cursor: pointer;
+      }
+      .rhythm-card-btn.rhythm-card-locked:hover {
+        opacity: 0.85;
+      }
+      .rhythm-card-locked .rhythm-lock-icon {
+        color: rgba(255, 255, 255, 0.5);
+        flex-shrink: 0;
+      }
+      .rhythm-strip-total {
+        display: inline-flex;
+        align-items: center;
+        padding: 0 0.9rem;
+        margin-left: 0.3rem;
+        font-size: 0.72rem;
+        letter-spacing: 0.02em;
+        color: rgba(255, 255, 255, 0.4);
+        white-space: nowrap;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  private handleLockedClick(): void {
+    if (this.expired) { this.showExpired(); return; }
+    HapticsService.light();
+    // Se ainda tem cota, mostra a tela de fim antecipadamente
+    // com tom de "isso é só uma prévia"
+    this.markExpired();
+    this.showExpired();
+  }
 
   private async loadRhythm(rhythm: { name: string; path: string }): Promise<void> {
     if (this.expired) { this.showExpired(); return; }
@@ -344,14 +437,16 @@ class DemoPlayer {
     overlay.innerHTML = `
       <div class="demo-expired-card">
         <div class="demo-expired-overline">Fim da demonstração</div>
-        <h2>A demonstração acabou aqui.</h2>
+        <h2>Os outros 69 ritmos estão aqui.</h2>
         <p>
-          A versão completa tem 72 ritmos, viradas, intros e finais —
-          o material que segura uma música do começo ao fim.
+          A demonstração é uma prévia curta. A biblioteca completa tem
+          72 ritmos com viradas, intros e finais — o material que segura
+          uma música do começo ao fim.
         </p>
         <p>
           Pedal Bluetooth, setlist de palco e modo offline também
-          fazem parte. O teste de 48 horas é gratuito e não pede cartão.
+          fazem parte do plano. O teste de 48 horas é gratuito e não
+          pede cartão.
         </p>
         <div class="demo-expired-price">
           <span class="demo-expired-price-amount">R$ 29</span>
