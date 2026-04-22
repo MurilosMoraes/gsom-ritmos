@@ -89,6 +89,8 @@ class DemoPlayer {
   private tourTooltip: HTMLElement | null = null;
   private rhythmsTrocados = 0;
   private conversionShown = false;
+  // Lido do manifest real — evita hardcode de 86 que fica desatualizado
+  private totalRhythms = 86;
 
   constructor() {
     if (this.isDemoExpired()) {
@@ -106,6 +108,7 @@ class DemoPlayer {
 
     this.setupCallbacks();
     this.setupUI();
+    this.loadManifestCount(); // Atualiza totalRhythms e re-renderiza counter
     this.updateCounter();
     this.resetIdleTimer();
     this.saveFingerprint();
@@ -168,15 +171,38 @@ class DemoPlayer {
     }, IDLE_TIMEOUT);
   }
 
+  /**
+   * Busca o manifest real pra pegar o número de ritmos do catálogo.
+   * Em caso de falha (offline, manifest quebrado), mantém fallback 86.
+   */
+  private async loadManifestCount(): Promise<void> {
+    try {
+      const res = await fetch('/rhythm/manifest.json');
+      const m = await res.json();
+      if (m && Array.isArray(m.rhythms) && m.rhythms.length > 0) {
+        this.totalRhythms = m.rhythms.length;
+        this.updateCounter();
+      }
+    } catch {
+      // mantém fallback
+    }
+  }
+
   private updateCounter(): void {
     const remaining = MAX_RHYTHMS - this.rhythmsUsed.size;
+    const total = this.totalRhythms;
     const el = document.getElementById('demoCounter');
     const bar = document.getElementById('demoBar');
     if (el) {
-      if (remaining > 0) {
-        el.textContent = `${remaining} de ${MAX_RHYTHMS} ritmos disponíveis`;
+      // Mensagem foca no tamanho do CATÁLOGO (lido do manifest), não na
+      // cota da demo. Usuário precisa saber que tem muito mais esperando.
+      // Quando resta 1 ou acabou, muda pra tom de pressão.
+      if (remaining <= 0) {
+        el.innerHTML = `Prévia encerrada · <strong>${total} ritmos no plano</strong>`;
+      } else if (remaining === 1) {
+        el.innerHTML = `Último ritmo da prévia · <strong>${total} no catálogo</strong>`;
       } else {
-        el.textContent = 'Teste concluído';
+        el.innerHTML = `Prévia com ${MAX_RHYTHMS} ritmos · <strong>${total} no catálogo</strong>`;
       }
       el.classList.toggle('low', remaining <= 1);
     }
