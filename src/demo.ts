@@ -63,9 +63,9 @@ const TOUR_STEPS: TourStep[] = [
     position: 'top',
   },
   {
-    target: '#cymbalBtn',
-    title: 'Feche com o prato',
-    body: 'O prato termina a frase musical. É o sinal de "acabou".',
+    target: '.grid-cell[data-type="end"][data-variation="0"]',
+    title: 'Finalize a música',
+    body: 'O Final encerra a música no tempo certo — com direito a prato de saída. Aperte pra ver.',
     advanceOn: 'click',
     position: 'top',
   },
