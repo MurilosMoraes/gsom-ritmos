@@ -72,6 +72,35 @@
       margin: 0;
     }
 
+    /* Social proof — números reais vindos do banco, apareceu depois do carregamento */
+    .social-proof {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+      padding: 0.75rem 0.9rem;
+      margin: 0 0 1.5rem;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: -0.003em;
+      animation: spFadeIn 0.4s ease;
+    }
+    .social-proof.sp-ready { display: flex; }
+    .social-proof strong { color: #fff; font-weight: 600; }
+    .social-proof .sp-sep {
+      display: inline-block; width: 3px; height: 3px;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 50%;
+    }
+    @keyframes spFadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     /* Benefícios — lista sóbria, tipo jornal */
     .register-benefits {
       list-style: none;
@@ -277,6 +306,9 @@
           Cancelar depois é um clique.
         </p>
       </div>
+
+      <!-- Social proof dinâmico (preenchido via RPC social_proof_stats) -->
+      <div id="socialProof" class="social-proof" aria-live="polite"></div>
 
       <ul class="register-benefits">
         <li>

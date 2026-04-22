@@ -41,6 +41,9 @@ class RegisterPage {
       return;
     }
 
+    // Social proof dinâmico — fire-and-forget, não bloqueia o formulário
+    this.loadSocialProof();
+
     // Máscara do CPF
     this.cpfInput.addEventListener('input', () => {
       const pos = this.cpfInput.selectionStart || 0;
@@ -292,6 +295,32 @@ class RegisterPage {
     const cfg = s <= 2 ? { c: '#ff3366', w: '25%' } : s <= 4 ? { c: '#ffaa00', w: '50%' } : s <= 5 ? { c: '#00d4ff', w: '75%' } : { c: '#00ff88', w: '100%' };
     strengthBar.style.width = cfg.w;
     strengthBar.style.background = cfg.c;
+  }
+
+  /**
+   * Busca números reais (RPC pública) e injeta no elemento #socialProof
+   * como texto discreto. Se falhar, não mostra nada — progressive enhancement.
+   */
+  private async loadSocialProof(): Promise<void> {
+    try {
+      const { data, error } = await supabase.rpc('social_proof_stats');
+      if (error || !data) return;
+      const row = Array.isArray(data) ? data[0] : data;
+      const el = document.getElementById('socialProof');
+      if (!el || !row) return;
+      const ativos = Number(row.musicos_ativos || 0);
+      const cad30 = Number(row.cadastros_ultimo_mes || 0);
+      // Só mostra se tem números significativos (>100) pra não parecer vazio
+      if (ativos < 100) return;
+      el.innerHTML = `
+        <span><strong>${ativos.toLocaleString('pt-BR')}</strong> músicos usando agora</span>
+        <span class="sp-sep"></span>
+        <span><strong>${cad30.toLocaleString('pt-BR')}</strong> cadastros este mês</span>
+      `;
+      el.classList.add('sp-ready');
+    } catch {
+      // Silencioso — se RPC falhar, a página continua sem social proof
+    }
   }
 
   private setLoading(loading: boolean): void {

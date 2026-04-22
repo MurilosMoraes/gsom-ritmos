@@ -139,6 +139,16 @@ class PlansPage {
     });
 
     btn.addEventListener('click', () => this.applyCoupon());
+
+    // Pré-aplicar cupom vindo da URL (?coupon=TRIAL30)
+    // Usado pelo ConversionManager quando manda o user do modal de
+    // 'últimas horas do trial' direto pra cá com o cupom já embutido.
+    const qs = new URLSearchParams(window.location.search);
+    const fromUrl = qs.get('coupon');
+    if (fromUrl) {
+      input.value = fromUrl.toUpperCase();
+      setTimeout(() => this.applyCoupon(), 200);
+    }
   }
 
   private async applyCoupon(): Promise<void> {

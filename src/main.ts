@@ -939,6 +939,9 @@ class RhythmSequencer {
     const hoursLeft = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60 * 60)));
     const minutesLeft = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60)) % 60);
 
+    // Se faltam <=12h de trial, dispara modal de urgência (cooldown 24h)
+    this.conversionManager.tryFireTrialEndingSoon(hoursLeft);
+
     const banner = document.createElement('div');
     banner.className = 'trial-banner';
 
