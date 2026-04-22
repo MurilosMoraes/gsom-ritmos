@@ -173,9 +173,11 @@ class DemoPlayer {
     const el = document.getElementById('demoCounter');
     const bar = document.getElementById('demoBar');
     if (el) {
-      el.textContent = remaining > 0
-        ? `${remaining} ritmo${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`
-        : 'Limite atingido';
+      if (remaining > 0) {
+        el.textContent = `${remaining} de ${MAX_RHYTHMS} ritmos disponíveis`;
+      } else {
+        el.textContent = 'Teste concluído';
+      }
       el.classList.toggle('low', remaining <= 1);
     }
     if (bar) bar.style.width = `${(remaining / MAX_RHYTHMS) * 100}%`;
@@ -425,12 +427,16 @@ class DemoPlayer {
         <h3 class="demo-convert-title">Isso é só uma prévia.</h3>
         <p class="demo-convert-body">
           Você acabou de tocar com acompanhamento profissional.
-          Cria conta grátis pra liberar os outros 83 ritmos,
-          conectar pedal Bluetooth e montar sua setlist.
+          Cria conta pra liberar os outros 83 ritmos, conectar pedal
+          Bluetooth e montar sua setlist.
         </p>
-        <p class="demo-convert-pricing">48 horas grátis. Sem cartão.</p>
+        <div class="demo-convert-offer">
+          <span class="demo-convert-offer-badge">Grátis</span>
+          <span class="demo-convert-offer-head">48 horas de acesso total</span>
+          <span class="demo-convert-offer-sub">Sem cartão. Cancele quando quiser.</span>
+        </div>
         <div class="demo-convert-actions">
-          <a href="/register.html" class="demo-convert-primary">Criar conta</a>
+          <a href="/register.html" class="demo-convert-primary">Começar grátis</a>
           <button class="demo-convert-secondary">Continuar testando</button>
         </div>
       </div>
@@ -609,6 +615,16 @@ class DemoPlayer {
     this.uiManager.updateStatusUI(this.stateManager.getActivePattern());
     this.uiManager.updatePerformanceGrid();
     this.scheduler.start();
+
+    // Mostra banner de reforço assim que o user começa a tocar
+    // (primeiro play = ele sentiu o valor, aí reforça o cadastro).
+    const banner = document.getElementById('demoValueBanner');
+    if (banner && banner.style.display === 'none') {
+      setTimeout(() => {
+        banner.style.display = 'flex';
+        document.body.classList.add('with-banner');
+      }, 3000);
+    }
   }
 
   private stop(): void {
@@ -656,10 +672,16 @@ class DemoPlayer {
           <div class="demo-expired-feature"><span>∞</span>offline no palco</div>
         </div>
 
-        <div class="demo-expired-price">
-          <span class="demo-expired-price-amount">R$ 29</span>
-          <span class="demo-expired-price-unit">por mês</span>
-          <span class="demo-expired-price-note">48h grátis sem cartão</span>
+        <!-- Oferta do trial em destaque: 48h grátis ANTES do preço.
+             Remove a objeção 'quanto custa' na hora do click. O preço
+             aparece abaixo, como referência secundária. -->
+        <div class="demo-expired-offer">
+          <div class="demo-expired-offer-main">
+            <span class="demo-expired-offer-badge">Grátis</span>
+            <span class="demo-expired-offer-head">48 horas de acesso total</span>
+          </div>
+          <div class="demo-expired-offer-sub">Sem cartão. Sem cobrança automática. Cancela a hora que quiser.</div>
+          <div class="demo-expired-offer-price">Depois, R$ 29/mês</div>
         </div>
         <!-- Campo inline de e-mail: reduz fricção do cadastro.
              O user digita aqui, a gente leva pro /register com o email
