@@ -22,11 +22,14 @@ const DEMO_RHYTHMS = [
   { name: 'Xote Nordestino', path: '/rhythm/Xote Nordestino.json' },
 ];
 
-// Demo curta de propósito: 3 ritmos + 8min forçam o user a se
-// cadastrar enquanto a curiosidade tá em alta. Demo longa faz o cara
-// "se satisfazer" no gratuito e nunca converter.
+// Demo curta de propósito: 3 ritmos + 5min CORRIDOS (não inatividade)
+// forçam o user a se cadastrar enquanto a curiosidade está em alta.
+// O timer só começa no PRIMEIRO PLAY (dar tempo do cara ler e entender
+// a tela), não ao abrir a página.
+// Aos 4min (1min restante) aparece um aviso discreto. Aos 5min, showExpired.
 const MAX_RHYTHMS = 3;
-const IDLE_TIMEOUT = 8 * 60 * 1000;
+const DEMO_TOTAL_MS = 5 * 60 * 1000;      // tempo total depois do 1º play
+const DEMO_WARN_AT_MS = 4 * 60 * 1000;    // aviso em 1 min restante
 const STORAGE_KEY = 'gdrums_demo_used';
 const FP_KEY = 'gdrums_demo_fp';
 
@@ -82,7 +85,9 @@ class DemoPlayer {
   private fileManager!: FileManager;
   private uiManager!: UIManager;
   private rhythmsUsed = new Set<string>();
-  private idleTimer: number | null = null;
+  private demoTimer: number | null = null;         // timer de expiração
+  private demoWarnTimer: number | null = null;     // timer do aviso de 1min
+  private demoStartedAt: number | null = null;     // timestamp do 1º play
   private expired = false;
   private cymbalBuffer: AudioBuffer | null = null;
   private currentRhythmName = '';
@@ -112,7 +117,7 @@ class DemoPlayer {
     this.setupUI();
     this.loadManifestCount(); // Atualiza totalRhythms e re-renderiza counter
     this.updateCounter();
-    this.resetIdleTimer();
+    // Timer da demo só inicia no 1º play — não ao abrir a página
     this.saveFingerprint();
     this.trackDemoAccess();
 
@@ -163,14 +168,46 @@ class DemoPlayer {
     } catch {}
   }
 
-  private resetIdleTimer(): void {
-    if (this.idleTimer) clearTimeout(this.idleTimer);
-    this.idleTimer = window.setTimeout(() => {
-      if (!this.stateManager.isPlaying() && !this.expired) {
+  /**
+   * Inicia o timer corrido da demo no primeiro play. Depois disso o
+   * relógio não para — quando acabar, showExpired independente do que
+   * o user esteja fazendo.
+   * Se já foi iniciado, não reinicia (não acumula tempo em reloads).
+   */
+  private startDemoTimer(): void {
+    if (this.demoStartedAt !== null) return; // já rodando
+    if (this.expired) return;
+
+    this.demoStartedAt = Date.now();
+
+    // Aviso de 1 min restante
+    this.demoWarnTimer = window.setTimeout(() => {
+      if (!this.expired) this.showOneMinuteWarning();
+    }, DEMO_WARN_AT_MS);
+
+    // Expiração total
+    this.demoTimer = window.setTimeout(() => {
+      if (!this.expired) {
         this.markExpired();
         this.showExpired();
       }
-    }, IDLE_TIMEOUT);
+    }, DEMO_TOTAL_MS);
+  }
+
+  private clearDemoTimers(): void {
+    if (this.demoTimer !== null) { clearTimeout(this.demoTimer); this.demoTimer = null; }
+    if (this.demoWarnTimer !== null) { clearTimeout(this.demoWarnTimer); this.demoWarnTimer = null; }
+  }
+
+  /**
+   * Banner sutil: '1 minuto restante da prévia'. Aparece no topo do
+   * counter do header, gerando pressão real mas sem bloquear a experiência.
+   */
+  private showOneMinuteWarning(): void {
+    const el = document.getElementById('demoCounter');
+    if (!el) return;
+    el.innerHTML = `<strong>1 min restante da prévia</strong> · crie conta pra continuar`;
+    el.classList.add('low');
   }
 
   /**
@@ -269,7 +306,6 @@ class DemoPlayer {
     document.querySelectorAll('.grid-cell').forEach(cell => {
       cell.addEventListener('click', () => {
         if (this.expired) { this.showExpired(); return; }
-        this.resetIdleTimer();
         HapticsService.medium();
 
         const cellType = (cell as HTMLElement).getAttribute('data-type');
@@ -300,7 +336,6 @@ class DemoPlayer {
 
     // Prato
     document.getElementById('cymbalBtn')?.addEventListener('click', () => {
-      this.resetIdleTimer();
       HapticsService.heavy();
       if (this.cymbalBuffer) {
         this.audioManager.resume();
@@ -605,7 +640,6 @@ class DemoPlayer {
       this.updateCounter();
     }
 
-    this.resetIdleTimer();
     if (this.stateManager.isPlaying()) this.stop();
 
     try {
@@ -635,7 +669,8 @@ class DemoPlayer {
 
   private play(): void {
     if (this.expired) { this.showExpired(); return; }
-    this.resetIdleTimer();
+    // Inicia o timer corrido no PRIMEIRO play (se já iniciou, no-op)
+    this.startDemoTimer();
     this.audioManager.resume();
     this.stateManager.setPlaying(true);
 
@@ -672,7 +707,7 @@ class DemoPlayer {
   // ─── Expired ──────────────────────────────────────────────────────
 
   private showExpired(): void {
-    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.clearDemoTimers();
     if (this.stateManager?.isPlaying()) this.stop();
 
     document.querySelectorAll('.demo-expired-overlay').forEach(el => el.remove());
