@@ -4,6 +4,7 @@ import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { calculateTrialExpiry } from './PaymentService';
 import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
+import { AttributionService } from '../native/AttributionService';
 
 class RegisterPage {
   private form: HTMLFormElement;
@@ -39,6 +40,9 @@ class RegisterPage {
       window.location.href = '/';
       return;
     }
+
+    // Social proof dinâmico — fire-and-forget, não bloqueia o formulário
+    this.loadSocialProof();
 
     // Máscara do CPF
     this.cpfInput.addEventListener('input', () => {
@@ -132,6 +136,15 @@ class RegisterPage {
     });
 
     if (response.success && response.user) {
+      // Capturar atribuição (first-touch do user — de onde ele veio)
+      const attr = AttributionService.getAttribution() || AttributionService.captureNow();
+      const attributionFields = {
+        signup_source: attr.source,
+        signup_medium: attr.medium,
+        signup_campaign: attr.campaign,
+        signup_referrer: attr.referrer,
+      };
+
       // 4. Salvar CPF hash e telefone — com retry (trigger pode demorar pra criar o profile).
       //    Se o erro for duplicata (23505), abortar imediatamente — retry não resolve.
       let cpfSaved = false;
@@ -141,7 +154,7 @@ class RegisterPage {
         if (attempt > 0) await new Promise(r => setTimeout(r, 800));
         const { error } = await supabase
           .from('gdrums_profiles')
-          .update({ cpf_hash: cpfHash, phone })
+          .update({ cpf_hash: cpfHash, phone, ...attributionFields })
           .eq('id', response.user.id);
         if (!error) {
           cpfSaved = true;
@@ -168,6 +181,7 @@ class RegisterPage {
             subscription_plan: 'trial',
             subscription_expires_at: trialExpiry,
             updated_at: new Date().toISOString(),
+            ...attributionFields,
           });
         if (upsertError) {
           if ((upsertError as any).code === '23505') {
@@ -283,6 +297,32 @@ class RegisterPage {
     strengthBar.style.background = cfg.c;
   }
 
+  /**
+   * Busca números reais (RPC pública) e injeta no elemento #socialProof
+   * como texto discreto. Se falhar, não mostra nada — progressive enhancement.
+   */
+  private async loadSocialProof(): Promise<void> {
+    try {
+      const { data, error } = await supabase.rpc('social_proof_stats');
+      if (error || !data) return;
+      const row = Array.isArray(data) ? data[0] : data;
+      const el = document.getElementById('socialProof');
+      if (!el || !row) return;
+      const ativos = Number(row.musicos_ativos || 0);
+      const cad30 = Number(row.cadastros_ultimo_mes || 0);
+      // Só mostra se tem números significativos (>100) pra não parecer vazio
+      if (ativos < 100) return;
+      el.innerHTML = `
+        <span><strong>${ativos.toLocaleString('pt-BR')}</strong> músicos usando agora</span>
+        <span class="sp-sep"></span>
+        <span><strong>${cad30.toLocaleString('pt-BR')}</strong> cadastros este mês</span>
+      `;
+      el.classList.add('sp-ready');
+    } catch {
+      // Silencioso — se RPC falhar, a página continua sem social proof
+    }
+  }
+
   private setLoading(loading: boolean): void {
     this.registerBtn.disabled = loading;
     const btnText = this.registerBtn.querySelector('.btn-text') as HTMLElement;
@@ -303,4 +343,7 @@ class RegisterPage {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => { new RegisterPage(); });
+window.addEventListener('DOMContentLoaded', () => {
+  AttributionService.init();
+  new RegisterPage();
+});

@@ -16,7 +16,7 @@ const PLANS_URL_WEB = '/plans.html';
 const SAME_TRIGGER_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const ANY_TRIGGER_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 
-type TriggerKey = 'firstPlayComplete' | 'saveRhythmAttempt' | 'setlistAddAttempt';
+type TriggerKey = 'firstPlayComplete' | 'saveRhythmAttempt' | 'setlistAddAttempt' | 'trialEndingSoon';
 
 interface TriggerCopy {
   overline: string;       // texto pequeno no topo
@@ -47,6 +47,13 @@ const TRIGGERS: Record<TriggerKey, TriggerCopy> = {
     body: 'A setlist fica disponível no palco, offline, depois do teste — desde que o plano esteja ativo. Assine para manter.',
     ctaPrimary: 'Ver planos',
     ctaSecondary: 'Voltar',
+  },
+  trialEndingSoon: {
+    overline: 'Últimas horas do teste',
+    title: 'Seu teste termina em breve.',
+    body: 'Depois que o período de 48 horas acaba, o acesso é pelo plano. Assine antes de expirar com 10% de desconto no primeiro mês.',
+    ctaPrimary: 'Assinar com 10% OFF',
+    ctaSecondary: 'Lembrar depois',
   },
 };
 
@@ -102,6 +109,17 @@ export class ConversionManager {
     return false;
   }
 
+  /**
+   * Dispara modal de "últimas horas" quando o trial tá acabando.
+   * Chamado pelo banner do trial no init (hoursLeft <= 12).
+   * Cooldown: 1x por dia (não spama a cada reload).
+   */
+  tryFireTrialEndingSoon(hoursLeft: number): void {
+    if (!this.trialActive) return;
+    if (hoursLeft > 12) return;
+    setTimeout(() => this.fire('trialEndingSoon'), 1500);
+  }
+
   private canFire(key: TriggerKey): boolean {
     const now = Date.now();
     const lastAny = parseInt(localStorage.getItem(ConversionManager.LAST_ANY_KEY) || '0');
@@ -122,10 +140,33 @@ export class ConversionManager {
     // Desarma firstPlayComplete pra nunca mais disparar nesta sessão do JS
     if (key === 'firstPlayComplete') this.firstPlayCompleteArmed = false;
     this.markFired(key);
-    this.showModal(TRIGGERS[key]);
+    // trialEndingSoon: leva pro /plans com cupom TRIAL10 pré-aplicado
+    // MAS não manda TRIAL10 se user veio de afiliado (protege a rede).
+    // O /plans nesse caso vai ler ?ref=X do localStorage e aplicar cupom
+    // do afiliado, que normalmente também é 10% mas rende comissão.
+    let coupon: string | undefined = undefined;
+    if (key === 'trialEndingSoon' && !this.cameFromAffiliate()) {
+      coupon = 'TRIAL10';
+    }
+    this.showModal(TRIGGERS[key], coupon);
   }
 
-  private showModal(copy: TriggerCopy): void {
+  /**
+   * Detecta se o user veio via afiliado (tem ?ref=X persistido na atribuição).
+   * Se veio, gatilho não vai sobrescrever o cupom do afiliado com o genérico.
+   */
+  private cameFromAffiliate(): boolean {
+    try {
+      const raw = localStorage.getItem('gdrums-attr-v1');
+      if (!raw) return false;
+      const attr = JSON.parse(raw);
+      return attr.source === 'register_referral' || attr.medium === 'affiliate';
+    } catch {
+      return false;
+    }
+  }
+
+  private showModal(copy: TriggerCopy, coupon?: string): void {
     // Se já tem modal aberto, não empilhar
     if (document.querySelector('.cv-modal-overlay')) return;
 
@@ -158,10 +199,11 @@ export class ConversionManager {
     });
 
     overlay.querySelector('.cv-primary')?.addEventListener('click', () => {
+      const q = coupon ? `?coupon=${encodeURIComponent(coupon)}` : '';
       if (isNativeApp()) {
-        openExternal(PLANS_URL_EXTERNAL);
+        openExternal(PLANS_URL_EXTERNAL + q);
       } else {
-        window.location.href = PLANS_URL_WEB;
+        window.location.href = PLANS_URL_WEB + q;
       }
     });
 
