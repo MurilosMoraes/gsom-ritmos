@@ -10,19 +10,20 @@ import { UIManager } from './ui/UIManager';
 import { MAX_CHANNELS, type PatternType } from './types';
 import { HapticsService } from './native/HapticsService';
 
-// Variedade de estilos pra cada público sentir algo familiar
+// Só 3 ritmos ficam liberados. O resto (69) aparece bloqueado na tira
+// pra mostrar ao user o tamanho REAL da biblioteca — peça central pra
+// evitar o engano de "só tem 3 ritmos, o app é fraco".
 const DEMO_RHYTHMS = [
   { name: 'Vaneira', path: '/rhythm/Vaneira.json' },
   { name: 'Samba', path: '/rhythm/Samba.json' },
-  { name: 'Seresta', path: '/rhythm/Seresta.json' },
-  { name: 'Pop Rock', path: '/rhythm/Pop Rock.json' },
-  { name: 'Gospel', path: '/rhythm/Gospel.json' },
   { name: 'Sertanejo Universitário', path: '/rhythm/Sertanejo Universitário.json' },
-  { name: 'Forró', path: '/rhythm/Forro.json' },
 ];
 
-const MAX_RHYTHMS = 5;
-const IDLE_TIMEOUT = 10 * 60 * 1000;
+// Demo curta de propósito: 3 ritmos + 8min forçam o user a se
+// cadastrar enquanto a curiosidade tá em alta. Demo longa faz o cara
+// "se satisfazer" no gratuito e nunca converter.
+const MAX_RHYTHMS = 3;
+const IDLE_TIMEOUT = 8 * 60 * 1000;
 const STORAGE_KEY = 'gdrums_demo_used';
 const FP_KEY = 'gdrums_demo_fp';
 
@@ -123,8 +124,10 @@ class DemoPlayer {
     const el = document.getElementById('demoCounter');
     const bar = document.getElementById('demoBar');
     if (el) {
-      el.textContent = remaining > 0 ? `${remaining} ritmo${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}` : 'Limite atingido';
-      if (remaining <= 1) el.style.color = 'var(--orange)';
+      el.textContent = remaining > 0
+        ? `${remaining} ritmo${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`
+        : 'Limite atingido';
+      el.classList.toggle('low', remaining <= 1);
     }
     if (bar) bar.style.width = `${(remaining / MAX_RHYTHMS) * 100}%`;
   }
@@ -180,17 +183,8 @@ class DemoPlayer {
   // ─── UI ───────────────────────────────────────────────────────────
 
   private setupUI(): void {
-    // Ritmos strip
-    const strip = document.getElementById('demoRhythmStrip');
-    if (strip) {
-      DEMO_RHYTHMS.forEach(r => {
-        const btn = document.createElement('button');
-        btn.className = 'rhythm-card-btn';
-        btn.textContent = r.name;
-        btn.addEventListener('click', () => this.loadRhythm(r));
-        strip.appendChild(btn);
-      });
-    }
+    // Ritmos strip — 3 liberados + 69 bloqueados (biblioteca completa)
+    this.renderRhythmStrip();
 
     // Performance grid cells
     document.querySelectorAll('.grid-cell').forEach(cell => {
@@ -256,6 +250,110 @@ class DemoPlayer {
   }
 
   // ─── Ritmo ────────────────────────────────────────────────────────
+
+  /**
+   * Renderiza tira de ritmos com os 3 liberados + o resto bloqueado.
+   * Mostra ao visitante o tamanho REAL da biblioteca (72 ritmos) pra ele
+   * não sair achando que 3 é tudo que existe. Cards bloqueados têm ícone
+   * de cadeado e clicar neles mostra a tela de fim antecipadamente.
+   */
+  private async renderRhythmStrip(): Promise<void> {
+    const strip = document.getElementById('demoRhythmStrip');
+    if (!strip) return;
+
+    // Monta os 3 liberados primeiro, na ordem
+    DEMO_RHYTHMS.forEach(r => {
+      const btn = document.createElement('button');
+      btn.className = 'rhythm-card-btn';
+      btn.textContent = r.name;
+      btn.addEventListener('click', () => this.loadRhythm(r));
+      strip.appendChild(btn);
+    });
+
+    // Depois busca o manifest real e adiciona o resto como locked
+    try {
+      const res = await fetch('/rhythm/manifest.json');
+      const manifest = await res.json();
+      const allNames: string[] = (manifest.rhythms || [])
+        .map((f: string) => f.replace(/\.json$/, ''));
+      const freeNames = new Set(DEMO_RHYTHMS.map(r => r.name));
+
+      // Ordena alfabético pra dar sensação de biblioteca completa
+      const lockedNames = allNames
+        .filter(n => !freeNames.has(n))
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+      lockedNames.forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = 'rhythm-card-btn rhythm-card-locked';
+        btn.innerHTML = `
+          <svg class="rhythm-lock-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="4" y="11" width="16" height="10" rx="2"></rect>
+            <path d="M8 11V8a4 4 0 018 0v3"></path>
+          </svg>
+          <span>${name}</span>
+        `;
+        btn.title = 'Disponível após cadastro';
+        btn.addEventListener('click', () => this.handleLockedClick());
+        strip.appendChild(btn);
+      });
+
+      // Marcador no final da tira: total da biblioteca
+      const total = document.createElement('div');
+      total.className = 'rhythm-strip-total';
+      total.textContent = `+${lockedNames.length} ritmos com cadastro`;
+      strip.appendChild(total);
+
+      // CSS dos locked + marcador (injetado uma vez)
+      this.injectLockedStyles();
+    } catch {
+      // Manifest falhou: segue sem os locked (pior cenário = igual antes)
+    }
+  }
+
+  private injectLockedStyles(): void {
+    if (document.getElementById('demo-locked-css')) return;
+    const style = document.createElement('style');
+    style.id = 'demo-locked-css';
+    style.textContent = `
+      .rhythm-card-btn.rhythm-card-locked {
+        opacity: 0.55;
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        cursor: pointer;
+      }
+      .rhythm-card-btn.rhythm-card-locked:hover {
+        opacity: 0.85;
+      }
+      .rhythm-card-locked .rhythm-lock-icon {
+        color: rgba(255, 255, 255, 0.5);
+        flex-shrink: 0;
+      }
+      .rhythm-strip-total {
+        display: inline-flex;
+        align-items: center;
+        padding: 0 0.9rem;
+        margin-left: 0.3rem;
+        font-size: 0.72rem;
+        letter-spacing: 0.02em;
+        color: rgba(255, 255, 255, 0.4);
+        white-space: nowrap;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  private handleLockedClick(): void {
+    if (this.expired) { this.showExpired(); return; }
+    HapticsService.light();
+    // Se ainda tem cota, mostra a tela de fim antecipadamente
+    // com tom de "isso é só uma prévia"
+    this.markExpired();
+    this.showExpired();
+  }
 
   private async loadRhythm(rhythm: { name: string; path: string }): Promise<void> {
     if (this.expired) { this.showExpired(); return; }
@@ -338,18 +436,30 @@ class DemoPlayer {
     overlay.className = 'demo-expired-overlay';
     overlay.innerHTML = `
       <div class="demo-expired-card">
-        <img src="/img/logo.png" alt="GDrums" style="height:36px;opacity:0.7;margin-bottom:1.5rem;">
-        <h2>Curtiu tocar com banda?</h2>
-        <p>Você acabou de sentir como é ter acompanhamento profissional de verdade. São <strong style="color:#fff;">72 ritmos</strong> que seguram sua música do começo ao fim — vaneira, sertanejo, rock, forró, gospel e muito mais.</p>
-        <p style="color:rgba(255,255,255,0.4);font-size:0.82rem;margin-bottom:1.5rem;">Cadastre grátis. Sem cartão. Acesso completo por 48h.</p>
-        <a href="/register.html" class="demo-expired-cta">QUERO MINHA BANDA COMPLETA</a>
-        <div class="demo-expired-sub">
-          Ja tem conta? <a href="/login.html">Fazer login</a>
+        <div class="demo-expired-overline">Fim da demonstração</div>
+        <h2>Os outros 69 ritmos estão aqui.</h2>
+        <p>
+          A demonstração é uma prévia curta. A biblioteca completa tem
+          72 ritmos com viradas, intros e finais — o material que segura
+          uma música do começo ao fim.
+        </p>
+        <p>
+          Pedal Bluetooth, setlist de palco e modo offline também
+          fazem parte do plano. O teste de 48 horas é gratuito e não
+          pede cartão.
+        </p>
+        <div class="demo-expired-price">
+          <span class="demo-expired-price-amount">R$ 29</span>
+          <span class="demo-expired-price-unit">por mês</span>
+          <span class="demo-expired-price-note">ou 48h grátis</span>
         </div>
-        <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.06);">
-          <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank" style="display:inline-flex;align-items:center;gap:0.4rem;color:rgba(0,230,140,0.7);font-size:0.75rem;text-decoration:none;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.25 0-4.322-.744-5.998-2l-.424-.314-3.282 1.1 1.1-3.282-.314-.424A9.935 9.935 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-            Dúvidas? Fale com a gente no WhatsApp
+        <a href="/register.html" class="demo-expired-cta">Criar minha conta</a>
+        <div class="demo-expired-sub">
+          Já tem conta? <a href="/login.html">Entrar</a>
+        </div>
+        <div class="demo-expired-support">
+          <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank">
+            Falar com o suporte
           </a>
         </div>
       </div>

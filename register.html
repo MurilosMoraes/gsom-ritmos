@@ -3,84 +3,262 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Criar Conta - GDrums</title>
+  <title>Criar conta — GDrums</title>
   <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
   <link rel="apple-touch-icon" href="/img/icon-192.png">
   <meta name="theme-color" content="#030014">
   <link rel="canonical" href="https://gdrums.com.br/register">
+  <meta name="description" content="Crie sua conta no GDrums. 48h de teste grátis, sem cartão de crédito. 72 ritmos, pedal Bluetooth, modo offline.">
   <link rel="stylesheet" href="auth-styles.css" />
   <style>
-    body { background: #030014; }
+    /* Reset local — alinhamento fino de tipografia */
+    body {
+      background: #030014;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
     .register-page {
-      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 2rem 1rem;
     }
+
     .register-card {
-      background: rgba(10, 10, 30, 0.7); backdrop-filter: blur(20px);
-      border: 1px solid rgba(255,255,255,0.06); border-radius: 20px;
-      padding: 2.5rem 2rem; max-width: 420px; width: 100%;
+      background: #0a0a0f;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 2.5rem 2rem 1.75rem;
+      max-width: 440px;
+      width: 100%;
+      color: #fff;
     }
-    .register-logo { height: 40px; display: block; margin: 0 auto 1.5rem; opacity: 0.8; }
-    .register-title { font-size: 1.3rem; font-weight: 700; color: #fff; text-align: center; margin-bottom: 0.3rem; }
-    .register-sub { font-size: 0.85rem; color: rgba(255,255,255,0.4); text-align: center; margin-bottom: 1.5rem; }
-    .trial-badge {
-      display: flex; align-items: center; justify-content: center; gap: 0.4rem;
-      background: rgba(0, 230, 140, 0.08); border: 1px solid rgba(0, 230, 140, 0.2);
-      border-radius: 10px; padding: 0.5rem; margin-bottom: 1.5rem;
-      font-size: 0.75rem; color: #00E68C; font-weight: 600;
+
+    .register-logo {
+      height: 28px;
+      display: block;
+      margin: 0 auto 1.5rem;
+      opacity: 0.85;
     }
-    .trial-badge svg { flex-shrink: 0; }
-    .reg-form { display: flex; flex-direction: column; gap: 0.9rem; }
+
+    /* Hero — overline + título + corpo */
+    .register-hero {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+    .register-overline {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.42);
+      font-weight: 500;
+      margin-bottom: 0.65rem;
+    }
+    .register-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      line-height: 1.2;
+      color: #fff;
+      margin: 0 0 0.5rem;
+    }
+    .register-sub {
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.55);
+      margin: 0;
+    }
+
+    /* Benefícios — lista sóbria, tipo jornal */
+    .register-benefits {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1.75rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .register-benefits li {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      color: rgba(255, 255, 255, 0.72);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .register-benefits li:last-child { border-bottom: none; }
+    .register-benefits li strong {
+      color: #fff;
+      font-weight: 600;
+    }
+    .register-benefits-mark {
+      color: rgba(255, 255, 255, 0.45);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.78rem;
+      letter-spacing: 0.02em;
+      flex-shrink: 0;
+      width: 1.2rem;
+    }
+
+    /* Form */
+    .reg-form { display: flex; flex-direction: column; gap: 0.85rem; }
     .reg-field label {
-      display: block; font-size: 0.7rem; font-weight: 600; color: rgba(255,255,255,0.4);
-      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem;
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.35rem;
     }
     .reg-field input[type="tel"],
     .reg-field input[type="text"],
     .reg-field input[type="email"],
     .reg-field input[type="password"] {
-      width: 100%; padding: 0.7rem 0.9rem;
-      background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.08);
-      border-radius: 10px; color: #fff; font-size: 0.9rem; font-family: inherit;
-      outline: none; transition: border-color 0.15s;
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.92rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s, background 0.15s;
     }
-    .reg-field input:focus { border-color: rgba(0, 212, 255, 0.4); }
-    .reg-field input::placeholder { color: rgba(255,255,255,0.2); }
+    .reg-field input:focus {
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .reg-field input::placeholder { color: rgba(255, 255, 255, 0.22); }
+
     .strength-bar-wrap {
-      height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 0.4rem; overflow: hidden;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 1px;
+      margin-top: 0.45rem;
+      overflow: hidden;
     }
-    .strength-bar { height: 100%; width: 0%; border-radius: 2px; transition: all 0.2s; }
-    .reg-check { display: flex; align-items: flex-start; gap: 0.5rem; }
+    .strength-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: 1px;
+      transition: width 0.25s, background 0.25s;
+    }
+
+    .reg-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      margin-top: 0.25rem;
+    }
     .reg-check input[type="checkbox"] {
-      width: 16px; height: 16px; margin-top: 2px; accent-color: #00D4FF; flex-shrink: 0;
+      width: 15px;
+      height: 15px;
+      margin-top: 2px;
+      accent-color: #fff;
+      flex-shrink: 0;
+      cursor: pointer;
     }
-    .reg-check span { font-size: 0.75rem; color: rgba(255,255,255,0.4); line-height: 1.4; }
-    .reg-check a { color: #00D4FF; text-decoration: none; }
+    .reg-check span {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.5);
+      line-height: 1.45;
+    }
+    .reg-check a {
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 1px;
+    }
+    .reg-check a:hover { color: #fff; }
+
+    /* CTA primário — branco sólido, peso visual máximo */
     .reg-btn {
-      width: 100%; padding: 0.8rem; border: none; border-radius: 12px;
-      background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 100%);
-      color: #fff; font-size: 0.95rem; font-weight: 700; font-family: inherit;
-      cursor: pointer; transition: all 0.15s; position: relative;
-      box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+      width: 100%;
+      padding: 0.9rem;
+      border: none;
+      border-radius: 10px;
+      background: #fff;
+      color: #0a0a0f;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-top: 0.5rem;
     }
-    .reg-btn:hover { box-shadow: 0 6px 28px rgba(0, 212, 255, 0.5); transform: translateY(-1px); }
+    .reg-btn:hover { opacity: 0.9; }
+    .reg-btn:active { transform: scale(0.99); }
     .reg-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+
     .reg-btn .btn-loader { display: none; }
     .reg-btn .btn-loader.active { display: block; }
     .reg-btn .btn-text.hidden { display: none; }
+
+    .reg-trial-note {
+      text-align: center;
+      margin-top: 0.85rem;
+      font-size: 0.76rem;
+      color: rgba(255, 255, 255, 0.38);
+      letter-spacing: 0.005em;
+    }
+
     .reg-footer {
-      text-align: center; margin-top: 1rem; font-size: 0.8rem; color: rgba(255,255,255,0.3);
+      text-align: center;
+      margin-top: 1.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.5);
     }
-    .reg-footer a { color: #00D4FF; text-decoration: none; font-weight: 600; }
+    .reg-footer a {
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 1px;
+    }
+    .reg-footer a:hover { color: #fff; }
+
+    .reg-glory {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.3);
+      font-style: italic;
+    }
+
     .reg-alert {
-      margin-top: 0.75rem; padding: 0.6rem 0.8rem; border-radius: 8px;
-      font-size: 0.8rem; display: none; text-align: center;
+      margin-top: 0.85rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      display: none;
+      text-align: center;
     }
-    .reg-alert.error { background: rgba(255,68,102,0.1); color: #FF4466; border: 1px solid rgba(255,68,102,0.2); }
-    .reg-alert.success { background: rgba(0,230,140,0.1); color: #00E68C; border: 1px solid rgba(0,230,140,0.2); }
+    .reg-alert.error {
+      background: rgba(255, 68, 102, 0.08);
+      color: #ff6b83;
+      border: 1px solid rgba(255, 68, 102, 0.2);
+    }
+    .reg-alert.success {
+      background: rgba(0, 230, 140, 0.08);
+      color: #3ee8a7;
+      border: 1px solid rgba(0, 230, 140, 0.2);
+    }
+
     .spinner-sm {
-      width: 20px; height: 20px; border: 2.5px solid rgba(255,255,255,0.2);
-      border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(10, 10, 15, 0.3);
+      border-top-color: #0a0a0f;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
       margin: 0 auto;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -90,13 +268,30 @@
   <div class="register-page">
     <div class="register-card">
       <img src="/img/logo.png" alt="GDrums" class="register-logo" />
-      <h1 class="register-title">Crie sua conta</h1>
-      <p class="register-sub">Comece a tocar com acompanhamento profissional</p>
 
-      <div class="trial-badge">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1l2.06 4.18L15 5.82l-3.5 3.41.83 4.82L8 11.77l-4.33 2.28.83-4.82L1 5.82l4.94-.64L8 1z" fill="currentColor"/></svg>
-        Teste grátis por 48 horas — sem cartão de crédito
+      <div class="register-hero">
+        <div class="register-overline">Teste grátis de 48h</div>
+        <h1 class="register-title">Crie sua conta.</h1>
+        <p class="register-sub">
+          Acesso completo à biblioteca, sem cartão de crédito.
+          Cancelar depois é um clique.
+        </p>
       </div>
+
+      <ul class="register-benefits">
+        <li>
+          <span class="register-benefits-mark">01</span>
+          <span><strong>72 ritmos</strong> com viradas, intros e finais</span>
+        </li>
+        <li>
+          <span class="register-benefits-mark">02</span>
+          <span><strong>Pedal Bluetooth</strong> mapeável pra tocar com as mãos livres</span>
+        </li>
+        <li>
+          <span class="register-benefits-mark">03</span>
+          <span><strong>Setlist de palco</strong> e modo offline</span>
+        </li>
+      </ul>
 
       <form id="registerForm" class="reg-form">
         <div class="reg-field">
@@ -126,17 +321,24 @@
         </div>
         <div class="reg-check">
           <input type="checkbox" id="acceptTerms" required />
-          <span>Aceito os <a href="/terms.html" target="_blank">termos de uso</a> e <a href="/privacy.html" target="_blank">politica de privacidade</a></span>
+          <span>Aceito os <a href="/terms.html" target="_blank">termos de uso</a> e a <a href="/privacy.html" target="_blank">política de privacidade</a></span>
         </div>
         <button type="submit" class="reg-btn" id="registerBtn">
-          <span class="btn-text">Criar conta e começar</span>
+          <span class="btn-text">Criar conta</span>
           <span class="btn-loader"><div class="spinner-sm"></div></span>
         </button>
+        <div class="reg-trial-note">
+          Sem cartão. Sem cobrança automática depois do teste.
+        </div>
       </form>
 
-      <p class="reg-footer">Já tem conta? <a href="login.html">Fazer login</a></p>
-      <p style="text-align:center;margin-top:1rem;font-size:0.7rem;color:rgba(255,255,255,0.4);font-style:italic;">Pra honra e glória de Deus</p>
       <div class="reg-alert" id="alertMessage"></div>
+
+      <p class="reg-footer">
+        Já tem conta? <a href="login.html">Entrar</a>
+      </p>
+
+      <p class="reg-glory">Pra honra e glória de Deus</p>
     </div>
   </div>
 

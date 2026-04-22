@@ -3,175 +3,413 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Escolha seu Plano - GDrums</title>
+  <title>Planos — GDrums</title>
   <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
   <link rel="apple-touch-icon" href="/img/icon-192.png">
   <meta name="theme-color" content="#030014">
   <link rel="canonical" href="https://gdrums.com.br/plans">
   <link rel="stylesheet" href="auth-styles.css" />
   <style>
+    * { box-sizing: border-box; }
+    body {
+      background: #030014;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      color: #fff;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
     .plans-container {
       min-height: 100vh;
-      background: #030014;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 2rem 1rem;
+      padding: 2rem 1rem 3rem;
     }
-    .plans-logo { height: 48px; margin-bottom: 1.5rem; opacity: 0.8; }
+
+    /* Header top bar */
+    .plans-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 960px;
+      margin-bottom: 2.5rem;
+    }
+    .plans-logo {
+      height: 22px;
+      opacity: 0.85;
+    }
+    .plans-top-actions {
+      display: flex;
+      gap: 1.25rem;
+      align-items: center;
+    }
+    .plans-top-link {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.5);
+      text-decoration: none;
+      letter-spacing: -0.005em;
+      transition: color 0.15s;
+    }
+    .plans-top-link:hover { color: #fff; }
+    .plans-logout-btn {
+      padding: 0.45rem 0.9rem;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.76rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .plans-logout-btn:hover {
+      border-color: rgba(255, 255, 255, 0.25);
+      color: #fff;
+    }
+
+    /* Hero */
+    .plans-hero {
+      text-align: center;
+      max-width: 560px;
+      margin-bottom: 2.5rem;
+    }
+    .plans-overline {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.42);
+      font-weight: 500;
+      margin-bottom: 0.85rem;
+    }
     .plans-title {
-      font-size: 1.6rem; font-weight: 800; color: #fff;
-      text-align: center; margin-bottom: 0.5rem; letter-spacing: -0.5px;
+      font-size: 2rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: #fff;
+      margin: 0 0 0.75rem;
     }
     .plans-subtitle {
-      font-size: 0.95rem; color: rgba(255,255,255,0.45);
-      text-align: center; margin-bottom: 2rem;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      color: rgba(255, 255, 255, 0.55);
+      margin: 0;
     }
-    .plans-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1rem; max-width: 900px; width: 100%;
+
+    .alert-bar {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.7);
+      text-align: center;
+      max-width: 960px;
+      width: 100%;
+      display: none;
     }
-    .plan-card {
-      background: rgba(10, 10, 30, 0.7); backdrop-filter: blur(20px);
-      border: 1.5px solid rgba(255,255,255,0.06); border-radius: 18px;
-      padding: 1.75rem; display: flex; flex-direction: column;
-      transition: all 0.2s ease; position: relative; overflow: hidden;
-    }
-    .plan-card:hover { border-color: rgba(0, 212, 255, 0.3); transform: translateY(-4px); }
-    .plan-card.popular { border-color: rgba(0, 212, 255, 0.4); }
-    .plan-badge {
-      position: absolute; top: 0; right: 0;
-      background: linear-gradient(135deg, #00D4FF, #8B5CF6);
-      color: #fff; font-size: 0.65rem; font-weight: 700;
-      padding: 0.35rem 1rem; border-radius: 0 16px 0 12px;
-      text-transform: uppercase; letter-spacing: 0.5px;
-    }
-    .plan-name {
-      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1px; color: rgba(255,255,255,0.4); margin-bottom: 0.75rem;
-    }
-    .plan-price { display: flex; align-items: baseline; gap: 0.2rem; margin-bottom: 0.25rem; }
-    .plan-currency { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.5); }
-    .plan-amount { font-size: 2.5rem; font-weight: 900; color: #fff; line-height: 1; }
-    .plan-period { font-size: 0.85rem; color: rgba(255,255,255,0.35); }
-    .plan-savings {
-      font-size: 0.75rem; font-weight: 600; color: #00E68C;
-      margin-bottom: 0.75rem;
-    }
-    .plan-total {
-      font-size: 0.75rem; color: rgba(255,255,255,0.3); margin-bottom: 1rem;
-    }
-    .plan-features { list-style: none; padding: 0; margin: 0 0 1.5rem; flex: 1; }
-    .plan-features li {
-      font-size: 0.82rem; color: rgba(255,255,255,0.6);
-      padding: 0.35rem 0; display: flex; align-items: center; gap: 0.5rem;
-    }
-    .plan-features li::before {
-      content: ''; width: 6px; height: 6px; border-radius: 50%;
-      background: #00D4FF; flex-shrink: 0;
-    }
-    .plan-btn {
-      width: 100%; padding: 0.85rem; border: none; border-radius: 12px;
-      font-size: 0.9rem; font-weight: 700; font-family: inherit;
-      cursor: pointer; transition: all 0.15s ease;
-      background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7);
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-    .plan-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
-    .plan-card.popular .plan-btn {
-      background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 100%);
-      color: #fff; border: none;
-      box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
-    }
-    .plan-card.popular .plan-btn:hover {
-      box-shadow: 0 6px 28px rgba(0, 212, 255, 0.5);
-      transform: translateY(-1px);
-    }
-    /* Coupon */
+
+    /* Cupom */
     .coupon-section {
-      max-width: 900px; width: 100%; margin-bottom: 1.5rem;
+      max-width: 960px;
+      width: 100%;
+      margin-bottom: 1.75rem;
     }
     .coupon-row {
-      display: flex; gap: 0.5rem; align-items: center;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
     }
     .coupon-input {
-      flex: 1; max-width: 240px; padding: 0.6rem 0.8rem;
-      background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.08);
-      border-radius: 10px; color: #fff; font-size: 0.85rem; font-family: inherit;
-      outline: none; text-transform: uppercase; letter-spacing: 1px;
-      transition: border-color 0.15s;
+      flex: 1;
+      max-width: 260px;
+      padding: 0.65rem 0.9rem;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      transition: border-color 0.15s, background 0.15s;
     }
-    .coupon-input:focus { border-color: rgba(0, 212, 255, 0.4); }
-    .coupon-input::placeholder { color: rgba(255,255,255,0.2); text-transform: none; letter-spacing: 0; }
+    .coupon-input:focus {
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .coupon-input::placeholder {
+      color: rgba(255, 255, 255, 0.25);
+      text-transform: none;
+      letter-spacing: 0;
+    }
     .coupon-btn {
-      padding: 0.6rem 1rem; border: none; border-radius: 10px;
-      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.6); font-size: 0.8rem; font-weight: 600;
-      font-family: inherit; cursor: pointer; transition: all 0.15s;
+      padding: 0.65rem 1.1rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 0.82rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
       white-space: nowrap;
     }
-    .coupon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .coupon-btn:hover {
+      border-color: rgba(255, 255, 255, 0.25);
+      color: #fff;
+    }
     .coupon-btn:disabled { opacity: 0.4; cursor: default; }
     .coupon-status {
-      font-size: 0.75rem; margin-top: 0.4rem; min-height: 1.2em;
+      font-size: 0.78rem;
+      margin-top: 0.5rem;
+      min-height: 1.2em;
+      text-align: center;
     }
-    .coupon-status.success { color: #00E68C; }
-    .coupon-status.error { color: #FF4466; }
+    .coupon-status.success { color: #3ee8a7; }
+    .coupon-status.error { color: #ff6b83; }
     .coupon-badge {
-      display: inline-flex; align-items: center; gap: 0.3rem;
-      background: rgba(0, 230, 140, 0.1); border: 1px solid rgba(0, 230, 140, 0.2);
-      border-radius: 8px; padding: 0.3rem 0.6rem;
-      font-size: 0.7rem; font-weight: 600; color: #00E68C;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.76rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.85);
+      letter-spacing: 0.01em;
     }
     .coupon-badge button {
-      background: none; border: none; color: rgba(255,255,255,0.4);
-      cursor: pointer; font-size: 0.9rem; line-height: 1; padding: 0 0.2rem;
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0 0.2rem;
     }
+    .coupon-badge button:hover { color: #fff; }
+
+    /* Grid de planos */
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.85rem;
+      max-width: 960px;
+      width: 100%;
+    }
+
+    .plan-card {
+      background: #0a0a0f;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 1.75rem 1.4rem 1.4rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: border-color 0.18s;
+    }
+    .plan-card:hover { border-color: rgba(255, 255, 255, 0.18); }
+    .plan-card.popular {
+      border-color: rgba(255, 255, 255, 0.22);
+      background: #0d0d14;
+    }
+
+    .plan-badge {
+      position: absolute;
+      top: -1px;
+      right: 1rem;
+      background: #fff;
+      color: #0a0a0f;
+      font-size: 0.62rem;
+      font-weight: 600;
+      padding: 0.3rem 0.7rem;
+      border-radius: 0 0 8px 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .plan-name {
+      font-size: 0.68rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(255, 255, 255, 0.45);
+      margin-bottom: 1rem;
+    }
+
     .plan-original-price {
-      font-size: 0.8rem; color: rgba(255,255,255,0.3);
-      text-decoration: line-through; margin-bottom: 0.15rem;
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.3);
+      text-decoration: line-through;
+      margin-bottom: 0.1rem;
+      letter-spacing: -0.005em;
     }
+
+    .plan-price {
+      display: flex;
+      align-items: baseline;
+      gap: 0.25rem;
+      margin-bottom: 0.2rem;
+    }
+    .plan-currency {
+      font-size: 1rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.55);
+    }
+    .plan-amount {
+      font-size: 2.25rem;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      color: #fff;
+      line-height: 1;
+    }
+    .plan-period {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.4);
+      margin-left: 0.1rem;
+    }
+
+    .plan-savings {
+      font-size: 0.76rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.75);
+      margin-bottom: 0.4rem;
+    }
+    .plan-total {
+      font-size: 0.76rem;
+      color: rgba(255, 255, 255, 0.35);
+      margin-bottom: 1.25rem;
+    }
+
+    .plan-features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1.5rem;
+      flex: 1;
+    }
+    .plan-features li {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.68);
+      padding: 0.42rem 0;
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+      line-height: 1.4;
+    }
+    .plan-features li::before {
+      content: '';
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.45);
+      flex-shrink: 0;
+      transform: translateY(-2px);
+    }
+
+    .plan-btn {
+      width: 100%;
+      padding: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .plan-btn:hover {
+      border-color: rgba(255, 255, 255, 0.3);
+      color: #fff;
+    }
+
+    .plan-card.popular .plan-btn {
+      background: #fff;
+      color: #0a0a0f;
+      border-color: #fff;
+      font-weight: 600;
+    }
+    .plan-card.popular .plan-btn:hover {
+      opacity: 0.9;
+    }
+
     .plans-footer {
-      margin-top: 1.5rem; font-size: 0.75rem;
-      color: rgba(255,255,255,0.25); text-align: center;
+      margin-top: 2rem;
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.3);
+      text-align: center;
+      letter-spacing: 0.005em;
     }
+    .plans-glory {
+      margin-top: 0.75rem;
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.25);
+      font-style: italic;
+      text-align: center;
+    }
+
     .plans-loading {
-      position: fixed; inset: 0; background: rgba(2,2,12,0.8);
-      backdrop-filter: blur(12px); display: none; align-items: center;
-      justify-content: center; z-index: 9999; flex-direction: column; gap: 1rem;
+      position: fixed; inset: 0;
+      background: rgba(3, 0, 20, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      flex-direction: column;
+      gap: 1rem;
     }
     .plans-loading.active { display: flex; }
-    .plans-loading-text { color: rgba(255,255,255,0.6); font-size: 0.9rem; }
+    .plans-loading-text {
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 0.9rem;
+      letter-spacing: -0.005em;
+    }
     .plans-spinner {
-      width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.1);
-      border-top-color: #00D4FF; border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-top-color: rgba(255, 255, 255, 0.75);
+      border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .alert-bar {
-      background: rgba(255, 180, 32, 0.1); border: 1px solid rgba(255, 180, 32, 0.3);
-      border-radius: 10px; padding: 0.6rem 1rem; margin-bottom: 1.5rem;
-      font-size: 0.8rem; color: rgba(255, 180, 32, 0.9); text-align: center;
-      max-width: 900px; width: 100%; display: none;
-    }
   </style>
 </head>
 <body>
   <div class="plans-container">
-    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:900px;margin-bottom:1rem;">
-      <img src="/img/logo.png" alt="GDrums" class="plans-logo" style="margin:0;" />
-      <div style="display:flex;gap:0.5rem;align-items:center;">
-        <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank" style="font-size:0.72rem;color:rgba(0,230,140,0.6);text-decoration:none;">Suporte</a>
-        <button id="plansLogoutBtn" style="padding:0.3rem 0.7rem;background:rgba(255,68,102,0.06);border:1px solid rgba(255,68,102,0.15);border-radius:7px;color:rgba(255,68,102,0.7);font-size:0.7rem;font-weight:600;cursor:pointer;font-family:inherit;">Sair</button>
+    <div class="plans-topbar">
+      <img src="/img/logo.png" alt="GDrums" class="plans-logo" />
+      <div class="plans-top-actions">
+        <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank" class="plans-top-link">Suporte</a>
+        <button id="plansLogoutBtn" class="plans-logout-btn">Sair</button>
       </div>
     </div>
-    <h1 class="plans-title">Monte sua banda</h1>
-    <p class="plans-subtitle">Acesso completo a todos os ritmos, pedal e atualizações</p>
+
+    <div class="plans-hero">
+      <div class="plans-overline">Planos</div>
+      <h1 class="plans-title">Escolha como quer seguir.</h1>
+      <p class="plans-subtitle">
+        Todos os planos incluem a biblioteca completa, pedal Bluetooth,
+        setlist e modo offline. Sem limite de uso. Cancele quando quiser.
+      </p>
+    </div>
 
     <div class="alert-bar" id="alertBar"></div>
 
-    <!-- Cupom -->
     <div class="coupon-section" id="couponSection">
       <div class="coupon-row">
         <input type="text" class="coupon-input" id="couponInput" placeholder="Tem um cupom?" maxlength="20" />
@@ -184,13 +422,13 @@
       <!-- Cards gerados pelo JS -->
     </div>
 
-    <p class="plans-footer">Pagamento seguro via InfinitePay. Cancele quando quiser.</p>
-    <p style="margin-top:0.75rem;font-size:0.7rem;color:rgba(255,255,255,0.4);font-style:italic;text-align:center;">Pra honra e glória de Deus</p>
+    <p class="plans-footer">Pagamento seguro via InfinitePay.</p>
+    <p class="plans-glory">Pra honra e glória de Deus</p>
   </div>
 
   <div class="plans-loading" id="plansLoading">
     <div class="plans-spinner"></div>
-    <span class="plans-loading-text">Redirecionando para pagamento...</span>
+    <span class="plans-loading-text">Redirecionando para pagamento</span>
   </div>
 
   <script type="module" src="/src/auth/plans.ts"></script>

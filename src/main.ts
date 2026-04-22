@@ -9,6 +9,7 @@ import { UIManager } from './ui/UIManager';
 import { ModalManager } from './ui/ModalManager';
 import { SetlistManager } from './core/SetlistManager';
 import { SetlistEditorUI } from './ui/SetlistEditorUI';
+import { ConversionManager } from './ui/ConversionManager';
 import { MAX_CHANNELS, type PatternType, type SequencerState } from './types';
 import { expandPattern, expandVolumes, normalizeMidiPath } from './utils/helpers';
 import { KeepAwake } from '@capacitor-community/keep-awake';
@@ -37,6 +38,7 @@ class RhythmSequencer {
   private setlistManager: SetlistManager;
   private setlistEditor: SetlistEditorUI;
   private userRhythmService: UserRhythmService;
+  private conversionManager: ConversionManager;
   private isAdminMode = false;
   private userRole: 'user' | 'admin' = 'user';
   private rhythmVersion: number = 0;
@@ -204,6 +206,7 @@ class RhythmSequencer {
     this.setlistManager = new SetlistManager();
     this.setlistEditor = new SetlistEditorUI();
     this.userRhythmService = new UserRhythmService();
+    this.conversionManager = new ConversionManager();
 
     // Setlist onChange — não atualizar UI automaticamente durante navegação
     // A UI é atualizada explicitamente após cada ação
@@ -795,7 +798,13 @@ class RhythmSequencer {
   }
 
   private showSubscriptionBanner(status: string, expires: Date, plan: string): void {
-    if (status === 'active' && plan !== 'trial') return; // Assinante pago, sem banner
+    if (status === 'active' && plan !== 'trial') {
+      this.conversionManager.setTrialActive(false);
+      return; // Assinante pago, sem banner nem modais de upsell
+    }
+
+    // User está em trial — ativar gatilhos de conversão
+    this.conversionManager.setTrialActive(true);
 
     const now = new Date();
     const hoursLeft = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60 * 60)));
@@ -808,15 +817,15 @@ class RhythmSequencer {
       banner.classList.add('trial-banner-urgent');
     }
 
-    const timeText = hoursLeft > 0 ? `${hoursLeft}h ${minutesLeft}min` : `${minutesLeft}min`;
+    const timeText = hoursLeft > 0 ? `${hoursLeft}h` : `${minutesLeft}min`;
 
     const urgentMsg = hoursLeft <= 6
-      ? `Sua banda vai parar em <strong>${timeText}</strong>`
-      : `<strong>${timeText}</strong> restantes do seu teste`;
+      ? `Teste expira em <strong>${timeText}</strong>`
+      : `Restam <strong>${timeText}</strong> do período de teste`;
 
     // App nativo: link com data-native pra abrir site no navegador externo
     // (Play Store / App Store não permite fluxo de pagamento in-app).
-    const ctaLabel = hoursLeft <= 6 ? 'Manter a banda tocando' : 'Assinar agora';
+    const ctaLabel = 'Ver planos';
     banner.innerHTML = `
       <span class="trial-banner-text">${urgentMsg}</span>
       <a href="${isNativeApp() ? '#' : '/plans.html'}" class="trial-banner-btn" id="trialBannerCta">${ctaLabel}</a>
@@ -842,47 +851,46 @@ class RhythmSequencer {
           bottom: 0;
           left: 0;
           right: 0;
-          background: rgba(10, 10, 30, 0.9);
+          background: rgba(10, 10, 15, 0.88);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
-          border-top: 1px solid rgba(0, 212, 255, 0.15);
-          padding: 0.6rem 1rem;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          padding: 0.7rem 1.25rem;
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
+          justify-content: space-between;
+          gap: 1rem;
           z-index: 9999;
           animation: bannerSlideUp 0.3s ease;
         }
         .trial-banner-urgent {
-          border-top-color: rgba(255, 68, 68, 0.3);
-          background: rgba(30, 5, 5, 0.9);
+          border-top-color: rgba(255, 255, 255, 0.12);
+          background: rgba(14, 10, 10, 0.92);
         }
         .trial-banner-text {
-          font-size: 0.75rem;
-          color: rgba(255, 255, 255, 0.6);
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.55);
+          font-weight: 400;
+          letter-spacing: 0.01em;
         }
         .trial-banner-text strong {
-          color: #00D4FF;
-        }
-        .trial-banner-urgent .trial-banner-text strong {
-          color: #FF6B6B;
+          color: #fff;
+          font-weight: 600;
         }
         .trial-banner-btn {
-          font-size: 0.7rem;
-          font-weight: 700;
-          color: #fff;
-          background: linear-gradient(135deg, #00D4FF, #8B5CF6);
-          padding: 0.35rem 0.8rem;
+          font-size: 0.78rem;
+          font-weight: 600;
+          color: #0a0a0f;
+          background: #fff;
+          padding: 0.5rem 1rem;
           border-radius: 8px;
           text-decoration: none;
           white-space: nowrap;
-          transition: all 0.15s;
+          transition: opacity 0.15s;
+          letter-spacing: -0.005em;
         }
-        .trial-banner-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
-        }
+        .trial-banner-btn:hover { opacity: 0.85; }
+        .trial-banner-btn:active { transform: scale(0.98); }
         @keyframes bannerSlideUp {
           from { transform: translateY(100%); }
           to { transform: translateY(0); }
@@ -2910,6 +2918,9 @@ class RhythmSequencer {
 
     // KeepAwake é fire-and-forget — não bloquear o play
     KeepAwake.keepAwake().catch(() => {});
+
+    // Gatilho de conversão: marca início do play
+    this.conversionManager.onPlayStart();
   }
 
   private stop(): void {
@@ -2921,6 +2932,7 @@ class RhythmSequencer {
     this.stateManager.setPendingEnd(null);
 
     this.scheduler.stop();
+    this.conversionManager.onPlayStop();
 
     // Liberar keep awake quando parar
     try {
@@ -3129,6 +3141,11 @@ class RhythmSequencer {
   private showSaveRhythmModal(): void {
     if (!this.currentRhythmName && !this.stateManager.getState().patterns.main.some(r => r.some(s => s))) {
       this.modalManager.show('Meus Ritmos', 'Carregue um ritmo antes de salvar.', 'warning');
+      return;
+    }
+
+    // User em trial: salvar é feature do plano pago — bloqueia com modal de conversão
+    if (this.conversionManager.tryFireSaveRhythm()) {
       return;
     }
 
@@ -4434,6 +4451,8 @@ class RhythmSequencer {
     // Botão editar setlist
     const editBtn = document.getElementById('setlistEditBtn');
     editBtn?.addEventListener('click', () => {
+      // Gatilho de conversão: usou setlist = intenção de show profissional
+      this.conversionManager.tryFireSetlistAdd();
       try {
         // Juntar ritmos da biblioteca + ritmos pessoais no catálogo
         const personalRhythms = (this.userRhythmService?.getAll() || []).map(r => ({
