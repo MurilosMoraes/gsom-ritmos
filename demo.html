@@ -55,7 +55,71 @@
       background: rgba(255, 255, 255, 0.35);
       transition: width 0.3s ease;
     }
-    .app-container { padding-top: 3.25rem; }
+    /* Banner de valor — fica logo abaixo do topbar. Tom editorial,
+       não vendedor. Clique no CTA vai direto pra cadastro. */
+    .demo-value-banner {
+      position: fixed;
+      top: 3.25rem;
+      left: 0; right: 0;
+      z-index: 9997;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1rem;
+      background: rgba(8, 8, 14, 0.7);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.55);
+      letter-spacing: -0.003em;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .demo-value-banner strong { color: #fff; font-weight: 500; }
+    .demo-value-dot {
+      display: inline-block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #3ee8a7;
+      box-shadow: 0 0 6px rgba(62, 232, 167, 0.55);
+      animation: demoValuePulse 1.8s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes demoValuePulse {
+      0%, 100% { opacity: 0.55; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+    .demo-value-cta {
+      display: inline-block;
+      margin-left: 0.5rem;
+      padding: 0.25rem 0.65rem;
+      background: #fff;
+      color: #0a0a0f;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+      flex-shrink: 0;
+    }
+    .demo-value-cta:hover { opacity: 0.88; }
+
+    /* Mobile: simplifica pra caber em 1 linha */
+    @media (max-width: 520px) {
+      .demo-value-banner {
+        font-size: 0.7rem;
+        padding: 0.5rem 0.7rem;
+      }
+    }
+
+    /* Empurra o conteúdo pra baixo do banner fixo */
+    .app-container {
+      padding-top: calc(3.25rem + 2.25rem);
+    }
 
     /* Esconder elementos que nao existem no demo */
     #setlistPrev, #setlistNext, #setlistEditBtn, #myRhythmsBtn, #saveAsMyRhythmBtn { display: none !important; }
@@ -121,7 +185,67 @@
       line-height: 1.55;
       margin: 0 0 1rem;
     }
-    .demo-expired-card p:last-of-type { margin-bottom: 1.5rem; }
+    .demo-expired-card p:last-of-type { margin-bottom: 1rem; }
+    .demo-expired-card p strong { color: #fff; font-weight: 600; }
+
+    /* Catálogo rolando — mostra visualmente todos os ritmos bloqueados */
+    .demo-expired-catalog {
+      position: relative;
+      overflow: hidden;
+      margin: 0 -2rem 1.25rem;
+      padding: 0.5rem 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    }
+    .demo-expired-catalog-track {
+      display: flex;
+      gap: 0.45rem;
+      animation: demoCatalogScroll 50s linear infinite;
+      white-space: nowrap;
+    }
+    .demo-expired-catalog-track span {
+      flex-shrink: 0;
+      padding: 0.28rem 0.55rem;
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      letter-spacing: -0.005em;
+    }
+    @keyframes demoCatalogScroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+
+    /* Features row — 3 colunas visuais com o que o plano entrega */
+    .demo-expired-features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin: 0 0 1.25rem;
+    }
+    .demo-expired-feature {
+      text-align: center;
+      padding: 0.65rem 0.4rem;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.55);
+      letter-spacing: -0.005em;
+      line-height: 1.3;
+    }
+    .demo-expired-feature span {
+      display: block;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.15rem;
+      letter-spacing: -0.02em;
+    }
 
     .demo-expired-price {
       display: flex; align-items: baseline; gap: 0.45rem;
@@ -145,6 +269,29 @@
       letter-spacing: 0.01em;
     }
 
+    .demo-expired-quick {
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .demo-expired-email {
+      width: 100%;
+      padding: 0.78rem 0.9rem;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.92rem;
+      letter-spacing: -0.005em;
+      outline: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .demo-expired-email::placeholder {
+      color: rgba(255, 255, 255, 0.25);
+    }
+    .demo-expired-email:focus {
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.05);
+    }
     .demo-expired-cta {
       display: block;
       width: 100%;
@@ -159,6 +306,7 @@
       font-weight: 600;
       letter-spacing: -0.005em;
       text-align: center;
+      cursor: pointer;
       transition: opacity 0.15s;
       box-shadow: none;
     }
@@ -194,6 +342,173 @@
       transition: color 0.15s;
     }
     .demo-expired-support a:hover { color: rgba(255, 255, 255, 0.7); }
+
+    /* ─── Tour guiado ───
+       Tooltip apontando pro elemento + pulse no target.
+       Nunca bloqueia a UI — só reforça a ação. */
+    .demo-tour-tip {
+      position: absolute;
+      z-index: 9500;
+      max-width: 260px;
+      padding: 0.8rem 0.95rem 0.7rem;
+      background: #0a0a0f;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      color: #fff;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+      transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+      pointer-events: auto;
+    }
+    .demo-tour-tip.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .demo-tour-tip::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%) rotate(45deg);
+      width: 12px;
+      height: 12px;
+      background: #0a0a0f;
+      border-right: 1px solid rgba(255, 255, 255, 0.12);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .demo-tour-tip-title {
+      font-size: 0.88rem;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      margin-bottom: 0.3rem;
+    }
+    .demo-tour-tip-body {
+      font-size: 0.78rem;
+      line-height: 1.4;
+      color: rgba(255, 255, 255, 0.65);
+      margin-bottom: 0.55rem;
+    }
+    .demo-tour-tip-skip {
+      display: inline-block;
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s;
+    }
+    .demo-tour-tip-skip:hover {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .demo-tour-pulse {
+      animation: demoTourPulse 1.6s ease-in-out infinite;
+      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45);
+      border-radius: 14px;
+    }
+    @keyframes demoTourPulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.0);
+      }
+      50% {
+        box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08),
+                    0 0 24px rgba(255, 255, 255, 0.18);
+      }
+    }
+
+    /* ─── Modal de conversão progressivo ───
+       Aparece depois do tour OU após 3 trocas de ritmo (aha moment).
+       Pode ser fechado e o user continua experimentando. */
+    .demo-convert-modal {
+      position: fixed; inset: 0; z-index: 9700;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.22s ease;
+      padding: 0;
+    }
+    @media (min-height: 620px) {
+      .demo-convert-modal { align-items: center; padding: 1.5rem; }
+    }
+    .demo-convert-modal.visible { opacity: 1; }
+
+    .demo-convert-card {
+      width: 100%;
+      max-width: 440px;
+      background: #0a0a0f;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px 20px 0 0;
+      padding: 1.75rem 1.6rem 1.5rem;
+      color: #fff;
+      transform: translateY(40px);
+      transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    }
+    .demo-convert-modal.visible .demo-convert-card {
+      transform: translateY(0);
+    }
+    @media (min-height: 620px) {
+      .demo-convert-card { border-radius: 20px; }
+    }
+
+    .demo-convert-overline {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.42);
+      font-weight: 500;
+      margin-bottom: 0.55rem;
+    }
+    .demo-convert-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
+      margin: 0 0 0.75rem;
+    }
+    .demo-convert-body {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: rgba(255, 255, 255, 0.62);
+      margin: 0 0 0.55rem;
+    }
+    .demo-convert-pricing {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin: 0 0 1.25rem;
+    }
+    .demo-convert-actions {
+      display: flex; flex-direction: column; gap: 0.55rem;
+    }
+    .demo-convert-primary {
+      display: block;
+      padding: 0.85rem;
+      background: #fff;
+      color: #0a0a0f;
+      text-decoration: none;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      text-align: center;
+      transition: opacity 0.15s;
+    }
+    .demo-convert-primary:hover { opacity: 0.9; }
+    .demo-convert-secondary {
+      width: 100%;
+      padding: 0.65rem;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.82rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .demo-convert-secondary:hover { color: rgba(255, 255, 255, 0.85); }
   </style>
 </head>
 <body>
@@ -208,6 +523,13 @@
     </div>
     <a href="/register.html" class="demo-topbar-cta">Abrir conta</a>
     <div class="demo-topbar-bar" id="demoBar" style="width:100%;"></div>
+  </div>
+
+  <!-- Banner editorial fino: reforça que a demo é o produto real -->
+  <div class="demo-value-banner" id="demoValueBanner">
+    <span class="demo-value-dot"></span>
+    Você está tocando com a banda real. <strong>86 ritmos no plano completo.</strong>
+    <a href="/register.html" class="demo-value-cta">Criar conta</a>
   </div>
 
   <div class="app-container">

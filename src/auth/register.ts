@@ -5,6 +5,7 @@ import { supabase } from './supabase';
 import { calculateTrialExpiry } from './PaymentService';
 import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
 import { AttributionService } from '../native/AttributionService';
+import { registerSchema, zodErrorsToFieldMap } from './schemas';
 
 class RegisterPage {
   private form: HTMLFormElement;
@@ -43,6 +44,15 @@ class RegisterPage {
 
     // Social proof dinâmico — fire-and-forget, não bloqueia o formulário
     this.loadSocialProof();
+
+    // Pré-preencher email se veio via ?email= (demo quick signup)
+    const qs = new URLSearchParams(window.location.search);
+    const prefillEmail = qs.get('email');
+    if (prefillEmail && /^[^\s@]+@[^\s@]+$/.test(prefillEmail)) {
+      this.emailInput.value = prefillEmail;
+      // Foca no próximo campo (nome) pra user continuar o fluxo
+      setTimeout(() => this.nameInput.focus(), 50);
+    }
 
     // Máscara do CPF
     this.cpfInput.addEventListener('input', () => {
@@ -89,6 +99,106 @@ class RegisterPage {
   private setupEventListeners(): void {
     this.form.addEventListener('submit', (e) => this.handleSubmit(e));
     this.passwordInput.addEventListener('input', () => this.updatePasswordStrength());
+    this.setupFieldValidation();
+  }
+
+  /**
+   * Validação inline campo-a-campo com Zod.
+   *
+   * Pro UX ficar bom:
+   * - onblur valida o campo saindo (mostra erro específico abaixo)
+   * - input limpa o erro do campo se tinha
+   * - submit valida tudo e foca no primeiro campo com erro
+   *
+   * O formato 'registerSchema' é composto e tem cross-field (password match).
+   * Quando o usuário só digitou o name, não faz sentido disparar erro do CPF.
+   * Por isso onblur só mostra o erro DAQUELE campo, validando com um schema
+   * parcial baseado nos valores atuais.
+   */
+  private setupFieldValidation(): void {
+    const fields: Array<{ input: HTMLInputElement; key: string; getValue?: () => any }> = [
+      { input: this.nameInput, key: 'name' },
+      { input: this.cpfInput, key: 'cpf' },
+      { input: this.phoneInput, key: 'phone' },
+      { input: this.emailInput, key: 'email' },
+      { input: this.passwordInput, key: 'password' },
+      { input: this.confirmPasswordInput, key: 'confirmPassword' },
+    ];
+
+    for (const f of fields) {
+      // Cria container de erro (abaixo do input) se ainda não existe
+      let errEl = f.input.parentElement?.querySelector('.reg-field-error') as HTMLElement | null;
+      if (!errEl) {
+        errEl = document.createElement('div');
+        errEl.className = 'reg-field-error';
+        errEl.setAttribute('role', 'alert');
+        f.input.parentElement?.appendChild(errEl);
+      }
+
+      // onblur: valida esse campo sozinho
+      f.input.addEventListener('blur', () => {
+        const fieldErr = this.validateSingleField();
+        this.renderFieldError(f.key, fieldErr[f.key] || null);
+      });
+
+      // onchange/input: limpa o erro se user tá corrigindo
+      f.input.addEventListener('input', () => {
+        this.renderFieldError(f.key, null);
+      });
+    }
+
+    // Checkbox: valida ao trocar estado
+    this.acceptTermsCheckbox.addEventListener('change', () => {
+      const fieldErr = this.validateSingleField();
+      this.renderFieldError('acceptTerms', fieldErr.acceptTerms || null);
+    });
+  }
+
+  private validateSingleField(): Record<string, string> {
+    const payload = {
+      name: this.nameInput.value,
+      cpf: this.cpfInput.value,
+      phone: this.phoneInput.value,
+      email: this.emailInput.value,
+      password: this.passwordInput.value,
+      confirmPassword: this.confirmPasswordInput.value,
+      acceptTerms: this.acceptTermsCheckbox.checked,
+    };
+    const result = registerSchema.safeParse(payload);
+    if (result.success) return {};
+    return zodErrorsToFieldMap(result.error);
+  }
+
+  private renderFieldError(fieldKey: string, msg: string | null): void {
+    const input = this.getInputByKey(fieldKey);
+    if (!input) return;
+    const parent = input.parentElement;
+    if (!parent) return;
+    const errEl = parent.querySelector('.reg-field-error') as HTMLElement | null;
+    if (!errEl) return;
+
+    if (msg) {
+      errEl.textContent = msg;
+      errEl.classList.add('active');
+      input.classList.add('reg-input-error');
+    } else {
+      errEl.textContent = '';
+      errEl.classList.remove('active');
+      input.classList.remove('reg-input-error');
+    }
+  }
+
+  private getInputByKey(key: string): HTMLInputElement | null {
+    switch (key) {
+      case 'name': return this.nameInput;
+      case 'cpf': return this.cpfInput;
+      case 'phone': return this.phoneInput;
+      case 'email': return this.emailInput;
+      case 'password': return this.passwordInput;
+      case 'confirmPassword': return this.confirmPasswordInput;
+      case 'acceptTerms': return this.acceptTermsCheckbox;
+      default: return null;
+    }
   }
 
   private async handleSubmit(e: Event): Promise<void> {
@@ -225,57 +335,49 @@ class RegisterPage {
   }
 
   private validateForm(): boolean {
-    const name = this.nameInput.value.trim();
-    const cpf = this.cpfInput.value;
-    const email = this.emailInput.value.trim();
-    const password = this.passwordInput.value;
-    const confirmPassword = this.confirmPasswordInput.value;
-    const acceptTerms = this.acceptTermsCheckbox.checked;
+    // Validação completa via Zod — mais robusta que a sequência de ifs anterior.
+    // Mensagens em PT-BR vêm do schema (src/auth/schemas.ts).
+    const payload = {
+      name: this.nameInput.value,
+      cpf: this.cpfInput.value,
+      phone: this.phoneInput.value,
+      email: this.emailInput.value,
+      password: this.passwordInput.value,
+      confirmPassword: this.confirmPasswordInput.value,
+      acceptTerms: this.acceptTermsCheckbox.checked,
+    };
+    const result = registerSchema.safeParse(payload);
 
-    if (!name || name.length < 3) {
-      this.showAlert('Nome deve ter pelo menos 3 caracteres', 'error');
-      this.nameInput.focus();
-      return false;
+    // Limpar erros antigos de TODOS os campos
+    ['name', 'cpf', 'phone', 'email', 'password', 'confirmPassword', 'acceptTerms'].forEach(k => {
+      this.renderFieldError(k, null);
+    });
+
+    if (result.success) return true;
+
+    const errors = zodErrorsToFieldMap(result.error);
+    // Renderiza todos os erros + foca no primeiro campo com problema
+    const order = ['name', 'cpf', 'phone', 'email', 'password', 'confirmPassword', 'acceptTerms'];
+    let firstErrorField: string | null = null;
+    for (const key of order) {
+      if (errors[key]) {
+        this.renderFieldError(key, errors[key]);
+        if (!firstErrorField) firstErrorField = key;
+      }
     }
-
-    if (!validateCPF(cpf)) {
-      this.showAlert('CPF inválido', 'error');
-      this.cpfInput.focus();
-      return false;
+    if (firstErrorField) {
+      const input = this.getInputByKey(firstErrorField);
+      input?.focus();
+      // Alert genérico no topo só pra reforçar que algo tá errado
+      this.showAlert('Verifique os campos destacados em vermelho.', 'error');
     }
-
-    const phone = this.phoneInput.value.replace(/\D/g, '');
-    if (phone.length < 10 || phone.length > 11) {
-      this.showAlert('WhatsApp inválido', 'error');
-      this.phoneInput.focus();
-      return false;
-    }
-
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      this.showAlert('E-mail inválido', 'error');
-      this.emailInput.focus();
-      return false;
-    }
-
-    if (password.length < 6) {
-      this.showAlert('Senha deve ter pelo menos 6 caracteres', 'error');
-      this.passwordInput.focus();
-      return false;
-    }
-
-    if (password !== confirmPassword) {
-      this.showAlert('As senhas não coincidem', 'error');
-      this.confirmPasswordInput.focus();
-      return false;
-    }
-
-    if (!acceptTerms) {
-      this.showAlert('Aceite os termos de uso', 'error');
-      return false;
-    }
-
-    return true;
+    return false;
   }
+
+  // Mantém validateCPF import utilizado (algumas checagens anti-duplicata
+  // consomem ele indiretamente via hashCPF/formatCPF). Referência explícita
+  // pra o TypeScript não reclamar de import morto.
+  private _unusedCheck = () => validateCPF;
 
   private updatePasswordStrength(): void {
     const password = this.passwordInput.value;
