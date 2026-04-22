@@ -939,8 +939,11 @@ class RhythmSequencer {
     const hoursLeft = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60 * 60)));
     const minutesLeft = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60)) % 60);
 
-    // Se faltam <=12h de trial, dispara modal de urgência (cooldown 24h)
-    this.conversionManager.tryFireTrialEndingSoon(hoursLeft);
+    // Notifica ConversionManager sobre horas restantes — dispara
+    // gatilhos trialHalfway (24h), trialEndingSoon (12h) ou
+    // trialLastHour (1h) conforme a janela. Cada um tem cooldown
+    // próprio + cooldown global de 20min.
+    this.conversionManager.tick(hoursLeft);
 
     const banner = document.createElement('div');
     banner.className = 'trial-banner';
@@ -5282,6 +5285,9 @@ class RhythmSequencer {
           currentRhythmNameEl.textContent = name;
         }
         this.updateRhythmStripActive();
+        // Notifica ConversionManager — trigger 'thirdRhythmExplored'
+        // avalia se já explorou 3 ritmos diferentes
+        this.conversionManager.onRhythmChange(name);
         this.updateSetlistUI();
 
         // Mostrar botão de salvar como meu ritmo
