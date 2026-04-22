@@ -499,7 +499,7 @@ class DemoPlayer {
           <span class="demo-convert-offer-sub">Sem cartão. Cancele quando quiser.</span>
         </div>
         <div class="demo-convert-actions">
-          <a href="/register.html" class="demo-convert-primary">Começar grátis</a>
+          <a href="/register" class="demo-convert-primary">Começar grátis</a>
           <button class="demo-convert-secondary">Continuar testando</button>
         </div>
       </div>
@@ -763,7 +763,7 @@ class DemoPlayer {
         </form>
 
         <div class="demo-expired-sub">
-          Já tem conta? <a href="/login.html">Entrar</a>
+          Já tem conta? <a href="/login">Entrar</a>
         </div>
       </div>
     `;
@@ -779,7 +779,7 @@ class DemoPlayer {
       const input = document.getElementById('demoEmailInput') as HTMLInputElement | null;
       const email = input?.value.trim() || '';
       const q = email ? `?email=${encodeURIComponent(email)}` : '';
-      window.location.href = `/register.html${q}`;
+      window.location.href = `/register${q}`;
     });
   }
 

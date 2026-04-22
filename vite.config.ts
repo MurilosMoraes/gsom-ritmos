@@ -34,6 +34,29 @@ export default defineConfig({
         // Pré-cachear tudo: app shell + ritmos + samples + imagens
         globPatterns: ['**/*.{js,css,html,ico,svg,woff2,json,wav,mp3,png}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB (logo grande)
+        // ═══════════════════════════════════════════════════════════════
+        // navigateFallback default do vite-plugin-pwa é '/index.html'.
+        // Isso intercepta QUALQUER navegação SPA e retorna o app shell.
+        // PROBLEMA: quando o usuário acessa /register.html?email=X, o SW
+        // retornava /index.html (app) em vez do register.html — o JS do
+        // app rodava, detectava sessão expirada e mandava pro /login.
+        //
+        // Fix: denylist com rotas públicas (multi-page). O SW só faz
+        // fallback pra index.html se a rota não estiver na lista abaixo.
+        // ═══════════════════════════════════════════════════════════════
+        navigateFallbackDenylist: [
+          /^\/register(\.html)?/,
+          /^\/login(\.html)?/,
+          /^\/plans(\.html)?/,
+          /^\/admin(\.html)?/,
+          /^\/landing(\.html)?/,
+          /^\/demo(\.html)?/,
+          /^\/payment-success(\.html)?/,
+          /^\/affiliate(\.html)?/,
+          /^\/terms(\.html)?/,
+          /^\/privacy(\.html)?/,
+          /^\/excluir-conta(\.html)?/,
+        ],
         // Cachear runtime: samples e ritmos
         runtimeCaching: [
           {
