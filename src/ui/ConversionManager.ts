@@ -1,123 +1,341 @@
-// ConversionManager — modais de upsell no trial.
+// ConversionManager — modais de upsell durante o trial de 48h.
+//
 // Design editorial/profissional (inspiração Linear, Vercel). SEM EMOJI.
-// Gatilhos:
-//   - firstPlayComplete: após 60s de playback na primeira sessão de play
-//   - saveRhythmAttempt: tentativa de salvar ritmo
-//   - setlistAddAttempt: tentativa de adicionar à setlist
-// Anti-spam: localStorage guarda timestamp do último modal por gatilho.
+// REGRAS DURAS:
+//   1. Só dispara pra user em trial ativo (setTrialActive(true))
+//   2. NUNCA interrompe playback — se tocando, fica na fila
+//      (campo pendingTrigger); dispara quando parar
+//   3. NUNCA dispara pra user que veio de afiliado com cupom agressivo
+//      (protege a rede — só manda cupom de afiliado OU modal sem cupom)
+//   4. Cooldown global entre qualquer modal: 20min (antes era 3h —
+//      cupons NÃO são prêmio raro, são driver de conversão)
+//   5. Cooldown por gatilho: 24h (um mesmo gatilho não martela)
+//
+// Ordem de persuasão durante as 48h (SEMPRE 10% OFF — consistência):
+//   - firstRhythmTouch (30s): "isso é real"
+//   - firstPlayComplete (60s, 1ª vez): "apresentação"
+//   - thirdRhythmExplored: "sua banda tá montada"
+//   - tenMinutesIn: "um tempo aqui"
+//   - saveRhythmAttempt: "já tá investido"
+//   - setlistAddAttempt: "uso profissional"
+//   - savedFirstRhythm: "garanta o acesso"
+//   - returningAfterAbsence: "que bom te ver"
+//   - trialHalfway (24h restando): "metade já foi"
+//   - trialEndingSoon (12h restando): "termina em breve"
+//   - trialLastHour (1h restando): "última chance"
+//
+// REGRA DE OURO: nunca aparece enquanto a música está tocando.
+// Sempre espera o user parar OU trocar de ritmo OU ficar idle.
 
 import { isNativeApp, openExternal } from '../native/Platform';
 
 const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/plans';
 const PLANS_URL_WEB = '/plans';
 
-// Mínimo entre dois modais de conversão (msec).
-// Não spama: 1 dia entre modais do MESMO gatilho, 3h entre modais DE QUALQUER gatilho.
-const SAME_TRIGGER_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const ANY_TRIGGER_COOLDOWN_MS = 3 * 60 * 60 * 1000;
+// Mínimo entre dois modais quaisquer (20min). Suficiente pra não
+// sobrepor com a experiência, mas permite múltiplas ofertas no trial.
+const SAME_TRIGGER_COOLDOWN_MS = 24 * 60 * 60 * 1000;     // 24h por gatilho
+const ANY_TRIGGER_COOLDOWN_MS = 20 * 60 * 1000;           // 20min global
 
-type TriggerKey = 'firstPlayComplete' | 'saveRhythmAttempt' | 'setlistAddAttempt' | 'trialEndingSoon';
+type TriggerKey =
+  | 'firstRhythmTouch'
+  | 'firstPlayComplete'
+  | 'thirdRhythmExplored'
+  | 'tenMinutesIn'
+  | 'saveRhythmAttempt'
+  | 'setlistAddAttempt'
+  | 'savedFirstRhythm'
+  | 'returningAfterAbsence'
+  | 'trialHalfway'
+  | 'trialEndingSoon'
+  | 'trialLastHour';
 
 interface TriggerCopy {
-  overline: string;       // texto pequeno no topo
-  title: string;          // título principal
-  body: string;           // parágrafo explicando
-  ctaPrimary: string;     // botão primário
-  ctaSecondary: string;   // link secundário ('fechar')
+  overline: string;
+  title: string;
+  body: string;
+  ctaPrimary: string;
+  ctaSecondary: string;
+  coupon?: string;        // cupom pré-aplicado no /plans
+  skipAfterAffiliate?: boolean; // não dispara se user é de afiliado
 }
 
+/**
+ * Todos os gatilhos usam TRIAL10 (10% OFF) — consistência > escassez.
+ * User em trial vê o MESMO cupom em todo modal; o que muda é o
+ * contexto/copy. Evita o cara "caçar" o cupom maior e ficar esperando.
+ *
+ * Afiliado usa cupom próprio (LUCAS10 etc), nunca é sobrescrito
+ * (skipAfterAffiliate=true em todos os gatilhos).
+ */
 const TRIGGERS: Record<TriggerKey, TriggerCopy> = {
+  firstRhythmTouch: {
+    overline: 'Acompanhamento real',
+    title: 'Isso é uma banda de verdade.',
+    body: 'Você acabou de tocar com viradas, intros e finais profissionais. Garanta o acesso enquanto está testando — 10% OFF pra assinantes novos.',
+    ctaPrimary: 'Ver planos com 10% OFF',
+    ctaSecondary: 'Continuar testando',
+    coupon: 'TRIAL10',
+    skipAfterAffiliate: true,
+  },
   firstPlayComplete: {
     overline: 'Período de teste',
     title: 'Seu acompanhamento está pronto.',
-    body: 'Você tem 48 horas para conhecer todos os ritmos, conectar o pedal e montar o show. Depois disso, o acesso passa a ser pelo plano.',
+    body: 'Você tem 48 horas pra conhecer os ritmos, conectar o pedal e montar o show. Cupom de 10% OFF esperando na tela de planos.',
     ctaPrimary: 'Ver planos',
     ctaSecondary: 'Continuar testando',
+    coupon: 'TRIAL10',
+    skipAfterAffiliate: true,
+  },
+  thirdRhythmExplored: {
+    overline: 'Sua banda está montada',
+    title: 'Três ritmos diferentes. Já tá fluindo.',
+    body: 'Quando você assina, tudo fica na sua conta: personalizações, setlist e pedal configurado. Use 10% OFF agora.',
+    ctaPrimary: 'Garantir 10% OFF',
+    ctaSecondary: 'Continuar testando',
+    coupon: 'TRIAL10',
+    skipAfterAffiliate: true,
+  },
+  tenMinutesIn: {
+    overline: 'Você tá aqui há 10 minutos',
+    title: 'Que tal transformar isso em palco?',
+    body: 'Setlist, pedal Bluetooth e modo offline entram no plano. Enquanto você tá testando, 10% OFF no primeiro mês.',
+    ctaPrimary: 'Assinar com 10% OFF',
+    ctaSecondary: 'Continuar',
+    coupon: 'TRIAL10',
+    skipAfterAffiliate: true,
   },
   saveRhythmAttempt: {
     overline: 'Ritmos personalizados',
     title: 'Você está montando seu próprio ritmo.',
-    body: 'Ritmos salvos continuam na sua conta depois do teste, prontos para o próximo show. Assine para manter tudo.',
-    ctaPrimary: 'Ver planos',
+    body: 'Ritmos salvos continuam na conta depois do teste — desde que o plano esteja ativo. 10% OFF se assinar agora.',
+    ctaPrimary: 'Assinar com 10% OFF',
     ctaSecondary: 'Voltar pro ritmo',
+    coupon: 'TRIAL10',
+    skipAfterAffiliate: true,
   },
   setlistAddAttempt: {
     overline: 'Repertório do show',
     title: 'Você está montando um repertório.',
-    body: 'A setlist fica disponível no palco, offline, depois do teste — desde que o plano esteja ativo. Assine para manter.',
-    ctaPrimary: 'Ver planos',
+    body: 'Setlist funciona no palco, offline, desde que o plano esteja ativo. Garanta com 10% OFF.',
+    ctaPrimary: 'Assinar com 10% OFF',
     ctaSecondary: 'Voltar',
+    coupon: 'TRIAL10',
+    skipAfterAffiliate: true,
+  },
+  savedFirstRhythm: {
+    overline: 'Ritmo salvo',
+    title: 'Agora você tem um ritmo próprio.',
+    body: 'Ele fica na sua conta se você assinar antes do teste acabar. 10% OFF enquanto está quente.',
+    ctaPrimary: 'Manter com 10% OFF',
+    ctaSecondary: 'Depois',
+    coupon: 'TRIAL10',
+    skipAfterAffiliate: true,
+  },
+  returningAfterAbsence: {
+    overline: 'Que bom te ver de volta',
+    title: 'Seu teste ainda está rolando.',
+    body: 'Aproveita que você voltou — 10% OFF pra fechar o plano antes do teste acabar.',
+    ctaPrimary: 'Aproveitar 10% OFF',
+    ctaSecondary: 'Agora não',
+    coupon: 'TRIAL10',
+    skipAfterAffiliate: true,
+  },
+  trialHalfway: {
+    overline: 'Metade do teste já foi',
+    title: 'Você tem mais 24 horas.',
+    body: 'Muita gente decide nesse ponto — já testou o que precisava. Se for assinar, 10% OFF só no primeiro mês.',
+    ctaPrimary: 'Assinar com 10% OFF',
+    ctaSecondary: 'Continuar testando',
+    coupon: 'TRIAL10',
+    skipAfterAffiliate: true,
   },
   trialEndingSoon: {
-    overline: 'Últimas horas do teste',
+    overline: 'Últimas 12 horas',
     title: 'Seu teste termina em breve.',
-    body: 'Depois que o período de 48 horas acaba, o acesso é pelo plano. Assine antes de expirar com 10% de desconto no primeiro mês.',
+    body: 'Depois que o período acaba, o acesso é pelo plano. Use 10% OFF pra não perder o momento.',
     ctaPrimary: 'Assinar com 10% OFF',
     ctaSecondary: 'Lembrar depois',
+    coupon: 'TRIAL10',
+    skipAfterAffiliate: true,
+  },
+  trialLastHour: {
+    overline: 'Última hora do teste',
+    title: 'Essa é a última janela.',
+    body: 'Última hora antes do acesso ser bloqueado. Pra não perder o que você configurou: 10% OFF só agora.',
+    ctaPrimary: 'Garantir com 10% OFF',
+    ctaSecondary: 'Tudo bem',
+    coupon: 'TRIAL10',
+    skipAfterAffiliate: true,
   },
 };
 
 export class ConversionManager {
-  private playStartedAt: number | null = null;
-  private firstPlayCompleteArmed = true;
   private trialActive = false;
+  private isPlayingNow = false;
+
+  // Tracking de uso
+  private appOpenedAt = Date.now();
+  private playStartedAt: number | null = null;
+  private firstPlayFired = false;
+  private rhythmsExplored = new Set<string>();
+  private tenMinutesFired = false;
+  private rhythmsSaved = 0;
+
+  // Fila: se user tá tocando quando gatilho dispararia, guardamos aqui
+  // e mostramos quando ele parar (onPlayStop ou gap de 8s sem clicar)
+  private pendingTrigger: TriggerKey | null = null;
 
   private static readonly STORAGE_PREFIX = 'gdrums-cv-';
   private static readonly LAST_ANY_KEY = 'gdrums-cv-last-any';
+  private static readonly LAST_SEEN_KEY = 'gdrums-cv-last-seen';
+  private static readonly RHYTHMS_SAVED_KEY = 'gdrums-cv-rhythms-saved';
 
   setTrialActive(active: boolean): void {
     this.trialActive = active;
+    if (active) {
+      this.checkReturningAfterAbsence();
+      this.startTenMinuteTimer();
+    }
+    // Atualiza last-seen a cada sessão (pro gatilho returningAfterAbsence)
+    try {
+      localStorage.setItem(ConversionManager.LAST_SEEN_KEY, Date.now().toString());
+    } catch {}
   }
 
-  // Chamado quando user dá play. Inicia timer pro firstPlayComplete.
-  onPlayStart(): void {
+  /** Chamado pelo main.ts com informação de horas restantes do trial. */
+  tick(hoursLeft: number): void {
     if (!this.trialActive) return;
-    if (!this.firstPlayCompleteArmed) return;
-    if (this.playStartedAt !== null) return;
+    // Janela de 1h: última hora
+    if (hoursLeft > 0 && hoursLeft <= 1) {
+      this.queueOrFire('trialLastHour');
+      return;
+    }
+    if (hoursLeft <= 12) {
+      this.queueOrFire('trialEndingSoon');
+      return;
+    }
+    if (hoursLeft <= 24 && hoursLeft > 12) {
+      this.queueOrFire('trialHalfway');
+    }
+  }
 
-    this.playStartedAt = Date.now();
-    // 60s tocando → dispara modal de primeiro uso
-    setTimeout(() => {
-      if (this.playStartedAt === null) return; // parou antes
-      const elapsed = Date.now() - this.playStartedAt;
-      if (elapsed >= 55_000) { // margem de 5s
-        this.fire('firstPlayComplete');
-      }
-    }, 60_000);
+  // ─── Gatilhos de playback ──────────────────────────────────────────
+
+  onPlayStart(): void {
+    this.isPlayingNow = true;
+    if (!this.trialActive) return;
+
+    // Primeiro play em geral: programa gatilhos "firstRhythmTouch" (30s)
+    // e "firstPlayComplete" (60s) — só na 1ª sessão de play.
+    if (this.playStartedAt === null && !this.firstPlayFired) {
+      this.playStartedAt = Date.now();
+
+      // 30s: primeiro toque real
+      setTimeout(() => {
+        if (!this.trialActive) return;
+        // Mesmo que ele tenha parado agora, já tocou → vale
+        this.queueOrFire('firstRhythmTouch');
+      }, 30_000);
+
+      // 60s: primeira sessão completa
+      setTimeout(() => {
+        if (!this.trialActive) return;
+        this.firstPlayFired = true;
+        this.queueOrFire('firstPlayComplete');
+      }, 60_000);
+    }
   }
 
   onPlayStop(): void {
-    // Se parou antes dos 60s, não dispara nada nessa sessão.
-    // Se parou depois, firstPlayComplete já disparou ou não é mais relevante hoje.
-    this.playStartedAt = null;
+    this.isPlayingNow = false;
+    // Ao parar, tenta disparar o que tava na fila (se houver)
+    setTimeout(() => this.flushPendingIfIdle(), 1500);
   }
 
-  // Gatilhos contextuais — mostram o modal de upsell NO MOMENTO DA INTENÇÃO
-  // (user clicou em salvar/setlist), mas NÃO bloqueiam a ação. Trial precisa
-  // permitir testar tudo; o modal só aparece 1x por gatilho/dia respeitando
-  // o cooldown global. Retornam sempre false pra não interferir no fluxo.
+  /** Chamado quando o user troca de ritmo principal. */
+  onRhythmChange(rhythmName: string): void {
+    if (!this.trialActive) return;
+    if (!rhythmName) return;
+    this.rhythmsExplored.add(rhythmName);
+    if (this.rhythmsExplored.size === 3) {
+      this.queueOrFire('thirdRhythmExplored');
+    }
+  }
+
+  /** Após 10 min no app — timer contínuo, não baseado em play. */
+  private startTenMinuteTimer(): void {
+    if (this.tenMinutesFired) return;
+    setTimeout(() => {
+      if (!this.trialActive) return;
+      this.tenMinutesFired = true;
+      this.queueOrFire('tenMinutesIn');
+    }, 10 * 60 * 1000);
+  }
+
+  // ─── Gatilhos contextuais ──────────────────────────────────────────
+
   tryFireSaveRhythm(): boolean {
     if (!this.trialActive) return false;
-    // Dispara no próximo tick pra não empilhar visualmente com o modal de save
-    setTimeout(() => this.fire('saveRhythmAttempt'), 0);
+    // Conta ritmos salvos — se for o 1º, dispara "savedFirstRhythm"
+    // em vez de "saveRhythmAttempt" (mais forte, user já comprometeu)
+    this.rhythmsSaved += 1;
+    try {
+      localStorage.setItem(ConversionManager.RHYTHMS_SAVED_KEY, String(this.rhythmsSaved));
+    } catch {}
+    setTimeout(() => {
+      this.queueOrFire(this.rhythmsSaved === 1 ? 'savedFirstRhythm' : 'saveRhythmAttempt');
+    }, 300);
     return false;
   }
 
   tryFireSetlistAdd(): boolean {
     if (!this.trialActive) return false;
-    setTimeout(() => this.fire('setlistAddAttempt'), 0);
+    setTimeout(() => this.queueOrFire('setlistAddAttempt'), 0);
     return false;
   }
 
-  /**
-   * Dispara modal de "últimas horas" quando o trial tá acabando.
-   * Chamado pelo banner do trial no init (hoursLeft <= 12).
-   * Cooldown: 1x por dia (não spama a cada reload).
-   */
+  /** Legacy: kept for banner integration. Internally chama tick(). */
   tryFireTrialEndingSoon(hoursLeft: number): void {
-    if (!this.trialActive) return;
-    if (hoursLeft > 12) return;
-    setTimeout(() => this.fire('trialEndingSoon'), 1500);
+    this.tick(hoursLeft);
+  }
+
+  // ─── Fila + controle de playback ───────────────────────────────────
+
+  /**
+   * Se o user não tá tocando, dispara na hora.
+   * Se tá tocando, guarda na fila (pendingTrigger) pra disparar quando parar.
+   * Um único slot de fila: gatilho mais novo ganha (útil pra trial timer).
+   */
+  private queueOrFire(key: TriggerKey): void {
+    if (!this.canFire(key)) return;
+    if (this.isPlayingNow) {
+      this.pendingTrigger = key;
+      return;
+    }
+    this.fire(key);
+  }
+
+  private flushPendingIfIdle(): void {
+    if (this.isPlayingNow) return;
+    if (!this.pendingTrigger) return;
+    const key = this.pendingTrigger;
+    this.pendingTrigger = null;
+    this.fire(key);
+  }
+
+  /** Detecta se user voltou após ausência longa. Usa last-seen do localStorage. */
+  private checkReturningAfterAbsence(): void {
+    try {
+      const lastSeenStr = localStorage.getItem(ConversionManager.LAST_SEEN_KEY);
+      if (!lastSeenStr) return;
+      const lastSeen = parseInt(lastSeenStr);
+      const hoursSince = (Date.now() - lastSeen) / (1000 * 60 * 60);
+      if (hoursSince >= 6 && hoursSince < 48) {
+        // Espera 8s pra dar tempo da UI carregar antes de aparecer
+        setTimeout(() => this.queueOrFire('returningAfterAbsence'), 8000);
+      }
+    } catch {}
   }
 
   private canFire(key: TriggerKey): boolean {
@@ -136,19 +354,27 @@ export class ConversionManager {
   }
 
   private fire(key: TriggerKey): void {
-    if (!this.canFire(key)) return;
-    // Desarma firstPlayComplete pra nunca mais disparar nesta sessão do JS
-    if (key === 'firstPlayComplete') this.firstPlayCompleteArmed = false;
-    this.markFired(key);
-    // trialEndingSoon: leva pro /plans com cupom TRIAL10 pré-aplicado
-    // MAS não manda TRIAL10 se user veio de afiliado (protege a rede).
-    // O /plans nesse caso vai ler ?ref=X do localStorage e aplicar cupom
-    // do afiliado, que normalmente também é 10% mas rende comissão.
-    let coupon: string | undefined = undefined;
-    if (key === 'trialEndingSoon' && !this.cameFromAffiliate()) {
-      coupon = 'TRIAL10';
+    // ═══ REGRA DE OURO: NUNCA DURANTE PLAYBACK ═══
+    // Dupla verificação (queueOrFire já checa, mas se alguém chamar
+    // fire() direto, não deixa passar)
+    if (this.isPlayingNow) {
+      this.pendingTrigger = key;
+      return;
     }
-    this.showModal(TRIGGERS[key], coupon);
+    if (!this.canFire(key)) return;
+
+    const trigger = TRIGGERS[key];
+    if (!trigger) return;
+
+    // Se user veio de afiliado, não sobrescrever cupom dele
+    const fromAffiliate = this.cameFromAffiliate();
+    let coupon = trigger.coupon;
+    if (trigger.skipAfterAffiliate && fromAffiliate) {
+      coupon = undefined; // modal aparece mas sem forçar outro cupom
+    }
+
+    this.markFired(key);
+    this.showModal(trigger, coupon);
   }
 
   /**
