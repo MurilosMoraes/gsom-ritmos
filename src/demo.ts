@@ -661,7 +661,22 @@ class DemoPlayer {
           <span class="demo-expired-price-unit">por mês</span>
           <span class="demo-expired-price-note">48h grátis sem cartão</span>
         </div>
-        <a href="/register.html" class="demo-expired-cta">Criar minha conta</a>
+        <!-- Campo inline de e-mail: reduz fricção do cadastro.
+             O user digita aqui, a gente leva pro /register com o email
+             pré-preenchido via ?email= na URL. Um input = uma fricção
+             a menos. -->
+        <form id="demoQuickSignup" class="demo-expired-quick">
+          <input
+            type="email"
+            id="demoEmailInput"
+            class="demo-expired-email"
+            placeholder="Seu e-mail"
+            autocomplete="email"
+            required
+          />
+          <button type="submit" class="demo-expired-cta">Criar conta grátis</button>
+        </form>
+
         <div class="demo-expired-sub">
           Já tem conta? <a href="/login.html">Entrar</a>
         </div>
@@ -671,6 +686,16 @@ class DemoPlayer {
 
     // Popular o carrossel com os ritmos bloqueados reais
     this.populateExpiredCatalog();
+
+    // Quick signup: leva pro /register com email pré-preenchido
+    const quickForm = document.getElementById('demoQuickSignup') as HTMLFormElement | null;
+    quickForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('demoEmailInput') as HTMLInputElement | null;
+      const email = input?.value.trim() || '';
+      const q = email ? `?email=${encodeURIComponent(email)}` : '';
+      window.location.href = `/register.html${q}`;
+    });
   }
 
   /**

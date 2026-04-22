@@ -45,6 +45,15 @@ class RegisterPage {
     // Social proof dinâmico — fire-and-forget, não bloqueia o formulário
     this.loadSocialProof();
 
+    // Pré-preencher email se veio via ?email= (demo quick signup)
+    const qs = new URLSearchParams(window.location.search);
+    const prefillEmail = qs.get('email');
+    if (prefillEmail && /^[^\s@]+@[^\s@]+$/.test(prefillEmail)) {
+      this.emailInput.value = prefillEmail;
+      // Foca no próximo campo (nome) pra user continuar o fluxo
+      setTimeout(() => this.nameInput.focus(), 50);
+    }
+
     // Máscara do CPF
     this.cpfInput.addEventListener('input', () => {
       const pos = this.cpfInput.selectionStart || 0;
