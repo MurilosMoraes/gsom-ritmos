@@ -37,19 +37,37 @@ class RegisterPage {
   }
 
   private async init(): Promise<void> {
+    // Pré-pegar email da URL ANTES do check de sessão, pra preservar
+    // na hora de decidir pra onde mandar o user
+    const qs = new URLSearchParams(window.location.search);
+    const prefillEmail = qs.get('email');
+    const emailFromUrl = prefillEmail && /^[^\s@]+@[^\s@]+$/.test(prefillEmail)
+      ? prefillEmail : null;
+
     if (await authService.isAuthenticated()) {
-      window.location.href = '/';
-      return;
+      // Caso especial: user veio do quick signup da demo (?email=X).
+      // Isso significa que ele QUER criar conta nova — provavelmente é
+      // uma sessão fantasma de outro device no mesmo browser, ou ele
+      // mesmo quer trocar de conta. Fazer signOut silencioso pra
+      // permitir o cadastro novo em vez de jogar ele pra home.
+      if (emailFromUrl) {
+        const { supabase } = await import('./supabase');
+        await supabase.auth.signOut();
+        // Continua o fluxo de cadastro (não retorna)
+      } else {
+        // Chegou no /register sem intenção clara de criar nova conta —
+        // manda pra home (continue o app)
+        window.location.href = '/';
+        return;
+      }
     }
 
     // Social proof dinâmico — fire-and-forget, não bloqueia o formulário
     this.loadSocialProof();
 
     // Pré-preencher email se veio via ?email= (demo quick signup)
-    const qs = new URLSearchParams(window.location.search);
-    const prefillEmail = qs.get('email');
-    if (prefillEmail && /^[^\s@]+@[^\s@]+$/.test(prefillEmail)) {
-      this.emailInput.value = prefillEmail;
+    if (emailFromUrl) {
+      this.emailInput.value = emailFromUrl;
       // Foca no próximo campo (nome) pra user continuar o fluxo
       setTimeout(() => this.nameInput.focus(), 50);
     }
