@@ -28,6 +28,49 @@ const IDLE_TIMEOUT = 8 * 60 * 1000;
 const STORAGE_KEY = 'gdrums_demo_used';
 const FP_KEY = 'gdrums_demo_fp';
 
+// Passos do tour guiado — cada um aponta pra um elemento e avança
+// quando o user FAZ a ação pedida. Nada bloqueia o usuário: se ele
+// já souber usar o app, pode ignorar e os tooltips somem sozinhos.
+type TourStep = {
+  target: string;              // CSS selector do elemento-alvo
+  title: string;               // copy curto
+  body: string;                // instrução
+  advanceOn: 'click' | 'auto'; // como o passo avança
+  autoDelayMs?: number;        // pra steps 'auto'
+  position?: 'top' | 'bottom' | 'right' | 'left'; // posição do tooltip
+};
+
+const TOUR_STEPS: TourStep[] = [
+  {
+    target: '.grid-cell[data-type="main"][data-variation="0"]',
+    title: 'Comece tocando',
+    body: 'Aperte o Ritmo 1 pra ouvir a banda entrar.',
+    advanceOn: 'click',
+    position: 'top',
+  },
+  {
+    target: '.grid-cell[data-type="fill"][data-variation="1"]',
+    title: 'Agora solte uma virada',
+    body: 'Toque a Virada 2 — ela entra no tempo certo, como baterista de verdade.',
+    advanceOn: 'click',
+    position: 'top',
+  },
+  {
+    target: '.grid-cell[data-type="main"][data-variation="2"]',
+    title: 'Troque de ritmo',
+    body: 'Aperte o Ritmo 3. O app faz a virada automática na transição.',
+    advanceOn: 'click',
+    position: 'top',
+  },
+  {
+    target: '#cymbalBtn',
+    title: 'Feche com o prato',
+    body: 'O prato termina a frase musical. É o sinal de "acabou".',
+    advanceOn: 'click',
+    position: 'top',
+  },
+];
+
 class DemoPlayer {
   private audioContext!: AudioContext;
   private stateManager!: StateManager;
@@ -41,6 +84,11 @@ class DemoPlayer {
   private expired = false;
   private cymbalBuffer: AudioBuffer | null = null;
   private currentRhythmName = '';
+  private tourIdx = 0;
+  private tourDone = false;
+  private tourTooltip: HTMLElement | null = null;
+  private rhythmsTrocados = 0;
+  private conversionShown = false;
 
   constructor() {
     if (this.isDemoExpired()) {
@@ -206,6 +254,11 @@ class DemoPlayer {
             this.stop();
           } else {
             this.patternEngine.playFillToNextRhythm(variation);
+            this.rhythmsTrocados += 1;
+            // 3 trocas sem ter visto ainda → mostra modal (aha moment confirmado)
+            if (this.rhythmsTrocados >= 3 && !this.conversionShown) {
+              this.maybeShowConversionModal();
+            }
           }
         } else if (cellType === 'fill' && this.stateManager.isPlaying()) {
           this.patternEngine.activateFillWithTiming(variation);
@@ -248,6 +301,153 @@ class DemoPlayer {
 
     // Carregar primeiro ritmo
     this.loadRhythm(DEMO_RHYTHMS[0]);
+
+    // Iniciar tour guiado depois que a UI terminou de montar
+    // (espera um tick pra CSS aplicar posicionamento das células)
+    setTimeout(() => this.startTour(), 800);
+  }
+
+  // ─── Tour guiado ──────────────────────────────────────────────────
+
+  private startTour(): void {
+    if (this.tourDone) return;
+    // Se user já deu play antes do tour começar, pula o primeiro passo
+    if (this.stateManager.isPlaying() && this.tourIdx === 0) this.tourIdx = 1;
+    this.renderTourStep();
+  }
+
+  private renderTourStep(): void {
+    this.clearTourTooltip();
+    if (this.tourIdx >= TOUR_STEPS.length) {
+      this.tourDone = true;
+      this.maybeShowConversionModal();
+      return;
+    }
+    const step = TOUR_STEPS[this.tourIdx];
+    const target = document.querySelector(step.target) as HTMLElement | null;
+    if (!target) {
+      // Elemento não achado → pula pro próximo (defensive)
+      this.tourIdx += 1;
+      setTimeout(() => this.renderTourStep(), 100);
+      return;
+    }
+
+    // Tooltip
+    const tip = document.createElement('div');
+    tip.className = 'demo-tour-tip';
+    tip.innerHTML = `
+      <div class="demo-tour-tip-title">${step.title}</div>
+      <div class="demo-tour-tip-body">${step.body}</div>
+      <div class="demo-tour-tip-skip" role="button" tabindex="0">Pular tour</div>
+    `;
+    document.body.appendChild(tip);
+    this.tourTooltip = tip;
+
+    // Posicionar tooltip acima do target
+    requestAnimationFrame(() => {
+      const rect = target.getBoundingClientRect();
+      const tipRect = tip.getBoundingClientRect();
+      const pos = step.position || 'top';
+      let top = 0, left = 0;
+      if (pos === 'top') {
+        top = rect.top + window.scrollY - tipRect.height - 14;
+        left = rect.left + window.scrollX + (rect.width / 2) - (tipRect.width / 2);
+      } else if (pos === 'bottom') {
+        top = rect.bottom + window.scrollY + 14;
+        left = rect.left + window.scrollX + (rect.width / 2) - (tipRect.width / 2);
+      }
+      // Guard: não deixar sair da tela
+      left = Math.max(12, Math.min(window.innerWidth - tipRect.width - 12, left));
+      top = Math.max(12, top);
+      tip.style.top = `${top}px`;
+      tip.style.left = `${left}px`;
+      tip.classList.add('visible');
+    });
+
+    // Pulse no target
+    target.classList.add('demo-tour-pulse');
+
+    // Skip button
+    tip.querySelector('.demo-tour-tip-skip')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.tourDone = true;
+      this.clearTourTooltip();
+      target.classList.remove('demo-tour-pulse');
+    });
+
+    // Avanço
+    if (step.advanceOn === 'click') {
+      const onClick = () => {
+        target.removeEventListener('click', onClick);
+        target.classList.remove('demo-tour-pulse');
+        this.tourIdx += 1;
+        // Espera o step musical acontecer antes de pular pro próximo (1.5s)
+        setTimeout(() => this.renderTourStep(), 1500);
+      };
+      target.addEventListener('click', onClick, { once: true });
+    } else if (step.advanceOn === 'auto') {
+      setTimeout(() => {
+        target.classList.remove('demo-tour-pulse');
+        this.tourIdx += 1;
+        this.renderTourStep();
+      }, step.autoDelayMs || 2500);
+    }
+  }
+
+  private clearTourTooltip(): void {
+    if (this.tourTooltip) {
+      this.tourTooltip.remove();
+      this.tourTooltip = null;
+    }
+  }
+
+  // ─── Modal de conversão progressivo ──────────────────────────────
+  // Aparece após o tour completar OU após 3 trocas de ritmo (sinal forte
+  // de que o user entendeu o app e tá extraindo valor). Não trava, só
+  // aparece elegante por cima e pode ser dispensado.
+
+  private maybeShowConversionModal(): void {
+    if (this.conversionShown) return;
+    if (this.expired) return;
+    this.conversionShown = true;
+    setTimeout(() => this.showConversionModal(), 500);
+  }
+
+  private showConversionModal(): void {
+    if (this.expired) return;
+    document.querySelectorAll('.demo-convert-modal').forEach(el => el.remove());
+
+    const overlay = document.createElement('div');
+    overlay.className = 'demo-convert-modal';
+    overlay.innerHTML = `
+      <div class="demo-convert-card">
+        <div class="demo-convert-overline">Gostou?</div>
+        <h3 class="demo-convert-title">Isso é só uma prévia.</h3>
+        <p class="demo-convert-body">
+          Você acabou de tocar com acompanhamento profissional.
+          Cria conta grátis pra liberar os outros 83 ritmos,
+          conectar pedal Bluetooth e montar sua setlist.
+        </p>
+        <p class="demo-convert-pricing">48 horas grátis. Sem cartão.</p>
+        <div class="demo-convert-actions">
+          <a href="/register.html" class="demo-convert-primary">Criar conta</a>
+          <button class="demo-convert-secondary">Continuar testando</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+
+    overlay.querySelector('.demo-convert-secondary')?.addEventListener('click', () => {
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.remove(), 220);
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('visible');
+        setTimeout(() => overlay.remove(), 220);
+      }
+    });
   }
 
   // ─── Ritmo ────────────────────────────────────────────────────────

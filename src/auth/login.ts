@@ -3,6 +3,7 @@
 import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { AttributionService } from '../native/AttributionService';
+import { loginSchema, zodErrorsToFieldMap } from './schemas';
 
 class LoginPage {
   private form: HTMLFormElement;
@@ -224,20 +225,50 @@ class LoginPage {
   }
 
   private validateForm(): boolean {
-    const email = this.emailInput.value.trim();
-    const password = this.passwordInput.value;
+    const result = loginSchema.safeParse({
+      email: this.emailInput.value,
+      password: this.passwordInput.value,
+    });
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      this.showAlert('Informe um e-mail válido', 'error');
-      this.emailInput.focus();
-      return false;
+    if (result.success) {
+      this.showFieldError(this.emailInput, null);
+      this.showFieldError(this.passwordInput, null);
+      return true;
     }
-    if (!password) {
-      this.showAlert('Informe sua senha', 'error');
-      this.passwordInput.focus();
-      return false;
+
+    const errors = zodErrorsToFieldMap(result.error);
+    this.showFieldError(this.emailInput, errors.email || null);
+    this.showFieldError(this.passwordInput, errors.password || null);
+
+    // Focar no primeiro campo com erro
+    const first = errors.email ? this.emailInput : this.passwordInput;
+    first.focus();
+    return false;
+  }
+
+  /**
+   * Mostra ou limpa erro inline abaixo do input.
+   * Cria o elemento na primeira vez.
+   */
+  private showFieldError(input: HTMLInputElement, msg: string | null): void {
+    const parent = input.parentElement;
+    if (!parent) return;
+    let errEl = parent.querySelector('.login-field-error') as HTMLElement | null;
+    if (!errEl) {
+      errEl = document.createElement('div');
+      errEl.className = 'login-field-error';
+      errEl.setAttribute('role', 'alert');
+      parent.appendChild(errEl);
     }
-    return true;
+    if (msg) {
+      errEl.textContent = msg;
+      errEl.classList.add('active');
+      input.classList.add('login-input-error');
+    } else {
+      errEl.textContent = '';
+      errEl.classList.remove('active');
+      input.classList.remove('login-input-error');
+    }
   }
 
   private setLoading(loading: boolean): void {

@@ -194,6 +194,173 @@
       transition: color 0.15s;
     }
     .demo-expired-support a:hover { color: rgba(255, 255, 255, 0.7); }
+
+    /* ─── Tour guiado ───
+       Tooltip apontando pro elemento + pulse no target.
+       Nunca bloqueia a UI — só reforça a ação. */
+    .demo-tour-tip {
+      position: absolute;
+      z-index: 9500;
+      max-width: 260px;
+      padding: 0.8rem 0.95rem 0.7rem;
+      background: #0a0a0f;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      color: #fff;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+      transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+      pointer-events: auto;
+    }
+    .demo-tour-tip.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .demo-tour-tip::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%) rotate(45deg);
+      width: 12px;
+      height: 12px;
+      background: #0a0a0f;
+      border-right: 1px solid rgba(255, 255, 255, 0.12);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .demo-tour-tip-title {
+      font-size: 0.88rem;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      margin-bottom: 0.3rem;
+    }
+    .demo-tour-tip-body {
+      font-size: 0.78rem;
+      line-height: 1.4;
+      color: rgba(255, 255, 255, 0.65);
+      margin-bottom: 0.55rem;
+    }
+    .demo-tour-tip-skip {
+      display: inline-block;
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s;
+    }
+    .demo-tour-tip-skip:hover {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .demo-tour-pulse {
+      animation: demoTourPulse 1.6s ease-in-out infinite;
+      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45);
+      border-radius: 14px;
+    }
+    @keyframes demoTourPulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.0);
+      }
+      50% {
+        box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08),
+                    0 0 24px rgba(255, 255, 255, 0.18);
+      }
+    }
+
+    /* ─── Modal de conversão progressivo ───
+       Aparece depois do tour OU após 3 trocas de ritmo (aha moment).
+       Pode ser fechado e o user continua experimentando. */
+    .demo-convert-modal {
+      position: fixed; inset: 0; z-index: 9700;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.22s ease;
+      padding: 0;
+    }
+    @media (min-height: 620px) {
+      .demo-convert-modal { align-items: center; padding: 1.5rem; }
+    }
+    .demo-convert-modal.visible { opacity: 1; }
+
+    .demo-convert-card {
+      width: 100%;
+      max-width: 440px;
+      background: #0a0a0f;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px 20px 0 0;
+      padding: 1.75rem 1.6rem 1.5rem;
+      color: #fff;
+      transform: translateY(40px);
+      transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    }
+    .demo-convert-modal.visible .demo-convert-card {
+      transform: translateY(0);
+    }
+    @media (min-height: 620px) {
+      .demo-convert-card { border-radius: 20px; }
+    }
+
+    .demo-convert-overline {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.42);
+      font-weight: 500;
+      margin-bottom: 0.55rem;
+    }
+    .demo-convert-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
+      margin: 0 0 0.75rem;
+    }
+    .demo-convert-body {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: rgba(255, 255, 255, 0.62);
+      margin: 0 0 0.55rem;
+    }
+    .demo-convert-pricing {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin: 0 0 1.25rem;
+    }
+    .demo-convert-actions {
+      display: flex; flex-direction: column; gap: 0.55rem;
+    }
+    .demo-convert-primary {
+      display: block;
+      padding: 0.85rem;
+      background: #fff;
+      color: #0a0a0f;
+      text-decoration: none;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      text-align: center;
+      transition: opacity 0.15s;
+    }
+    .demo-convert-primary:hover { opacity: 0.9; }
+    .demo-convert-secondary {
+      width: 100%;
+      padding: 0.65rem;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.82rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .demo-convert-secondary:hover { color: rgba(255, 255, 255, 0.85); }
   </style>
 </head>
 <body>
