@@ -37,29 +37,37 @@ class RegisterPage {
   }
 
   private async init(): Promise<void> {
-    // Pré-pegar email da URL ANTES do check de sessão, pra preservar
-    // na hora de decidir pra onde mandar o user
+    // Pré-pegar email da URL ANTES do check de sessão. Regex tolerante:
+    // precisa ter @ e pelo menos 1 char antes e depois. Ponto no domínio
+    // é opcional — é preferível o user começar a digitar e a validação do
+    // Zod no submit corrigir, do que barrar aqui.
     const qs = new URLSearchParams(window.location.search);
-    const prefillEmail = qs.get('email');
-    const emailFromUrl = prefillEmail && /^[^\s@]+@[^\s@]+$/.test(prefillEmail)
+    const prefillEmail = (qs.get('email') || '').trim();
+    const emailFromUrl = prefillEmail.length > 0 && /^[^\s@]+@[^\s@]+$/.test(prefillEmail)
       ? prefillEmail : null;
 
-    if (await authService.isAuthenticated()) {
-      // Caso especial: user veio do quick signup da demo (?email=X).
-      // Isso significa que ele QUER criar conta nova — provavelmente é
-      // uma sessão fantasma de outro device no mesmo browser, ou ele
-      // mesmo quer trocar de conta. Fazer signOut silencioso pra
-      // permitir o cadastro novo em vez de jogar ele pra home.
-      if (emailFromUrl) {
+    // Log de debug: ajuda a entender quando o fluxo desvia
+    // (usuário reportou 'vai pro login em vez do cadastro')
+    console.log('[register] init — emailFromUrl:', emailFromUrl);
+
+    // ─── Regra de redirecionamento ───
+    // 1. Se veio com ?email= (intenção clara de cadastrar): faz signOut
+    //    de sessão residual SE houver e renderiza o form normalmente.
+    //    Nunca joga pra home nesse caso — o user QUER criar conta.
+    // 2. Sem ?email=: comportamento antigo (se autenticado → home).
+    if (emailFromUrl) {
+      // Força signOut (silencioso, não bloqueia). Se não tem sessão, é no-op.
+      try {
         const { supabase } = await import('./supabase');
         await supabase.auth.signOut();
-        // Continua o fluxo de cadastro (não retorna)
-      } else {
-        // Chegou no /register sem intenção clara de criar nova conta —
-        // manda pra home (continue o app)
-        window.location.href = '/';
-        return;
+        console.log('[register] signOut silencioso feito pra permitir cadastro novo');
+      } catch (e) {
+        console.warn('[register] signOut falhou, continuando:', e);
       }
+    } else if (await authService.isAuthenticated()) {
+      console.log('[register] autenticado sem email — redirecionando pra /');
+      window.location.href = '/';
+      return;
     }
 
     // Social proof dinâmico — fire-and-forget, não bloqueia o formulário
