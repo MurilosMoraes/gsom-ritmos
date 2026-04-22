@@ -637,35 +637,63 @@ class DemoPlayer {
     overlay.className = 'demo-expired-overlay';
     overlay.innerHTML = `
       <div class="demo-expired-card">
-        <div class="demo-expired-overline">Fim da demonstração</div>
-        <h2>Os outros 69 ritmos estão aqui.</h2>
+        <div class="demo-expired-overline">Você tocou bem</div>
+        <h2>Agora é pegar a banda completa.</h2>
         <p>
-          A demonstração é uma prévia curta. A biblioteca completa tem
-          72 ritmos com viradas, intros e finais — o material que segura
-          uma música do começo ao fim.
+          Você tocou 3 ritmos. A biblioteca tem <strong>86</strong> —
+          Vaneira, Sertanejo, Gospel, Pagode, Forró, Reggae, Rock e muito
+          mais, cada um com viradas, intros e finais prontos pra palco.
         </p>
-        <p>
-          Pedal Bluetooth, setlist de palco e modo offline também
-          fazem parte do plano. O teste de 48 horas é gratuito e não
-          pede cartão.
-        </p>
+
+        <!-- Preview do catálogo: lista dos ritmos bloqueados passando -->
+        <div class="demo-expired-catalog">
+          <div class="demo-expired-catalog-track" id="demoCatalogTrack"></div>
+        </div>
+
+        <div class="demo-expired-features">
+          <div class="demo-expired-feature"><span>86</span>ritmos completos</div>
+          <div class="demo-expired-feature"><span>BT</span>pedal Bluetooth</div>
+          <div class="demo-expired-feature"><span>∞</span>offline no palco</div>
+        </div>
+
         <div class="demo-expired-price">
           <span class="demo-expired-price-amount">R$ 29</span>
           <span class="demo-expired-price-unit">por mês</span>
-          <span class="demo-expired-price-note">ou 48h grátis</span>
+          <span class="demo-expired-price-note">48h grátis sem cartão</span>
         </div>
         <a href="/register.html" class="demo-expired-cta">Criar minha conta</a>
         <div class="demo-expired-sub">
           Já tem conta? <a href="/login.html">Entrar</a>
         </div>
-        <div class="demo-expired-support">
-          <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank">
-            Falar com o suporte
-          </a>
-        </div>
       </div>
     `;
     document.body.appendChild(overlay);
+
+    // Popular o carrossel com os ritmos bloqueados reais
+    this.populateExpiredCatalog();
+  }
+
+  /**
+   * Preenche a faixa horizontal com os nomes dos ritmos bloqueados
+   * (usa o manifest real). Sinaliza visualmente o tamanho da biblioteca
+   * pro cara que tá vendo a tela de fim.
+   */
+  private async populateExpiredCatalog(): Promise<void> {
+    const track = document.getElementById('demoCatalogTrack');
+    if (!track) return;
+    try {
+      const res = await fetch('/rhythm/manifest.json');
+      const manifest = await res.json();
+      const freeNames = new Set(DEMO_RHYTHMS.map(r => r.name));
+      const names = (manifest.rhythms || [])
+        .map((f: string) => f.replace(/\.json$/, ''))
+        .filter((n: string) => !freeNames.has(n));
+      // Duplica pra animação loop ficar contínua
+      const html = [...names, ...names].map((n: string) => `<span>${n}</span>`).join('');
+      track.innerHTML = html;
+    } catch {
+      // Se falhar, só não mostra a faixa
+    }
   }
 }
 

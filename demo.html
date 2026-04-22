@@ -55,7 +55,71 @@
       background: rgba(255, 255, 255, 0.35);
       transition: width 0.3s ease;
     }
-    .app-container { padding-top: 3.25rem; }
+    /* Banner de valor — fica logo abaixo do topbar. Tom editorial,
+       não vendedor. Clique no CTA vai direto pra cadastro. */
+    .demo-value-banner {
+      position: fixed;
+      top: 3.25rem;
+      left: 0; right: 0;
+      z-index: 9997;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1rem;
+      background: rgba(8, 8, 14, 0.7);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.55);
+      letter-spacing: -0.003em;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .demo-value-banner strong { color: #fff; font-weight: 500; }
+    .demo-value-dot {
+      display: inline-block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #3ee8a7;
+      box-shadow: 0 0 6px rgba(62, 232, 167, 0.55);
+      animation: demoValuePulse 1.8s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes demoValuePulse {
+      0%, 100% { opacity: 0.55; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+    .demo-value-cta {
+      display: inline-block;
+      margin-left: 0.5rem;
+      padding: 0.25rem 0.65rem;
+      background: #fff;
+      color: #0a0a0f;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+      flex-shrink: 0;
+    }
+    .demo-value-cta:hover { opacity: 0.88; }
+
+    /* Mobile: simplifica pra caber em 1 linha */
+    @media (max-width: 520px) {
+      .demo-value-banner {
+        font-size: 0.7rem;
+        padding: 0.5rem 0.7rem;
+      }
+    }
+
+    /* Empurra o conteúdo pra baixo do banner fixo */
+    .app-container {
+      padding-top: calc(3.25rem + 2.25rem);
+    }
 
     /* Esconder elementos que nao existem no demo */
     #setlistPrev, #setlistNext, #setlistEditBtn, #myRhythmsBtn, #saveAsMyRhythmBtn { display: none !important; }
@@ -121,7 +185,67 @@
       line-height: 1.55;
       margin: 0 0 1rem;
     }
-    .demo-expired-card p:last-of-type { margin-bottom: 1.5rem; }
+    .demo-expired-card p:last-of-type { margin-bottom: 1rem; }
+    .demo-expired-card p strong { color: #fff; font-weight: 600; }
+
+    /* Catálogo rolando — mostra visualmente todos os ritmos bloqueados */
+    .demo-expired-catalog {
+      position: relative;
+      overflow: hidden;
+      margin: 0 -2rem 1.25rem;
+      padding: 0.5rem 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    }
+    .demo-expired-catalog-track {
+      display: flex;
+      gap: 0.45rem;
+      animation: demoCatalogScroll 50s linear infinite;
+      white-space: nowrap;
+    }
+    .demo-expired-catalog-track span {
+      flex-shrink: 0;
+      padding: 0.28rem 0.55rem;
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 6px;
+      letter-spacing: -0.005em;
+    }
+    @keyframes demoCatalogScroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+
+    /* Features row — 3 colunas visuais com o que o plano entrega */
+    .demo-expired-features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin: 0 0 1.25rem;
+    }
+    .demo-expired-feature {
+      text-align: center;
+      padding: 0.65rem 0.4rem;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.55);
+      letter-spacing: -0.005em;
+      line-height: 1.3;
+    }
+    .demo-expired-feature span {
+      display: block;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.15rem;
+      letter-spacing: -0.02em;
+    }
 
     .demo-expired-price {
       display: flex; align-items: baseline; gap: 0.45rem;
@@ -375,6 +499,13 @@
     </div>
     <a href="/register.html" class="demo-topbar-cta">Abrir conta</a>
     <div class="demo-topbar-bar" id="demoBar" style="width:100%;"></div>
+  </div>
+
+  <!-- Banner editorial fino: reforça que a demo é o produto real -->
+  <div class="demo-value-banner" id="demoValueBanner">
+    <span class="demo-value-dot"></span>
+    Você está tocando com a banda real. <strong>86 ritmos no plano completo.</strong>
+    <a href="/register.html" class="demo-value-cta">Criar conta</a>
   </div>
 
   <div class="app-container">
