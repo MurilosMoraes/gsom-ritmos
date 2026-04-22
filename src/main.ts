@@ -2007,29 +2007,27 @@ class RhythmSequencer {
       });
     }
 
-    // Instalar app — botão no MENU (não mais dentro de Minha Conta)
-    // Visível apenas se:
-    //   (a) Android/desktop: installPrompt foi capturado (beforeinstallprompt)
-    //   (b) iOS Safari: não está em standalone (i.e. ainda não instalou)
-    // Em outros casos o botão fica hidden.
+    // Instalar app — botão sempre visível no MENU quando não-standalone.
+    //
+    // Comportamento por plataforma:
+    // - Android/Desktop com installPrompt capturado: dispara nativo na hora
+    // - Android/Desktop sem prompt: mostra tutorial com passos manuais
+    //   (caso comum: user já dispensou o prompt OU browser não suporta)
+    // - iOS Safari (não tem beforeinstallprompt): sempre mostra tutorial
+    // - Já instalado (standalone): botão fica hidden
     const menuInstallBtn = document.getElementById('menuInstallBtn');
     const isStandalonePWA = window.matchMedia('(display-mode: standalone)').matches
       || (navigator as any).standalone === true;
-    const isIOSInstallable = /iPhone|iPad|iPod/i.test(navigator.userAgent) && !isStandalonePWA;
     if (menuInstallBtn) {
-      const checkInstallVisibility = () => {
-        const shouldShow = !isStandalonePWA && (this.installPrompt !== null || isIOSInstallable);
-        menuInstallBtn.style.display = shouldShow ? '' : 'none';
-      };
-      checkInstallVisibility();
-      // Re-checar quando installPrompt chega (event assíncrono)
-      window.addEventListener('beforeinstallprompt', () => {
-        setTimeout(checkInstallVisibility, 100);
-      });
+      // Sempre mostra se não-standalone (iOS, Android, desktop)
+      menuInstallBtn.style.display = isStandalonePWA ? 'none' : '';
+
       menuInstallBtn.addEventListener('click', () => {
         const fabDropdown = document.getElementById('fabDropdown');
         if (fabDropdown) fabDropdown.style.display = 'none';
+
         if (this.installPrompt) {
+          // Android/Desktop com prompt capturado — dispara nativo
           this.installPrompt.prompt();
           this.installPrompt.userChoice.then((choice: any) => {
             if (choice.outcome === 'accepted') {
@@ -2038,7 +2036,8 @@ class RhythmSequencer {
             }
             this.installPrompt = null;
           });
-        } else if (isIOSInstallable) {
+        } else {
+          // iOS OU Android sem prompt disponível — tutorial manual
           this.showInstallTutorial();
         }
       });
@@ -2860,76 +2859,191 @@ class RhythmSequencer {
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
                   (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 
+    // Estética editorial (mesma linguagem do ConversionManager / demo)
+    this.injectInstallTutorialCSS();
+
     const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(20px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+    overlay.className = 'install-tut-overlay';
 
-    if (isIOS) {
-      overlay.innerHTML = `
-        <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:2rem;max-width:380px;width:100%;">
-          <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.3rem;text-align:center;">Instalar GDrums</h2>
-          <p style="font-size:0.7rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.5rem;">Adicione o app na tela inicial do seu iPhone</p>
+    const steps = isIOS
+      ? [
+          {
+            n: '01',
+            body: 'Toque no botão <strong>Compartilhar</strong> na barra inferior do Safari.',
+          },
+          {
+            n: '02',
+            body: 'Role pra baixo e toque em <strong>Adicionar à Tela de Início</strong>.',
+          },
+          {
+            n: '03',
+            body: 'Confirme tocando em <strong>Adicionar</strong> no canto superior direito.',
+          },
+        ]
+      : [
+          {
+            n: '01',
+            body: 'Toque no menu <strong>⋮</strong> (três pontos) no canto superior do Chrome.',
+          },
+          {
+            n: '02',
+            body: 'Toque em <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.',
+          },
+          {
+            n: '03',
+            body: 'Confirme e o GDrums vai aparecer como app normal no seu celular.',
+          },
+        ];
 
-          <div style="display:flex;flex-direction:column;gap:1rem;">
-            <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:12px;padding:1rem;">
-              <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,212,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;font-weight:700;color:rgba(0,212,255,0.8);">1</div>
-              <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.5;">
-                Toque no botao <strong style="color:#fff;">Compartilhar</strong>
-                <span style="display:inline-block;margin-left:4px;font-size:1.1em;">&#xFEFF;<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.8)" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></span>
-                na barra do Safari/Chrome
-              </div>
-            </div>
-
-            <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.15);border-radius:12px;padding:1rem;">
-              <div style="width:32px;height:32px;border-radius:8px;background:rgba(139,92,246,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;font-weight:700;color:rgba(139,92,246,0.8);">2</div>
-              <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.5;">
-                Role pra baixo e toque em <strong style="color:#fff;">Adicionar a Tela de Inicio</strong>
-              </div>
-            </div>
-
-            <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(0,230,140,0.05);border:1px solid rgba(0,230,140,0.15);border-radius:12px;padding:1rem;">
-              <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,230,140,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;font-weight:700;color:rgba(0,230,140,0.8);">3</div>
-              <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.5;">
-                Toque em <strong style="color:#fff;">Adicionar</strong> no canto superior direito
-              </div>
-            </div>
-          </div>
-
-          <p style="font-size:0.65rem;color:rgba(255,255,255,0.2);text-align:center;margin:1.25rem 0 0;line-height:1.5;">O app vai ficar na sua tela inicial como um app normal, com icone e tela cheia.</p>
-          <button id="installTutorialClose" style="width:100%;margin-top:1rem;padding:0.7rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">Entendi</button>
-        </div>
-      `;
-    } else {
-      // Android/Desktop — instrução genérica (fallback se beforeinstallprompt não disparou)
-      overlay.innerHTML = `
-        <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:2rem;max-width:380px;width:100%;">
-          <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.3rem;text-align:center;">Instalar GDrums</h2>
-          <p style="font-size:0.7rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.5rem;">Adicione o app na tela inicial</p>
-
-          <div style="display:flex;flex-direction:column;gap:1rem;">
-            <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:12px;padding:1rem;">
-              <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,212,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;font-weight:700;color:rgba(0,212,255,0.8);">1</div>
-              <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.5;">
-                Toque no menu <strong style="color:#fff;">&#8942;</strong> (tres pontos) no canto superior do Chrome
-              </div>
-            </div>
-
-            <div style="display:flex;align-items:center;gap:0.75rem;background:rgba(0,230,140,0.05);border:1px solid rgba(0,230,140,0.15);border-radius:12px;padding:1rem;">
-              <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,230,140,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;font-weight:700;color:rgba(0,230,140,0.8);">2</div>
-              <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.5;">
-                Toque em <strong style="color:#fff;">Instalar aplicativo</strong> ou <strong style="color:#fff;">Adicionar a tela inicial</strong>
-              </div>
-            </div>
-          </div>
-
-          <button id="installTutorialClose" style="width:100%;margin-top:1.25rem;padding:0.7rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">Entendi</button>
-        </div>
-      `;
-    }
+    overlay.innerHTML = `
+      <div class="install-tut-modal">
+        <button class="install-tut-close" aria-label="Fechar">×</button>
+        <div class="install-tut-overline">Instalar o app</div>
+        <h2 class="install-tut-title">Tenha o GDrums ${isIOS ? 'no seu iPhone' : 'no seu celular'}.</h2>
+        <p class="install-tut-body">
+          O app fica na tela inicial como qualquer outro. Abre rápido,
+          funciona offline e não precisa de loja.
+        </p>
+        <ul class="install-tut-steps">
+          ${steps.map(s => `
+            <li class="install-tut-step">
+              <span class="install-tut-step-num">${s.n}</span>
+              <span class="install-tut-step-body">${s.body}</span>
+            </li>
+          `).join('')}
+        </ul>
+        <button class="install-tut-cta" id="installTutorialClose">Entendi</button>
+      </div>
+    `;
 
     document.body.appendChild(overlay);
     const close = () => overlay.remove();
-    overlay.querySelector('#installTutorialClose')!.addEventListener('click', close);
+    overlay.querySelector('#installTutorialClose')?.addEventListener('click', close);
+    overlay.querySelector('.install-tut-close')?.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
+    };
+    document.addEventListener('keydown', onKey);
+  }
+
+  private injectInstallTutorialCSS(): void {
+    if (document.getElementById('install-tut-css')) return;
+    const style = document.createElement('style');
+    style.id = 'install-tut-css';
+    style.textContent = `
+      .install-tut-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0, 0, 0, 0.72);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        z-index: 100000;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 1.5rem;
+        padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+        padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+        animation: installTutIn 0.24s ease;
+      }
+      @media (min-height: 620px) {
+        .install-tut-overlay { align-items: center; }
+      }
+      @keyframes installTutIn { from { opacity: 0 } to { opacity: 1 } }
+
+      .install-tut-modal {
+        width: 100%; max-width: 420px;
+        background: #0a0a0f;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 2rem 1.75rem 1.5rem;
+        color: #fff;
+        position: relative;
+        margin: auto;
+      }
+      .install-tut-close {
+        position: absolute; top: 0.75rem; right: 0.75rem;
+        width: 32px; height: 32px;
+        background: transparent; border: none;
+        color: rgba(255,255,255,0.35);
+        font-size: 1.5rem; line-height: 1;
+        cursor: pointer; border-radius: 8px;
+        transition: color 0.15s, background 0.15s;
+      }
+      .install-tut-close:hover { color: #fff; background: rgba(255,255,255,0.05); }
+
+      .install-tut-overline {
+        font-size: 0.68rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.42);
+        font-weight: 500;
+        margin-bottom: 0.85rem;
+      }
+      .install-tut-title {
+        font-size: 1.35rem;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+        line-height: 1.2;
+        margin: 0 0 0.6rem;
+      }
+      .install-tut-body {
+        font-size: 0.88rem;
+        line-height: 1.5;
+        color: rgba(255,255,255,0.55);
+        margin: 0 0 1.5rem;
+      }
+      .install-tut-steps {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1.5rem;
+        border-top: 1px solid rgba(255,255,255,0.06);
+      }
+      .install-tut-step {
+        display: flex;
+        align-items: baseline;
+        gap: 0.85rem;
+        padding: 0.85rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .install-tut-step-num {
+        font-size: 0.72rem;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+        color: rgba(255,255,255,0.4);
+        flex-shrink: 0;
+        width: 1.4rem;
+      }
+      .install-tut-step-body {
+        font-size: 0.88rem;
+        line-height: 1.5;
+        color: rgba(255,255,255,0.75);
+      }
+      .install-tut-step-body strong {
+        color: #fff;
+        font-weight: 600;
+      }
+      .install-tut-cta {
+        width: 100%;
+        padding: 0.9rem;
+        background: #fff;
+        color: #0a0a0f;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        letter-spacing: -0.005em;
+        font-family: inherit;
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      .install-tut-cta:hover { opacity: 0.9; }
+      .install-tut-cta:active { transform: scale(0.99); }
+    `;
+    document.head.appendChild(style);
   }
 
   private updateProjectBar(name: string): void {
