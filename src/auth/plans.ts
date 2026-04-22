@@ -140,14 +140,77 @@ class PlansPage {
 
     btn.addEventListener('click', () => this.applyCoupon());
 
-    // Pré-aplicar cupom vindo da URL (?coupon=TRIAL30)
-    // Usado pelo ConversionManager quando manda o user do modal de
-    // 'últimas horas do trial' direto pra cá com o cupom já embutido.
-    const qs = new URLSearchParams(window.location.search);
-    const fromUrl = qs.get('coupon');
-    if (fromUrl) {
-      input.value = fromUrl.toUpperCase();
-      setTimeout(() => this.applyCoupon(), 200);
+    // Pré-aplicar cupom automaticamente — ordem de prioridade:
+    // 1. ?coupon=X  (vem do ConversionManager — modal trialEndingSoon)
+    // 2. ?ref=X     (link de afiliado direto — gdrums.com.br/plans?ref=LUCAS10)
+    // 3. localStorage 'gdrums-attr-v1' — se user veio de afiliado há N dias,
+    //    o cupom do afiliado é aplicado no checkout AUTOMATICAMENTE.
+    //    Double-sided discount: user ganha desconto, afiliado ganha comissão.
+    //    Padrão da indústria (UpPromote, Thinkific, Partnero, Rewardful).
+    (async () => {
+      const qs = new URLSearchParams(window.location.search);
+      const fromCouponParam = qs.get('coupon');
+      const fromRefParam = qs.get('ref');
+
+      // 1. Cupom explícito na URL
+      if (fromCouponParam) {
+        input.value = fromCouponParam.toUpperCase();
+        setTimeout(() => this.applyCoupon(), 200);
+        return;
+      }
+
+      // 2. ?ref=X → converter pro coupon_code do afiliado via RPC
+      if (fromRefParam) {
+        const couponCode = await this.resolveAffiliateCoupon(fromRefParam);
+        if (couponCode) {
+          input.value = couponCode;
+          setTimeout(() => this.applyCoupon(), 200);
+          return;
+        }
+      }
+
+      // 3. Atribuição salva em localStorage (cookie window de 90 dias)
+      const campaign = this.getAffiliateCampaignFromStorage();
+      if (campaign) {
+        const couponCode = await this.resolveAffiliateCoupon(campaign);
+        if (couponCode) {
+          input.value = couponCode;
+          setTimeout(() => this.applyCoupon(), 200);
+        }
+      }
+    })();
+  }
+
+  /**
+   * Retorna o coupon_code do afiliado cujo ref bate com o passado,
+   * ou null se não existe ou não tá ativo.
+   */
+  private async resolveAffiliateCoupon(refCode: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase.rpc('get_affiliate_coupon', {
+        ref_code: refCode,
+      });
+      if (error || !data) return null;
+      const row = Array.isArray(data) ? data[0] : data;
+      return row?.coupon_code || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Lê atribuição salva no localStorage e retorna o campaign (cupom/ref)
+   * se o user veio por afiliado. Null em qualquer outro caso.
+   */
+  private getAffiliateCampaignFromStorage(): string | null {
+    try {
+      const raw = localStorage.getItem('gdrums-attr-v1');
+      if (!raw) return null;
+      const attr = JSON.parse(raw);
+      if (attr.source !== 'register_referral' && attr.medium !== 'affiliate') return null;
+      return attr.campaign || null;
+    } catch {
+      return null;
     }
   }
 

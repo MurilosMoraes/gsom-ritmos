@@ -1999,7 +1999,48 @@ class RhythmSequencer {
       myAccountBtn.addEventListener('click', () => {
         const fabDropdown = document.getElementById('fabDropdown');
         if (fabDropdown) fabDropdown.style.display = 'none';
-        this.showAccountModal();
+        // showAccountModal é async — captura erros pra não morrer silenciosamente
+        this.showAccountModal().catch(err => {
+          console.error('[gdrums] Erro ao abrir Minha Conta:', err);
+          this.modalManager.show('Erro', 'Não foi possível abrir sua conta. Tente recarregar a página.', 'warning');
+        });
+      });
+    }
+
+    // Instalar app — botão no MENU (não mais dentro de Minha Conta)
+    // Visível apenas se:
+    //   (a) Android/desktop: installPrompt foi capturado (beforeinstallprompt)
+    //   (b) iOS Safari: não está em standalone (i.e. ainda não instalou)
+    // Em outros casos o botão fica hidden.
+    const menuInstallBtn = document.getElementById('menuInstallBtn');
+    const isStandalonePWA = window.matchMedia('(display-mode: standalone)').matches
+      || (navigator as any).standalone === true;
+    const isIOSInstallable = /iPhone|iPad|iPod/i.test(navigator.userAgent) && !isStandalonePWA;
+    if (menuInstallBtn) {
+      const checkInstallVisibility = () => {
+        const shouldShow = !isStandalonePWA && (this.installPrompt !== null || isIOSInstallable);
+        menuInstallBtn.style.display = shouldShow ? '' : 'none';
+      };
+      checkInstallVisibility();
+      // Re-checar quando installPrompt chega (event assíncrono)
+      window.addEventListener('beforeinstallprompt', () => {
+        setTimeout(checkInstallVisibility, 100);
+      });
+      menuInstallBtn.addEventListener('click', () => {
+        const fabDropdown = document.getElementById('fabDropdown');
+        if (fabDropdown) fabDropdown.style.display = 'none';
+        if (this.installPrompt) {
+          this.installPrompt.prompt();
+          this.installPrompt.userChoice.then((choice: any) => {
+            if (choice.outcome === 'accepted') {
+              this.modalManager.show('App', 'App instalado com sucesso!', 'success');
+              menuInstallBtn.style.display = 'none';
+            }
+            this.installPrompt = null;
+          });
+        } else if (isIOSInstallable) {
+          this.showInstallTutorial();
+        }
       });
     }
 
@@ -3728,14 +3769,25 @@ class RhythmSequencer {
     const { supabase } = await import('./auth/supabase');
     const { PLANS } = await import('./auth/PaymentService');
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
+      // Sessão perdida — manda pro login em vez de ficar em silêncio
+      console.warn('[account] sessão não recuperada:', userErr);
+      this.modalManager.show('Sessão expirada', 'Entre novamente pra acessar sua conta.', 'warning');
+      return;
+    }
 
-    const { data: profile } = await supabase
+    // maybeSingle em vez de single — sem profile não deve quebrar o modal
+    const { data: profile, error: profileErr } = await supabase
       .from('gdrums_profiles')
       .select('name, subscription_status, subscription_plan, subscription_expires_at, created_at')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
+
+    if (profileErr) {
+      console.warn('[account] profile fetch erro:', profileErr);
+      // Seguir em frente com fallbacks do user.metadata
+    }
 
     const name = profile?.name || user.user_metadata?.name || '';
     const email = user.email || '';
@@ -3861,13 +3913,6 @@ class RhythmSequencer {
 
         ${actionBtn ? `<div class="account-actions">${actionBtn}</div>` : ''}
 
-        ${!isStandalone ? `
-        <button class="account-install-btn" id="accountInstallBtn" style="width:100%;padding:0.7rem;margin-bottom:0.75rem;border:none;border-radius:12px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);color:rgba(0,212,255,0.9);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Instalar App
-        </button>
-        ` : ''}
-
         <div class="account-password-section">
           <button class="account-password-toggle" id="accountPasswordToggle">Alterar senha</button>
           <div class="account-password-form" id="accountPasswordForm" style="display:none;">
@@ -3931,10 +3976,11 @@ class RhythmSequencer {
       if (e.target === overlay) close();
     });
 
-    // Instalar App
+    // Instalar App — movido pro menu principal (setupEventListeners).
+    // Código antigo mantido por legado mas ninguém dispara porque o
+    // button #accountInstallBtn não existe mais no modal.
     overlay.querySelector('#accountInstallBtn')?.addEventListener('click', () => {
       if (this.installPrompt) {
-        // Android: disparar prompt nativo
         this.installPrompt.prompt();
         this.installPrompt.userChoice.then((choice: any) => {
           if (choice.outcome === 'accepted') {
@@ -3943,7 +3989,6 @@ class RhythmSequencer {
           this.installPrompt = null;
         });
       } else {
-        // iOS: mostrar tutorial
         this.showInstallTutorial();
       }
       close();

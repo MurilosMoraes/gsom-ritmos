@@ -51,8 +51,8 @@ const TRIGGERS: Record<TriggerKey, TriggerCopy> = {
   trialEndingSoon: {
     overline: 'Últimas horas do teste',
     title: 'Seu teste termina em breve.',
-    body: 'Depois que o período de 48 horas acaba, o acesso é pelo plano. Usa o cupom TRIAL30 antes de expirar e ganha 30% de desconto no primeiro mês.',
-    ctaPrimary: 'Assinar com 30% OFF',
+    body: 'Depois que o período de 48 horas acaba, o acesso é pelo plano. Assine antes de expirar com 10% de desconto no primeiro mês.',
+    ctaPrimary: 'Assinar com 10% OFF',
     ctaSecondary: 'Lembrar depois',
   },
 };
@@ -140,9 +140,30 @@ export class ConversionManager {
     // Desarma firstPlayComplete pra nunca mais disparar nesta sessão do JS
     if (key === 'firstPlayComplete') this.firstPlayCompleteArmed = false;
     this.markFired(key);
-    // trialEndingSoon: leva pro /plans com cupom TRIAL30 pré-aplicado
-    const coupon = key === 'trialEndingSoon' ? 'TRIAL30' : undefined;
+    // trialEndingSoon: leva pro /plans com cupom TRIAL10 pré-aplicado
+    // MAS não manda TRIAL10 se user veio de afiliado (protege a rede).
+    // O /plans nesse caso vai ler ?ref=X do localStorage e aplicar cupom
+    // do afiliado, que normalmente também é 10% mas rende comissão.
+    let coupon: string | undefined = undefined;
+    if (key === 'trialEndingSoon' && !this.cameFromAffiliate()) {
+      coupon = 'TRIAL10';
+    }
     this.showModal(TRIGGERS[key], coupon);
+  }
+
+  /**
+   * Detecta se o user veio via afiliado (tem ?ref=X persistido na atribuição).
+   * Se veio, gatilho não vai sobrescrever o cupom do afiliado com o genérico.
+   */
+  private cameFromAffiliate(): boolean {
+    try {
+      const raw = localStorage.getItem('gdrums-attr-v1');
+      if (!raw) return false;
+      const attr = JSON.parse(raw);
+      return attr.source === 'register_referral' || attr.medium === 'affiliate';
+    } catch {
+      return false;
+    }
   }
 
   private showModal(copy: TriggerCopy, coupon?: string): void {
