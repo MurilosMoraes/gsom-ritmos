@@ -497,10 +497,18 @@ class RhythmSequencer {
           background: rgba(0, 0, 0, 0.72);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
-          display: flex; align-items: center; justify-content: center;
-          padding: 1.5rem; z-index: 100000;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          display: flex; align-items: flex-start; justify-content: center;
+          padding: 1.5rem;
+          padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+          padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+          z-index: 100000;
           animation: wnOverlayIn 0.28s ease;
           font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+        }
+        @media (min-height: 620px) {
+          .wn-modal-overlay { align-items: center; }
         }
         @keyframes wnOverlayIn { from { opacity: 0; } to { opacity: 1; } }
         .wn-modal {
@@ -510,6 +518,7 @@ class RhythmSequencer {
           border-radius: 20px;
           padding: 2rem 1.75rem 1.5rem;
           color: #fff; position: relative;
+          margin: auto;
           animation: wnModalIn 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         @keyframes wnModalIn {
