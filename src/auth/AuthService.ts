@@ -130,7 +130,7 @@ class AuthService {
     localStorage.removeItem('gdrums-toggle-intro');
     localStorage.removeItem('gdrums-toggle-final');
     localStorage.removeItem('gdrums-mode');
-    window.location.href = '/login.html';
+    window.location.href = '/login';
   }
 
   // ─── Sessão ─────────────────────────────────────────────────────────
@@ -272,13 +272,13 @@ class AuthService {
 
   requireAuth(): void {
     if (!this.isAuthenticatedSync()) {
-      window.location.href = '/login.html';
+      window.location.href = '/login';
     }
   }
 
   requireAdmin(): void {
     if (!this.isAuthenticatedSync()) {
-      window.location.href = '/login.html';
+      window.location.href = '/login';
     }
   }
 

@@ -694,7 +694,7 @@ class RhythmSequencer {
         window.addEventListener('online', () => this.checkAccess(), { once: true });
         return true;
       }
-      window.location.href = '/login.html';
+      window.location.href = '/login';
       return false;
     }
 
@@ -707,7 +707,7 @@ class RhythmSequencer {
         }
         return true;
       }
-      window.location.href = '/login.html';
+      window.location.href = '/login';
       return false;
     }
 
@@ -725,7 +725,7 @@ class RhythmSequencer {
         }
         return true;
       }
-      window.location.href = '/login.html';
+      window.location.href = '/login';
       return false;
     }
 
@@ -742,7 +742,7 @@ class RhythmSequencer {
           return true;
         }
         await supabase.auth.signOut();
-        window.location.href = '/login.html';
+        window.location.href = '/login';
         return false;
       }
     }
@@ -776,7 +776,7 @@ class RhythmSequencer {
           }),
         }).catch(() => {});
         await supabase.auth.signOut();
-        window.location.href = '/register.html';
+        window.location.href = '/register';
         return false;
       }
     }
@@ -792,7 +792,7 @@ class RhythmSequencer {
       // Outra sessão está ativa — deslogar este device
       await supabase.auth.signOut();
       localStorage.clear();
-      window.location.href = '/login.html';
+      window.location.href = '/login';
       return false;
     }
 
@@ -882,7 +882,7 @@ class RhythmSequencer {
       this.showSubscribeOnWebsiteNotice();
       return false;
     }
-    window.location.href = '/plans.html';
+    window.location.href = '/plans';
     return false;
   }
 
@@ -960,7 +960,7 @@ class RhythmSequencer {
     const ctaLabel = 'Ver planos';
     banner.innerHTML = `
       <span class="trial-banner-text">${urgentMsg}</span>
-      <a href="${isNativeApp() ? '#' : '/plans.html'}" class="trial-banner-btn" id="trialBannerCta">${ctaLabel}</a>
+      <a href="${isNativeApp() ? '#' : '/plans'}" class="trial-banner-btn" id="trialBannerCta">${ctaLabel}</a>
     `;
 
     document.body.appendChild(banner);
@@ -4216,7 +4216,7 @@ class RhythmSequencer {
           close();
           this.showUpgradeModal(planId, upgradeCredit, daysLeft, PLANS, supabase, user!);
         } else {
-          window.location.assign('/plans.html');
+          window.location.assign('/plans');
         }
       });
     }

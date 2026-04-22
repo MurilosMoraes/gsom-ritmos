@@ -13,12 +13,12 @@ class PaymentSuccessPage {
 
   private async init(): Promise<void> {
     if (!(await authService.isAuthenticated())) {
-      window.location.href = '/login.html';
+      window.location.href = '/login';
       return;
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { window.location.href = '/login.html'; return; }
+    if (!user) { window.location.href = '/login'; return; }
 
     // Pegar dados do redirect da InfinitePay
     const params = new URLSearchParams(window.location.search);

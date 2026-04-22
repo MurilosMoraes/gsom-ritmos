@@ -9,7 +9,7 @@
 import { isNativeApp, openExternal } from '../native/Platform';
 
 const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/plans';
-const PLANS_URL_WEB = '/plans.html';
+const PLANS_URL_WEB = '/plans';
 
 // Mínimo entre dois modais de conversão (msec).
 // Não spama: 1 dia entre modais do MESMO gatilho, 3h entre modais DE QUALQUER gatilho.

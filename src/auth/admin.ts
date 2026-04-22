@@ -153,7 +153,7 @@ class AdminDashboard {
 
   private async init(): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { window.location.href = '/login.html'; return; }
+    if (!user) { window.location.href = '/login'; return; }
 
     // Verificar admin via query direta (RLS libera select do próprio profile).
     // Antes buscava 827 profiles via edge fn e procurava — lento e frágil.
@@ -203,7 +203,7 @@ class AdminDashboard {
   private setupEvents(): void {
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {
       await supabase.auth.signOut();
-      window.location.href = '/login.html';
+      window.location.href = '/login';
     });
 
     document.querySelectorAll('.adm-nav-item').forEach(item => {

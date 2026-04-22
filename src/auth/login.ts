@@ -115,7 +115,7 @@ class LoginPage {
       } else {
         this.showAlert('Senha atualizada! Redirecionando...', 'success');
         // Limpar hash da URL
-        history.replaceState(null, '', '/login.html');
+        history.replaceState(null, '', '/login');
         setTimeout(async () => {
           window.location.href = await this.getDestination();
         }, 1000);
@@ -204,7 +204,7 @@ class LoginPage {
   private async getDestination(): Promise<string> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return '/plans.html';
+      if (!user) return '/plans';
 
       const { data: profile } = await supabase
         .from('gdrums_profiles')
@@ -218,9 +218,9 @@ class LoginPage {
           return '/';
         }
       }
-      return '/plans.html';
+      return '/plans';
     } catch {
-      return '/plans.html';
+      return '/plans';
     }
   }
 

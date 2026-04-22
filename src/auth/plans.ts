@@ -22,7 +22,7 @@ class PlansPage {
     // Logout
     document.getElementById('plansLogoutBtn')?.addEventListener('click', async () => {
       await supabase.auth.signOut();
-      window.location.href = '/login.html';
+      window.location.href = '/login';
     });
 
     // Limpar loading se voltou do checkout (bfcache)
@@ -43,17 +43,17 @@ class PlansPage {
       try {
         const { error } = await supabase.auth.refreshSession();
         if (error) {
-          window.location.href = '/login.html';
+          window.location.href = '/login';
           return;
         }
       } catch {
-        window.location.href = '/login.html';
+        window.location.href = '/login';
         return;
       }
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { window.location.href = '/login.html'; return; }
+    if (!user) { window.location.href = '/login'; return; }
 
     const { data: profile } = await supabase
       .from('gdrums_profiles')
@@ -362,7 +362,7 @@ class PlansPage {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { window.location.href = '/login.html'; return; }
+      if (!user) { window.location.href = '/login'; return; }
 
       // Verificar se já tem pending pro mesmo plano (evitar duplicatas)
       const { data: existingPending } = await supabase
