@@ -435,14 +435,24 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '2.4',
-    title: 'Novidades do GDrums!',
-    items: [
-      { icon: '🎵', text: '72 ritmos na biblioteca — novos estilos toda semana (Pop Sertanejo, Trio Elétrico, Neo-Soul, Electro Funk e mais)' },
-      { icon: '📶', text: 'Modo offline completo — todos os ritmos funcionam sem internet' },
-      { icon: '🎼', text: 'Repertorio — monte a setlist do show misturando ritmos da biblioteca com os seus' },
-      { icon: '🎛️', text: 'Tap Tempo — toque no ritmo da musica e o BPM ajusta automaticamente' },
-      { icon: '🤝', text: 'Programa de Afiliados — indique o GDrums e ganhe comissao por cada venda' },
+    version: '2.5',
+    overline: 'Atualização',
+    title: 'Chegaram pandeiro e cajón.',
+    subtitle: 'O que muita gente tava pedindo: sons acústicos pra quem toca em formato voz-e-violão. E mais 14 ritmos novos.',
+    sections: [
+      {
+        label: 'Pandeiro e cajón',
+        featured: true,
+        body: '3 variações de pandeiro e 3 de cajón no seletor de sons. Já vêm em ritmos prontos: Samba (pandeiro), Vaneira (cajón), Arrocha (cajón), Pop Rock (cajón), Balada 6/8 (cajón) e Guarânia (cajón).',
+      },
+      {
+        label: '+14 ritmos',
+        body: 'Bachata, Cumbia, Brega, Funk Groove, Balada, Balada Sertaneja, Bonde do Forró, Reggae 2, Reggae Pop, Rock \'n\' Roll, Pop Rock (cajón), Samba (pandeiro), Vaneira (cajón), Arrocha (cajón), Balada 6/8 (cajón), Guarânia (cajón). Biblioteca agora com 86.',
+      },
+      {
+        label: 'Groove por célula',
+        body: 'Adianta ou atrasa cada batida em até meio step — contratempo de reggae e swing de verdade. Pressione uma célula ativa e use o slider de Groove.',
+      },
     ],
   };
 
@@ -454,43 +464,153 @@ class RhythmSequencer {
     const wn = RhythmSequencer.WHATS_NEW;
 
     const overlay = document.createElement('div');
-    overlay.className = 'account-modal-overlay';
+    overlay.className = 'wn-modal-overlay';
     overlay.innerHTML = `
-      <div class="account-modal" style="max-width:400px;">
-        <button class="account-modal-close" id="whatsNewClose">&times;</button>
-        <div class="account-header">
-          <div class="account-avatar" style="width:52px;height:52px;font-size:1.5rem;margin-bottom:0.6rem;background:linear-gradient(135deg,var(--cyan,#00D4FF),var(--purple,#8B5CF6));">
-            🚀
-          </div>
-          <div class="account-name">${wn.title}</div>
-          <div class="account-email">Versão ${wn.version}</div>
-        </div>
-
-        <div style="padding:0 0.25rem;display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;">
-          ${wn.items.map(item => `
-            <div style="display:flex;align-items:flex-start;gap:0.6rem;padding:0.55rem 0.7rem;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:10px;">
-              <span style="font-size:1.1rem;flex-shrink:0;margin-top:0.05rem;">${item.icon}</span>
-              <span style="font-size:0.8rem;color:rgba(255,255,255,0.6);line-height:1.4;">${item.text}</span>
+      <div class="wn-modal">
+        <button class="wn-close" aria-label="Fechar">×</button>
+        <div class="wn-overline">${wn.overline} — versão ${wn.version}</div>
+        <h2 class="wn-title">${wn.title}</h2>
+        <p class="wn-subtitle">${wn.subtitle}</p>
+        <div class="wn-sections">
+          ${wn.sections.map((s: any) => `
+            <div class="wn-section${s.featured ? ' wn-section-featured' : ''}">
+              <div class="wn-section-label">
+                ${s.featured ? '<span class="wn-badge">Destaque</span>' : ''}
+                ${s.label}
+              </div>
+              <p class="wn-section-body">${s.body}</p>
             </div>
           `).join('')}
         </div>
-
-        <button id="whatsNewOk" class="account-action-btn">Show! Vamos lá</button>
+        <button class="wn-cta" id="whatsNewOk">Continuar</button>
       </div>
     `;
-
     document.body.appendChild(overlay);
-    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    // CSS injetado uma vez
+    if (!document.getElementById('wn-modal-css')) {
+      const style = document.createElement('style');
+      style.id = 'wn-modal-css';
+      style.textContent = `
+        .wn-modal-overlay {
+          position: fixed; inset: 0;
+          background: rgba(0, 0, 0, 0.72);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          display: flex; align-items: center; justify-content: center;
+          padding: 1.5rem; z-index: 100000;
+          animation: wnOverlayIn 0.28s ease;
+          font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+        }
+        @keyframes wnOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+        .wn-modal {
+          width: 100%; max-width: 440px;
+          background: #0a0a0f;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px;
+          padding: 2rem 1.75rem 1.5rem;
+          color: #fff; position: relative;
+          animation: wnModalIn 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        @keyframes wnModalIn {
+          from { transform: translateY(12px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .wn-close {
+          position: absolute; top: 0.75rem; right: 0.75rem;
+          width: 32px; height: 32px;
+          background: transparent; border: none;
+          color: rgba(255, 255, 255, 0.35);
+          font-size: 1.5rem; line-height: 1; cursor: pointer;
+          border-radius: 8px;
+          transition: color 0.15s, background 0.15s;
+        }
+        .wn-close:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        .wn-overline {
+          font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
+          color: rgba(255, 255, 255, 0.42); font-weight: 500;
+          margin-bottom: 0.85rem;
+        }
+        .wn-title {
+          font-size: 1.45rem; line-height: 1.25;
+          font-weight: 600; letter-spacing: -0.015em;
+          color: #fff; margin: 0 0 0.5rem;
+        }
+        .wn-subtitle {
+          font-size: 0.9rem; line-height: 1.5;
+          color: rgba(255, 255, 255, 0.55);
+          margin: 0 0 1.5rem;
+        }
+        .wn-sections {
+          display: flex; flex-direction: column;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          margin-bottom: 1.5rem;
+        }
+        .wn-section {
+          padding: 0.9rem 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .wn-section-featured {
+          margin: 0.25rem -0.9rem;
+          padding: 1rem 0.9rem;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 12px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .wn-section-featured + .wn-section {
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .wn-section-label {
+          font-size: 0.76rem; font-weight: 600;
+          color: #fff; margin-bottom: 0.4rem;
+          letter-spacing: -0.005em;
+          display: flex; align-items: center; gap: 0.5rem;
+        }
+        .wn-badge {
+          display: inline-block;
+          font-size: 0.58rem; font-weight: 600;
+          letter-spacing: 0.12em; text-transform: uppercase;
+          color: #0a0a0f; background: #fff;
+          padding: 0.2rem 0.45rem;
+          border-radius: 4px;
+        }
+        .wn-section-body {
+          font-size: 0.86rem; line-height: 1.5;
+          color: rgba(255, 255, 255, 0.65);
+          margin: 0;
+        }
+        .wn-section-featured .wn-section-body {
+          color: rgba(255, 255, 255, 0.78);
+        }
+        .wn-cta {
+          width: 100%; padding: 0.9rem;
+          background: #fff; color: #0a0a0f;
+          border: none; border-radius: 10px;
+          font-size: 0.95rem; font-weight: 600;
+          letter-spacing: -0.005em;
+          font-family: inherit; cursor: pointer;
+          transition: opacity 0.15s;
+        }
+        .wn-cta:hover { opacity: 0.9; }
+        .wn-cta:active { transform: scale(0.99); }
+      `;
+      document.head.appendChild(style);
+    }
 
     const close = () => {
       localStorage.setItem(key, wn.version);
-      overlay.classList.remove('active');
-      setTimeout(() => overlay.remove(), 200);
+      overlay.remove();
     };
 
-    overlay.querySelector('#whatsNewClose')?.addEventListener('click', close);
+    overlay.querySelector('.wn-close')?.addEventListener('click', close);
     overlay.querySelector('#whatsNewOk')?.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
+    };
+    document.addEventListener('keydown', onKey);
   }
 
   private async checkAccess(): Promise<boolean> {
