@@ -11,13 +11,15 @@ import { MAX_CHANNELS, type PatternType } from './types';
 import { HapticsService } from './native/HapticsService';
 import { AttributionService } from './native/AttributionService';
 
-// Só 3 ritmos ficam liberados. O resto (69) aparece bloqueado na tira
+// Só 3 ritmos ficam liberados. O resto aparece bloqueado na tira
 // pra mostrar ao user o tamanho REAL da biblioteca — peça central pra
 // evitar o engano de "só tem 3 ritmos, o app é fraco".
+// Seleção: estilos populares entre públicos distintos (forró/nordeste,
+// gospel, gaúcho) pra cada perfil sentir que tem algo familiar.
 const DEMO_RHYTHMS = [
-  { name: 'Vaneira', path: '/rhythm/Vaneira.json' },
-  { name: 'Samba', path: '/rhythm/Samba.json' },
-  { name: 'Sertanejo Universitário', path: '/rhythm/Sertanejo Universitário.json' },
+  { name: 'Arrocha', path: '/rhythm/Arrocha.json' },
+  { name: 'Gospel', path: '/rhythm/Gospel.json' },
+  { name: 'Xote Nordestino', path: '/rhythm/Xote Nordestino.json' },
 ];
 
 // Demo curta de propósito: 3 ritmos + 8min forçam o user a se
