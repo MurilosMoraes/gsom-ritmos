@@ -2,6 +2,7 @@
 
 import { authService } from './AuthService';
 import { supabase } from './supabase';
+import { AttributionService } from '../native/AttributionService';
 
 class LoginPage {
   private form: HTMLFormElement;
@@ -259,4 +260,7 @@ class LoginPage {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => { new LoginPage(); });
+window.addEventListener('DOMContentLoaded', () => {
+  AttributionService.init();
+  new LoginPage();
+});

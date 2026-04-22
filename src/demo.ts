@@ -9,6 +9,7 @@ import { FileManager } from './io/FileManager';
 import { UIManager } from './ui/UIManager';
 import { MAX_CHANNELS, type PatternType } from './types';
 import { HapticsService } from './native/HapticsService';
+import { AttributionService } from './native/AttributionService';
 
 // Só 3 ritmos ficam liberados. O resto (69) aparece bloqueado na tira
 // pra mostrar ao user o tamanho REAL da biblioteca — peça central pra
@@ -469,5 +470,6 @@ class DemoPlayer {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  AttributionService.init();
   new DemoPlayer();
 });

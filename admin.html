@@ -26,6 +26,7 @@
     <!-- Mobile nav -->
     <nav class="adm-mobile-nav">
       <a href="#dashboard" class="adm-nav-item active" data-section="dashboard"><span>Dashboard</span></a>
+      <a href="#acquisition" class="adm-nav-item" data-section="acquisition"><span>Aquisição</span></a>
       <a href="#users" class="adm-nav-item" data-section="users"><span>Usuários</span></a>
       <a href="#subscriptions" class="adm-nav-item" data-section="subscriptions"><span>Transações</span></a>
       <a href="#coupons" class="adm-nav-item" data-section="coupons"><span>Cupons</span></a>
@@ -40,6 +41,10 @@
           <a href="#dashboard" class="adm-nav-item active" data-section="dashboard">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
             <span>Dashboard</span>
+          </a>
+          <a href="#acquisition" class="adm-nav-item" data-section="acquisition">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l3-3 3 3 5-5"/><circle cx="7" cy="15" r="1.5"/><circle cx="10" cy="12" r="1.5"/><circle cx="13" cy="15" r="1.5"/><circle cx="18" cy="10" r="1.5"/></svg>
+            <span>Aquisição</span>
           </a>
           <a href="#users" class="adm-nav-item" data-section="users">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
@@ -100,6 +105,42 @@
             <div class="adm-card">
               <h3 class="adm-card-title">Completude dos dados</h3>
               <div class="adm-card-body" id="dataChart"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ Aquisição / Funil por origem ═══ -->
+        <section id="acquisitionSection" class="adm-section">
+          <div class="adm-section-top">
+            <h2 class="adm-title">Aquisição</h2>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <select id="acqRangeSelect" class="adm-input" style="width:auto;padding:0.4rem 0.6rem;font-size:0.78rem;">
+                <option value="7">Últimos 7 dias</option>
+                <option value="30" selected>Últimos 30 dias</option>
+                <option value="90">Últimos 90 dias</option>
+                <option value="365">Último ano</option>
+              </select>
+              <button class="adm-btn adm-btn-outline" id="refreshAcqBtn">Atualizar</button>
+            </div>
+          </div>
+
+          <div class="adm-kpi-grid" id="acqKpiGrid"></div>
+
+          <div class="adm-cards-row">
+            <div class="adm-card">
+              <h3 class="adm-card-title">Funil por origem</h3>
+              <div class="adm-card-body" id="acqSourceTable"></div>
+            </div>
+            <div class="adm-card">
+              <h3 class="adm-card-title">Funil por canal</h3>
+              <div class="adm-card-body" id="acqMediumTable"></div>
+            </div>
+          </div>
+
+          <div class="adm-cards-row">
+            <div class="adm-card">
+              <h3 class="adm-card-title">Campanhas (cupons, afiliados, utm)</h3>
+              <div class="adm-card-body" id="acqCampaignTable"></div>
             </div>
           </div>
         </section>

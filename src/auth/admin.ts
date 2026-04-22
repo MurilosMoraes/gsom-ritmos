@@ -121,6 +121,14 @@ async function adminBanUser(userId: string, ban: boolean): Promise<void> {
   await adminCall({ action: 'ban_user', id: userId, data: { ban } });
 }
 
+/**
+ * Chama funções agregadas no Postgres (admin_kpi_summary, admin_signup_funnel,
+ * admin_medium_funnel). Rápido porque agrega no DB sem puxar linha por linha.
+ */
+async function adminRpc(rpc: string, rpcArgs?: Record<string, any>): Promise<any> {
+  return await adminCall({ action: 'rpc', rpc, rpcArgs: rpcArgs || {} });
+}
+
 class AdminDashboard {
   private profiles: Profile[] = [];
   private transactions: Transaction[] = [];
@@ -283,11 +291,126 @@ class AdminDashboard {
   private render(): void {
     switch (this.currentSection) {
       case 'dashboard': this.renderDashboard(); break;
+      case 'acquisition': this.renderAcquisition(); break;
       case 'users': this.renderUsers(); break;
       case 'subscriptions': this.renderTransactions(); break;
       case 'coupons': this.renderCoupons(); break;
       case 'leads': this.renderLeads(); break;
       case 'affiliates': this.renderAffiliates(); break;
+    }
+  }
+
+  // ─── Acquisition (funil por origem) ────────────────────────────────
+
+  private acqDaysBack = 30;
+
+  private async renderAcquisition(): Promise<void> {
+    const rangeSelect = document.getElementById('acqRangeSelect') as HTMLSelectElement;
+    if (rangeSelect && !rangeSelect.dataset.bound) {
+      rangeSelect.value = String(this.acqDaysBack);
+      rangeSelect.addEventListener('change', () => {
+        this.acqDaysBack = parseInt(rangeSelect.value);
+        this.renderAcquisition();
+      });
+      rangeSelect.dataset.bound = '1';
+    }
+
+    const refreshBtn = document.getElementById('refreshAcqBtn');
+    if (refreshBtn && !refreshBtn.dataset.bound) {
+      refreshBtn.addEventListener('click', () => this.renderAcquisition());
+      refreshBtn.dataset.bound = '1';
+    }
+
+    const kpiGrid = document.getElementById('acqKpiGrid');
+    const sourceTable = document.getElementById('acqSourceTable');
+    const mediumTable = document.getElementById('acqMediumTable');
+    const campaignTable = document.getElementById('acqCampaignTable');
+
+    if (kpiGrid) kpiGrid.innerHTML = '<div style="padding:1rem;color:rgba(255,255,255,0.3);font-size:0.8rem;">Carregando...</div>';
+
+    try {
+      const [kpi, byS, byM] = await Promise.all([
+        adminRpc('admin_kpi_summary', { days_back: this.acqDaysBack }),
+        adminRpc('admin_signup_funnel', { days_back: this.acqDaysBack }),
+        adminRpc('admin_medium_funnel', { days_back: this.acqDaysBack }),
+      ]);
+
+      const kpiRow = Array.isArray(kpi) ? kpi[0] : kpi;
+      const fmtCents = (c: number) => `R$ ${((c || 0) / 100).toFixed(0)}`;
+      const convGlobal = kpiRow && kpiRow.cadastros > 0
+        ? ((kpiRow.pagos / kpiRow.cadastros) * 100).toFixed(1)
+        : '0';
+
+      if (kpiGrid) {
+        kpiGrid.innerHTML = `
+          <div class="adm-kpi"><div class="adm-kpi-label">Demos únicos</div><div class="adm-kpi-value">${kpiRow?.demos_unicos ?? 0}</div></div>
+          <div class="adm-kpi"><div class="adm-kpi-label">Cadastros</div><div class="adm-kpi-value">${kpiRow?.cadastros ?? 0}</div></div>
+          <div class="adm-kpi"><div class="adm-kpi-label">Pagantes</div><div class="adm-kpi-value">${kpiRow?.pagos ?? 0}</div></div>
+          <div class="adm-kpi"><div class="adm-kpi-label">Conversão</div><div class="adm-kpi-value">${convGlobal}%</div></div>
+          <div class="adm-kpi"><div class="adm-kpi-label">Receita</div><div class="adm-kpi-value">${fmtCents(kpiRow?.receita_cents)}</div></div>
+          <div class="adm-kpi"><div class="adm-kpi-label">Mediana até pagar</div><div class="adm-kpi-value">${kpiRow?.mediana_h_ate_pagar ?? '—'}h</div></div>
+        `;
+      }
+
+      const renderFunnelTable = (rows: any[], firstCol: string) => {
+        if (!rows || !rows.length) return '<div style="padding:1rem;color:rgba(255,255,255,0.3);font-size:0.8rem;">Sem dados no período</div>';
+        return `
+          <table class="adm-table" style="width:100%;font-size:0.82rem;">
+            <thead>
+              <tr>
+                <th style="text-align:left;padding:0.6rem 0.5rem;color:rgba(255,255,255,0.4);font-weight:500;">${firstCol}</th>
+                <th style="text-align:right;padding:0.6rem 0.5rem;color:rgba(255,255,255,0.4);font-weight:500;">Cadastros</th>
+                <th style="text-align:right;padding:0.6rem 0.5rem;color:rgba(255,255,255,0.4);font-weight:500;">Pagos</th>
+                <th style="text-align:right;padding:0.6rem 0.5rem;color:rgba(255,255,255,0.4);font-weight:500;">Conv.</th>
+                <th style="text-align:right;padding:0.6rem 0.5rem;color:rgba(255,255,255,0.4);font-weight:500;">Receita</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
+                <tr>
+                  <td style="padding:0.6rem 0.5rem;color:#fff;font-weight:500;text-transform:capitalize;">${r.source || r.medium}</td>
+                  <td style="padding:0.6rem 0.5rem;text-align:right;color:rgba(255,255,255,0.8);">${r.cadastros}</td>
+                  <td style="padding:0.6rem 0.5rem;text-align:right;color:rgba(255,255,255,0.8);">${r.pagos}</td>
+                  <td style="padding:0.6rem 0.5rem;text-align:right;color:${r.conversao_pct >= 15 ? '#3ee8a7' : r.conversao_pct >= 8 ? '#fff' : 'rgba(255,255,255,0.5)'};font-weight:${r.conversao_pct >= 15 ? '600' : '400'};">${r.conversao_pct}%</td>
+                  <td style="padding:0.6rem 0.5rem;text-align:right;color:rgba(255,255,255,0.8);">${fmtCents(r.receita_cents)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      };
+
+      if (sourceTable) sourceTable.innerHTML = renderFunnelTable(byS || [], 'Origem');
+      if (mediumTable) mediumTable.innerHTML = renderFunnelTable(byM || [], 'Canal');
+
+      // Campanhas: usa os profiles já carregados (agrupa por signup_campaign)
+      if (campaignTable) {
+        const profs = this.profiles.filter(p =>
+          p.created_at && new Date(p.created_at) > new Date(Date.now() - this.acqDaysBack * 86400000)
+        );
+        const byCamp = new Map<string, { cadastros: number; pagos: number }>();
+        profs.forEach((p: any) => {
+          const c = p.signup_campaign || '(nenhuma)';
+          const curr = byCamp.get(c) || { cadastros: 0, pagos: 0 };
+          curr.cadastros += 1;
+          if (p.subscription_plan !== 'free' && p.subscription_plan !== 'trial') curr.pagos += 1;
+          byCamp.set(c, curr);
+        });
+        const campArr = Array.from(byCamp.entries())
+          .map(([name, v]) => ({
+            source: name,
+            cadastros: v.cadastros,
+            pagos: v.pagos,
+            conversao_pct: v.cadastros > 0 ? +((v.pagos / v.cadastros) * 100).toFixed(1) : 0,
+            receita_cents: 0,
+          }))
+          .sort((a, b) => b.cadastros - a.cadastros)
+          .slice(0, 20);
+        campaignTable.innerHTML = renderFunnelTable(campArr, 'Campanha');
+      }
+    } catch (e) {
+      console.error('[admin] renderAcquisition failed:', e);
+      if (kpiGrid) kpiGrid.innerHTML = '<div style="padding:1rem;color:#ff6b83;font-size:0.8rem;">Erro ao carregar dados de aquisição. Verifique o console.</div>';
     }
   }
 

@@ -4,6 +4,7 @@ import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { calculateTrialExpiry } from './PaymentService';
 import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
+import { AttributionService } from '../native/AttributionService';
 
 class RegisterPage {
   private form: HTMLFormElement;
@@ -132,6 +133,15 @@ class RegisterPage {
     });
 
     if (response.success && response.user) {
+      // Capturar atribuição (first-touch do user — de onde ele veio)
+      const attr = AttributionService.getAttribution() || AttributionService.captureNow();
+      const attributionFields = {
+        signup_source: attr.source,
+        signup_medium: attr.medium,
+        signup_campaign: attr.campaign,
+        signup_referrer: attr.referrer,
+      };
+
       // 4. Salvar CPF hash e telefone — com retry (trigger pode demorar pra criar o profile).
       //    Se o erro for duplicata (23505), abortar imediatamente — retry não resolve.
       let cpfSaved = false;
@@ -141,7 +151,7 @@ class RegisterPage {
         if (attempt > 0) await new Promise(r => setTimeout(r, 800));
         const { error } = await supabase
           .from('gdrums_profiles')
-          .update({ cpf_hash: cpfHash, phone })
+          .update({ cpf_hash: cpfHash, phone, ...attributionFields })
           .eq('id', response.user.id);
         if (!error) {
           cpfSaved = true;
@@ -168,6 +178,7 @@ class RegisterPage {
             subscription_plan: 'trial',
             subscription_expires_at: trialExpiry,
             updated_at: new Date().toISOString(),
+            ...attributionFields,
           });
         if (upsertError) {
           if ((upsertError as any).code === '23505') {
@@ -303,4 +314,7 @@ class RegisterPage {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => { new RegisterPage(); });
+window.addEventListener('DOMContentLoaded', () => {
+  AttributionService.init();
+  new RegisterPage();
+});
