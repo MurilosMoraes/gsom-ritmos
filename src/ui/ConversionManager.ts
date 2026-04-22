@@ -183,12 +183,23 @@ export class ConversionManager {
         background: rgba(0, 0, 0, 0.72);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
+        /* Scroll dentro do overlay (não no body) — evita que o modal
+           fique maior que a tela em mobile low-height (iPhone SE, etc) */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
         padding: 1.5rem;
+        /* Safe area pra notch/navbar */
+        padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+        padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
         z-index: 100000;
         animation: cvOverlayIn 0.28s ease;
+      }
+      /* Em tela grande, centralizar verticalmente quando o modal cabe */
+      @media (min-height: 620px) {
+        .cv-modal-overlay { align-items: center; }
       }
       @keyframes cvOverlayIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -203,6 +214,9 @@ export class ConversionManager {
         color: #fff;
         font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
         animation: cvModalIn 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+        /* Nunca maior que o viewport — combinado com overlay scroll
+           garante acesso ao conteúdo em qualquer tela */
+        margin: auto;
       }
       @keyframes cvModalIn {
         from { transform: translateY(12px); opacity: 0; }

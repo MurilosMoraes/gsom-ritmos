@@ -69,10 +69,17 @@
       background: rgba(0, 0, 0, 0.78);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      display: flex; align-items: center; justify-content: center;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      display: flex; align-items: flex-start; justify-content: center;
       padding: 1.5rem;
+      padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
       animation: demoOverlayIn 0.28s ease;
       font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    }
+    @media (min-height: 620px) {
+      .demo-expired-overlay { align-items: center; }
     }
     @keyframes demoOverlayIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -84,6 +91,7 @@
       border-radius: 20px;
       padding: 2.25rem 2rem 1.5rem;
       color: #fff;
+      margin: auto;
       animation: demoCardIn 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
     @keyframes demoCardIn {
