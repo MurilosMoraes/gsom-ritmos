@@ -2924,9 +2924,26 @@ class RhythmSequencer {
     });
   }
 
+  /**
+   * Tutorial de instalação com tabs por navegador.
+   *
+   * iOS tem dois fluxos (Safari e Chrome), Android também (Chrome padrão
+   * vs outros). Deteta o browser atual e já abre a tab certa, mas user
+   * pode trocar pra ver o outro (caso precise instruir alguém).
+   */
   private showInstallTutorial(): void {
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-                  (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    const ua = navigator.userAgent;
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) ||
+                  (/Mac/i.test(ua) && navigator.maxTouchPoints > 1);
+    // No iOS o Chrome reporta "CriOS" (Chrome iOS), Firefox "FxiOS".
+    // Se não for nenhum desses, é Safari (ou outro WebView que segue regras
+    // do Safari no iOS).
+    const isCriOS = /CriOS/i.test(ua);
+    const isAndroidChrome = !isIOS && /Android/i.test(ua);
+
+    // Tab default: já abre no browser que o user está usando.
+    let activeTab: 'ios-safari' | 'ios-chrome' | 'android' =
+      isIOS ? (isCriOS ? 'ios-chrome' : 'ios-safari') : 'android';
 
     // Estética editorial (mesma linguagem do ConversionManager / demo)
     this.injectInstallTutorialCSS();
@@ -2934,70 +2951,105 @@ class RhythmSequencer {
     const overlay = document.createElement('div');
     overlay.className = 'install-tut-overlay';
 
-    const steps = isIOS
+    interface TutStep { n: string; body: string; }
+    type TutKey = 'ios-safari' | 'ios-chrome' | 'android';
+
+    const stepsBy: Record<TutKey, TutStep[]> = {
+      'ios-safari': [
+        { n: '01', body: 'Toque no botão <strong>Compartilhar</strong> na barra do Safari (ícone de caixa com seta pra cima).' },
+        { n: '02', body: 'No menu que abre, role um pouco e toque em <strong>Ver mais</strong>.' },
+        { n: '03', body: 'Toque em <strong>Adicionar à Tela de Início</strong>.' },
+        { n: '04', body: 'Confirme tocando em <strong>Adicionar</strong> no canto superior direito.' },
+      ],
+      'ios-chrome': [
+        { n: '01', body: 'Toque no botão <strong>Compartilhar</strong> no canto direito da barra de endereço do Chrome.' },
+        { n: '02', body: 'Role as opções e toque em <strong>Adicionar à Tela de Início</strong>.' },
+        { n: '03', body: 'Confirme tocando em <strong>Adicionar</strong> no canto superior direito.' },
+      ],
+      'android': [
+        { n: '01', body: 'Toque no menu <strong>⋮</strong> (três pontos) no canto superior do Chrome.' },
+        { n: '02', body: 'Toque em <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.' },
+        { n: '03', body: 'Confirme e o GDrums vai aparecer como app normal no seu celular.' },
+      ],
+    };
+
+    const tabsDef = isIOS
       ? [
-          {
-            n: '01',
-            body: 'Toque no botão <strong>Compartilhar</strong> na barra do Safari (ícone de caixa com seta pra cima).',
-          },
-          {
-            n: '02',
-            body: 'No menu que abre, role um pouco e toque em <strong>Ver mais</strong> pra ampliar as opções.',
-          },
-          {
-            n: '03',
-            body: 'Toque em <strong>Adicionar à Tela de Início</strong>.',
-          },
-          {
-            n: '04',
-            body: 'Confirme tocando em <strong>Adicionar</strong> no canto superior direito.',
-          },
+          { key: 'ios-safari' as TutKey, label: 'Safari' },
+          { key: 'ios-chrome' as TutKey, label: 'Chrome' },
         ]
       : [
-          {
-            n: '01',
-            body: 'Toque no menu <strong>⋮</strong> (três pontos) no canto superior do Chrome.',
-          },
-          {
-            n: '02',
-            body: 'Toque em <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.',
-          },
-          {
-            n: '03',
-            body: 'Confirme e o GDrums vai aparecer como app normal no seu celular.',
-          },
+          { key: 'android' as TutKey, label: 'Chrome / Android' },
         ];
 
-    overlay.innerHTML = `
-      <div class="install-tut-modal">
-        <button class="install-tut-close" aria-label="Fechar">×</button>
-        <div class="install-tut-overline">Instalar o app</div>
-        <h2 class="install-tut-title">Tenha o GDrums ${isIOS ? 'no seu iPhone' : 'no seu celular'}.</h2>
-        <p class="install-tut-body">
-          O app fica na tela inicial como qualquer outro. Abre rápido,
-          funciona offline e não precisa de loja.
-        </p>
-        <ul class="install-tut-steps">
-          ${steps.map(s => `
-            <li class="install-tut-step">
-              <span class="install-tut-step-num">${s.n}</span>
-              <span class="install-tut-step-body">${s.body}</span>
-            </li>
+    const deviceLabel = isIOS ? 'no seu iPhone' : 'no seu celular';
+
+    const renderTabs = (): string => {
+      if (tabsDef.length <= 1) return '';
+      return `
+        <div class="install-tut-tabs" role="tablist">
+          ${tabsDef.map(t => `
+            <button class="install-tut-tab ${t.key === activeTab ? 'active' : ''}" data-tab="${t.key}" role="tab" type="button">
+              ${t.label}
+            </button>
           `).join('')}
-        </ul>
-        <button class="install-tut-cta" id="installTutorialClose">Entendi</button>
-      </div>
-    `;
+        </div>
+      `;
+    };
+
+    const renderSteps = (): string => {
+      const steps = stepsBy[activeTab];
+      return steps.map(s => `
+        <li class="install-tut-step">
+          <span class="install-tut-step-num">${s.n}</span>
+          <span class="install-tut-step-body">${s.body}</span>
+        </li>
+      `).join('');
+    };
+
+    const render = (): void => {
+      overlay.innerHTML = `
+        <div class="install-tut-modal">
+          <button class="install-tut-close" aria-label="Fechar">×</button>
+          <div class="install-tut-overline">Instalar o app</div>
+          <h2 class="install-tut-title">Tenha o GDrums ${deviceLabel}.</h2>
+          <p class="install-tut-body">
+            O app fica na tela inicial como qualquer outro. Abre rápido,
+            funciona offline e não precisa de loja.
+          </p>
+          ${renderTabs()}
+          <ul class="install-tut-steps">${renderSteps()}</ul>
+          <button class="install-tut-cta" id="installTutorialClose">Entendi</button>
+        </div>
+      `;
+
+      overlay.querySelector('#installTutorialClose')?.addEventListener('click', close);
+      overlay.querySelector('.install-tut-close')?.addEventListener('click', close);
+      overlay.querySelectorAll<HTMLElement>('[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.tab as TutKey;
+          if (key === activeTab) return;
+          activeTab = key;
+          render();
+        });
+      });
+    };
+
+    const close = (): void => {
+      overlay.remove();
+      document.removeEventListener('keydown', onKey);
+    };
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') close();
+    };
 
     document.body.appendChild(overlay);
-    const close = () => overlay.remove();
-    overlay.querySelector('#installTutorialClose')?.addEventListener('click', close);
-    overlay.querySelector('.install-tut-close')?.addEventListener('click', close);
+    render();
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
-    };
     document.addEventListener('keydown', onKey);
+
+    // Refs pra evitar "unused"
+    void isAndroidChrome;
   }
 
   private injectInstallTutorialCSS(): void {
@@ -3068,6 +3120,35 @@ class RhythmSequencer {
         line-height: 1.5;
         color: rgba(255,255,255,0.55);
         margin: 0 0 1.5rem;
+      }
+      .install-tut-tabs {
+        display: inline-flex;
+        padding: 3px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 10px;
+        margin: 0 0 1.1rem;
+        gap: 2px;
+      }
+      .install-tut-tab {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.55);
+        font-family: inherit;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.45rem 0.9rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.14s, color 0.14s;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .install-tut-tab.active {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+      .install-tut-tab:hover:not(.active) {
+        color: rgba(255, 255, 255, 0.85);
       }
       .install-tut-steps {
         list-style: none;
