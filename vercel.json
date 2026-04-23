@@ -28,6 +28,10 @@
       "destination": "/admin.html"
     },
     {
+      "source": "/affiliate",
+      "destination": "/affiliate.html"
+    },
+    {
       "source": "/excluir-conta",
       "destination": "/excluir-conta.html"
     }
