@@ -1595,8 +1595,22 @@ class RhythmSequencer {
         // acha ele mesmo escondido e o pedal para de funcionar (bug 04/2026).
         // Mesma coisa vale pra qualquer overlay criado uma vez e reusado.
         // Só adicionar classe aqui se o overlay for criado on-demand e
-        // removido após o close (ex: account-modal-overlay é dinâmico).
-        return !!document.querySelector('.account-modal-overlay, .bpm-modal-overlay, [style*="z-index: 99999"], [style*="z-index:99999"]');
+        // removido após o close — todos listados abaixo são dinâmicos.
+        //
+        // Inclusões:
+        // - .account-modal-overlay: modais antigos (Minha Conta, etc)
+        // - .bpm-modal-overlay: BPM modal antigo (ainda no DOM histórico)
+        // - .x-overlay: modais da experience layer v2 (Meus Ritmos,
+        //   Salvar, BPM v2, Setlist Picker) — todos createElement + remove
+        // - .sle-overlay: editor de repertório (SetlistEditorUI)
+        // - .install-tut-overlay: tutorial de instalação
+        // - .wn-modal-overlay: What's New
+        // - z-index:99999 inline: fallback pra outros dinâmicos antigos
+        return !!document.querySelector(
+          '.account-modal-overlay, .bpm-modal-overlay, ' +
+          '.x-overlay, .sle-overlay, .install-tut-overlay, .wn-modal-overlay, ' +
+          '[style*="z-index: 99999"], [style*="z-index:99999"]'
+        );
       };
 
       const focusPedalInput = () => {
