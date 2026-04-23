@@ -37,7 +37,9 @@ interface ActivePreview {
 
 const PREVIEW_GAIN = 0.35; // ≈ -9dB
 const CROSSFADE_MS = 50;
-const BARS_TO_PREVIEW = 2;
+// 4 compassos = tempo suficiente pro user "sentir" o ritmo antes de decidir.
+// A 120 BPM ≈ 8s. A 80 BPM ≈ 12s. User pode parar a qualquer momento.
+const BARS_TO_PREVIEW = 4;
 
 export class PreviewPlayer {
   private audioContext: AudioContext;
@@ -68,13 +70,16 @@ export class PreviewPlayer {
   }
 
   /**
-   * Carrega e toca 2 compassos do main variation 0 de um ritmo.
+   * Carrega e toca N compassos (BARS_TO_PREVIEW) do main variation 0 de um ritmo.
    *
    * @param id - identificador único (path do ritmo ou id de userRhythm)
    * @param rhythmData - JSON do ritmo (SavedProject format)
+   * @param opts.bpmOverride - força um BPM diferente do que vem no rhythmData.
+   *   Crítico pra ritmos pessoais, onde `user.bpm` é o customizado mas
+   *   `rhythm_data.tempo` ainda tem o tempo do momento do export.
    * @returns Promise que resolve quando tocar ou rejeita em erro
    */
-  async play(id: string, rhythmData: RhythmData): Promise<void> {
+  async play(id: string, rhythmData: RhythmData, opts?: { bpmOverride?: number }): Promise<void> {
     // iOS: resume do AudioContext tem que ser síncrono dentro do gesto do user.
     // Chamador é responsável por isso — mas se está suspended, tenta resume.
     if (this.audioContext.state === 'suspended') {
@@ -92,17 +97,22 @@ export class PreviewPlayer {
 
     const steps = variation.steps || 16;
     const speed = variation.speed || 1;
-    const tempo = rhythmData.tempo || 80;
-    const beatsPerBar = rhythmData.beatsPerBar || 4;
+    // bpmOverride tem prioridade — user pode ter salvado ritmo com BPM custom
+    // e rhythm_data.tempo ficou com valor do export, não do save.
+    const tempo = opts?.bpmOverride && opts.bpmOverride > 0
+      ? opts.bpmOverride
+      : (rhythmData.tempo || 80);
 
     const pattern = expandPattern(variation.pattern || []);
     const volumes = expandVolumes(variation.volumes || []);
     const audioFiles = variation.audioFiles || [];
 
-    // Duração do step em segundos (segue mesma fórmula do Scheduler)
-    // Base: cada beat a 60/tempo s, um compasso tem beatsPerBar beats, que ocupam
-    // steps divididos proporcionalmente. Speed multiplica a velocidade.
-    const stepDuration = 60 / tempo / (steps / beatsPerBar) / speed;
+    // Duração do step em segundos. Scheduler usa (secondsPerBeat/2)/speed
+    // → cada step é sempre metade de um beat (semicolcheia), independente
+    // do número de steps da variação. Não dividir por steps/beatsPerBar
+    // aqui senão o preview toca 2x mais rápido.
+    const secondsPerBeat = 60 / tempo;
+    const stepDuration = (secondsPerBeat / 2) / (speed || 1);
     const totalDuration = steps * BARS_TO_PREVIEW * stepDuration;
 
     // Carrega samples dos canais ativos (os que têm pelo menos 1 step true)
