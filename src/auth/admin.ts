@@ -570,33 +570,119 @@ class AdminDashboard {
         `;
       }
 
-      // ─── Funil global (Demo → Cadastro → Pago) ─────────────────
+      // ─── Funil global (Demo → Cadastro → Pago) — forma trapezoidal real ─
       if (globalFunnel) {
         const demos = kpiRow?.demos_unicos ?? 0;
         const cadastros = kpiRow?.cadastros ?? 0;
         const pagos = kpiRow?.pagos ?? 0;
-        const maxV = Math.max(demos, 1);
-        const steps = [
-          { label: 'Demo acessou', value: demos, prev: null as number | null },
-          { label: 'Criou conta', value: cadastros, prev: demos },
-          { label: 'Pagou plano', value: pagos, prev: cadastros },
-        ];
-        globalFunnel.innerHTML = demos === 0 && cadastros === 0
-          ? emptyState({ title: 'Sem dados no período', desc: 'Selecione uma janela maior ou aguarde acessos.', inline: true })
-          : `<div class="adm-funnel">${steps.map(s => {
-              const pct = Math.max(1, (s.value / maxV) * 100);
-              const dropPct = s.prev !== null && s.prev > 0 ? ((s.prev - s.value) / s.prev) * 100 : 0;
-              const dropClass = s.prev === null ? 'muted' : dropPct >= 80 ? 'bad' : dropPct >= 50 ? 'warn' : dropPct >= 0 ? 'ok' : 'muted';
-              const dropText = s.prev === null ? '—' : `↓ ${dropPct.toFixed(0)}%`;
-              return `
-                <div class="adm-funnel-step">
-                  <div class="adm-funnel-label">${s.label}</div>
-                  <div class="adm-funnel-bar" style="width:${pct}%;"></div>
-                  <div class="adm-funnel-value">${s.value.toLocaleString('pt-BR')}</div>
-                  <span class="adm-funnel-drop ${dropClass}">${dropText}</span>
-                </div>
-              `;
-            }).join('')}</div>`;
+
+        if (demos === 0 && cadastros === 0) {
+          globalFunnel.innerHTML = emptyState({
+            title: 'Sem dados no período',
+            desc: 'Selecione uma janela maior ou aguarde acessos.',
+            inline: true,
+          });
+        } else {
+          const topVal = Math.max(demos, cadastros, pagos, 1);
+          const steps = [
+            { label: 'Demo acessou', value: demos, color: '#00d4ff', prev: null as number | null },
+            { label: 'Criou conta', value: cadastros, color: '#8b5cf6', prev: demos },
+            { label: 'Pagou plano', value: pagos, color: '#00e68c', prev: cadastros },
+          ];
+
+          // Cada nível tem largura proporcional ao valor. Desenhamos como
+          // "trapezoides empilhados" com padding horizontal que faz o efeito
+          // de funil (mais largo em cima, fino embaixo).
+          const svgW = 800;
+          const stepH = 90;
+          const gapH = 14;
+          const totalH = steps.length * stepH + (steps.length - 1) * gapH;
+
+          // Função: largura da barra num certo nível, em % do SVG
+          const widthOf = (v: number) => (v / topVal) * 100;
+
+          globalFunnel.innerHTML = `
+            <div class="adm-funnel-visual">
+              <svg viewBox="0 0 ${svgW} ${totalH}" preserveAspectRatio="none" style="width:100%;height:auto;min-height:${totalH}px;">
+                ${steps.map((s, i) => {
+                  const w = widthOf(s.value);
+                  const nextStep = steps[i + 1];
+                  const wNext = nextStep ? widthOf(nextStep.value) : w;
+                  const y = i * (stepH + gapH);
+                  const cxLeft = (100 - w) / 2;
+                  const cxRight = cxLeft + w;
+                  const cxLeftNext = (100 - wNext) / 2;
+                  const cxRightNext = cxLeftNext + wNext;
+
+                  // Coordenadas em pixels (% do svgW)
+                  const x1 = (cxLeft / 100) * svgW;
+                  const x2 = (cxRight / 100) * svgW;
+                  const x3 = nextStep ? (cxRightNext / 100) * svgW : x2;
+                  const x4 = nextStep ? (cxLeftNext / 100) * svgW : x1;
+
+                  // Polígono do "trapézio" (barra principal) deste nível
+                  const topY = y;
+                  const bottomY = y + stepH;
+
+                  // Conector pro próximo nível (polígono que liga bottom deste ao top do próximo)
+                  const connectorY1 = bottomY;
+                  const connectorY2 = bottomY + gapH;
+                  const connectorPoints = nextStep
+                    ? `${x1},${connectorY1} ${x2},${connectorY1} ${x3},${connectorY2} ${x4},${connectorY2}`
+                    : '';
+
+                  return `
+                    <polygon
+                      points="${x1},${topY} ${x2},${topY} ${x2},${bottomY} ${x1},${bottomY}"
+                      fill="${s.color}" fill-opacity="0.18"
+                      stroke="${s.color}" stroke-opacity="0.5" stroke-width="1"
+                    />
+                    ${connectorPoints ? `
+                      <polygon
+                        points="${connectorPoints}"
+                        fill="${s.color}" fill-opacity="0.06"
+                      />
+                    ` : ''}
+                    <text
+                      x="${svgW / 2}" y="${topY + stepH / 2 - 6}"
+                      text-anchor="middle" dominant-baseline="middle"
+                      fill="#eef0f4" font-size="22" font-weight="700"
+                      font-family="-apple-system, 'Inter', sans-serif"
+                    >${s.value.toLocaleString('pt-BR')}</text>
+                    <text
+                      x="${svgW / 2}" y="${topY + stepH / 2 + 18}"
+                      text-anchor="middle" dominant-baseline="middle"
+                      fill="rgba(238, 240, 244, 0.55)" font-size="12" font-weight="500"
+                      font-family="-apple-system, 'Inter', sans-serif"
+                    >${s.label}</text>
+                  `;
+                }).join('')}
+              </svg>
+
+              <div class="adm-funnel-legend">
+                ${steps.map((s, i) => {
+                  const dropPct = s.prev !== null && s.prev > 0 ? ((s.prev - s.value) / s.prev) * 100 : 0;
+                  const convPct = s.prev !== null && s.prev > 0 ? (s.value / s.prev) * 100 : 100;
+                  const dropClass = s.prev === null ? 'muted' : dropPct >= 80 ? 'bad' : dropPct >= 50 ? 'warn' : 'ok';
+                  const isTop = s.prev === null;
+                  return `
+                    <div class="adm-funnel-legend-row">
+                      <span class="adm-funnel-legend-dot" style="background:${s.color};"></span>
+                      <span class="adm-funnel-legend-label">${s.label}</span>
+                      <span class="adm-funnel-legend-value">${s.value.toLocaleString('pt-BR')}</span>
+                      ${isTop
+                        ? `<span class="adm-funnel-legend-meta">topo do funil</span>`
+                        : `<span class="adm-funnel-drop ${dropClass}">${convPct.toFixed(1)}% convertem · ${dropPct.toFixed(0)}% caem</span>`}
+                      ${i === steps.length - 1 && steps[0].value > 0
+                        ? `<span class="adm-funnel-legend-meta">conv. global: ${((s.value / steps[0].value) * 100).toFixed(2)}%</span>`
+                        : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        }
       }
 
       const renderFunnelTable = (rows: any[], firstCol: string, idLabel?: string): string => {
@@ -647,13 +733,26 @@ class AdminDashboard {
       if (sourceTable) sourceTable.innerHTML = renderFunnelTable(byS || [], 'Origem');
       if (mediumTable) mediumTable.innerHTML = renderFunnelTable(byM || [], 'Canal');
 
-      // Campanhas: usa os profiles já carregados (agrupa por signup_campaign)
+      // Campanhas: usa os profiles já carregados (agrupa por signup_campaign).
+      // IDs numéricos longos (15+ dígitos) vêm de anúncios Meta/Facebook/Instagram
+      // (campaign_id ou ad_id do Ads Manager). Não agrega nada mostrar o ID cru —
+      // melhor rotular como "Meta Ads" e deixar que a gente identifique por ID
+      // separadamente se precisar.
       if (campaignTable) {
         const since = Date.now() - this.acqDaysBack * 86400000;
         const profs = this.profiles.filter(p => p.created_at && new Date(p.created_at).getTime() > since);
+
+        // Normaliza campaign: ID numérico Meta → agrupa em "Meta Ads"
+        const normalizeCampaign = (raw: string | null | undefined): string => {
+          if (!raw) return '(direto)';
+          // Meta IDs são 15-20 dígitos numéricos puros. Usamos isso pra agrupar.
+          if (/^\d{13,}$/.test(raw)) return 'Meta Ads';
+          return raw;
+        };
+
         const byCamp = new Map<string, { cadastros: number; pagos: number; receita: number }>();
         profs.forEach((p: any) => {
-          const c = p.signup_campaign || '(direto)';
+          const c = normalizeCampaign(p.signup_campaign);
           const curr = byCamp.get(c) || { cadastros: 0, pagos: 0, receita: 0 };
           curr.cadastros += 1;
           const isPaid = p.subscription_plan !== 'free' && p.subscription_plan !== 'trial'
