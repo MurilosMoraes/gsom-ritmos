@@ -5307,7 +5307,8 @@ class RhythmSequencer {
     }
 
     if (stripCards) stripCards.style.display = 'none';
-    if (favBar) favBar.style.display = 'flex';
+    // Usa empty string pra herdar o display do CSS (.fav-bar é grid)
+    if (favBar) favBar.style.display = '';
 
     const idx = this.setlistManager.getCurrentIndex();
     const total = this.setlistManager.getLength();

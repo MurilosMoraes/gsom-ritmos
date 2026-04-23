@@ -520,13 +520,16 @@ input:checked + .slider:before {
 }
 
 /* Barra: anterior | ATUAL | proximo
-   Layout estável — larguras laterais FIXAS (grid), centro ocupa o resto.
-   Com flex:1/1.6, nomes longos empurravam o layout e quebravam a hierarquia
-   visual. Agora nome longo simplesmente trunca com ellipsis no próprio slot.
+   Layout fixo em 3 colunas SEMPRE iguais — 25% / 50% / 25%.
+   Assim funciona com:
+   - 1 item (só ATUAL) → laterais ficam vazias mas reservam espaço
+   - 2 itens (ATUAL + Próximo) → Anterior vazio, layout íntegro
+   - 3 itens → idêntico
+   Nomes longos truncam dentro do próprio slot (min-width:0 + overflow hidden).
 */
 .fav-bar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: 25% 50% 25%;
   align-items: stretch;
   background: rgba(10, 10, 30, 0.7);
   backdrop-filter: blur(20px);
@@ -535,6 +538,7 @@ input:checked + .slider:before {
   border-radius: 16px;
   overflow: hidden;
   min-height: 64px;
+  width: 100%;
 }
 
 /* Laterais (anterior / proximo) */
