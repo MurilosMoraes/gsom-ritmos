@@ -2,6 +2,7 @@
 
 import type { SetlistManager } from '../core/SetlistManager';
 import type { SetlistItem } from '../types';
+import type { PreviewPlayer } from '../core/PreviewPlayer';
 
 export interface CatalogItem {
   name: string;
@@ -11,6 +12,7 @@ export interface CatalogItem {
   baseRhythmName?: string; // ritmo de referência (só personal)
   bpm?: number;            // BPM salvo (só personal)
   category?: string;       // categoria do manifest ('Brasileiro', 'Gaúcho', etc)
+  rhythmData?: any;        // JSON do ritmo (só personal, pra preview offline)
 }
 
 // Normaliza pra busca fuzzy pt-BR (ignora acento e caixa)
@@ -27,6 +29,14 @@ export class SetlistEditorUI {
   private dragSourceIndex: number = -1;
   private activeCategory: string = 'all'; // 'all' | 'Meus' | 'Favoritos' | <category name>
   private currentQuery: string = '';
+  private previewPlayer: PreviewPlayer | null = null;
+  // Em mobile (<=640px) alternamos entre 'catalog' e 'setlist' em tabs.
+  private mobileTab: 'catalog' | 'setlist' = 'catalog';
+  // Função que resolve rhythm data de um CatalogItem (pra preview)
+  private resolveRhythmData:
+    | ((item: CatalogItem) => Promise<any | null>)
+    | null = null;
+  private previewUnsubscribe: (() => void) | null = null;
 
   constructor() {
     this.injectStyles();
@@ -35,15 +45,33 @@ export class SetlistEditorUI {
   open(
     catalog: CatalogItem[],
     setlistManager: SetlistManager,
-    onClose?: () => void
+    onClose?: () => void,
+    opts?: {
+      previewPlayer?: PreviewPlayer;
+      resolveRhythmData?: (item: CatalogItem) => Promise<any | null>;
+    }
   ): void {
     this.catalog = catalog;
     this.setlistManager = setlistManager;
     this.onClose = onClose;
+    this.previewPlayer = opts?.previewPlayer || null;
+    this.resolveRhythmData = opts?.resolveRhythmData || null;
+
+    // Subscribe pra re-pintar botões de preview quando estado muda
+    this.previewUnsubscribe?.();
+    this.previewUnsubscribe = this.previewPlayer?.onChange(() => {
+      this.updatePreviewButtons();
+    }) || null;
+
     this.render();
   }
 
   close(): void {
+    // Para preview ativo ao fechar
+    this.previewPlayer?.stop();
+    this.previewUnsubscribe?.();
+    this.previewUnsubscribe = null;
+
     if (this.overlay) {
       this.overlay.classList.add('sle-exit');
       this.overlay.addEventListener('transitionend', () => {
@@ -62,6 +90,15 @@ export class SetlistEditorUI {
     this.onClose?.();
   }
 
+  /** Atualiza classe 'playing' nos botões de preview quando estado muda */
+  private updatePreviewButtons(): void {
+    if (!this.overlay || !this.previewPlayer) return;
+    this.overlay.querySelectorAll<HTMLElement>('[data-preview-id]').forEach(btn => {
+      const id = btn.dataset.previewId || '';
+      btn.classList.toggle('sle-preview-btn-playing', this.previewPlayer!.isActive(id));
+    });
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────
 
   private render(): void {
@@ -77,11 +114,22 @@ export class SetlistEditorUI {
     const container = document.createElement('div');
     container.className = 'sle-container';
 
-    // Header
+    // Header — com tabs em mobile (catálogo | repertório)
     const header = document.createElement('div');
     header.className = 'sle-header';
+    const setlistCount = this.setlistManager?.getItems().length || 0;
     header.innerHTML = `
-      <h2 class="sle-title">Repertório</h2>
+      <div class="sle-header-left">
+        <h2 class="sle-title">Repertório</h2>
+        <div class="sle-tabs-mobile" role="tablist">
+          <button class="sle-tab ${this.mobileTab === 'catalog' ? 'active' : ''}" data-tab="catalog" role="tab">
+            Catálogo
+          </button>
+          <button class="sle-tab ${this.mobileTab === 'setlist' ? 'active' : ''}" data-tab="setlist" role="tab">
+            Meu show <span class="sle-tab-count">${setlistCount}</span>
+          </button>
+        </div>
+      </div>
       <button class="sle-close-btn" aria-label="Fechar">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -92,7 +140,7 @@ export class SetlistEditorUI {
 
     // Body (dois painéis)
     const body = document.createElement('div');
-    body.className = 'sle-body';
+    body.className = `sle-body mobile-tab-${this.mobileTab}`;
 
     // Painel: Ritmos disponíveis
     const catalogPanel = document.createElement('div');
@@ -174,6 +222,18 @@ export class SetlistEditorUI {
     this.overlay.appendChild(container);
     document.body.appendChild(this.overlay);
 
+    // Tabs mobile — alterna entre catálogo/setlist sem perder estado
+    header.querySelectorAll<HTMLElement>('.sle-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const next = tab.dataset.tab as 'catalog' | 'setlist';
+        if (next === this.mobileTab) return;
+        this.mobileTab = next;
+        // Atualiza classes sem re-renderizar tudo
+        header.querySelectorAll('.sle-tab').forEach(t => t.classList.toggle('active', (t as HTMLElement).dataset.tab === next));
+        body.className = `sle-body mobile-tab-${next}`;
+      });
+    });
+
     // Renderizar listas
     this.renderCatalog(catalogPanel.querySelector('.sle-catalog-list')!, '');
     this.renderSetlist(setlistPanel.querySelector('.sle-setlist-list')!);
@@ -208,6 +268,8 @@ export class SetlistEditorUI {
       return;
     }
 
+    const canPreview = !!this.previewPlayer;
+
     filtered.forEach(rhythm => {
       // Contar quantas vezes está no repertório
       const items = this.setlistManager?.getItems() || [];
@@ -221,17 +283,43 @@ export class SetlistEditorUI {
       const name = document.createElement('span');
       name.className = 'sle-item-name';
       const badge = rhythm.isPersonal
-        ? ' <span style="font-size:0.6rem;color:rgba(139,92,246,0.5);">MEU</span>'
+        ? ' <span class="sle-item-badge-personal">meu</span>'
         : '';
       const countBadge = count > 0
-        ? ` <span style="font-size:0.55rem;background:rgba(0,212,255,0.15);color:rgba(0,212,255,0.7);padding:0.1rem 0.35rem;border-radius:4px;">${count}x</span>`
+        ? ` <span class="sle-item-badge-count">${count}x</span>`
         : '';
-      name.innerHTML = (rhythm.isPersonal ? `<span style="color:#8B5CF6;">${rhythm.name}</span>` : rhythm.name) + badge + countBadge;
+      name.innerHTML = (rhythm.isPersonal ? `<span class="sle-item-personal">${rhythm.name}</span>` : rhythm.name) + badge + countBadge;
 
+      const actions = document.createElement('div');
+      actions.className = 'sle-item-actions';
+
+      // Preview
+      if (canPreview) {
+        const previewId = rhythm.userRhythmId || rhythm.path;
+        const previewBtn = document.createElement('button');
+        previewBtn.className = 'sle-preview-btn';
+        previewBtn.setAttribute('data-preview-id', previewId);
+        previewBtn.setAttribute('aria-label', 'Ouvir preview');
+        previewBtn.innerHTML = this.iconPreview();
+        if (this.previewPlayer?.isActive(previewId)) {
+          previewBtn.classList.add('sle-preview-btn-playing');
+        }
+        previewBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.togglePreview(previewId, {
+            name: rhythm.name,
+            path: rhythm.path,
+            userRhythmId: rhythm.userRhythmId,
+          });
+        });
+        actions.appendChild(previewBtn);
+      }
+
+      // Add
       const addBtn = document.createElement('button');
       addBtn.className = 'sle-add-btn';
+      addBtn.setAttribute('aria-label', 'Adicionar ao repertório');
       addBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-
       addBtn.addEventListener('click', () => {
         const setlistItem: SetlistItem = { name: rhythm.name, path: rhythm.path };
         if (rhythm.userRhythmId) setlistItem.userRhythmId = rhythm.userRhythmId;
@@ -242,31 +330,52 @@ export class SetlistEditorUI {
         if (setlistList) this.renderSetlist(setlistList as HTMLElement);
         this.renderCatalog(container, filter);
       });
+      actions.appendChild(addBtn);
 
-      item.append(name, addBtn);
+      item.append(name, actions);
       container.appendChild(item);
     });
+
+    // Sincroniza estado do preview (pode haver um ativo reaparecer após filtro)
+    this.updatePreviewButtons();
   }
 
   private renderSetlist(container: HTMLElement): void {
     container.innerHTML = '';
     const items = this.setlistManager?.getItems() || [];
 
+    // Atualiza badge da tab "Meu show" no header (mobile)
+    const tabCount = this.overlay?.querySelector('.sle-tab[data-tab="setlist"] .sle-tab-count');
+    if (tabCount) tabCount.textContent = String(items.length);
+
     if (items.length === 0) {
-      container.innerHTML = '<div class="sle-empty">Adicione ritmos ao repertório</div>';
+      container.innerHTML = `
+        <div class="sle-empty-pro">
+          <svg class="sle-empty-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <div class="sle-empty-title">Monte seu repertório</div>
+          <div class="sle-empty-desc">Toque no <strong>+</strong> ao lado de um ritmo do catálogo pra adicionar aqui.</div>
+        </div>
+      `;
       return;
     }
 
+    const canPreview = !!this.previewPlayer;
+
     items.forEach((item, index) => {
+      const isFirst = index === 0;
+      const isLast = index === items.length - 1;
+
       const row = document.createElement('div');
       row.className = 'sle-setlist-item';
+      // Drag-drop HTML5 ainda ativo em desktop (CSS controla cursor no handle)
       row.setAttribute('draggable', 'true');
       row.setAttribute('data-index', index.toString());
 
-      // Drag handle
+      // Grip visual (também serve pra desktop drag handle)
       const handle = document.createElement('span');
       handle.className = 'sle-drag-handle';
-      handle.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="4" cy="3" r="1.2" fill="currentColor"/><circle cx="10" cy="3" r="1.2" fill="currentColor"/><circle cx="4" cy="7" r="1.2" fill="currentColor"/><circle cx="10" cy="7" r="1.2" fill="currentColor"/><circle cx="4" cy="11" r="1.2" fill="currentColor"/><circle cx="10" cy="11" r="1.2" fill="currentColor"/></svg>';
+      handle.setAttribute('aria-hidden', 'true');
+      handle.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="4" cy="3" r="1.3" fill="currentColor"/><circle cx="10" cy="3" r="1.3" fill="currentColor"/><circle cx="4" cy="7" r="1.3" fill="currentColor"/><circle cx="10" cy="7" r="1.3" fill="currentColor"/><circle cx="4" cy="11" r="1.3" fill="currentColor"/><circle cx="10" cy="11" r="1.3" fill="currentColor"/></svg>';
 
       const num = document.createElement('span');
       num.className = 'sle-item-num';
@@ -275,41 +384,97 @@ export class SetlistEditorUI {
       const name = document.createElement('span');
       name.className = 'sle-item-name';
       name.innerHTML = item.userRhythmId
-        ? `<span style="color:#8B5CF6;">${item.name}</span> <span style="font-size:0.55rem;color:rgba(139,92,246,0.4);">MEU</span>`
+        ? `<span class="sle-item-personal">${item.name}</span>`
         : item.name;
 
+      // Actions: preview + up/down + remove
+      const actions = document.createElement('div');
+      actions.className = 'sle-item-actions';
+
+      // Preview
+      if (canPreview) {
+        const previewId = item.userRhythmId || item.path;
+        const previewBtn = document.createElement('button');
+        previewBtn.className = 'sle-preview-btn';
+        previewBtn.setAttribute('data-preview-id', previewId);
+        previewBtn.setAttribute('aria-label', 'Ouvir preview');
+        previewBtn.innerHTML = this.iconPreview();
+        if (this.previewPlayer?.isActive(previewId)) {
+          previewBtn.classList.add('sle-preview-btn-playing');
+        }
+        previewBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.togglePreview(previewId, {
+            name: item.name,
+            path: item.path,
+            userRhythmId: item.userRhythmId,
+          });
+        });
+        actions.appendChild(previewBtn);
+      }
+
+      // Up
+      const upBtn = document.createElement('button');
+      upBtn.className = 'sle-reorder-btn';
+      upBtn.setAttribute('aria-label', 'Mover pra cima');
+      upBtn.disabled = isFirst;
+      upBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
+      upBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isFirst) return;
+        this.setlistManager?.moveItem(index, index - 1);
+        this.renderSetlist(container);
+      });
+      actions.appendChild(upBtn);
+
+      // Down
+      const downBtn = document.createElement('button');
+      downBtn.className = 'sle-reorder-btn';
+      downBtn.setAttribute('aria-label', 'Mover pra baixo');
+      downBtn.disabled = isLast;
+      downBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+      downBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isLast) return;
+        this.setlistManager?.moveItem(index, index + 1);
+        this.renderSetlist(container);
+      });
+      actions.appendChild(downBtn);
+
+      // Remove
       const removeBtn = document.createElement('button');
       removeBtn.className = 'sle-remove-btn';
-      removeBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 3L3 11M3 3l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
-      removeBtn.addEventListener('click', () => {
+      removeBtn.setAttribute('aria-label', 'Remover do repertório');
+      removeBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 3L3 11M3 3l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         this.setlistManager?.removeItem(index);
         this.renderSetlist(container);
         const catalogList = this.overlay?.querySelector('.sle-catalog-list');
-        const searchInput = this.overlay?.querySelector('.sle-search') as HTMLInputElement;
-        if (catalogList) this.renderCatalog(catalogList as HTMLElement, searchInput?.value || '');
+        if (catalogList) this.renderCatalog(catalogList as HTMLElement, this.currentQuery);
       });
+      actions.appendChild(removeBtn);
 
-      row.append(handle, num, name, removeBtn);
+      row.append(handle, num, name, actions);
       container.appendChild(row);
 
-      // Drag events
+      // ─── Drag-drop HTML5 (desktop) ──────────────────────────────
+      // Em mobile trocamos por botões ▲▼; o drag fica disponível só como
+      // bonus em desktop (mouse é preciso, dedo não).
       row.addEventListener('dragstart', (e) => {
         this.dragSourceIndex = index;
         row.classList.add('sle-dragging');
         e.dataTransfer?.setData('text/plain', index.toString());
       });
-
       row.addEventListener('dragend', () => {
         row.classList.remove('sle-dragging');
         container.querySelectorAll('.sle-drag-over').forEach(el => el.classList.remove('sle-drag-over'));
       });
-
       row.addEventListener('dragover', (e) => {
         e.preventDefault();
         container.querySelectorAll('.sle-drag-over').forEach(el => el.classList.remove('sle-drag-over'));
         row.classList.add('sle-drag-over');
       });
-
       row.addEventListener('drop', (e) => {
         e.preventDefault();
         row.classList.remove('sle-drag-over');
@@ -320,75 +485,44 @@ export class SetlistEditorUI {
         }
         this.dragSourceIndex = -1;
       });
-
-      // Touch drag support
-      this.setupTouchDrag(row, container, index);
     });
+
+    // Após render, re-sincroniza estado do preview pros botões recém-criados
+    this.updatePreviewButtons();
   }
 
-  private setupTouchDrag(row: HTMLElement, container: HTMLElement, index: number): void {
-    let startY = 0;
-    let clone: HTMLElement | null = null;
-    let moved = false;
+  private iconPreview(): string {
+    return `
+      <svg class="sle-preview-icon-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      <svg class="sle-preview-icon-stop" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+    `;
+  }
 
-    const handle = row.querySelector('.sle-drag-handle') as HTMLElement;
-    if (!handle) return;
-
-    handle.addEventListener('touchstart', (e) => {
-      startY = e.touches[0].clientY;
-      this.dragSourceIndex = index;
-      moved = false;
-
-      clone = row.cloneNode(true) as HTMLElement;
-      clone.className = 'sle-setlist-item sle-touch-ghost';
-      clone.style.position = 'fixed';
-      clone.style.width = row.offsetWidth + 'px';
-      clone.style.top = row.getBoundingClientRect().top + 'px';
-      clone.style.left = row.getBoundingClientRect().left + 'px';
-      clone.style.zIndex = '100001';
-      clone.style.pointerEvents = 'none';
-      document.body.appendChild(clone);
-
-      row.classList.add('sle-dragging');
-    }, { passive: true });
-
-    handle.addEventListener('touchmove', (e) => {
-      if (!clone) return;
-      moved = true;
-      e.preventDefault();
-      const dy = e.touches[0].clientY - startY;
-      clone.style.transform = `translateY(${dy}px)`;
-
-      // Find target
-      const items = container.querySelectorAll('.sle-setlist-item');
-      items.forEach(el => el.classList.remove('sle-drag-over'));
-      const touch = e.touches[0];
-      items.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        if (touch.clientY > rect.top && touch.clientY < rect.bottom) {
-          el.classList.add('sle-drag-over');
-        }
-      });
-    }, { passive: false });
-
-    handle.addEventListener('touchend', () => {
-      clone?.remove();
-      clone = null;
-      row.classList.remove('sle-dragging');
-
-      if (!moved) return;
-
-      const overEl = container.querySelector('.sle-drag-over');
-      if (overEl) {
-        const targetIndex = parseInt(overEl.getAttribute('data-index') || '-1');
-        if (targetIndex >= 0 && targetIndex !== this.dragSourceIndex) {
-          this.setlistManager?.moveItem(this.dragSourceIndex, targetIndex);
-          this.renderSetlist(container);
-        }
-      }
-      container.querySelectorAll('.sle-drag-over').forEach(el => el.classList.remove('sle-drag-over'));
-      this.dragSourceIndex = -1;
-    }, { passive: true });
+  /**
+   * Toggle do preview: se já tá tocando esse id, para; senão, inicia.
+   * Resolve o rhythmData sob demanda via callback do chamador.
+   */
+  private async togglePreview(id: string, item: { name: string; path: string; userRhythmId?: string }): Promise<void> {
+    if (!this.previewPlayer) return;
+    if (this.previewPlayer.isActive(id)) {
+      this.previewPlayer.stop();
+      return;
+    }
+    // Resume AudioContext síncrono NÃO é possível aqui (é async) —
+    // mas o PreviewPlayer já trata suspended state.
+    if (!this.resolveRhythmData) return;
+    try {
+      const catalogItem = this.catalog.find(c =>
+        (item.userRhythmId && c.userRhythmId === item.userRhythmId) ||
+        (!item.userRhythmId && c.path === item.path)
+      );
+      if (!catalogItem) return;
+      const rhythmData = await this.resolveRhythmData(catalogItem);
+      if (!rhythmData) return;
+      await this.previewPlayer.play(id, rhythmData);
+    } catch (err) {
+      console.warn('[SetlistEditor] preview falhou:', err);
+    }
   }
 
   // ─── Styles ─────────────────────────────────────────────────────────
@@ -759,6 +893,232 @@ export class SetlistEditorUI {
         font-variant-numeric: tabular-nums;
       }
       .sle-chip.active .sle-chip-count { opacity: 0.65; }
+
+      /* ─── Header v2 — título + tabs mobile ─── */
+      .sle-header-left {
+        display: flex; align-items: center;
+        gap: 1rem;
+        min-width: 0;
+        flex: 1;
+      }
+      .sle-tabs-mobile {
+        display: none;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 10px;
+        padding: 3px;
+        gap: 2px;
+      }
+      .sle-tab {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.55);
+        font-family: inherit;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.45rem 0.75rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.14s, color 0.14s;
+        -webkit-tap-highlight-color: transparent;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        white-space: nowrap;
+      }
+      .sle-tab.active {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+      .sle-tab-count {
+        font-size: 0.66rem;
+        font-weight: 700;
+        padding: 0.05rem 0.35rem;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.75);
+        font-variant-numeric: tabular-nums;
+      }
+      .sle-tab.active .sle-tab-count {
+        background: rgba(62, 232, 167, 0.15);
+        color: #3ee8a7;
+      }
+
+      /* Em mobile, exibe tabs e esconde um painel por vez */
+      @media (max-width: 640px) {
+        .sle-tabs-mobile { display: inline-flex; }
+        .sle-title { display: none; }
+        .sle-body {
+          grid-template-columns: 1fr !important;
+          grid-template-rows: 1fr !important;
+        }
+        .sle-body.mobile-tab-catalog .sle-setlist { display: none; }
+        .sle-body.mobile-tab-setlist .sle-catalog { display: none; }
+        .sle-container { max-height: 92vh; }
+        .sle-header { padding: 0.85rem 1rem; }
+      }
+
+      /* ─── Item actions (catálogo e setlist) ─── */
+      .sle-item-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex-shrink: 0;
+      }
+      .sle-item-personal { color: #8B5CF6; }
+      .sle-item-badge-personal {
+        font-size: 0.58rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: rgba(139, 92, 246, 0.65);
+        padding: 0.1rem 0.4rem;
+        border: 1px solid rgba(139, 92, 246, 0.25);
+        border-radius: 5px;
+        margin-left: 0.35rem;
+      }
+      .sle-item-badge-count {
+        font-size: 0.6rem;
+        font-weight: 700;
+        background: rgba(62, 232, 167, 0.12);
+        color: #3ee8a7;
+        padding: 0.1rem 0.4rem;
+        border-radius: 5px;
+        margin-left: 0.35rem;
+      }
+
+      /* ─── Preview button ─── */
+      .sle-preview-btn {
+        width: 32px; height: 32px;
+        border-radius: 8px;
+        border: 1px solid rgba(62, 232, 167, 0.2);
+        background: rgba(62, 232, 167, 0.06);
+        color: #3ee8a7;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        transition: background 0.12s, border-color 0.12s, transform 0.08s;
+        flex-shrink: 0;
+        -webkit-tap-highlight-color: transparent;
+        position: relative;
+      }
+      .sle-preview-btn:hover {
+        background: rgba(62, 232, 167, 0.12);
+        border-color: rgba(62, 232, 167, 0.35);
+      }
+      .sle-preview-btn:active { transform: scale(0.92); }
+      .sle-preview-icon-play { display: block; margin-left: 1px; }
+      .sle-preview-icon-stop { display: none; }
+      .sle-preview-btn-playing {
+        background: rgba(62, 232, 167, 0.22);
+        border-color: rgba(62, 232, 167, 0.55);
+      }
+      .sle-preview-btn-playing .sle-preview-icon-play { display: none; }
+      .sle-preview-btn-playing .sle-preview-icon-stop { display: block; }
+      .sle-preview-btn-playing::before {
+        content: '';
+        position: absolute; inset: -3px;
+        border-radius: 10px;
+        border: 2px solid rgba(62, 232, 167, 0.35);
+        animation: slePreviewRing 1.4s ease-in-out infinite;
+        pointer-events: none;
+      }
+      @keyframes slePreviewRing {
+        0%, 100% { opacity: 0.25; transform: scale(0.95); }
+        50%      { opacity: 0.75; transform: scale(1.1); }
+      }
+
+      /* ─── Reorder buttons ▲▼ ─── */
+      .sle-reorder-btn {
+        width: 32px; height: 32px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+        color: rgba(255, 255, 255, 0.7);
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        transition: background 0.12s, color 0.12s, transform 0.08s;
+        flex-shrink: 0;
+        -webkit-tap-highlight-color: transparent;
+        font-family: inherit;
+      }
+      .sle-reorder-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+      }
+      .sle-reorder-btn:active { transform: scale(0.92); }
+      .sle-reorder-btn:disabled {
+        opacity: 0.25;
+        cursor: not-allowed;
+      }
+      .sle-reorder-btn:disabled:hover {
+        background: rgba(255, 255, 255, 0.03);
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      /* Remove btn maior quando está na action row */
+      .sle-setlist-item .sle-remove-btn {
+        width: 32px; height: 32px;
+      }
+
+      /* ─── Item numérico grande (ordinal) ─── */
+      .sle-setlist-item .sle-item-num {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.5);
+        min-width: 26px;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.5px;
+      }
+
+      /* Empty state pro setlist (mais ilustrativo que o catálogo) */
+      .sle-empty-pro {
+        text-align: center;
+        padding: 2.5rem 1rem;
+        color: rgba(255, 255, 255, 0.55);
+      }
+      .sle-empty-icon {
+        color: rgba(255, 255, 255, 0.3);
+        margin-bottom: 0.75rem;
+      }
+      .sle-empty-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 0.4rem;
+      }
+      .sle-empty-desc {
+        font-size: 0.82rem;
+        line-height: 1.5;
+        max-width: 260px;
+        margin: 0 auto;
+      }
+      .sle-empty-desc strong {
+        color: #3ee8a7;
+        font-weight: 700;
+      }
+
+      /* Em mobile, esconde o grip handle (drag-drop não é o caminho principal) */
+      @media (max-width: 640px) {
+        .sle-setlist-item .sle-drag-handle { display: none; }
+        .sle-preview-btn,
+        .sle-reorder-btn {
+          width: 38px; height: 38px;
+        }
+        .sle-setlist-item .sle-remove-btn {
+          width: 38px; height: 38px;
+        }
+        .sle-add-btn {
+          width: 38px; height: 38px;
+        }
+        .sle-setlist-item, .sle-catalog-item {
+          padding: 0.7rem 0.6rem;
+        }
+      }
+
+      /* -webkit-overflow-scrolling em iOS */
+      .sle-panel-list {
+        -webkit-overflow-scrolling: touch;
+      }
     `;
     document.head.appendChild(css);
   }

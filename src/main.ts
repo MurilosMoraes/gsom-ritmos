@@ -21,6 +21,7 @@ import { AttributionService } from './native/AttributionService';
 import { PushService } from './native/PushService';
 import { isNativeApp, openExternal } from './native/Platform';
 import { UserRhythmService } from './core/UserRhythmService';
+import { PreviewPlayer } from './core/PreviewPlayer';
 
 // Pra Google Play / App Store: app nativo não pode ter fluxo de pagamento
 // de produto digital (teria que usar Play Billing / IAP com taxa 30%).
@@ -41,6 +42,7 @@ class RhythmSequencer {
   private setlistEditor: SetlistEditorUI;
   private userRhythmService: UserRhythmService;
   private conversionManager: ConversionManager;
+  private previewPlayer!: PreviewPlayer;
   private isAdminMode = false;
   private userRole: 'user' | 'admin' = 'user';
   private rhythmVersion: number = 0;
@@ -209,6 +211,7 @@ class RhythmSequencer {
     this.setlistEditor = new SetlistEditorUI();
     this.userRhythmService = new UserRhythmService();
     this.conversionManager = new ConversionManager();
+    this.previewPlayer = new PreviewPlayer(this.audioContext, this.audioManager);
 
     // Setlist onChange — não atualizar UI automaticamente durante navegação
     // A UI é atualizada explicitamente após cada ação
@@ -5043,6 +5046,23 @@ class RhythmSequencer {
     editBtn?.addEventListener('click', () => {
       // Gatilho de conversão: usou setlist = intenção de show profissional
       this.conversionManager.tryFireSetlistAdd();
+
+      // Resolve rhythm data sob demanda — pra preview ler JSON real
+      const resolveRhythmData = async (item: { userRhythmId?: string; path: string }): Promise<any | null> => {
+        if (item.userRhythmId) {
+          const ur = this.userRhythmService.getById(item.userRhythmId);
+          return ur?.rhythm_data || null;
+        }
+        if (!item.path) return null;
+        try {
+          const res = await fetch(item.path);
+          if (!res.ok) return null;
+          return await res.json();
+        } catch {
+          return null;
+        }
+      };
+
       try {
         // Juntar ritmos da biblioteca + ritmos pessoais no catálogo
         const personalRhythms = (this.userRhythmService?.getAll() || []).map(r => ({
@@ -5052,6 +5072,7 @@ class RhythmSequencer {
           isPersonal: true,
           baseRhythmName: r.base_rhythm_name,
           bpm: r.bpm,
+          rhythmData: r.rhythm_data,
         }));
         const libraryWithCategory = this.availableRhythms.map(r => ({
           name: r.name,
@@ -5063,7 +5084,11 @@ class RhythmSequencer {
         this.setlistEditor.open(
           fullCatalog,
           this.setlistManager,
-          () => this.onSetlistEditorClose()
+          () => this.onSetlistEditorClose(),
+          {
+            previewPlayer: this.previewPlayer,
+            resolveRhythmData,
+          }
         );
       } catch (err) {
         console.error('Erro ao abrir repertório:', err);
