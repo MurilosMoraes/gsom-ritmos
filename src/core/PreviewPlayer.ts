@@ -37,9 +37,15 @@ interface ActivePreview {
 
 const PREVIEW_GAIN = 0.35; // ≈ -9dB
 const CROSSFADE_MS = 50;
-// 4 compassos = tempo suficiente pro user "sentir" o ritmo antes de decidir.
-// A 120 BPM ≈ 8s. A 80 BPM ≈ 12s. User pode parar a qualquer momento.
-const BARS_TO_PREVIEW = 4;
+// Duração MÍNIMA do preview em segundos. Repetimos o ciclo completo da
+// variação até atingir pelo menos isso. Se o ciclo for longo (ex: 32 steps
+// a speed=2), já passa esse mínimo no 1º ciclo e preview para ao fim dele.
+// Se curto (ex: 8 steps a speed=1, ritmo rápido), repete pra dar contexto.
+// ≈ 6s é tempo suficiente pra "sentir" o ritmo sem virar loop infinito.
+const PREVIEW_MIN_DURATION_S = 6;
+// Teto de segurança pra não tocar eternamente se o ciclo por algum motivo
+// medir 0s (evita loop travado).
+const PREVIEW_MAX_DURATION_S = 14;
 
 export class PreviewPlayer {
   private audioContext: AudioContext;
@@ -107,13 +113,31 @@ export class PreviewPlayer {
     const volumes = expandVolumes(variation.volumes || []);
     const audioFiles = variation.audioFiles || [];
 
-    // Duração do step em segundos. Scheduler usa (secondsPerBeat/2)/speed
-    // → cada step é sempre metade de um beat (semicolcheia), independente
-    // do número de steps da variação. Não dividir por steps/beatsPerBar
-    // aqui senão o preview toca 2x mais rápido.
+    // Duração do step em segundos — mesma fórmula do Scheduler.
+    // (secondsPerBeat/2)/speed → step é sempre "semicolcheia" do beat,
+    // ajustado pela velocidade da variação.
     const secondsPerBeat = 60 / tempo;
     const stepDuration = (secondsPerBeat / 2) / (speed || 1);
-    const totalDuration = steps * BARS_TO_PREVIEW * stepDuration;
+    const cycleDuration = steps * stepDuration;
+
+    // Safety: se ciclo for degenerado, não toca (evita loop travado ou
+    // agendamento instantâneo). 50ms é o mínimo razoável pra um ciclo.
+    if (!(cycleDuration > 0.05)) {
+      throw new Error(`PreviewPlayer: ciclo degenerado (${cycleDuration}s)`);
+    }
+
+    // Quantos ciclos tocar — garante duração mínima sem virar loop eterno.
+    // Sempre pelo menos 1 ciclo, mesmo que passe do máximo (pra não cortar
+    // ritmo no meio e soar estranho).
+    let cyclesToPlay = Math.max(1, Math.ceil(PREVIEW_MIN_DURATION_S / cycleDuration));
+    if (cyclesToPlay * cycleDuration > PREVIEW_MAX_DURATION_S) {
+      // Se mesmo 1 ciclo passa do máximo, deixa tocar (ritmo muito lento).
+      // Senão, reduz pra caber no teto.
+      if (cycleDuration <= PREVIEW_MAX_DURATION_S) {
+        cyclesToPlay = Math.max(1, Math.floor(PREVIEW_MAX_DURATION_S / cycleDuration));
+      }
+    }
+    const totalDuration = cyclesToPlay * cycleDuration;
 
     // Carrega samples dos canais ativos (os que têm pelo menos 1 step true)
     const activeChannels: Array<{ ch: number; buffer: AudioBuffer | null }> = [];
@@ -131,49 +155,65 @@ export class PreviewPlayer {
       }
     }
 
+    // Durante o await acima outro play() pode ter iniciado. Se o estado
+    // ativo não for mais este, aborta silenciosamente.
+    // (Sem cancellation token aqui — check simples baseado em tempo.)
+    // Também protege iOS onde Web Audio pode ter sido suspenso de novo.
+    if (this.audioContext.state === 'suspended') {
+      try { await this.audioContext.resume(); } catch { /* ok */ }
+    }
+
     // Cria gain bus dedicado
     const gainNode = this.audioContext.createGain();
-    gainNode.gain.value = 0;
+    // Começa silencioso e sobe em fade-in
+    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
     gainNode.connect(this.audioContext.destination);
 
-    const startTime = this.audioContext.currentTime + 0.02;
-    gainNode.gain.linearRampToValueAtTime(PREVIEW_GAIN, startTime + CROSSFADE_MS / 1000);
+    const startTime = this.audioContext.currentTime + 0.04;
+    const fadeInEnd = startTime + CROSSFADE_MS / 1000;
+    const fadeOutStart = startTime + totalDuration;
+    const endTime = fadeOutStart + CROSSFADE_MS / 1000;
+
+    // Envelope do gain bus: 0 → PREVIEW_GAIN → 0. As rampas precisam dos
+    // setValueAtTime de ANCORAGEM antes, senão linearRampToValueAtTime
+    // interpola desde o último valor conhecido e pode começar em zero
+    // demorando até fadeOutStart pra atingir PREVIEW_GAIN — causando o
+    // "mudo" intermitente que o user reportou.
+    gainNode.gain.linearRampToValueAtTime(PREVIEW_GAIN, fadeInEnd);
+    gainNode.gain.setValueAtTime(PREVIEW_GAIN, fadeOutStart);
+    gainNode.gain.linearRampToValueAtTime(0, endTime);
 
     const sources: AudioBufferSourceNode[] = [];
 
-    // Agenda 2 compassos do pattern
-    for (let bar = 0; bar < BARS_TO_PREVIEW; bar++) {
+    // Agenda TODOS os ciclos. Cada hit é um BufferSourceNode próprio
+    // (Web Audio: source só pode start() uma vez).
+    for (let cycle = 0; cycle < cyclesToPlay; cycle++) {
+      const cycleStart = startTime + cycle * cycleDuration;
       for (let step = 0; step < steps; step++) {
+        const stepTime = cycleStart + step * stepDuration;
         for (const { ch, buffer } of activeChannels) {
           if (!buffer) continue;
           if (!pattern[ch][step]) continue;
           const vol = volumes[ch]?.[step] ?? 1;
           if (vol <= 0) continue;
 
-          const time = startTime + (bar * steps + step) * stepDuration;
           const src = this.audioContext.createBufferSource();
           src.buffer = buffer;
-
           const stepGain = this.audioContext.createGain();
           stepGain.gain.value = Math.min(vol, 1.5);
           src.connect(stepGain).connect(gainNode);
-          src.start(time);
+          try { src.start(stepTime); } catch { /* tempo no passado, ignora */ }
           sources.push(src);
         }
       }
     }
 
-    // Auto-stop com fade
-    const endTime = startTime + totalDuration;
-    const fadeStart = endTime - CROSSFADE_MS / 1000;
-    gainNode.gain.setValueAtTime(PREVIEW_GAIN, fadeStart);
-    gainNode.gain.linearRampToValueAtTime(0, endTime);
-
+    // Auto-stop após endTime (fadeOut + folga)
     const stopTimer = window.setTimeout(() => {
       if (this.active?.id === id) {
         this.stopActive(false);
       }
-    }, totalDuration * 1000 + 100);
+    }, (endTime - this.audioContext.currentTime) * 1000 + 100);
 
     this.active = { id, gainNode, sources, stopTimer };
     this.notify();
