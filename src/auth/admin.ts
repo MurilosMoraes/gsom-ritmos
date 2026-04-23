@@ -129,6 +129,134 @@ async function adminRpc(rpc: string, rpcArgs?: Record<string, any>): Promise<any
   return await adminCall({ action: 'rpc', rpc, rpcArgs: rpcArgs || {} });
 }
 
+// ─── Skeleton helpers ────────────────────────────────────────────────
+
+function kpiSkeleton(count = 4): string {
+  return Array.from({ length: count }).map(() => `
+    <div class="adm-skel-kpi">
+      <span class="adm-skel"></span>
+      <span class="adm-skel val"></span>
+      <span class="adm-skel sub"></span>
+    </div>
+  `).join('');
+}
+
+function funnelSkeleton(rows = 4): string {
+  return `<div class="adm-funnel">${Array.from({ length: rows }).map((_, i) => {
+    const w = 95 - i * 18;
+    return `
+      <div class="adm-skel-funnel-step">
+        <span class="adm-skel"></span>
+        <span class="adm-skel" style="width:${Math.max(w, 20)}%;"></span>
+        <span class="adm-skel"></span>
+        <span class="adm-skel"></span>
+      </div>
+    `;
+  }).join('')}</div>`;
+}
+
+function tableSkeleton(rows = 5): string {
+  return `<div class="adm-skel-table">${Array.from({ length: rows }).map(() => `
+    <div class="adm-skel-row">
+      <span class="adm-skel"></span>
+      <span class="adm-skel"></span>
+      <span class="adm-skel"></span>
+    </div>
+  `).join('')}</div>`;
+}
+
+function cardSkeleton(lines = 4): string {
+  return Array.from({ length: lines }).map(() =>
+    `<span class="adm-skel adm-skel-line" style="width:${70 + Math.random() * 25}%;"></span>`
+  ).join('');
+}
+
+// ─── Delta pill ──────────────────────────────────────────────────────
+
+interface DeltaOpts {
+  current: number;
+  previous: number;
+  isNegativeMetric?: boolean;   // true if "going up" is bad (churn, expired)
+  compareLabel?: string;        // "vs 7d"
+  format?: 'int' | 'pct' | 'cents';
+}
+
+function deltaPill(opts: DeltaOpts): string {
+  const { current, previous, isNegativeMetric = false, compareLabel = 'vs anterior', format = 'int' } = opts;
+  if (previous <= 0) return `<span class="adm-kpi-sub">${compareLabel}: —</span>`;
+  const change = ((current - previous) / previous) * 100;
+  const rounded = Math.round(change * 10) / 10;
+  let dir: 'up' | 'down' | 'flat' = rounded === 0 ? 'flat' : rounded > 0 ? 'up' : 'down';
+  const mod = isNegativeMetric
+    ? (dir === 'up' ? ' negative' : dir === 'down' ? ' positive' : '')
+    : '';
+  const arrow = dir === 'up' ? '↑' : dir === 'down' ? '↓' : '→';
+  const abs = Math.abs(rounded);
+  const displayPrev = format === 'cents'
+    ? `R$ ${(previous / 100).toFixed(0)}`
+    : format === 'pct'
+    ? `${previous}%`
+    : String(previous);
+  return `
+    <span class="adm-kpi-delta ${dir}${mod}">${arrow} ${abs.toFixed(1)}%</span>
+    <span class="adm-kpi-sub">${compareLabel} (${displayPrev})</span>
+  `;
+}
+
+// ─── Relative time ───────────────────────────────────────────────────
+
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return 'nunca';
+  const d = new Date(iso).getTime();
+  const now = Date.now();
+  const diffMs = now - d;
+  const mins = Math.floor(diffMs / 60000);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  if (mins < 1) return 'agora mesmo';
+  if (mins < 60) return `há ${mins}min`;
+  if (hours < 24) return `há ${hours}h`;
+  if (days < 30) return `há ${days}d`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `há ${months}mês`;
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
+
+// ─── Empty state ─────────────────────────────────────────────────────
+
+interface EmptyOpts {
+  icon?: string;     // SVG path
+  title: string;
+  desc?: string;
+  ctaLabel?: string;
+  ctaId?: string;
+  inline?: boolean;
+}
+
+function emptyState(opts: EmptyOpts): string {
+  const icon = opts.icon || `<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>`;
+  const cta = opts.ctaLabel && opts.ctaId
+    ? `<button class="adm-btn adm-btn-primary" id="${opts.ctaId}">${opts.ctaLabel}</button>`
+    : '';
+  return `
+    <div class="adm-empty${opts.inline ? ' adm-empty-inline' : ''}">
+      <svg class="adm-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">${icon}</svg>
+      <div class="adm-empty-title">${opts.title}</div>
+      ${opts.desc ? `<div class="adm-empty-desc">${opts.desc}</div>` : ''}
+      ${cta}
+    </div>
+  `;
+}
+
+// ─── Currency helpers ────────────────────────────────────────────────
+
+const fmtBRL = (cents: number | null | undefined, decimals = 0): string => {
+  const v = (cents || 0) / 100;
+  return `R$ ${v.toFixed(decimals).replace('.', ',')}`;
+};
+
+const fmtBRLFull = (cents: number | null | undefined): string => fmtBRL(cents, 2);
+
 class AdminDashboard {
   private profiles: Profile[] = [];
   private transactions: Transaction[] = [];
@@ -185,6 +313,9 @@ class AdminDashboard {
     this.setupCouponForm();
     this.setupAffiliateForm();
 
+    // Render skeletons imediatamente para feedback instantâneo
+    this.renderSkeletons();
+
     // loadData/loadAffiliates podem falhar (edge fn, rede, tabela ausente).
     // NÃO redirecionar — erros só logam. Dashboard parcial é melhor que kick.
     try {
@@ -198,6 +329,43 @@ class AdminDashboard {
       console.error('[admin] loadAffiliates failed:', e);
     }
     this.render();
+  }
+
+  private renderSkeletons(): void {
+    const kpiGrid = document.getElementById('kpiGrid');
+    if (kpiGrid) kpiGrid.innerHTML = kpiSkeleton(7);
+    const acqKpiGrid = document.getElementById('acqKpiGrid');
+    if (acqKpiGrid) acqKpiGrid.innerHTML = kpiSkeleton(6);
+    ['usersChart', 'regionChart', 'subscriptionsChart', 'dataChart'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = cardSkeleton(4);
+    });
+    ['acqGlobalFunnel', 'acqSourceTable', 'acqMediumTable', 'acqCampaignTable'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = funnelSkeleton(4);
+    });
+    const affContent = document.getElementById('affiliatesContent');
+    if (affContent) {
+      affContent.innerHTML = `<div class="adm-affiliates-grid">${
+        Array.from({ length: 2 }).map(() => `
+          <div class="adm-aff-card">
+            <div class="adm-aff-head">
+              <div style="flex:1;">
+                <span class="adm-skel" style="width:60%;height:16px;display:block;margin-bottom:0.3rem;"></span>
+                <span class="adm-skel" style="width:40%;height:10px;display:block;"></span>
+              </div>
+              <span class="adm-skel" style="width:70px;height:22px;"></span>
+            </div>
+            <span class="adm-skel" style="width:100%;height:50px;display:block;"></span>
+            <div class="adm-aff-stats">
+              <span class="adm-skel" style="height:30px;"></span>
+              <span class="adm-skel" style="height:30px;"></span>
+              <span class="adm-skel" style="height:30px;"></span>
+            </div>
+          </div>
+        `).join('')
+      }</div>`;
+    }
   }
 
   private setupEvents(): void {
@@ -322,62 +490,158 @@ class AdminDashboard {
     }
 
     const kpiGrid = document.getElementById('acqKpiGrid');
+    const globalFunnel = document.getElementById('acqGlobalFunnel');
     const sourceTable = document.getElementById('acqSourceTable');
     const mediumTable = document.getElementById('acqMediumTable');
     const campaignTable = document.getElementById('acqCampaignTable');
 
-    if (kpiGrid) kpiGrid.innerHTML = '<div style="padding:1rem;color:rgba(255,255,255,0.3);font-size:0.8rem;">Carregando...</div>';
+    // Skeletons enquanto carrega
+    if (kpiGrid) kpiGrid.innerHTML = kpiSkeleton(6);
+    if (globalFunnel) globalFunnel.innerHTML = funnelSkeleton(3);
+    if (sourceTable) sourceTable.innerHTML = funnelSkeleton(4);
+    if (mediumTable) mediumTable.innerHTML = funnelSkeleton(4);
+    if (campaignTable) campaignTable.innerHTML = funnelSkeleton(5);
 
     try {
-      const [kpi, byS, byM] = await Promise.all([
+      const [kpi, byS, byM, kpiPrev] = await Promise.all([
         adminRpc('admin_kpi_summary', { days_back: this.acqDaysBack }),
         adminRpc('admin_signup_funnel', { days_back: this.acqDaysBack }),
         adminRpc('admin_medium_funnel', { days_back: this.acqDaysBack }),
+        // Período anterior (pra delta) — mesmo tamanho de janela, mas antes
+        adminRpc('admin_kpi_summary', { days_back: this.acqDaysBack * 2 }).catch(() => null),
       ]);
 
       const kpiRow = Array.isArray(kpi) ? kpi[0] : kpi;
-      const fmtCents = (c: number) => `R$ ${((c || 0) / 100).toFixed(0)}`;
+      const prevRow = kpiPrev ? (Array.isArray(kpiPrev) ? kpiPrev[0] : kpiPrev) : null;
+
+      // Calcular período anterior (subtrai o atual do total 2× janela)
+      const prevDemos = prevRow ? Math.max(0, (prevRow.demos_unicos || 0) - (kpiRow?.demos_unicos || 0)) : 0;
+      const prevCadastros = prevRow ? Math.max(0, (prevRow.cadastros || 0) - (kpiRow?.cadastros || 0)) : 0;
+      const prevPagos = prevRow ? Math.max(0, (prevRow.pagos || 0) - (kpiRow?.pagos || 0)) : 0;
+      const prevReceita = prevRow ? Math.max(0, (prevRow.receita_cents || 0) - (kpiRow?.receita_cents || 0)) : 0;
+
       const convGlobal = kpiRow && kpiRow.cadastros > 0
-        ? ((kpiRow.pagos / kpiRow.cadastros) * 100).toFixed(1)
-        : '0';
+        ? +((kpiRow.pagos / kpiRow.cadastros) * 100).toFixed(1)
+        : 0;
+      const prevConv = prevCadastros > 0
+        ? +((prevPagos / prevCadastros) * 100).toFixed(1)
+        : 0;
+
+      const rangeLabel = `vs ${this.acqDaysBack}d anteriores`;
 
       if (kpiGrid) {
         kpiGrid.innerHTML = `
-          <div class="adm-kpi"><div class="adm-kpi-label">Demos únicos</div><div class="adm-kpi-value">${kpiRow?.demos_unicos ?? 0}</div></div>
-          <div class="adm-kpi"><div class="adm-kpi-label">Cadastros</div><div class="adm-kpi-value">${kpiRow?.cadastros ?? 0}</div></div>
-          <div class="adm-kpi"><div class="adm-kpi-label">Pagantes</div><div class="adm-kpi-value">${kpiRow?.pagos ?? 0}</div></div>
-          <div class="adm-kpi"><div class="adm-kpi-label">Conversão</div><div class="adm-kpi-value">${convGlobal}%</div></div>
-          <div class="adm-kpi"><div class="adm-kpi-label">Receita</div><div class="adm-kpi-value">${fmtCents(kpiRow?.receita_cents)}</div></div>
-          <div class="adm-kpi"><div class="adm-kpi-label">Mediana até pagar</div><div class="adm-kpi-value">${kpiRow?.mediana_h_ate_pagar ?? '—'}h</div></div>
+          <div class="adm-kpi">
+            <span class="adm-kpi-accent blue"></span>
+            <span class="adm-kpi-label">Demos únicos</span>
+            <span class="adm-kpi-value">${kpiRow?.demos_unicos ?? 0}</span>
+            <div class="adm-kpi-meta">${deltaPill({ current: kpiRow?.demos_unicos ?? 0, previous: prevDemos, compareLabel: rangeLabel })}</div>
+          </div>
+          <div class="adm-kpi">
+            <span class="adm-kpi-accent purple"></span>
+            <span class="adm-kpi-label">Cadastros</span>
+            <span class="adm-kpi-value">${kpiRow?.cadastros ?? 0}</span>
+            <div class="adm-kpi-meta">${deltaPill({ current: kpiRow?.cadastros ?? 0, previous: prevCadastros, compareLabel: rangeLabel })}</div>
+          </div>
+          <div class="adm-kpi">
+            <span class="adm-kpi-accent green"></span>
+            <span class="adm-kpi-label">Pagantes</span>
+            <span class="adm-kpi-value">${kpiRow?.pagos ?? 0}</span>
+            <div class="adm-kpi-meta">${deltaPill({ current: kpiRow?.pagos ?? 0, previous: prevPagos, compareLabel: rangeLabel })}</div>
+          </div>
+          <div class="adm-kpi">
+            <span class="adm-kpi-accent orange"></span>
+            <span class="adm-kpi-label">Conversão demo→pago</span>
+            <span class="adm-kpi-value">${convGlobal}%</span>
+            <div class="adm-kpi-meta">${deltaPill({ current: convGlobal, previous: prevConv, compareLabel: rangeLabel, format: 'pct' })}</div>
+          </div>
+          <div class="adm-kpi">
+            <span class="adm-kpi-accent gold"></span>
+            <span class="adm-kpi-label">Receita</span>
+            <span class="adm-kpi-value">${fmtBRL(kpiRow?.receita_cents)}</span>
+            <div class="adm-kpi-meta">${deltaPill({ current: kpiRow?.receita_cents ?? 0, previous: prevReceita, compareLabel: rangeLabel, format: 'cents' })}</div>
+          </div>
+          <div class="adm-kpi">
+            <span class="adm-kpi-accent red"></span>
+            <span class="adm-kpi-label">Mediana até pagar</span>
+            <span class="adm-kpi-value">${kpiRow?.mediana_h_ate_pagar ?? '—'}<small>h</small></span>
+            <div class="adm-kpi-meta"><span class="adm-kpi-sub">tempo de decisão</span></div>
+          </div>
         `;
       }
 
-      const renderFunnelTable = (rows: any[], firstCol: string) => {
-        if (!rows || !rows.length) return '<div style="padding:1rem;color:rgba(255,255,255,0.3);font-size:0.8rem;">Sem dados no período</div>';
+      // ─── Funil global (Demo → Cadastro → Pago) ─────────────────
+      if (globalFunnel) {
+        const demos = kpiRow?.demos_unicos ?? 0;
+        const cadastros = kpiRow?.cadastros ?? 0;
+        const pagos = kpiRow?.pagos ?? 0;
+        const maxV = Math.max(demos, 1);
+        const steps = [
+          { label: 'Demo acessou', value: demos, prev: null as number | null },
+          { label: 'Criou conta', value: cadastros, prev: demos },
+          { label: 'Pagou plano', value: pagos, prev: cadastros },
+        ];
+        globalFunnel.innerHTML = demos === 0 && cadastros === 0
+          ? emptyState({ title: 'Sem dados no período', desc: 'Selecione uma janela maior ou aguarde acessos.', inline: true })
+          : `<div class="adm-funnel">${steps.map(s => {
+              const pct = Math.max(1, (s.value / maxV) * 100);
+              const dropPct = s.prev !== null && s.prev > 0 ? ((s.prev - s.value) / s.prev) * 100 : 0;
+              const dropClass = s.prev === null ? 'muted' : dropPct >= 80 ? 'bad' : dropPct >= 50 ? 'warn' : dropPct >= 0 ? 'ok' : 'muted';
+              const dropText = s.prev === null ? '—' : `↓ ${dropPct.toFixed(0)}%`;
+              return `
+                <div class="adm-funnel-step">
+                  <div class="adm-funnel-label">${s.label}</div>
+                  <div class="adm-funnel-bar" style="width:${pct}%;"></div>
+                  <div class="adm-funnel-value">${s.value.toLocaleString('pt-BR')}</div>
+                  <span class="adm-funnel-drop ${dropClass}">${dropText}</span>
+                </div>
+              `;
+            }).join('')}</div>`;
+      }
+
+      const renderFunnelTable = (rows: any[], firstCol: string, idLabel?: string): string => {
+        if (!rows || !rows.length) {
+          return emptyState({ title: 'Sem dados no período', desc: 'Aguarde novos cadastros ou mude o range.', inline: true });
+        }
+        const topCount = Math.max(...rows.map(r => r.cadastros || 0), 1);
         return `
-          <table class="adm-table" style="width:100%;font-size:0.82rem;">
-            <thead>
-              <tr>
-                <th style="text-align:left;padding:0.6rem 0.5rem;color:rgba(255,255,255,0.4);font-weight:500;">${firstCol}</th>
-                <th style="text-align:right;padding:0.6rem 0.5rem;color:rgba(255,255,255,0.4);font-weight:500;">Cadastros</th>
-                <th style="text-align:right;padding:0.6rem 0.5rem;color:rgba(255,255,255,0.4);font-weight:500;">Pagos</th>
-                <th style="text-align:right;padding:0.6rem 0.5rem;color:rgba(255,255,255,0.4);font-weight:500;">Conv.</th>
-                <th style="text-align:right;padding:0.6rem 0.5rem;color:rgba(255,255,255,0.4);font-weight:500;">Receita</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows.map(r => `
+          <div class="adm-table-wrap" style="border:none;background:transparent;">
+            <table class="adm-table" style="min-width:0;">
+              <thead>
                 <tr>
-                  <td style="padding:0.6rem 0.5rem;color:#fff;font-weight:500;text-transform:capitalize;">${r.source || r.medium}</td>
-                  <td style="padding:0.6rem 0.5rem;text-align:right;color:rgba(255,255,255,0.8);">${r.cadastros}</td>
-                  <td style="padding:0.6rem 0.5rem;text-align:right;color:rgba(255,255,255,0.8);">${r.pagos}</td>
-                  <td style="padding:0.6rem 0.5rem;text-align:right;color:${r.conversao_pct >= 15 ? '#3ee8a7' : r.conversao_pct >= 8 ? '#fff' : 'rgba(255,255,255,0.5)'};font-weight:${r.conversao_pct >= 15 ? '600' : '400'};">${r.conversao_pct}%</td>
-                  <td style="padding:0.6rem 0.5rem;text-align:right;color:rgba(255,255,255,0.8);">${fmtCents(r.receita_cents)}</td>
+                  <th>${firstCol}</th>
+                  <th class="num">Cadastros</th>
+                  <th class="num">Pagos</th>
+                  <th class="num">Conv.</th>
+                  <th class="num">Receita</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${rows.map(r => {
+                  const name = r.source || r.medium || '(sem)';
+                  const conv = Number(r.conversao_pct) || 0;
+                  const convClass = conv >= 15 ? 'cell-good' : conv >= 8 ? 'cell-strong' : 'cell-muted';
+                  const barPct = ((r.cadastros || 0) / topCount) * 100;
+                  return `
+                    <tr>
+                      <td class="cell-strong" style="text-transform:capitalize;">
+                        <div>${name}</div>
+                        <div style="height:3px;background:rgba(255,255,255,0.04);border-radius:2px;margin-top:3px;overflow:hidden;width:100%;">
+                          <div style="height:100%;width:${barPct}%;background:linear-gradient(90deg,var(--a-cyan),var(--a-purple));"></div>
+                        </div>
+                      </td>
+                      <td class="num">${r.cadastros}</td>
+                      <td class="num">${r.pagos}</td>
+                      <td class="num ${convClass}">${conv}%</td>
+                      <td class="num">${fmtBRL(r.receita_cents)}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
         `;
+        void idLabel;
       };
 
       if (sourceTable) sourceTable.innerHTML = renderFunnelTable(byS || [], 'Origem');
@@ -385,15 +649,21 @@ class AdminDashboard {
 
       // Campanhas: usa os profiles já carregados (agrupa por signup_campaign)
       if (campaignTable) {
-        const profs = this.profiles.filter(p =>
-          p.created_at && new Date(p.created_at) > new Date(Date.now() - this.acqDaysBack * 86400000)
-        );
-        const byCamp = new Map<string, { cadastros: number; pagos: number }>();
+        const since = Date.now() - this.acqDaysBack * 86400000;
+        const profs = this.profiles.filter(p => p.created_at && new Date(p.created_at).getTime() > since);
+        const byCamp = new Map<string, { cadastros: number; pagos: number; receita: number }>();
         profs.forEach((p: any) => {
-          const c = p.signup_campaign || '(nenhuma)';
-          const curr = byCamp.get(c) || { cadastros: 0, pagos: 0 };
+          const c = p.signup_campaign || '(direto)';
+          const curr = byCamp.get(c) || { cadastros: 0, pagos: 0, receita: 0 };
           curr.cadastros += 1;
-          if (p.subscription_plan !== 'free' && p.subscription_plan !== 'trial') curr.pagos += 1;
+          const isPaid = p.subscription_plan !== 'free' && p.subscription_plan !== 'trial'
+            && p.subscription_status === 'active';
+          if (isPaid) {
+            curr.pagos += 1;
+            // Receita estimada: soma das transações confirmadas desse user
+            const userTxs = this.transactions.filter(t => t.user_id === p.id && t.status === 'confirmed');
+            curr.receita += userTxs.reduce((s, t) => s + (t.amount_cents || 0), 0);
+          }
           byCamp.set(c, curr);
         });
         const campArr = Array.from(byCamp.entries())
@@ -402,7 +672,7 @@ class AdminDashboard {
             cadastros: v.cadastros,
             pagos: v.pagos,
             conversao_pct: v.cadastros > 0 ? +((v.pagos / v.cadastros) * 100).toFixed(1) : 0,
-            receita_cents: 0,
+            receita_cents: v.receita,
           }))
           .sort((a, b) => b.cadastros - a.cadastros)
           .slice(0, 20);
@@ -410,7 +680,12 @@ class AdminDashboard {
       }
     } catch (e) {
       console.error('[admin] renderAcquisition failed:', e);
-      if (kpiGrid) kpiGrid.innerHTML = '<div style="padding:1rem;color:#ff6b83;font-size:0.8rem;">Erro ao carregar dados de aquisição. Verifique o console.</div>';
+      if (kpiGrid) {
+        kpiGrid.innerHTML = emptyState({
+          title: 'Erro ao carregar',
+          desc: 'As RPCs de agregação não responderam. Veja o console (F12) pra detalhes.',
+        });
+      }
     }
   }
 
@@ -449,6 +724,7 @@ class AdminDashboard {
     const tomorrow = new Date(today.getTime() + 86400000);
     const in3days = new Date(today.getTime() + 3 * 86400000);
     const weekAgo = new Date(today.getTime() - 7 * 86400000);
+    const twoWeeksAgo = new Date(today.getTime() - 14 * 86400000);
 
     // Classificar usuários
     const active = realUsers.filter(p =>
@@ -480,12 +756,45 @@ class AdminDashboard {
     const withCpf = realUsers.filter(p => !!p.cpf_hash);
     const confirmed = this.transactions.filter(t => t.status === 'confirmed' && !adminIds.has(t.user_id));
     const revenue = confirmed.reduce((sum, t) => sum + (t.amount_cents || 0), 0);
-    const conversionRate = trialsActive.length + active.length + expired.length > 0
-      ? ((active.length / (trialsActive.length + active.length + expired.length)) * 100).toFixed(1)
-      : '0';
+
+    // ─── Deltas vs período anterior (7d) ──────────────────────────
+    const signupsLast7d = realUsers.filter(p => new Date(p.created_at) >= weekAgo).length;
+    const signupsPrev7d = realUsers.filter(p => {
+      const d = new Date(p.created_at);
+      return d >= twoWeeksAgo && d < weekAgo;
+    }).length;
+    const revenueLast7d = confirmed.filter(t => new Date(t.created_at) >= weekAgo)
+      .reduce((s, t) => s + (t.amount_cents || 0), 0);
+    const revenuePrev7d = confirmed.filter(t => {
+      const d = new Date(t.created_at);
+      return d >= twoWeeksAgo && d < weekAgo;
+    }).reduce((s, t) => s + (t.amount_cents || 0), 0);
+    const paidLast7d = confirmed.filter(t => new Date(t.created_at) >= weekAgo).length;
+    const paidPrev7d = confirmed.filter(t => {
+      const d = new Date(t.created_at);
+      return d >= twoWeeksAgo && d < weekAgo;
+    }).length;
+    const expiredLast7d = expired.filter(p =>
+      p.subscription_expires_at && new Date(p.subscription_expires_at) >= weekAgo
+    ).length;
+    const expiredPrev7d = expired.filter(p => {
+      if (!p.subscription_expires_at) return false;
+      const d = new Date(p.subscription_expires_at);
+      return d >= twoWeeksAgo && d < weekAgo;
+    }).length;
+
+    // Conversão global (entre quem já passou pelo trial)
+    const totalFunnel = trialsActive.length + active.length + expired.length;
+    const conversionRate = totalFunnel > 0 ? (active.length / totalFunnel) * 100 : 0;
 
     // Novos hoje
     const newToday = realUsers.filter(p => new Date(p.created_at) >= today).length;
+
+    // Atualizar subtítulo com contexto
+    const subtitle = document.getElementById('dashboardSubtitle');
+    if (subtitle) {
+      subtitle.textContent = `${realUsers.length} usuários · ${fmtBRL(revenue)} de receita total · ${confirmed.length} vendas`;
+    }
 
     // ─── KPIs ─────────────────────────────────────────────────────
     const el = (id: string) => document.getElementById(id);
@@ -493,32 +802,60 @@ class AdminDashboard {
     if (kpiGrid) {
       kpiGrid.innerHTML = `
         <div class="adm-kpi">
-          <div class="adm-kpi-icon adm-kpi-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
-          <div class="adm-kpi-body"><span class="adm-kpi-value">${realUsers.length}</span><span class="adm-kpi-label">Total usuarios</span></div>
+          <span class="adm-kpi-accent blue"></span>
+          <span class="adm-kpi-label">Total usuários</span>
+          <span class="adm-kpi-value">${realUsers.length}</span>
+          <div class="adm-kpi-meta">
+            ${deltaPill({ current: signupsLast7d, previous: signupsPrev7d, compareLabel: 'vs 7d' })}
+          </div>
         </div>
         <div class="adm-kpi">
-          <div class="adm-kpi-icon adm-kpi-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-          <div class="adm-kpi-body"><span class="adm-kpi-value">${active.length}</span><span class="adm-kpi-label">Assinantes pagos</span></div>
+          <span class="adm-kpi-accent green"></span>
+          <span class="adm-kpi-label">Assinantes pagos</span>
+          <span class="adm-kpi-value">${active.length}</span>
+          <div class="adm-kpi-meta">
+            ${deltaPill({ current: paidLast7d, previous: paidPrev7d, compareLabel: 'novas vs 7d' })}
+          </div>
         </div>
         <div class="adm-kpi">
-          <div class="adm-kpi-icon adm-kpi-gold"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
-          <div class="adm-kpi-body"><span class="adm-kpi-value">R$ ${(revenue / 100).toFixed(0)}</span><span class="adm-kpi-label">Faturamento</span></div>
+          <span class="adm-kpi-accent gold"></span>
+          <span class="adm-kpi-label">Faturamento</span>
+          <span class="adm-kpi-value">${fmtBRL(revenue)}</span>
+          <div class="adm-kpi-meta">
+            ${deltaPill({ current: revenueLast7d, previous: revenuePrev7d, compareLabel: 'vs 7d', format: 'cents' })}
+          </div>
         </div>
         <div class="adm-kpi">
-          <div class="adm-kpi-icon adm-kpi-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-          <div class="adm-kpi-body"><span class="adm-kpi-value">${trialsActive.length}</span><span class="adm-kpi-label">Em trial</span></div>
+          <span class="adm-kpi-accent purple"></span>
+          <span class="adm-kpi-label">Em trial ativo</span>
+          <span class="adm-kpi-value">${trialsActive.length}</span>
+          <div class="adm-kpi-meta">
+            <span class="adm-kpi-sub">${expiringToday.length} expiram hoje · ${expiring3days.length} em 3d</span>
+          </div>
         </div>
         <div class="adm-kpi">
-          <div class="adm-kpi-icon adm-kpi-red"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
-          <div class="adm-kpi-body"><span class="adm-kpi-value">${expired.length}</span><span class="adm-kpi-label">Expirados</span></div>
+          <span class="adm-kpi-accent red"></span>
+          <span class="adm-kpi-label">Expirados</span>
+          <span class="adm-kpi-value">${expired.length}</span>
+          <div class="adm-kpi-meta">
+            ${deltaPill({ current: expiredLast7d, previous: expiredPrev7d, isNegativeMetric: true, compareLabel: 'últ. 7d' })}
+          </div>
         </div>
         <div class="adm-kpi">
-          <div class="adm-kpi-icon adm-kpi-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-          <div class="adm-kpi-body"><span class="adm-kpi-value">${conversionRate}%</span><span class="adm-kpi-label">Conversao</span></div>
+          <span class="adm-kpi-accent orange"></span>
+          <span class="adm-kpi-label">Conversão trial → pago</span>
+          <span class="adm-kpi-value">${conversionRate.toFixed(1)}%</span>
+          <div class="adm-kpi-meta">
+            <span class="adm-kpi-sub">${active.length} de ${totalFunnel} trials</span>
+          </div>
         </div>
         <div class="adm-kpi">
-          <div class="adm-kpi-icon adm-kpi-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
-          <div class="adm-kpi-body"><span class="adm-kpi-value">${this.demoUnique}<small style="font-size:0.6em;opacity:0.5;"> / ${this.demoTotal}</small></span><span class="adm-kpi-label">Demo (unicos / total)</span></div>
+          <span class="adm-kpi-accent blue"></span>
+          <span class="adm-kpi-label">Demo (únicos / total)</span>
+          <span class="adm-kpi-value">${this.demoUnique}<small> / ${this.demoTotal}</small></span>
+          <div class="adm-kpi-meta">
+            <span class="adm-kpi-sub">fingerprint anônimo</span>
+          </div>
         </div>
       `;
     }
@@ -689,6 +1026,18 @@ class AdminDashboard {
     // Counter
     const countEl = document.getElementById('usersCount');
     if (countEl) countEl.textContent = `${filtered.length} usuários`;
+
+    // Empty state (mas só renderiza dentro de <tr><td colspan="8">)
+    if (paged.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="padding:0;">${emptyState({
+        title: 'Nenhum usuário',
+        desc: this.userSearch || this.userFilter !== 'all' ? 'Ajuste os filtros acima pra ver mais resultados.' : 'Ainda não há usuários cadastrados.',
+        inline: true,
+      })}</td></tr>`;
+      const pagEl = document.getElementById('usersPagination');
+      if (pagEl) pagEl.innerHTML = '';
+      return;
+    }
 
     tbody.innerHTML = paged.map(p => {
       const statusColor = p.subscription_status === 'active' ? 'success' :
@@ -861,6 +1210,19 @@ class AdminDashboard {
     if (this.txPage >= totalPages) this.txPage = Math.max(0, totalPages - 1);
     const start = this.txPage * this.PAGE_SIZE;
     const paged = filtered.slice(start, start + this.PAGE_SIZE);
+
+    if (paged.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="padding:0;">${emptyState({
+        title: 'Nenhuma transação',
+        desc: this.txSearch || this.txFilter !== 'all' ? 'Ajuste os filtros acima.' : 'Assim que alguém pagar, aparece aqui.',
+        inline: true,
+      })}</td></tr>`;
+      const summaryEl = document.getElementById('transactionsSummary');
+      if (summaryEl) summaryEl.innerHTML = '';
+      const pagEl = document.getElementById('txPagination');
+      if (pagEl) pagEl.innerHTML = '';
+      return;
+    }
 
     tbody.innerHTML = paged.map(t => {
       const user = this.profiles.find(p => p.id === t.user_id);
@@ -1050,6 +1412,17 @@ class AdminDashboard {
     if (this.leadsPage >= totalPages) this.leadsPage = Math.max(0, totalPages - 1);
     const start = this.leadsPage * this.PAGE_SIZE;
     const paged = leads.slice(start, start + this.PAGE_SIZE);
+
+    if (paged.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="padding:0;">${emptyState({
+        title: 'Nenhum lead no filtro',
+        desc: this.leadsSearch || this.leadsFilter !== 'all' ? 'Ajuste os filtros acima pra ver mais leads.' : 'Ainda não há usuários expirados. Bom sinal!',
+        inline: true,
+      })}</td></tr>`;
+      const pagEl = document.getElementById('leadsPagination');
+      if (pagEl) pagEl.innerHTML = '';
+      return;
+    }
 
     // Mensagem WhatsApp pronta
     const whatsMsg = (name: string) => {
@@ -1251,6 +1624,20 @@ class AdminDashboard {
     const tbody = document.getElementById('couponsTableBody');
     if (!tbody) return;
 
+    if (this.coupons.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="padding:0;">${emptyState({
+        title: 'Nenhum cupom criado',
+        desc: 'Crie cupons promocionais com desconto, limite de uso e validade.',
+        ctaLabel: '+ Novo Cupom',
+        ctaId: 'emptyCouponCTA',
+        inline: true,
+      })}</td></tr>`;
+      document.getElementById('emptyCouponCTA')?.addEventListener('click', () => {
+        document.getElementById('addCouponBtn')?.click();
+      });
+      return;
+    }
+
     tbody.innerHTML = this.coupons.map(c => {
       const now = new Date();
       const isExpired = new Date(c.valid_until) < now;
@@ -1382,6 +1769,41 @@ class AdminDashboard {
   }
 
   private async loadAffiliates(): Promise<void> {
+    // Prioridade: RPC admin_affiliate_stats (stats calculados ao vivo).
+    // Fallback: edge function affiliate-api (sem stats fresh).
+    try {
+      const stats = await adminRpc('admin_affiliate_stats');
+      if (Array.isArray(stats) && stats.length > 0) {
+        // Normaliza aff_* → nomes sem prefixo pro render
+        this.affiliates = stats.map((s: any) => ({
+          id: s.aff_id,
+          name: s.aff_name,
+          email: s.aff_email,
+          phone: s.aff_phone,
+          pix_key: s.aff_pix_key,
+          coupon_code: s.aff_coupon_code,
+          commission_percent: s.aff_commission_percent,
+          coupon_discount_percent: s.aff_coupon_discount_percent,
+          active: s.aff_active,
+          created_at: s.aff_created_at,
+          paid_commission: s.paid_commission_cents,
+          paid_commission_cents: s.paid_commission_cents,
+          total_sales: s.total_sales,
+          total_revenue: s.total_revenue_cents,
+          total_revenue_cents: s.total_revenue_cents,
+          total_commission: s.total_commission_cents,
+          total_commission_cents: s.total_commission_cents,
+          pending_commission_cents: s.pending_commission_cents,
+          last_sale_at: s.last_sale_at,
+          coupon_uses: s.coupon_uses,
+          coupon_max_uses: s.coupon_max_uses,
+        }));
+        return;
+      }
+    } catch (e) {
+      console.warn('[admin] admin_affiliate_stats RPC falhou, tentando edge fn:', e);
+    }
+
     try {
       const token = await getAuthToken();
       const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api', {
@@ -1392,65 +1814,138 @@ class AdminDashboard {
         },
         body: JSON.stringify({ action: 'list' }),
       });
-      this.affiliates = await res.json();
+      const data = await res.json();
+      this.affiliates = Array.isArray(data) ? data : [];
     } catch {
       this.affiliates = [];
     }
   }
 
   private renderAffiliates(): void {
-    const tbody = document.getElementById('affiliatesTableBody');
-    if (!tbody) return;
+    const content = document.getElementById('affiliatesContent');
+    const summary = document.getElementById('affiliatesSummary');
+    const subtitle = document.getElementById('affiliatesSubtitle');
+    if (!content) return;
 
+    // Sem afiliados → empty state
     if (this.affiliates.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--a-text3);padding:2rem;">Nenhum afiliado cadastrado</td></tr>';
+      if (summary) summary.style.display = 'none';
+      if (subtitle) subtitle.textContent = 'Parceiros que divulgam o GDrums';
+      content.innerHTML = emptyState({
+        title: 'Nenhum afiliado cadastrado',
+        desc: 'Afiliados recebem um cupom exclusivo e ganham comissão em cada venda feita através dele.',
+        ctaLabel: '+ Novo Afiliado',
+        ctaId: 'emptyAffiliateCTA',
+      });
+      document.getElementById('emptyAffiliateCTA')?.addEventListener('click', () => {
+        document.getElementById('affiliateModal')?.classList.add('active');
+      });
       return;
     }
 
-    tbody.innerHTML = this.affiliates.map(a => {
-      const commission = (a.total_commission || 0) / 100;
-      const paid = (a.paid_commission || 0) / 100;
-      const pending = commission - paid;
+    // Estatísticas agregadas (para strip superior)
+    const totalPending = this.affiliates.reduce((s, a) => {
+      const pending = (a.pending_commission_cents ?? (a.total_commission - a.paid_commission)) || 0;
+      return s + pending;
+    }, 0);
+    const totalRevenue = this.affiliates.reduce((s, a) => s + ((a.total_revenue_cents ?? a.total_revenue) || 0), 0);
+    const totalSales = this.affiliates.reduce((s, a) => s + ((a.total_sales || 0) as number), 0);
+    const activeCount = this.affiliates.filter(a => a.active).length;
 
-      return `
-        <tr>
-          <td>
-            <div>${a.name}</div>
-            <div style="font-size:0.65rem;color:var(--a-text3);">${a.email}</div>
-          </td>
-          <td><span class="badge badge-purple" style="letter-spacing:1px;">${a.coupon_code}</span></td>
-          <td>${a.total_sales || 0}</td>
-          <td style="color:var(--a-green);">R$ ${commission.toFixed(2)}</td>
-          <td>R$ ${paid.toFixed(2)}</td>
-          <td style="color:${pending > 0 ? 'var(--a-gold)' : 'var(--a-text3)'};">R$ ${pending.toFixed(2)}</td>
-          <td>
-            <div class="action-buttons">
-              ${pending > 0 ? `<button class="btn-action btn-edit" data-pay-affiliate="${a.id}" data-pay-amount="${Math.round(pending * 100)}" style="font-size:0.6rem;">Pagar</button>` : ''}
-              <button class="btn-action ${a.active ? 'btn-delete' : 'btn-edit'}" data-toggle-affiliate="${a.id}" style="font-size:0.6rem;">${a.active ? 'Desativar' : 'Ativar'}</button>
-            </div>
-          </td>
-        </tr>
+    if (subtitle) {
+      subtitle.textContent = `${activeCount} ativos · ${totalSales} vendas · ${fmtBRL(totalRevenue)} movimentados`;
+    }
+
+    if (summary) {
+      summary.style.display = 'flex';
+      summary.innerHTML = `
+        <span><strong style="color:var(--a-gold);">${fmtBRLFull(totalPending)}</strong> em comissões a pagar</span>
+        <span style="color:var(--a-text3);">·</span>
+        <span><strong>${totalSales}</strong> vendas totais</span>
+        <span style="color:var(--a-text3);">·</span>
+        <span><strong>${fmtBRL(totalRevenue)}</strong> em receita</span>
       `;
-    }).join('');
+    }
 
-    // Pagar comissao
-    tbody.querySelectorAll('[data-pay-affiliate]').forEach(btn => {
+    // Cards
+    content.innerHTML = `<div class="adm-affiliates-grid">${
+      this.affiliates.map(a => {
+        const pending = (a.pending_commission_cents ?? (a.total_commission - a.paid_commission)) || 0;
+        const totalComm = (a.total_commission_cents ?? a.total_commission) || 0;
+        const paidComm = (a.paid_commission_cents ?? a.paid_commission) || 0;
+        const revenue = (a.total_revenue_cents ?? a.total_revenue) || 0;
+        const lastSale = a.last_sale_at ? relativeTime(a.last_sale_at) : 'nenhuma';
+        const couponUses = a.coupon_uses ?? 0;
+        const couponMax = a.coupon_max_uses ?? 0;
+
+        return `
+          <div class="adm-aff-card ${a.active ? '' : 'inactive'}">
+            <div class="adm-aff-head">
+              <div style="min-width:0;flex:1;">
+                <div class="adm-aff-name">${a.name}</div>
+                <div class="adm-aff-email" title="${a.email || ''}">${a.email || ''}</div>
+              </div>
+              <span class="adm-aff-coupon" title="Cupom exclusivo">${a.coupon_code}</span>
+            </div>
+
+            <div class="adm-aff-pending ${pending > 0 ? '' : 'zero'}">
+              <div>
+                <div class="adm-aff-pending-label">Comissão a pagar</div>
+                <div class="adm-aff-pending-value">${fmtBRLFull(pending)}</div>
+              </div>
+              ${pending > 0 ? `<button class="adm-btn adm-btn-primary adm-btn-sm" data-pay-affiliate="${a.id}" data-pay-amount="${pending}">Pagar PIX</button>` : ''}
+            </div>
+
+            <div class="adm-aff-stats">
+              <div class="adm-aff-stat">
+                <span class="adm-aff-stat-label">Vendas</span>
+                <span class="adm-aff-stat-value">${a.total_sales || 0}</span>
+              </div>
+              <div class="adm-aff-stat">
+                <span class="adm-aff-stat-label">Receita</span>
+                <span class="adm-aff-stat-value">${fmtBRL(revenue)}</span>
+              </div>
+              <div class="adm-aff-stat">
+                <span class="adm-aff-stat-label">Comissão total</span>
+                <span class="adm-aff-stat-value">${fmtBRL(totalComm)}</span>
+              </div>
+            </div>
+
+            <div class="adm-aff-meta">
+              <span>Última venda: <strong>${lastSale}</strong></span>
+              <span style="color:var(--a-text3);">·</span>
+              <span>Cupom: <strong>${couponUses}${couponMax > 0 && couponMax < 9999 ? `/${couponMax}` : ''} usos</strong></span>
+              ${paidComm > 0 ? `<span style="color:var(--a-text3);">·</span><span>Pago: <strong>${fmtBRL(paidComm)}</strong></span>` : ''}
+            </div>
+
+            <div class="adm-aff-actions">
+              <button class="adm-btn adm-btn-outline adm-btn-sm" data-toggle-affiliate="${a.id}">${a.active ? 'Desativar' : 'Ativar'}</button>
+              ${a.pix_key ? `<button class="adm-btn adm-btn-ghost adm-btn-sm" data-copy-pix="${a.pix_key.replace(/"/g, '&quot;')}">Copiar PIX</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('')
+    }</div>`;
+
+    // Pagar comissão
+    content.querySelectorAll('[data-pay-affiliate]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = (btn as HTMLElement).dataset.payAffiliate!;
         const amount = parseInt((btn as HTMLElement).dataset.payAmount || '0');
         const aff = this.affiliates.find(a => a.id === id);
-        if (!confirm(`Marcar pagamento de R$ ${(amount/100).toFixed(2)} pra ${aff?.name}?`)) return;
+        if (!confirm(`Marcar pagamento de ${fmtBRLFull(amount)} pra ${aff?.name}?\n\nIsso adiciona ao "paid_commission" — faça o PIX manualmente antes.`)) return;
 
         try {
           const token = await getAuthToken();
-          await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api', {
+          const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ action: 'pay', affiliate_id: id, amount }),
           });
+          if (!res.ok) throw new Error('payment failed');
           await this.loadAffiliates();
           this.renderAffiliates();
-          modalManager.show('Afiliados', `Pagamento de R$ ${(amount/100).toFixed(2)} registrado!`, 'success');
+          modalManager.show('Afiliados', `Pagamento de ${fmtBRLFull(amount)} registrado!`, 'success');
         } catch {
           modalManager.show('Erro', 'Erro ao registrar pagamento', 'error');
         }
@@ -1458,7 +1953,7 @@ class AdminDashboard {
     });
 
     // Toggle ativo/inativo
-    tbody.querySelectorAll('[data-toggle-affiliate]').forEach(btn => {
+    content.querySelectorAll('[data-toggle-affiliate]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = (btn as HTMLElement).dataset.toggleAffiliate!;
         const aff = this.affiliates.find(a => a.id === id);
@@ -1473,6 +1968,21 @@ class AdminDashboard {
         await this.loadAffiliates();
         this.renderAffiliates();
         modalManager.show('Afiliados', `${aff.name} ${aff.active ? 'desativado' : 'ativado'}`, 'success');
+      });
+    });
+
+    // Copy PIX
+    content.querySelectorAll('[data-copy-pix]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const pix = (btn as HTMLElement).dataset.copyPix || '';
+        try {
+          await navigator.clipboard.writeText(pix);
+          const original = (btn as HTMLElement).textContent;
+          (btn as HTMLElement).textContent = 'Copiado!';
+          setTimeout(() => { (btn as HTMLElement).textContent = original || 'Copiar PIX'; }, 1500);
+        } catch {
+          modalManager.show('PIX', pix, 'info');
+        }
       });
     });
   }

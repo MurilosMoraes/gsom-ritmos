@@ -3,11 +3,218 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>GDrums | Studio</title>
-  <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
-  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <title>GDrums — Baterista Virtual com Pedal Bluetooth | 90 Ritmos</title>
+  <meta name="description" content="GDrums é um sequenciador de ritmos e baterista virtual para músicos tocarem ao vivo. 90 ritmos brasileiros (vaneira, sertanejo, gospel, forró, rock), pedal Bluetooth, iOS e Android. Teste 48h grátis.">
+  <meta name="author" content="Murilo Moraes, Staner Goulart">
+  <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#030014">
+
+  <!-- Favicon — icon-512 tem fundo sólido (obrigatório pro Google SERP) -->
+  <link rel="icon" type="image/png" sizes="512x512" href="/img/icon-512.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/img/icon-192.png">
+
   <link rel="canonical" href="https://gdrums.com.br/">
+
+  <!-- Open Graph (Facebook, WhatsApp, LinkedIn, Discord) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="GDrums">
+  <meta property="og:title" content="GDrums — Baterista Virtual com Pedal Bluetooth">
+  <meta property="og:description" content="90 ritmos brasileiros, pedal Bluetooth, viradas e finalizações no seu controle. Tocar ao vivo nunca foi tão profissional.">
+  <meta property="og:image" content="https://gdrums.com.br/img/icon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:url" content="https://gdrums.com.br/">
+  <meta property="og:locale" content="pt_BR">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="GDrums — Baterista Virtual com Pedal Bluetooth">
+  <meta name="twitter:description" content="90 ritmos brasileiros, pedal Bluetooth, viradas e finalizações no seu controle.">
+  <meta name="twitter:image" content="https://gdrums.com.br/img/icon-512.png">
+
+  <!-- Structured Data (Organization + Founders + SoftwareApplication + FAQ) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://gdrums.com.br/#organization",
+        "name": "GDrums",
+        "alternateName": "GDrums — Sequenciador de Ritmos",
+        "url": "https://gdrums.com.br",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://gdrums.com.br/img/icon-512.png",
+          "width": 512,
+          "height": 512
+        },
+        "description": "Sequenciador de ritmos e baterista virtual para músicos tocarem ao vivo com acompanhamento profissional.",
+        "foundingDate": "2025",
+        "founders": [
+          { "@id": "https://gdrums.com.br/#murilo" },
+          { "@id": "https://gdrums.com.br/#staner" }
+        ],
+        "sameAs": [
+          "https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK"
+        ],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "availableLanguage": "Portuguese",
+          "areaServed": "BR"
+        },
+        "areaServed": {
+          "@type": "Country",
+          "name": "Brasil"
+        }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://gdrums.com.br/#murilo",
+        "name": "Murilo Moraes",
+        "givenName": "Murilo",
+        "familyName": "Moraes",
+        "jobTitle": "Cofundador e Desenvolvedor",
+        "description": "Cofundador do GDrums, responsável pelo desenvolvimento do produto (web, iOS e Android) e pela infraestrutura do sequenciador de ritmos.",
+        "worksFor": { "@id": "https://gdrums.com.br/#organization" },
+        "knowsAbout": [
+          "Desenvolvimento de software",
+          "Web Audio API",
+          "Aplicativos musicais",
+          "TypeScript",
+          "Capacitor",
+          "Supabase"
+        ],
+        "nationality": {
+          "@type": "Country",
+          "name": "Brasil"
+        }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://gdrums.com.br/#staner",
+        "name": "Staner Goulart",
+        "givenName": "Staner",
+        "familyName": "Goulart",
+        "jobTitle": "Cofundador, Produto e Parcerias",
+        "description": "Cofundador do GDrums, responsável por produto, parcerias musicais e relacionamento com a comunidade de músicos.",
+        "worksFor": { "@id": "https://gdrums.com.br/#organization" },
+        "knowsAbout": [
+          "Música brasileira",
+          "Produção musical",
+          "Experiência ao vivo",
+          "Ritmos gaúchos",
+          "Parcerias artísticas"
+        ],
+        "nationality": {
+          "@type": "Country",
+          "name": "Brasil"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://gdrums.com.br/#app",
+        "name": "GDrums",
+        "applicationCategory": "MultimediaApplication",
+        "applicationSubCategory": "MusicApplication",
+        "operatingSystem": "Web, iOS, Android",
+        "url": "https://gdrums.com.br",
+        "description": "Baterista virtual com 90 ritmos brasileiros, controle por pedal Bluetooth, viradas, intros e finalizações. Funciona offline. Trial de 48 horas sem cartão.",
+        "inLanguage": "pt-BR",
+        "featureList": [
+          "90 ritmos brasileiros (vaneira, sertanejo, gospel, forró, rock, pagode, samba)",
+          "Controle por pedal Bluetooth (iOS e Android)",
+          "Viradas (fills), intros e finalizações automáticas",
+          "3 variações por ritmo",
+          "Funciona offline (PWA)",
+          "Setlist personalizada",
+          "Aplicativos nativos iOS e Android",
+          "Sons acústicos (pandeiro e cajón)",
+          "Ritmos personalizados do usuário"
+        ],
+        "offers": {
+          "@type": "AggregateOffer",
+          "priceCurrency": "BRL",
+          "lowPrice": "29.00",
+          "highPrice": "522.00",
+          "offerCount": 5,
+          "offers": [
+            { "@type": "Offer", "name": "Plano Mensal", "price": "29.00", "priceCurrency": "BRL" },
+            { "@type": "Offer", "name": "Plano Trimestral", "price": "81.00", "priceCurrency": "BRL" },
+            { "@type": "Offer", "name": "Plano Semestral", "price": "144.00", "priceCurrency": "BRL" },
+            { "@type": "Offer", "name": "Plano Anual", "price": "228.00", "priceCurrency": "BRL" },
+            { "@type": "Offer", "name": "Rei dos Palcos (3 anos)", "price": "522.00", "priceCurrency": "BRL" }
+          ]
+        },
+        "author": { "@id": "https://gdrums.com.br/#organization" },
+        "publisher": { "@id": "https://gdrums.com.br/#organization" },
+        "creator": [
+          { "@id": "https://gdrums.com.br/#murilo" },
+          { "@id": "https://gdrums.com.br/#staner" }
+        ],
+        "image": "https://gdrums.com.br/img/icon-512.png",
+        "screenshot": "https://gdrums.com.br/img/app-img.png"
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://gdrums.com.br/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "O que é o GDrums?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "GDrums é um sequenciador de ritmos e baterista virtual para músicos tocarem ao vivo com acompanhamento profissional. Oferece 90 ritmos brasileiros (vaneira, sertanejo, gospel, forró, rock, pagode, samba), viradas, intros, finalizações e controle por pedal Bluetooth. Funciona em web, iOS e Android."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "O GDrums funciona com pedal Bluetooth?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sim. O GDrums funciona com pedais Bluetooth musicais (que se registram como teclado) tanto no iOS quanto no Android e web. É possível mudar de ritmo, acionar viradas e finalizações sem tocar na tela — o diferencial principal para músicos que tocam ao vivo."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quanto custa o GDrums?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Os planos começam em R$ 29/mês. Há plano trimestral (R$ 81), semestral (R$ 144), anual (R$ 228) e o plano Rei dos Palcos de 3 anos (R$ 522). Todo novo usuário tem 48 horas de trial grátis, sem precisar cadastrar cartão de crédito."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quem criou o GDrums?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "O GDrums foi criado por Murilo Moraes (desenvolvimento e produto) e Staner Goulart (produto e parcerias), dois brasileiros apaixonados por música que queriam dar aos músicos ao vivo uma banda completa no celular."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quais ritmos estão disponíveis no GDrums?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "São 90 ritmos organizados em categorias: Brasileiro (arrocha, bossa nova, forró, pagode, samba, samba enredo, partido alto, pisadinha, sertanejo), Pop/Rock (rock, blues, jazz, disco, punk), Gaúcho (vaneira, bugio, chamamê, rancheira, xote), Gospel (corinho de fogo, worship, celebração) e Reggae."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "O GDrums funciona offline?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sim. O GDrums é uma PWA (Progressive Web App) com cache persistente de samples de áudio e ritmos. Uma vez acessado, funciona offline — ideal para palcos e shows onde a conexão é instável."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>

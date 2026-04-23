@@ -6,6 +6,7 @@ import { calculateTrialExpiry } from './PaymentService';
 import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
 import { AttributionService } from '../native/AttributionService';
 import { registerSchema, zodErrorsToFieldMap } from './schemas';
+import { updateRhythmCountInDom } from '../utils/rhythmCount';
 
 class RegisterPage {
   private form: HTMLFormElement;
@@ -473,5 +474,6 @@ class RegisterPage {
 
 window.addEventListener('DOMContentLoaded', () => {
   AttributionService.init();
+  updateRhythmCountInDom();
   new RegisterPage();
 });
