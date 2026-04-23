@@ -36,6 +36,7 @@
       <a href="#coupons" class="adm-nav-item" data-section="coupons"><span>Cupons</span></a>
       <a href="#leads" class="adm-nav-item" data-section="leads"><span>Leads</span></a>
       <a href="#affiliates" class="adm-nav-item" data-section="affiliates"><span>Afiliados</span></a>
+      <a href="#payouts" class="adm-nav-item" data-section="payouts"><span>Saques</span></a>
     </nav>
 
     <div class="adm-shell">
@@ -69,6 +70,10 @@
           <a href="#affiliates" class="adm-nav-item" data-section="affiliates">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
             <span>Afiliados</span>
+          </a>
+          <a href="#payouts" class="adm-nav-item" data-section="payouts">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            <span>Saques</span>
           </a>
         </nav>
       </aside>
@@ -325,6 +330,29 @@
           <div class="adm-summary" id="affiliatesSummary" style="display:none;"></div>
 
           <div id="affiliatesContent"></div>
+        </section>
+
+        <!-- ═══ Saques ═══ -->
+        <section id="payoutsSection" class="adm-section">
+          <div class="adm-section-top">
+            <div>
+              <h2 class="adm-title">Saques</h2>
+              <div class="adm-subtitle" id="payoutsSubtitle">Solicitações de PIX dos afiliados</div>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <select id="payoutsStatusFilter" class="adm-select" style="min-width:160px;">
+                <option value="pending">Pendentes</option>
+                <option value="paid">Pagos</option>
+                <option value="canceled">Cancelados</option>
+                <option value="all">Todos</option>
+              </select>
+              <button class="adm-btn adm-btn-outline" id="refreshPayoutsBtn">Atualizar</button>
+            </div>
+          </div>
+
+          <div class="adm-summary" id="payoutsSummary" style="display:none;"></div>
+
+          <div id="payoutsContent"></div>
         </section>
 
       </main>

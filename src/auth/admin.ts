@@ -465,6 +465,7 @@ class AdminDashboard {
       case 'coupons': this.renderCoupons(); break;
       case 'leads': this.renderLeads(); break;
       case 'affiliates': this.renderAffiliates(); break;
+      case 'payouts': this.renderPayouts(); break;
     }
   }
 
@@ -2081,6 +2082,189 @@ class AdminDashboard {
           setTimeout(() => { (btn as HTMLElement).textContent = original || 'Copiar PIX'; }, 1500);
         } catch {
           modalManager.show('PIX', pix, 'info');
+        }
+      });
+    });
+  }
+
+  // ─── Saques (Payouts) ─────────────────────────────────────────────
+  private payoutsStatus: 'pending' | 'paid' | 'canceled' | 'all' = 'pending';
+  private payoutsList: any[] = [];
+  private payoutsBound = false;
+
+  private async renderPayouts(): Promise<void> {
+    const content = document.getElementById('payoutsContent');
+    const summary = document.getElementById('payoutsSummary');
+    const subtitle = document.getElementById('payoutsSubtitle');
+    const filter = document.getElementById('payoutsStatusFilter') as HTMLSelectElement | null;
+    if (!content) return;
+
+    // Bind só uma vez pros eventos do filter/refresh
+    if (!this.payoutsBound) {
+      this.payoutsBound = true;
+      filter?.addEventListener('change', () => {
+        this.payoutsStatus = (filter.value as any) || 'pending';
+        this.renderPayouts();
+      });
+      document.getElementById('refreshPayoutsBtn')?.addEventListener('click', () => this.renderPayouts());
+    }
+    if (filter) filter.value = this.payoutsStatus;
+
+    // Skeleton imediato
+    content.innerHTML = `<div class="adm-affiliates-grid">${
+      Array.from({ length: 2 }).map(() => `
+        <div class="adm-aff-card">
+          <span class="adm-skel" style="width:60%;height:16px;display:block;margin-bottom:0.35rem;"></span>
+          <span class="adm-skel" style="width:40%;height:10px;display:block;margin-bottom:0.75rem;"></span>
+          <span class="adm-skel" style="width:100%;height:50px;display:block;"></span>
+        </div>
+      `).join('')
+    }</div>`;
+
+    // Busca lista de saques via edge fn affiliate-api
+    try {
+      const token = await getAuthToken();
+      const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: 'list_payouts',
+          status: this.payoutsStatus === 'all' ? null : this.payoutsStatus,
+        }),
+      });
+      const data = await res.json();
+      this.payoutsList = Array.isArray(data) ? data : [];
+    } catch (e) {
+      console.error('[admin] list_payouts falhou:', e);
+      this.payoutsList = [];
+    }
+
+    // Summary
+    const totalPending = this.payoutsList.filter(p => p.status === 'pending').reduce((s, p) => s + (p.amount_cents || 0), 0);
+    const countPending = this.payoutsList.filter(p => p.status === 'pending').length;
+    if (subtitle) {
+      subtitle.textContent = `${this.payoutsList.length} ${this.payoutsStatus === 'all' ? 'total' : this.payoutsStatus === 'pending' ? 'pendentes' : this.payoutsStatus === 'paid' ? 'pagos' : 'cancelados'}`;
+    }
+    if (summary && countPending > 0) {
+      summary.style.display = 'flex';
+      summary.innerHTML = `
+        <span><strong style="color:var(--a-gold);">${fmtBRLFull(totalPending)}</strong> em saques a pagar</span>
+        <span style="color:var(--a-text3);">·</span>
+        <span>${countPending} ${countPending === 1 ? 'solicitação pendente' : 'solicitações pendentes'}</span>
+      `;
+    } else if (summary) {
+      summary.style.display = 'none';
+    }
+
+    // Empty
+    if (this.payoutsList.length === 0) {
+      content.innerHTML = emptyState({
+        title: this.payoutsStatus === 'pending' ? 'Nada pendente' : 'Nenhum saque no filtro',
+        desc: this.payoutsStatus === 'pending'
+          ? 'Todas as solicitações foram processadas ou ainda não houve pedidos.'
+          : 'Ajuste o filtro acima pra ver outros status.',
+      });
+      return;
+    }
+
+    // Cards
+    content.innerHTML = `<div class="adm-affiliates-grid">${
+      this.payoutsList.map(p => {
+        const statusClass = p.status === 'pending' ? 'badge-warning'
+          : p.status === 'paid' ? 'badge-success' : 'badge-error';
+        const statusLabel = p.status === 'pending' ? 'pendente'
+          : p.status === 'paid' ? 'pago' : 'cancelado';
+        const requested = relativeTime(p.requested_at);
+        const paid = p.paid_at ? relativeTime(p.paid_at) : null;
+        return `
+          <div class="adm-aff-card">
+            <div class="adm-aff-head">
+              <div style="min-width:0;flex:1;">
+                <div class="adm-aff-name">${p.affiliate_name}</div>
+                <div class="adm-aff-email" title="${p.affiliate_email || ''}">${p.affiliate_email || ''}</div>
+              </div>
+              <span class="badge ${statusClass}">${statusLabel}</span>
+            </div>
+
+            <div class="adm-aff-pending" style="background:linear-gradient(135deg,rgba(0,212,255,0.08),rgba(0,212,255,0.02));border-color:rgba(0,212,255,0.2);">
+              <div>
+                <div class="adm-aff-pending-label">Valor do saque</div>
+                <div class="adm-aff-pending-value" style="color:var(--a-cyan);">${fmtBRLFull(p.amount_cents)}</div>
+              </div>
+            </div>
+
+            <div style="font-size:0.78rem;color:var(--a-text2);display:flex;flex-direction:column;gap:0.25rem;">
+              <div><strong style="color:var(--a-text);">Chave PIX:</strong> <span class="cell-mono">${p.pix_key}</span>${p.pix_key_label ? ` <span style="color:var(--a-text3);">(${p.pix_key_label})</span>` : ''}</div>
+              <div><strong style="color:var(--a-text);">Solicitado:</strong> ${requested}</div>
+              ${paid ? `<div><strong style="color:var(--a-text);">Pago:</strong> ${paid}</div>` : ''}
+              ${p.admin_note ? `<div style="color:var(--a-text3);font-style:italic;">nota: ${p.admin_note}</div>` : ''}
+            </div>
+
+            <div class="adm-aff-actions">
+              <button class="adm-btn adm-btn-ghost adm-btn-sm" data-copy-pix="${(p.pix_key || '').replace(/"/g, '&quot;')}">Copiar PIX</button>
+              ${p.status === 'pending' ? `
+                <button class="adm-btn adm-btn-primary adm-btn-sm" data-mark-paid="${p.payout_id}">Marcar como pago</button>
+                <button class="adm-btn adm-btn-outline adm-btn-sm" data-cancel="${p.payout_id}">Cancelar</button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('')
+    }</div>`;
+
+    // Bind ações
+    content.querySelectorAll<HTMLElement>('[data-copy-pix]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const pix = btn.dataset.copyPix || '';
+        try {
+          await navigator.clipboard.writeText(pix);
+          const original = btn.textContent;
+          btn.textContent = 'Copiado!';
+          setTimeout(() => { btn.textContent = original || 'Copiar PIX'; }, 1500);
+        } catch {
+          modalManager.show('PIX', pix, 'info');
+        }
+      });
+    });
+
+    content.querySelectorAll<HTMLElement>('[data-mark-paid]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.markPaid!;
+        const row = this.payoutsList.find(p => p.payout_id === id);
+        if (!row) return;
+        if (!confirm(`Confirmar que você já pagou ${fmtBRLFull(row.amount_cents)} pra ${row.affiliate_name}?\n\nIsso adiciona ao paid_commission e marca o saque como pago.`)) return;
+        try {
+          const token = await getAuthToken();
+          const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ action: 'mark_payout_paid', payout_id: id }),
+          });
+          if (!res.ok) throw new Error('falha');
+          await this.renderPayouts();
+          modalManager.show('Saques', 'Saque marcado como pago!', 'success');
+        } catch {
+          modalManager.show('Erro', 'Não foi possível marcar como pago', 'error');
+        }
+      });
+    });
+
+    content.querySelectorAll<HTMLElement>('[data-cancel]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.cancel!;
+        const note = prompt('Motivo do cancelamento (opcional):');
+        if (note === null) return; // usuário cancelou
+        try {
+          const token = await getAuthToken();
+          await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ action: 'cancel_payout', payout_id: id, admin_note: note || null }),
+          });
+          await this.renderPayouts();
+          modalManager.show('Saques', 'Saque cancelado', 'info');
+        } catch {
+          modalManager.show('Erro', 'Não foi possível cancelar', 'error');
         }
       });
     });
