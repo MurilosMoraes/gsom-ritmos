@@ -10,6 +10,12 @@ export interface CatalogItem {
   isPersonal?: boolean;
   baseRhythmName?: string; // ritmo de referência (só personal)
   bpm?: number;            // BPM salvo (só personal)
+  category?: string;       // categoria do manifest ('Brasileiro', 'Gaúcho', etc)
+}
+
+// Normaliza pra busca fuzzy pt-BR (ignora acento e caixa)
+function normForSearch(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 export class SetlistEditorUI {
@@ -19,6 +25,8 @@ export class SetlistEditorUI {
   private onClose?: () => void;
   private styleInjected = false;
   private dragSourceIndex: number = -1;
+  private activeCategory: string = 'all'; // 'all' | 'Meus' | 'Favoritos' | <category name>
+  private currentQuery: string = '';
 
   constructor() {
     this.injectStyles();
@@ -89,17 +97,59 @@ export class SetlistEditorUI {
     // Painel: Ritmos disponíveis
     const catalogPanel = document.createElement('div');
     catalogPanel.className = 'sle-panel sle-catalog';
+
+    // Contagens por categoria (pros chips mostrarem badges)
+    const countMeus = this.catalog.filter(c => c.isPersonal).length;
+    const cats = Array.from(new Set(
+      this.catalog.filter(c => !c.isPersonal && c.category).map(c => c.category as string)
+    )).sort();
+
     catalogPanel.innerHTML = `
-      <div class="sle-panel-header">
-        <span class="sle-panel-title">Ritmos disponíveis</span>
-        <input type="text" class="sle-search" placeholder="Filtrar..." />
+      <div class="sle-panel-header-v2">
+        <div class="sle-search-wrap">
+          <svg class="sle-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="sle-search-v2" placeholder="Buscar ritmo..." autocomplete="off" />
+          <button class="sle-search-clear" aria-label="Limpar" style="display:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="sle-chips">
+          <button class="sle-chip active" data-cat="all">Todos <span class="sle-chip-count">${this.catalog.length}</span></button>
+          ${countMeus > 0 ? `<button class="sle-chip" data-cat="Meus">Meus <span class="sle-chip-count">${countMeus}</span></button>` : ''}
+          ${cats.map(cat => {
+            const n = this.catalog.filter(c => c.category === cat).length;
+            return `<button class="sle-chip" data-cat="${cat}">${cat} <span class="sle-chip-count">${n}</span></button>`;
+          }).join('')}
+        </div>
       </div>
       <div class="sle-panel-list sle-catalog-list"></div>
     `;
 
-    const searchInput = catalogPanel.querySelector('.sle-search') as HTMLInputElement;
+    const searchInput = catalogPanel.querySelector('.sle-search-v2') as HTMLInputElement;
+    const searchClear = catalogPanel.querySelector('.sle-search-clear') as HTMLElement;
+    const catalogList = () => catalogPanel.querySelector('.sle-catalog-list') as HTMLElement;
+
     searchInput.addEventListener('input', () => {
-      this.renderCatalog(catalogPanel.querySelector('.sle-catalog-list')!, searchInput.value);
+      this.currentQuery = searchInput.value;
+      searchClear.style.display = this.currentQuery ? 'flex' : 'none';
+      this.renderCatalog(catalogList(), this.currentQuery);
+    });
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      this.currentQuery = '';
+      searchClear.style.display = 'none';
+      this.renderCatalog(catalogList(), '');
+      searchInput.focus();
+    });
+
+    // Chips
+    catalogPanel.querySelectorAll<HTMLElement>('[data-cat]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        this.activeCategory = chip.dataset.cat || 'all';
+        catalogPanel.querySelectorAll('.sle-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        this.renderCatalog(catalogList(), this.currentQuery);
+      });
     });
 
     // Painel: Setlist atual
@@ -135,13 +185,26 @@ export class SetlistEditorUI {
 
   private renderCatalog(container: HTMLElement, filter: string): void {
     container.innerHTML = '';
-    const query = filter.toLowerCase();
+    const query = normForSearch(filter);
     const setlistPaths = new Set(this.setlistManager?.getItems().map(i => i.path) || []);
+    void setlistPaths;
 
-    const filtered = this.catalog.filter(r => r.name.toLowerCase().includes(query));
+    // 1) Filtra por categoria ativa
+    let filtered = this.catalog;
+    if (this.activeCategory === 'Meus') {
+      filtered = filtered.filter(r => r.isPersonal);
+    } else if (this.activeCategory !== 'all') {
+      filtered = filtered.filter(r => r.category === this.activeCategory);
+    }
+    // 2) Filtra por query fuzzy (normalizando acento/caixa)
+    if (query) {
+      filtered = filtered.filter(r => normForSearch(r.name).includes(query));
+    }
 
     if (filtered.length === 0) {
-      container.innerHTML = '<div class="sle-empty">Nenhum ritmo encontrado</div>';
+      container.innerHTML = query
+        ? `<div class="sle-empty">Nada achado pra "${filter}"</div>`
+        : '<div class="sle-empty">Nenhum ritmo nessa categoria</div>';
       return;
     }
 
@@ -593,6 +656,109 @@ export class SetlistEditorUI {
         -webkit-tap-highlight-color: transparent;
       }
       .sle-remove-btn:hover { background: rgba(255, 80, 80, 0.15); color: rgba(255, 80, 80, 0.9); }
+
+      /* ─── Busca v2 — header com search + chips de categoria ─── */
+      .sle-panel-header-v2 {
+        padding: 0.85rem 1rem 0.6rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+      .sle-search-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .sle-search-v2 {
+        width: 100%;
+        padding: 0.6rem 2.2rem 0.6rem 2.2rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        color: #fff;
+        font-size: 0.9rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.15s, background 0.15s;
+        -webkit-appearance: none;
+      }
+      .sle-search-v2::placeholder { color: rgba(255, 255, 255, 0.25); }
+      .sle-search-v2:focus {
+        border-color: rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .sle-search-icon {
+        position: absolute;
+        left: 0.7rem;
+        color: rgba(255, 255, 255, 0.35);
+        pointer-events: none;
+      }
+      .sle-search-clear {
+        position: absolute;
+        right: 0.4rem;
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.4);
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.12s, color 0.12s;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .sle-search-clear:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+      }
+
+      .sle-chips {
+        display: flex;
+        gap: 0.35rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+      }
+      .sle-chips::-webkit-scrollbar { display: none; }
+      .sle-chip {
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.7);
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.12s, color 0.12s, border-color 0.12s;
+        -webkit-tap-highlight-color: transparent;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .sle-chip:hover {
+        background: rgba(255, 255, 255, 0.07);
+        color: #fff;
+      }
+      .sle-chip.active {
+        background: #fff;
+        color: #0a0a0f;
+        border-color: #fff;
+      }
+      .sle-chip-count {
+        font-size: 0.66rem;
+        opacity: 0.55;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .sle-chip.active .sle-chip-count { opacity: 0.65; }
     `;
     document.head.appendChild(css);
   }

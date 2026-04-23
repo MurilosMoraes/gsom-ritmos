@@ -1,0 +1,927 @@
+/* ============================================
+   GDRUMS — Experience Layer (v2)
+   Tap Tempo · Meus Ritmos · Salvar · Busca
+   Desenhado pra palco: alto contraste, hit-targets
+   grandes, feedback imediato, zero "tem certeza?".
+   ============================================ */
+
+:root {
+  --x-bg: #05050d;
+  --x-bg2: #0a0a16;
+  --x-surface: rgba(255, 255, 255, 0.04);
+  --x-surface2: rgba(255, 255, 255, 0.065);
+  --x-border: rgba(255, 255, 255, 0.08);
+  --x-border-strong: rgba(255, 255, 255, 0.18);
+  --x-text: #ffffff;
+  --x-text2: rgba(255, 255, 255, 0.72);
+  --x-text3: rgba(255, 255, 255, 0.45);
+  --x-text4: rgba(255, 255, 255, 0.25);
+  --x-accent: #3ee8a7;
+  --x-accent-rgb: 62, 232, 167;
+  --x-cyan: #00d4ff;
+  --x-purple: #8b5cf6;
+  --x-gold: #f0b429;
+  --x-red: #ff6b83;
+  --x-radius: 14px;
+  --x-radius-lg: 20px;
+  --x-tap-min: 48px;
+  --x-tap-lg: 56px;
+}
+
+/* ─── Overlay base — todos modais da experience layer usam ─── */
+.x-overlay {
+  position: fixed; inset: 0; z-index: 99000;
+  background: rgba(2, 2, 10, 0.82);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+}
+.x-overlay.active { opacity: 1; }
+.x-overlay.x-exit { opacity: 0; transition: opacity 0.18s ease; }
+
+/* Em desktop, centraliza o card */
+@media (min-width: 640px) {
+  .x-overlay {
+    align-items: center;
+    padding: 1.5rem;
+  }
+}
+
+/* ─── Bottom sheet / card ─── */
+.x-sheet {
+  background: linear-gradient(180deg, #0d0d1c 0%, #06060f 100%);
+  border: 1px solid var(--x-border);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.6);
+  transform: translateY(24px);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  overflow: hidden;
+}
+.x-overlay.active .x-sheet { transform: translateY(0); }
+.x-overlay.x-exit .x-sheet { transform: translateY(12px); }
+
+@media (min-width: 640px) {
+  .x-sheet {
+    border-radius: var(--x-radius-lg);
+    max-width: 480px;
+    transform: scale(0.96) translateY(12px);
+  }
+  .x-overlay.active .x-sheet { transform: scale(1) translateY(0); }
+}
+
+/* Grip visual no topo (indica que desliza pra fechar) */
+.x-grip {
+  width: 36px; height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+@media (min-width: 640px) { .x-grip { display: none; } }
+
+/* ─── Header ─── */
+.x-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.25rem 0.75rem;
+  flex-shrink: 0;
+}
+.x-head-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--x-text);
+  margin: 0;
+}
+.x-head-sub {
+  font-size: 0.76rem;
+  color: var(--x-text3);
+  margin-top: 0.2rem;
+  font-weight: 500;
+}
+.x-close {
+  background: var(--x-surface);
+  border: none;
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--x-text2);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.x-close:hover, .x-close:active {
+  background: var(--x-surface2);
+  color: var(--x-text);
+}
+
+/* ─── Body ─── */
+.x-body {
+  flex: 1;
+  padding: 0.5rem 1.25rem 1.25rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.x-body::-webkit-scrollbar { width: 4px; }
+.x-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+}
+
+/* ─── Botões base ─── */
+.x-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 0.45rem;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.08s, color 0.12s;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  min-height: var(--x-tap-min);
+}
+.x-btn:active { transform: scale(0.97); }
+
+.x-btn-primary {
+  background: var(--x-text);
+  color: #0a0a0f;
+}
+.x-btn-primary:hover { background: rgba(255, 255, 255, 0.92); }
+
+.x-btn-ghost {
+  background: var(--x-surface);
+  color: var(--x-text2);
+  border: 1px solid var(--x-border);
+}
+.x-btn-ghost:hover { background: var(--x-surface2); color: var(--x-text); }
+
+.x-btn-outline {
+  background: transparent;
+  color: var(--x-text2);
+  border: 1px solid var(--x-border-strong);
+}
+.x-btn-outline:hover { color: var(--x-text); border-color: rgba(255, 255, 255, 0.32); }
+
+.x-btn-danger {
+  background: rgba(255, 107, 131, 0.08);
+  color: var(--x-red);
+  border: 1px solid rgba(255, 107, 131, 0.2);
+}
+.x-btn-danger:hover { background: rgba(255, 107, 131, 0.15); }
+
+.x-btn-full { width: 100%; }
+
+/* ══════════════════════════════════════════════════════
+   TAP TEMPO — redesenho total
+   Círculo grande pulsante, BPM ao vivo, janela deslizante
+   dos últimos 6 taps. Sem botão "Confirmar".
+   ══════════════════════════════════════════════════════ */
+
+.x-tap-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 1.25rem;
+  padding: 0.75rem 0 1rem;
+}
+
+/* Display gigante do BPM atual */
+.x-tap-display {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.x-tap-bpm {
+  font-size: 4.5rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--x-text);
+  line-height: 1;
+  transition: color 0.12s, transform 0.08s;
+}
+.x-tap-bpm.live {
+  color: var(--x-accent);
+}
+.x-tap-bpm.pulse {
+  transform: scale(1.05);
+}
+.x-tap-unit {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--x-text3);
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  margin-top: 0.3rem;
+}
+
+/* Pad gigante de tap */
+.x-tap-pad {
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    rgba(var(--x-accent-rgb), 0.18) 0%,
+    rgba(var(--x-accent-rgb), 0.04) 60%,
+    transparent 100%
+  );
+  border: 2px solid rgba(var(--x-accent-rgb), 0.25);
+  color: var(--x-accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s, transform 0.08s, border-color 0.12s;
+  font-family: inherit;
+  position: relative;
+}
+.x-tap-pad:active,
+.x-tap-pad.hit {
+  background: radial-gradient(
+    circle at center,
+    rgba(var(--x-accent-rgb), 0.35) 0%,
+    rgba(var(--x-accent-rgb), 0.08) 60%,
+    transparent 100%
+  );
+  border-color: rgba(var(--x-accent-rgb), 0.65);
+  transform: scale(0.95);
+}
+.x-tap-pad::before {
+  content: '';
+  position: absolute; inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--x-accent-rgb), 0.4);
+  opacity: 0;
+  transition: transform 0.6s ease-out, opacity 0.6s ease-out;
+  pointer-events: none;
+}
+.x-tap-pad.hit::before {
+  opacity: 1;
+  transform: scale(1.2);
+  transition: transform 0s, opacity 0s;
+  animation: xTapRipple 0.6s ease-out forwards;
+}
+@keyframes xTapRipple {
+  0% { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+.x-tap-hint {
+  font-size: 0.78rem;
+  color: var(--x-text3);
+  text-align: center;
+  min-height: 1.2rem;
+  letter-spacing: 0.01em;
+}
+.x-tap-hint strong {
+  color: var(--x-accent);
+  font-weight: 700;
+}
+
+/* Nudge ±1 / ±5 logo abaixo */
+.x-tap-nudge {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: center;
+}
+.x-tap-nudge-btn {
+  background: var(--x-surface);
+  border: 1px solid var(--x-border);
+  color: var(--x-text);
+  min-width: 48px;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.1s, transform 0.08s;
+  -webkit-tap-highlight-color: transparent;
+}
+.x-tap-nudge-btn:hover { background: var(--x-surface2); }
+.x-tap-nudge-btn:active { transform: scale(0.94); }
+.x-tap-nudge-input {
+  background: transparent;
+  border: 1px solid var(--x-border);
+  color: var(--x-text);
+  width: 72px;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: border-color 0.12s;
+}
+.x-tap-nudge-input:focus { border-color: var(--x-border-strong); }
+
+/* Slider BPM (fine-tune visual) */
+.x-tap-slider {
+  width: 100%;
+  max-width: 320px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--x-border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.x-tap-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--x-text);
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08);
+  transition: box-shadow 0.15s;
+}
+.x-tap-slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.12);
+}
+.x-tap-slider::-moz-range-thumb {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--x-text);
+  border: none;
+  cursor: pointer;
+}
+
+/* Restore original */
+.x-tap-restore {
+  background: transparent;
+  border: 1px dashed var(--x-border-strong);
+  color: var(--x-text3);
+  font-size: 0.78rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.x-tap-restore:hover {
+  color: var(--x-text);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* ══════════════════════════════════════════════════════
+   MEUS RITMOS — grid de cards
+   ══════════════════════════════════════════════════════ */
+
+.x-rhythms-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0 1rem;
+  gap: 0.75rem;
+}
+.x-rhythms-count {
+  font-size: 0.8rem;
+  color: var(--x-text3);
+}
+.x-rhythms-count strong {
+  color: var(--x-text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.x-rhythms-list {
+  display: flex; flex-direction: column;
+  gap: 0.5rem;
+}
+
+.x-rhythm-card {
+  background: var(--x-surface);
+  border: 1px solid var(--x-border);
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+  display: flex; align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, transform 0.08s;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  min-height: var(--x-tap-lg);
+}
+.x-rhythm-card:hover {
+  background: var(--x-surface2);
+  border-color: var(--x-border-strong);
+}
+.x-rhythm-card:active { transform: scale(0.99); }
+.x-rhythm-card.deleting {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.x-rhythm-accent {
+  width: 4px;
+  align-self: stretch;
+  border-radius: 2px;
+  background: var(--x-purple);
+  flex-shrink: 0;
+}
+
+.x-rhythm-body {
+  flex: 1;
+  min-width: 0;
+}
+.x-rhythm-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--x-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+.x-rhythm-name-input {
+  background: transparent;
+  border: 1px dashed var(--x-border-strong);
+  border-radius: 6px;
+  color: var(--x-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 0.25rem 0.4rem;
+  width: 100%;
+  outline: none;
+  letter-spacing: -0.01em;
+}
+.x-rhythm-name-input:focus {
+  border-color: var(--x-accent);
+  border-style: solid;
+}
+
+.x-rhythm-meta {
+  display: flex; align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--x-text3);
+  margin-top: 0.2rem;
+}
+.x-rhythm-meta-dot {
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+}
+.x-rhythm-bpm {
+  font-weight: 700;
+  color: var(--x-text2);
+  font-variant-numeric: tabular-nums;
+}
+.x-rhythm-base {
+  color: var(--x-text3);
+}
+.x-rhythm-pending {
+  color: var(--x-gold);
+  font-weight: 600;
+}
+
+.x-rhythm-actions {
+  display: flex; gap: 0.25rem;
+  flex-shrink: 0;
+}
+.x-rhythm-action {
+  background: transparent;
+  border: none;
+  color: var(--x-text3);
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.x-rhythm-action:hover { background: var(--x-surface2); color: var(--x-text); }
+.x-rhythm-action.danger:hover {
+  background: rgba(255, 107, 131, 0.12);
+  color: var(--x-red);
+}
+
+/* Empty state */
+.x-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--x-text3);
+}
+.x-empty-icon {
+  margin: 0 auto 0.75rem;
+  width: 44px; height: 44px;
+  opacity: 0.5;
+}
+.x-empty-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--x-text2);
+  margin-bottom: 0.35rem;
+}
+.x-empty-desc {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+/* ══════════════════════════════════════════════════════
+   TOAST — feedback curto com ação UNDO
+   ══════════════════════════════════════════════════════ */
+
+.x-toast {
+  position: fixed;
+  left: 50%; transform: translateX(-50%) translateY(12px);
+  bottom: calc(env(safe-area-inset-bottom, 0) + 20px);
+  z-index: 99500;
+  background: #13131f;
+  border: 1px solid var(--x-border-strong);
+  border-radius: 14px;
+  padding: 0.7rem 0.9rem 0.7rem 1rem;
+  display: flex; align-items: center;
+  gap: 0.75rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  font-size: 0.85rem;
+  color: var(--x-text);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: calc(100vw - 2rem);
+  min-width: 260px;
+}
+.x-toast.active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.x-toast-icon {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.x-toast-icon.success { color: var(--x-accent); }
+.x-toast-icon.info { color: var(--x-cyan); }
+.x-toast-icon.warn { color: var(--x-gold); }
+.x-toast-msg {
+  flex: 1;
+  line-height: 1.35;
+  font-weight: 500;
+}
+.x-toast-action {
+  background: transparent;
+  border: none;
+  color: var(--x-accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.x-toast-action:hover { background: rgba(var(--x-accent-rgb), 0.1); }
+
+/* ══════════════════════════════════════════════════════
+   BUSCA + CHIPS DE CATEGORIA
+   Usado no editor de setlist e no modal de ritmos.
+   ══════════════════════════════════════════════════════ */
+
+.x-search-wrap {
+  display: flex; flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.x-search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.x-search-input {
+  width: 100%;
+  padding: 0.7rem 2.4rem 0.7rem 2.4rem;
+  background: var(--x-surface);
+  border: 1px solid var(--x-border);
+  border-radius: 12px;
+  color: var(--x-text);
+  font-size: 0.92rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-appearance: none;
+}
+.x-search-input::placeholder { color: var(--x-text4); }
+.x-search-input:focus {
+  border-color: var(--x-border-strong);
+  background: var(--x-surface2);
+}
+.x-search-icon {
+  position: absolute;
+  left: 0.8rem;
+  color: var(--x-text3);
+  pointer-events: none;
+}
+.x-search-clear {
+  position: absolute;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--x-text3);
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: none;
+  align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.x-search-clear.visible { display: flex; }
+.x-search-clear:hover { background: var(--x-surface2); color: var(--x-text); }
+
+/* Chips scrolláveis */
+.x-chips {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+.x-chips::-webkit-scrollbar { display: none; }
+.x-chip {
+  flex-shrink: 0;
+  background: var(--x-surface);
+  border: 1px solid var(--x-border);
+  color: var(--x-text2);
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  scroll-snap-align: start;
+  display: inline-flex; align-items: center; gap: 0.35rem;
+}
+.x-chip:hover { background: var(--x-surface2); color: var(--x-text); }
+.x-chip.active {
+  background: var(--x-text);
+  color: #0a0a0f;
+  border-color: var(--x-text);
+}
+.x-chip-count {
+  font-size: 0.68rem;
+  opacity: 0.55;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Highlight no match (fuzzy search) */
+.x-search-match {
+  background: rgba(var(--x-accent-rgb), 0.18);
+  color: var(--x-accent);
+  padding: 0 1px;
+  border-radius: 2px;
+  font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════
+   SALVAR RITMO — versão enxuta, auto-nome opcional
+   ══════════════════════════════════════════════════════ */
+
+.x-save-fields {
+  display: flex; flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+.x-save-field label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--x-text3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.35rem;
+}
+.x-save-input {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  background: var(--x-surface);
+  border: 1px solid var(--x-border);
+  border-radius: 12px;
+  color: var(--x-text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.12s, background 0.12s;
+  -webkit-appearance: none;
+}
+.x-save-input:focus {
+  border-color: var(--x-border-strong);
+  background: var(--x-surface2);
+}
+.x-save-input-bpm {
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.x-save-hint {
+  font-size: 0.72rem;
+  color: var(--x-text4);
+  margin-top: 0.3rem;
+  line-height: 1.4;
+}
+
+.x-save-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.x-save-actions .x-btn { flex: 1; }
+
+/* ══════════════════════════════════════════════════════
+   BUSCA NA STRIP DE RITMOS (biblioteca principal, fora de modal)
+   Discreta, embutida junto aos chips de categoria.
+   ══════════════════════════════════════════════════════ */
+
+.rhythm-strip-search {
+  padding: 0.4rem 0.5rem 0.25rem;
+}
+.rhythm-strip-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.rhythm-strip-search-input {
+  width: 100%;
+  padding: 0.5rem 1.9rem 0.5rem 2rem;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-appearance: none;
+}
+.rhythm-strip-search-input::placeholder { color: rgba(255, 255, 255, 0.22); }
+.rhythm-strip-search-input:focus {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+}
+.rhythm-strip-search-icon {
+  position: absolute;
+  left: 0.65rem;
+  color: rgba(255, 255, 255, 0.3);
+  pointer-events: none;
+}
+.rhythm-strip-search-clear {
+  position: absolute;
+  right: 0.4rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.rhythm-strip-search-clear:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+/* ══════════════════════════════════════════════════════
+   MODO SHOW (stage mode) — diferencial de palco
+   - esconde topbar, menu, admin
+   - keep-awake ativo
+   - aumenta hit-targets da performance grid
+   - banner minimalista com botão "Sair"
+   ══════════════════════════════════════════════════════ */
+
+.x-stage-banner {
+  position: fixed;
+  top: env(safe-area-inset-top, 0);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 98500;
+  background: rgba(8, 8, 18, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(var(--x-accent-rgb), 0.2);
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  padding: 0.45rem 0.6rem 0.45rem 0.9rem;
+  display: flex; align-items: center;
+  gap: 0.75rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  animation: xStageIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes xStageIn {
+  from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+.x-stage-banner-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--x-accent);
+  box-shadow: 0 0 0 4px rgba(var(--x-accent-rgb), 0.15);
+  animation: xStagePulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes xStagePulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 4px rgba(var(--x-accent-rgb), 0.15); }
+  50% { opacity: 0.6; box-shadow: 0 0 0 8px rgba(var(--x-accent-rgb), 0.05); }
+}
+.x-stage-banner-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--x-accent);
+}
+.x-stage-banner-exit {
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+.x-stage-banner-exit:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* Quando body tem .stage-mode, esconde elementos acessórios */
+body.stage-mode .global-topbar,
+body.stage-mode .demo-topbar,
+body.stage-mode .demo-value-banner { display: none !important; }
+
+/* Aumenta hit-targets da performance grid */
+body.stage-mode .user-performance-grid {
+  gap: 0.8rem;
+}
+body.stage-mode .grid-cell {
+  min-height: 88px;
+  font-weight: 700;
+}
+body.stage-mode .cell-label {
+  font-size: 0.82rem !important;
+  letter-spacing: 0.2em !important;
+}
+body.stage-mode .cell-number {
+  font-size: 0.9rem !important;
+}
+
+/* Ajusta padding top do container pra não colar no banner */
+body.stage-mode .app-container {
+  padding-top: 2.4rem;
+}
+
+/* Esconde botão "Repertório"/"Meus Ritmos"/"Salvar" secundários no palco
+   (user acessa pelo pedal + setlist já carregada). */
+body.stage-mode .fav-edit-btn { display: none !important; }
+
+/* BPM e controles ficam maiores */
+body.stage-mode .ctrl-value,
+body.stage-mode .ctrl-value-tap {
+  font-size: 1.1rem !important;
+  min-height: 44px;
+}
+body.stage-mode .ctrl-btn-bpm {
+  min-width: 40px;
+  min-height: 40px;
+}

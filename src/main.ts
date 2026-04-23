@@ -7,6 +7,7 @@ import { PatternEngine } from './core/PatternEngine';
 import { FileManager } from './io/FileManager';
 import { UIManager } from './ui/UIManager';
 import { ModalManager } from './ui/ModalManager';
+import { Toast } from './ui/Toast';
 import { SetlistManager } from './core/SetlistManager';
 import { SetlistEditorUI } from './ui/SetlistEditorUI';
 import { ConversionManager } from './ui/ConversionManager';
@@ -1987,6 +1988,15 @@ class RhythmSequencer {
       });
     }
 
+    // Modo Show — toggle palco profissional
+    const stageModeBtn = document.getElementById('stageModeBtn');
+    if (stageModeBtn) {
+      stageModeBtn.addEventListener('click', () => {
+        if (fabDropdown) fabDropdown.style.display = 'none';
+        this.enterStageMode();
+      });
+    }
+
     // Logout
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
@@ -2549,6 +2559,54 @@ class RhythmSequencer {
     // Atualizar UI
     this.uiManager.updateVariationButtons();
     this.uiManager.refreshGridDisplay();
+  }
+
+  /**
+   * Modo Show — ativa layout minimalista pra palco.
+   *
+   * O que muda:
+   * - body.stage-mode ligado (CSS esconde topbar, amplia células, etc)
+   * - keep-awake ativado (tela não apaga)
+   * - banner no topo com botão "Sair"
+   * - haptic feedback success
+   *
+   * Sair: botão "Sair" do banner OU long-press 2s no próprio banner.
+   */
+  private enterStageMode(): void {
+    if (document.body.classList.contains('stage-mode')) return;
+    document.body.classList.add('stage-mode');
+
+    // Ativa keep-awake (ignora erro se não for native)
+    KeepAwake.keepAwake().catch(() => { /* navegador web — sem efeito */ });
+
+    // Banner com botão sair
+    const banner = document.createElement('div');
+    banner.className = 'x-stage-banner';
+    banner.id = 'xStageBanner';
+    banner.innerHTML = `
+      <span class="x-stage-banner-dot"></span>
+      <span class="x-stage-banner-label">Modo Show</span>
+      <button class="x-stage-banner-exit" id="xStageExit" type="button">Sair</button>
+    `;
+    document.body.appendChild(banner);
+
+    banner.querySelector('#xStageExit')?.addEventListener('click', () => this.exitStageMode());
+
+    HapticsService.success();
+    Toast.show('Modo Show ativo · tela não vai apagar', { type: 'success' });
+  }
+
+  private exitStageMode(): void {
+    if (!document.body.classList.contains('stage-mode')) return;
+    document.body.classList.remove('stage-mode');
+
+    // Só libera sleep se não estiver tocando (scheduler também controla)
+    if (!this.stateManager.isPlaying()) {
+      KeepAwake.allowSleep().catch(() => { /* noop */ });
+    }
+
+    document.getElementById('xStageBanner')?.remove();
+    HapticsService.light();
   }
 
   // Core methods
@@ -3429,6 +3487,15 @@ class RhythmSequencer {
 
   // ─── Meus Ritmos ───────────────────────────────────────────────────
 
+  /**
+   * Salvar ritmo (v2) — modal compacto com auto-nome inteligente.
+   *
+   * - Nome pré-preenchido no padrão "Nome da biblioteca — HH:MM" (ou "Meu ritmo"
+   *   se é pattern vazio) — user pode aceitar ou editar
+   * - BPM já vem preenchido com o atual
+   * - Enter no input salva direto
+   * - Toast com "Renomear" depois do save — pode corrigir em 5s sem abrir modal
+   */
   private showSaveRhythmModal(): void {
     if (!this.currentRhythmName && !this.stateManager.getState().patterns.main.some(r => r.some(s => s))) {
       this.modalManager.show('Meus Ritmos', 'Carregue um ritmo antes de salvar.', 'warning');
@@ -3441,32 +3508,44 @@ class RhythmSequencer {
     }
 
     const currentBpm = this.stateManager.getTempo();
-    const suggestedName = this.currentRhythmName || 'Meu Ritmo';
+    // Auto-nome: "Vaneira · 21:42" ou "Meu ritmo · 21:42"
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const base = this.currentRhythmName || 'Meu ritmo';
+    const suggestedName = `${base} · ${hh}:${mm}`;
 
     const overlay = document.createElement('div');
-    overlay.className = 'account-modal-overlay';
+    overlay.className = 'x-overlay';
     overlay.innerHTML = `
-      <div class="account-modal" style="max-width:380px;">
-        <button class="account-modal-close" id="saveRhythmClose">&times;</button>
-        <div class="account-header">
-          <div class="account-avatar" style="width:48px;height:48px;font-size:1.2rem;margin-bottom:0.5rem;background:linear-gradient(135deg,#8B5CF6,#EC4899);">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+      <div class="x-sheet" role="dialog" aria-label="Salvar ritmo">
+        <div class="x-grip"></div>
+        <div class="x-head">
+          <div>
+            <h2 class="x-head-title">Salvar ritmo</h2>
+            <div class="x-head-sub">Crie sua versão com nome e BPM</div>
           </div>
-          <div class="account-name">Salvar Meu Ritmo</div>
-          <div class="account-email">Crie uma versão personalizada com seu nome e BPM</div>
+          <button class="x-close" id="xSaveClose" aria-label="Fechar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
 
-        <div style="padding:0 0.5rem;display:flex;flex-direction:column;gap:0.75rem;">
-          <div>
-            <label style="font-size:0.65rem;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:0.3rem;">Nome do ritmo</label>
-            <input type="text" id="saveRhythmName" class="account-password-input" value="${suggestedName}" placeholder="Ex: Vaneira do João" style="text-align:center;" />
+        <div class="x-body">
+          <div class="x-save-fields">
+            <div class="x-save-field">
+              <label for="xSaveName">Nome do ritmo</label>
+              <input type="text" id="xSaveName" class="x-save-input" value="${suggestedName.replace(/"/g, '&quot;')}" maxlength="60" placeholder="Ex: Vaneira do João" autocomplete="off" />
+              <div class="x-save-hint">Vai aparecer na sua lista de "Meus Ritmos"</div>
+            </div>
+            <div class="x-save-field">
+              <label for="xSaveBpm">BPM</label>
+              <input type="number" id="xSaveBpm" class="x-save-input x-save-input-bpm" value="${currentBpm}" min="40" max="240" inputmode="numeric" />
+            </div>
           </div>
-          <div>
-            <label style="font-size:0.65rem;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:0.3rem;">BPM</label>
-            <input type="number" id="saveRhythmBpm" class="account-password-input" value="${currentBpm}" min="40" max="240" style="text-align:center;font-size:1.2rem;font-weight:700;" />
+          <div class="x-save-actions">
+            <button class="x-btn x-btn-ghost" id="xSaveCancel" type="button">Cancelar</button>
+            <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">Salvar ritmo</button>
           </div>
-          <div id="saveRhythmStatus" style="font-size:0.72rem;min-height:1rem;text-align:center;"></div>
-          <button id="saveRhythmConfirm" class="account-action-btn" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);box-shadow:0 4px 20px rgba(139,92,246,0.25);">Salvar</button>
         </div>
       </div>
     `;
@@ -3474,122 +3553,303 @@ class RhythmSequencer {
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('active'));
 
-    const close = () => {
+    const close = (): void => {
       overlay.classList.remove('active');
-      setTimeout(() => overlay.remove(), 200);
+      overlay.classList.add('x-exit');
+      setTimeout(() => overlay.remove(), 220);
     };
 
-    overlay.querySelector('#saveRhythmClose')?.addEventListener('click', close);
+    overlay.querySelector('#xSaveClose')?.addEventListener('click', close);
+    overlay.querySelector('#xSaveCancel')?.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
-    const nameInput = overlay.querySelector('#saveRhythmName') as HTMLInputElement;
-    nameInput.select();
+    const nameInput = overlay.querySelector('#xSaveName') as HTMLInputElement;
+    const bpmInput = overlay.querySelector('#xSaveBpm') as HTMLInputElement;
+    setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
 
-    overlay.querySelector('#saveRhythmConfirm')?.addEventListener('click', async () => {
+    const doSave = async (): Promise<void> => {
       const name = nameInput.value.trim();
-      const bpm = parseInt((overlay.querySelector('#saveRhythmBpm') as HTMLInputElement).value);
-      const statusEl = overlay.querySelector('#saveRhythmStatus') as HTMLElement;
+      const bpm = parseInt(bpmInput.value);
 
       if (!name) {
-        statusEl.textContent = 'Dê um nome ao seu ritmo';
-        statusEl.style.color = '#FF4466';
+        nameInput.focus();
+        nameInput.style.borderColor = 'rgba(255, 107, 131, 0.5)';
+        Toast.show('Dê um nome ao ritmo', { type: 'warn' });
         return;
       }
       if (isNaN(bpm) || bpm < 40 || bpm > 240) {
-        statusEl.textContent = 'BPM deve ser entre 40 e 240';
-        statusEl.style.color = '#FF4466';
+        bpmInput.focus();
+        Toast.show('BPM precisa ser entre 40 e 240', { type: 'warn' });
         return;
       }
 
-      statusEl.textContent = 'Salvando...';
-      statusEl.style.color = 'rgba(255,255,255,0.4)';
-
-      // Capturar estado atual como JSON do ritmo
       const rhythmData = this.fileManager.exportProjectAsJSON();
-
-      // Se o ritmo atual vem da biblioteca, passar o nome como referência.
-      // Se já é um ritmo pessoal sendo re-salvo, this.currentRhythmName é o
-      // nome que o user deu — não serve como base. Usar só quando bate com
-      // um ritmo da biblioteca.
       const isLibraryRhythm = this.availableRhythms.some(r => r.name === this.currentRhythmName);
       const baseRhythmName = isLibraryRhythm ? this.currentRhythmName : undefined;
 
-      await this.userRhythmService.save(name, bpm, rhythmData, baseRhythmName);
+      const saved = await this.userRhythmService.save(name, bpm, rhythmData, baseRhythmName);
+      close();
+      HapticsService.success();
 
-      statusEl.textContent = 'Salvo!';
-      statusEl.style.color = '#00E68C';
-      setTimeout(close, 800);
-    });
+      Toast.show(`"${name}" salvo`, {
+        type: 'success',
+        durationMs: 5000,
+        action: {
+          label: 'Renomear',
+          onClick: () => this.renameRhythmInline(saved.id),
+        },
+      });
+    };
+
+    overlay.querySelector('#xSaveConfirm')?.addEventListener('click', doSave);
+    // Enter em qualquer input salva
+    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
+    bpmInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
+
+    // ESC fecha
+    const onEsc = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc); }
+    };
+    document.addEventListener('keydown', onEsc);
   }
 
+  /**
+   * Abre edit in-line pro ritmo pessoal. Usado pelo toast "Renomear" logo
+   * após salvar, e pelo botão de rename na lista Meus Ritmos.
+   */
+  private renameRhythmInline(rhythmId: string): void {
+    const rhythm = this.userRhythmService.getById(rhythmId);
+    if (!rhythm) return;
+
+    // Abre a lista Meus Ritmos — o botão de rename in-line já tá lá.
+    // Pra melhorar o fluxo: depois de abrir, dispara programaticamente
+    // o click no rename daquele id.
+    this.showMyRhythmsModal();
+    setTimeout(() => {
+      const btn = document.querySelector(`[data-rename="${rhythmId}"]`) as HTMLElement | null;
+      btn?.click();
+    }, 300);
+  }
+
+  /**
+   * Meus Ritmos (v2) — cards com edit in-line, busca fuzzy, undo na deleção.
+   *
+   * - Tap no card = carrega o ritmo
+   * - Tap no ícone ✏️ = renomear in-line (Enter salva, Esc cancela)
+   * - Tap no ícone 🗑 = deleta com toast + botão "Desfazer" 5s
+   * - Busca fuzzy (ignora acento/caixa) quando há 6+ ritmos
+   */
   private showMyRhythmsModal(): void {
     const overlay = document.createElement('div');
-    overlay.className = 'account-modal-overlay';
+    overlay.className = 'x-overlay';
 
-    const renderList = () => {
+    let searchQuery = '';
+
+    const norm = (s: string): string =>
+      s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const close = (): void => {
+      overlay.classList.remove('active');
+      overlay.classList.add('x-exit');
+      setTimeout(() => overlay.remove(), 220);
+    };
+
+    const escapeHtml = (s: string): string =>
+      s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+    const renderList = (): void => {
       const list = this.userRhythmService.getAll();
-      const listHtml = list.length === 0
-        ? '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.2);font-size:0.82rem;">Nenhum ritmo salvo ainda.<br>Carregue um ritmo e toque no botão salvar.</div>'
-        : list.map(r => `
-          <div class="my-rhythm-item" data-id="${r.id}" style="display:flex;align-items:center;gap:0.75rem;padding:0.65rem 0.75rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;cursor:pointer;transition:all 0.12s;margin-bottom:0.4rem;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:0.85rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.name}</div>
-              <div style="font-size:0.68rem;color:rgba(255,255,255,0.3);">${r.bpm} BPM${!r.synced ? ' · pendente sync' : ''}</div>
-            </div>
-            <button class="my-rhythm-delete" data-delete-id="${r.id}" style="background:none;border:none;color:rgba(255,68,102,0.5);cursor:pointer;padding:0.3rem;font-size:1rem;line-height:1;" title="Deletar">&times;</button>
-          </div>
-        `).join('');
+      const total = list.length;
+      const q = norm(searchQuery.trim());
+      const filtered = q ? list.filter(r => norm(r.name).includes(q)) : list;
+
+      const showSearch = total > 5;
+
+      const listHtml = filtered.length === 0
+        ? (q
+            ? `<div class="x-empty">
+                 <svg class="x-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                 <div class="x-empty-title">Nada achado</div>
+                 <div class="x-empty-desc">Tenta outro nome ou limpa a busca.</div>
+               </div>`
+            : `<div class="x-empty">
+                 <svg class="x-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                 <div class="x-empty-title">Nenhum ritmo salvo</div>
+                 <div class="x-empty-desc">Carregue um ritmo da biblioteca, ajuste do seu jeito e use o botão de salvar pra criar seu primeiro.</div>
+               </div>`)
+        : `<div class="x-rhythms-list">${
+            filtered.map(r => `
+              <div class="x-rhythm-card" data-id="${r.id}">
+                <span class="x-rhythm-accent"></span>
+                <div class="x-rhythm-body">
+                  <div class="x-rhythm-name" data-name="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
+                  <div class="x-rhythm-meta">
+                    <span class="x-rhythm-bpm">${r.bpm} BPM</span>
+                    ${r.base_rhythm_name ? `<span class="x-rhythm-meta-dot"></span><span class="x-rhythm-base">baseado em ${escapeHtml(r.base_rhythm_name)}</span>` : ''}
+                    ${!r.synced ? `<span class="x-rhythm-meta-dot"></span><span class="x-rhythm-pending">pendente sync</span>` : ''}
+                  </div>
+                </div>
+                <div class="x-rhythm-actions">
+                  <button class="x-rhythm-action" data-rename="${r.id}" aria-label="Renomear">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  </button>
+                  <button class="x-rhythm-action danger" data-delete="${r.id}" aria-label="Deletar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                  </button>
+                </div>
+              </div>
+            `).join('')
+          }</div>`;
 
       overlay.innerHTML = `
-        <div class="account-modal" style="max-width:400px;max-height:85vh;display:flex;flex-direction:column;">
-          <button class="account-modal-close" id="myRhythmsClose">&times;</button>
-          <div class="account-header" style="flex-shrink:0;">
-            <div class="account-avatar" style="width:48px;height:48px;font-size:1.2rem;margin-bottom:0.5rem;background:linear-gradient(135deg,#8B5CF6,#EC4899);">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <div class="x-sheet" role="dialog" aria-label="Meus Ritmos">
+          <div class="x-grip"></div>
+          <div class="x-head">
+            <div>
+              <h2 class="x-head-title">Meus Ritmos</h2>
+              <div class="x-head-sub">${total === 0 ? 'Nada salvo ainda' : `${total} ritmo${total !== 1 ? 's' : ''} ${total !== 1 ? 'salvos' : 'salvo'}`}</div>
             </div>
-            <div class="account-name">Meus Ritmos</div>
-            <div class="account-email">${list.length} ritmo${list.length !== 1 ? 's' : ''} salvo${list.length !== 1 ? 's' : ''}</div>
+            <button class="x-close" id="xMyRhClose" aria-label="Fechar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
 
-          <div style="flex:1;overflow-y:auto;padding:0 0.5rem 0.5rem;-webkit-overflow-scrolling:touch;">
+          <div class="x-body">
+            ${showSearch ? `
+              <div class="x-search-wrap">
+                <div class="x-search-input-wrap">
+                  <svg class="x-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" class="x-search-input" id="xMyRhSearch" placeholder="Buscar no meu acervo..." value="${escapeHtml(searchQuery)}" autocomplete="off" />
+                  <button class="x-search-clear ${searchQuery ? 'visible' : ''}" id="xMyRhSearchClear" aria-label="Limpar busca">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            ` : ''}
             ${listHtml}
           </div>
         </div>
       `;
 
-      overlay.querySelector('#myRhythmsClose')?.addEventListener('click', close);
+      overlay.querySelector('#xMyRhClose')?.addEventListener('click', close);
       overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
-      // Carregar ritmo ao clicar
-      overlay.querySelectorAll('.my-rhythm-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-          if ((e.target as HTMLElement).closest('.my-rhythm-delete')) return;
-          const id = (item as HTMLElement).dataset.id!;
+      // Busca
+      const searchInput = overlay.querySelector('#xMyRhSearch') as HTMLInputElement | null;
+      const searchClear = overlay.querySelector('#xMyRhSearchClear') as HTMLElement | null;
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          searchQuery = searchInput.value;
+          searchClear?.classList.toggle('visible', !!searchQuery);
+          // Re-render apenas a lista (sem rebuild completo pra não perder foco)
+          const bodyEl = overlay.querySelector('.x-body');
+          const listEl = bodyEl?.querySelector('.x-rhythms-list, .x-empty');
+          if (listEl && bodyEl) {
+            const caret = searchInput.selectionStart;
+            renderList();
+            // Restaurar foco e caret
+            const newInput = overlay.querySelector('#xMyRhSearch') as HTMLInputElement | null;
+            if (newInput) {
+              newInput.focus();
+              if (caret !== null) newInput.setSelectionRange(caret, caret);
+            }
+          } else {
+            renderList();
+          }
+        });
+      }
+      searchClear?.addEventListener('click', () => {
+        searchQuery = '';
+        renderList();
+      });
+
+      // Tap no card = carregar ritmo
+      overlay.querySelectorAll<HTMLElement>('.x-rhythm-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+          const target = e.target as HTMLElement;
+          // Ignora cliques nos botões de ação ou em inputs de rename
+          if (target.closest('.x-rhythm-action, .x-rhythm-name-input')) return;
+          const id = card.dataset.id!;
           const rhythm = this.userRhythmService.getById(id);
           if (!rhythm) return;
-
           this.loadUserRhythm(rhythm.name, rhythm.bpm, rhythm.rhythm_data);
           close();
         });
       });
 
-      // Deletar
-      overlay.querySelectorAll('.my-rhythm-delete').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+      // Renomear in-line
+      overlay.querySelectorAll<HTMLElement>('[data-rename]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
           e.stopPropagation();
-          const id = (btn as HTMLElement).dataset.deleteId!;
+          const id = btn.dataset.rename!;
           const rhythm = this.userRhythmService.getById(id);
           if (!rhythm) return;
-          if (!confirm(`Deletar "${rhythm.name}"?`)) return;
-          await this.userRhythmService.delete(id);
-          renderList();
+
+          const card = btn.closest('.x-rhythm-card') as HTMLElement | null;
+          const nameEl = card?.querySelector('.x-rhythm-name') as HTMLElement | null;
+          if (!nameEl) return;
+
+          const originalName = rhythm.name;
+          nameEl.innerHTML = `<input type="text" class="x-rhythm-name-input" value="${escapeHtml(originalName)}" maxlength="60" />`;
+          const input = nameEl.querySelector('input') as HTMLInputElement;
+          input.focus();
+          input.select();
+
+          const commit = async (save: boolean): Promise<void> => {
+            const newName = input.value.trim();
+            if (save && newName && newName !== originalName) {
+              await this.userRhythmService.update(id, newName, rhythm.bpm);
+              Toast.show(`"${newName}" salvo`, { type: 'success' });
+            }
+            renderList();
+          };
+
+          input.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') { ev.preventDefault(); commit(true); }
+            if (ev.key === 'Escape') { ev.preventDefault(); commit(false); }
+          });
+          input.addEventListener('blur', () => commit(true));
+          // Stop propagation pra não disparar click do card
+          input.addEventListener('click', (ev) => ev.stopPropagation());
         });
       });
-    };
 
-    const close = () => {
-      overlay.classList.remove('active');
-      setTimeout(() => overlay.remove(), 200);
+      // Deletar com undo
+      overlay.querySelectorAll<HTMLElement>('[data-delete]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.delete!;
+          const rhythm = this.userRhythmService.getById(id);
+          if (!rhythm) return;
+
+          // Captura snapshot pra undo
+          const snapshot = {
+            name: rhythm.name,
+            bpm: rhythm.bpm,
+            data: rhythm.rhythm_data,
+            base: rhythm.base_rhythm_name,
+          };
+
+          // Anima saída do card e remove
+          const card = btn.closest('.x-rhythm-card') as HTMLElement | null;
+          card?.classList.add('deleting');
+          await this.userRhythmService.delete(id);
+          renderList();
+          HapticsService.medium();
+
+          Toast.show(`"${snapshot.name}" deletado`, {
+            type: 'info',
+            durationMs: 5000,
+            action: {
+              label: 'Desfazer',
+              onClick: async () => {
+                await this.userRhythmService.save(snapshot.name, snapshot.bpm, snapshot.data, snapshot.base);
+                renderList();
+              },
+            },
+          });
+        });
+      });
     };
 
     document.body.appendChild(overlay);
@@ -3715,170 +3975,205 @@ class RhythmSequencer {
     setTimeout(() => input.focus(), 300);
   }
 
+  /**
+   * BPM / Tap Tempo redesenhado (v2).
+   *
+   * Principais mudanças:
+   * - Sem botão "Confirmar" (dismiss = já aplica, ESC = cancela)
+   * - Tap tempo com janela deslizante dos últimos 6 taps
+   * - BPM atualiza ao vivo a partir do 2º tap, pulsa visualmente a cada hit
+   * - Haptic light em mobile a cada tap
+   * - Nudge ±1/±5 com hit target 44×44 mínimo
+   * - Input numérico direto + slider fine-tune
+   * - Bottom sheet em mobile, centered em desktop (via CSS)
+   */
   private showBpmModal(): void {
-    const currentTempo = this.stateManager.getTempo();
-    let tempTempo = currentTempo;
-
-    const presets = [60, 70, 80, 90, 100, 110, 120, 140, 160, 180];
+    const originalTempo = this.stateManager.getTempo();
+    let currentBpm = originalTempo;
+    let confirmed = false;
 
     const overlay = document.createElement('div');
-    overlay.className = 'bpm-modal-overlay';
+    overlay.className = 'x-overlay';
     overlay.innerHTML = `
-      <div class="bpm-modal">
-        <div class="bpm-modal-title">Ajustar BPM</div>
-
-        <div class="bpm-display">
-          <button class="bpm-display-btn" id="bpmMinus5">&minus;5</button>
-          <button class="bpm-display-btn" id="bpmMinus1">&minus;</button>
-          <div class="bpm-display-value">
-            <input type="number" class="bpm-display-input" id="bpmInput" value="${currentTempo}" min="40" max="240" inputmode="numeric" />
-            <div class="bpm-display-unit">BPM</div>
+      <div class="x-sheet" role="dialog" aria-label="Ajustar BPM">
+        <div class="x-grip"></div>
+        <div class="x-head">
+          <div>
+            <h2 class="x-head-title">BPM · Tap Tempo</h2>
+            <div class="x-head-sub">Toque no pad no ritmo da música</div>
           </div>
-          <button class="bpm-display-btn" id="bpmPlus1">+</button>
-          <button class="bpm-display-btn" id="bpmPlus5">+5</button>
+          <button class="x-close" id="xBpmClose" aria-label="Fechar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
 
-        <div class="bpm-slider-wrap">
-          <input type="range" class="bpm-slider" id="bpmSlider" min="40" max="240" value="${currentTempo}" />
+        <div class="x-body">
+          <div class="x-tap-wrap">
+            <div class="x-tap-display">
+              <div class="x-tap-bpm" id="xBpmValue">${currentBpm}</div>
+              <div class="x-tap-unit">BPM</div>
+            </div>
+
+            <button class="x-tap-pad" id="xTapPad" type="button" aria-label="Tocar no ritmo">
+              TAP
+            </button>
+
+            <div class="x-tap-hint" id="xTapHint">Toque 2 vezes no ritmo pra calcular</div>
+
+            <div class="x-tap-nudge">
+              <button class="x-tap-nudge-btn" data-nudge="-5" aria-label="Diminuir 5 BPM">−5</button>
+              <button class="x-tap-nudge-btn" data-nudge="-1" aria-label="Diminuir 1 BPM">−1</button>
+              <input type="number" class="x-tap-nudge-input" id="xBpmInput" min="40" max="240" inputmode="numeric" value="${currentBpm}" aria-label="BPM" />
+              <button class="x-tap-nudge-btn" data-nudge="1" aria-label="Aumentar 1 BPM">+1</button>
+              <button class="x-tap-nudge-btn" data-nudge="5" aria-label="Aumentar 5 BPM">+5</button>
+            </div>
+
+            <input type="range" class="x-tap-slider" id="xBpmSlider" min="40" max="240" value="${currentBpm}" aria-label="Ajuste fino do BPM" />
+
+            ${this.currentRhythmOriginalBpm > 0 && currentBpm !== this.currentRhythmOriginalBpm
+              ? `<button class="x-tap-restore" id="xBpmRestore">Restaurar ${this.currentRhythmOriginalBpm} BPM</button>`
+              : ''}
+          </div>
         </div>
-
-        <button class="bpm-tap-btn" id="bpmTapBtn">
-          <span class="bpm-tap-icon">👆</span>
-          <span class="bpm-tap-label">TAP TEMPO</span>
-          <span class="bpm-tap-hint" id="bpmTapHint">Toque no ritmo da música</span>
-        </button>
-
-        <div class="bpm-presets" id="bpmPresets">
-          ${presets.map(p => `<button class="bpm-preset${p === currentTempo ? ' active' : ''}" data-bpm="${p}">${p}</button>`).join('')}
-        </div>
-
-        ${this.currentRhythmOriginalBpm > 0 && currentTempo !== this.currentRhythmOriginalBpm ? `<button class="bpm-restore" id="bpmRestore">Restaurar padrão (${this.currentRhythmOriginalBpm} BPM)</button>` : ''}
-        <button class="bpm-confirm" id="bpmConfirm">Confirmar</button>
       </div>
     `;
 
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('active'));
 
-    const input = overlay.querySelector('#bpmInput') as HTMLInputElement;
-    const slider = overlay.querySelector('#bpmSlider') as HTMLInputElement;
-    const presetsContainer = overlay.querySelector('#bpmPresets')!;
+    const valueEl = overlay.querySelector('#xBpmValue') as HTMLElement;
+    const inputEl = overlay.querySelector('#xBpmInput') as HTMLInputElement;
+    const sliderEl = overlay.querySelector('#xBpmSlider') as HTMLInputElement;
+    const padEl = overlay.querySelector('#xTapPad') as HTMLElement;
+    const hintEl = overlay.querySelector('#xTapHint') as HTMLElement;
 
-    const updateAll = (bpm: number, source?: string) => {
-      tempTempo = Math.max(40, Math.min(240, bpm));
-      if (source !== 'input') input.value = tempTempo.toString();
-      if (source !== 'slider') slider.value = tempTempo.toString();
-
-      // Atualizar preset ativo
-      presetsContainer.querySelectorAll('.bpm-preset').forEach(btn => {
-        btn.classList.toggle('active', parseInt(btn.getAttribute('data-bpm') || '0') === tempTempo);
-      });
-
-      // Aplicar em tempo real para ouvir a diferença imediatamente
-      this.stateManager.setTempo(tempTempo);
+    const applyBpm = (bpm: number, source?: 'input' | 'slider' | 'tap'): void => {
+      currentBpm = Math.max(40, Math.min(240, Math.round(bpm)));
+      valueEl.textContent = String(currentBpm);
+      if (source !== 'input') inputEl.value = String(currentBpm);
+      if (source !== 'slider') sliderEl.value = String(currentBpm);
+      valueEl.classList.toggle('live', source === 'tap');
+      this.stateManager.setTempo(currentBpm);
     };
 
-    // Botões +/- 1 e +/- 5
-    overlay.querySelector('#bpmMinus5')!.addEventListener('click', () => updateAll(tempTempo - 5));
-    overlay.querySelector('#bpmMinus1')!.addEventListener('click', () => updateAll(tempTempo - 1));
-    overlay.querySelector('#bpmPlus1')!.addEventListener('click', () => updateAll(tempTempo + 1));
-    overlay.querySelector('#bpmPlus5')!.addEventListener('click', () => updateAll(tempTempo + 5));
-
-    // Slider
-    slider.addEventListener('input', () => updateAll(parseInt(slider.value), 'slider'));
+    // Nudge ±1/±5
+    overlay.querySelectorAll<HTMLElement>('[data-nudge]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const delta = parseInt(btn.dataset.nudge || '0');
+        applyBpm(currentBpm + delta);
+        HapticsService.light();
+      });
+    });
 
     // Input direto
-    input.addEventListener('input', () => {
-      const val = parseInt(input.value);
-      if (!isNaN(val) && val >= 40 && val <= 240) {
-        updateAll(val, 'input');
-      }
+    inputEl.addEventListener('input', () => {
+      const v = parseInt(inputEl.value);
+      if (!isNaN(v) && v >= 40 && v <= 240) applyBpm(v, 'input');
     });
-    input.addEventListener('focus', () => input.select());
+    inputEl.addEventListener('focus', () => inputEl.select());
 
-    // Tap Tempo
-    const tapBtn = overlay.querySelector('#bpmTapBtn') as HTMLElement;
-    const tapHint = overlay.querySelector('#bpmTapHint') as HTMLElement;
+    // Slider fine-tune
+    sliderEl.addEventListener('input', () => applyBpm(parseInt(sliderEl.value), 'slider'));
+
+    // ─── Tap Tempo (janela deslizante) ─────────────────────────────
+    // Mantém últimos 6 intervalos. Reseta se gap > 2s entre taps.
+    const TAP_WINDOW = 6;
+    const TAP_GAP_MS = 2000;
     const tapTimes: number[] = [];
-    let tapResetTimeout: number | null = null;
+    let tapResetTimer: number | null = null;
 
-    tapBtn.addEventListener('click', () => {
+    const resetHint = (): void => {
+      tapTimes.length = 0;
+      hintEl.innerHTML = 'Toque 2 vezes no ritmo pra calcular';
+    };
+
+    const handleTap = (): void => {
       const now = performance.now();
-      tapTimes.push(now);
-
-      // Resetar se demorou mais de 2s entre taps
-      if (tapResetTimeout) clearTimeout(tapResetTimeout);
-      tapResetTimeout = window.setTimeout(() => {
+      // Reset se gap grande
+      if (tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > TAP_GAP_MS) {
         tapTimes.length = 0;
-        tapHint.textContent = 'Toque no ritmo da música';
-      }, 2000);
+      }
+      tapTimes.push(now);
+      if (tapTimes.length > TAP_WINDOW) tapTimes.shift();
 
-      // Precisa de pelo menos 2 taps pra calcular
+      // Feedback visual (ripple + pulse)
+      padEl.classList.remove('hit');
+      void padEl.offsetWidth;
+      padEl.classList.add('hit');
+      valueEl.classList.add('pulse');
+      setTimeout(() => {
+        padEl.classList.remove('hit');
+        valueEl.classList.remove('pulse');
+      }, 180);
+
+      HapticsService.light();
+
+      if (tapResetTimer) clearTimeout(tapResetTimer);
+      tapResetTimer = window.setTimeout(resetHint, TAP_GAP_MS + 200);
+
+      // Precisa 2+ taps
       if (tapTimes.length < 2) {
-        tapHint.textContent = 'Continue tocando...';
+        hintEl.innerHTML = 'Continue tocando — mais <strong>1 tap</strong>';
         return;
       }
 
-      // Manter só os últimos 8 taps (média mais estável)
-      if (tapTimes.length > 8) tapTimes.shift();
-
-      // Calcular média dos intervalos
-      let totalInterval = 0;
-      for (let i = 1; i < tapTimes.length; i++) {
-        totalInterval += tapTimes[i] - tapTimes[i - 1];
-      }
-      const avgInterval = totalInterval / (tapTimes.length - 1);
-      const bpm = Math.round(60000 / avgInterval);
+      // Média dos intervalos (da janela atual)
+      let sum = 0;
+      for (let i = 1; i < tapTimes.length; i++) sum += tapTimes[i] - tapTimes[i - 1];
+      const avg = sum / (tapTimes.length - 1);
+      const bpm = Math.round(60000 / avg);
 
       if (bpm >= 40 && bpm <= 240) {
-        updateAll(bpm);
-        tapHint.textContent = `${bpm} BPM (${tapTimes.length - 1} taps)`;
+        applyBpm(bpm, 'tap');
+        const taps = tapTimes.length;
+        hintEl.innerHTML = taps >= 4
+          ? `<strong>${bpm}</strong> BPM · ${taps} taps`
+          : `<strong>${bpm}</strong> BPM · continue pra afinar`;
       }
+    };
 
-      // Feedback visual
-      tapBtn.classList.add('bpm-tap-active');
-      setTimeout(() => tapBtn.classList.remove('bpm-tap-active'), 100);
+    // Suporta click (mouse), touch (mobile), space (teclado — não conflita
+    // com pedal porque só ativo dentro do overlay).
+    padEl.addEventListener('click', (e) => {
+      e.preventDefault();
+      handleTap();
+    });
+    padEl.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        handleTap();
+      }
     });
 
-    // Presets
-    presetsContainer.querySelectorAll('.bpm-preset').forEach(btn => {
-      btn.addEventListener('click', () => {
-        updateAll(parseInt(btn.getAttribute('data-bpm') || '80'));
-      });
-    });
-
-    // Restaurar BPM padrão do ritmo
-    overlay.querySelector('#bpmRestore')?.addEventListener('click', () => {
-      updateAll(this.currentRhythmOriginalBpm);
+    // Restaurar BPM original do ritmo
+    overlay.querySelector('#xBpmRestore')?.addEventListener('click', () => {
+      applyBpm(this.currentRhythmOriginalBpm);
     });
 
     // Fechar
-    const close = () => {
+    const close = (cancel = false): void => {
+      if (confirmed) return;
+      confirmed = true;
+      if (cancel) this.stateManager.setTempo(originalTempo);
       overlay.classList.remove('active');
-      setTimeout(() => overlay.remove(), 200);
-    };
-
-    overlay.querySelector('#bpmConfirm')!.addEventListener('click', close);
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) close();
-    });
-
-    // ESC fecha
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        // Restaurar BPM original se cancelou com ESC
-        this.stateManager.setTempo(currentTempo);
-        close();
-        document.removeEventListener('keydown', onEsc);
+      overlay.classList.add('x-exit');
+      setTimeout(() => overlay.remove(), 220);
+      document.removeEventListener('keydown', onKeydown);
+      // Salva BPM se mudou e NÃO cancelou
+      if (!cancel && currentBpm !== originalTempo) {
+        this.saveCustomBpm();
       }
     };
-    document.addEventListener('keydown', onEsc);
 
-    // Limpar listener de ESC e salvar BPM ao fechar normalmente
-    overlay.querySelector('#bpmConfirm')!.addEventListener('click', () => {
-      document.removeEventListener('keydown', onEsc);
-      this.saveCustomBpm();
+    overlay.querySelector('#xBpmClose')?.addEventListener('click', () => close(false));
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close(false);
     });
+
+    const onKeydown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') close(true);
+    };
+    document.addEventListener('keydown', onKeydown);
   }
 
   // ─── Modal Minha Conta ───────────────────────────────────────────────
@@ -4758,7 +5053,12 @@ class RhythmSequencer {
           baseRhythmName: r.base_rhythm_name,
           bpm: r.bpm,
         }));
-        const fullCatalog = [...personalRhythms, ...this.availableRhythms];
+        const libraryWithCategory = this.availableRhythms.map(r => ({
+          name: r.name,
+          path: r.path,
+          category: r.category,
+        }));
+        const fullCatalog = [...personalRhythms, ...libraryWithCategory];
 
         this.setlistEditor.open(
           fullCatalog,
@@ -5015,6 +5315,7 @@ class RhythmSequencer {
   private availableRhythms: Array<{name: string, path: string, category: string}> = [];
   private rhythmCategories: Record<string, string[]> = {};
   private activeCategory: string = '';
+  private rhythmStripQuery: string = '';
   private currentRhythmName: string = '';
   private currentRhythmOriginalBpm: number = 0; // BPM original do JSON do ritmo
 
@@ -5134,6 +5435,38 @@ class RhythmSequencer {
 
     container.innerHTML = '';
 
+    // Normaliza pra busca fuzzy pt-BR (ignora acento e caixa)
+    const norm = (s: string): string =>
+      s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // ── Search input + chips de categoria ──
+    const searchBar = document.createElement('div');
+    searchBar.className = 'rhythm-strip-search';
+    searchBar.innerHTML = `
+      <div class="rhythm-strip-search-wrap">
+        <svg class="rhythm-strip-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="rhythm-strip-search-input" placeholder="Buscar ritmo..." value="${this.rhythmStripQuery.replace(/"/g, '&quot;')}" autocomplete="off" />
+        ${this.rhythmStripQuery ? '<button class="rhythm-strip-search-clear" aria-label="Limpar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' : ''}
+      </div>
+    `;
+    container.appendChild(searchBar);
+    const searchInput = searchBar.querySelector('.rhythm-strip-search-input') as HTMLInputElement;
+    searchInput.addEventListener('input', () => {
+      this.rhythmStripQuery = searchInput.value;
+      // Re-render só os cards + chips (mantém foco)
+      const caret = searchInput.selectionStart;
+      this.renderRhythmStrip();
+      const newInput = document.querySelector('.rhythm-strip-search-input') as HTMLInputElement | null;
+      if (newInput) {
+        newInput.focus();
+        if (caret !== null) newInput.setSelectionRange(caret, caret);
+      }
+    });
+    searchBar.querySelector('.rhythm-strip-search-clear')?.addEventListener('click', () => {
+      this.rhythmStripQuery = '';
+      this.renderRhythmStrip();
+    });
+
     // ── Filtros de categoria ──
     const categories = Object.keys(this.rhythmCategories).sort();
     if (categories.length > 0) {
@@ -5168,9 +5501,13 @@ class RhythmSequencer {
     const cardsWrap = document.createElement('div');
     cardsWrap.className = 'rhythm-cards-wrap';
 
-    const filtered = this.activeCategory
+    const query = norm(this.rhythmStripQuery.trim());
+    let filtered = this.activeCategory
       ? this.availableRhythms.filter(r => r.category === this.activeCategory)
       : this.availableRhythms;
+    if (query) {
+      filtered = filtered.filter(r => norm(r.name).includes(query));
+    }
 
     filtered.forEach(rhythm => {
       const card = document.createElement('button');
@@ -5189,7 +5526,9 @@ class RhythmSequencer {
     });
 
     if (filtered.length === 0) {
-      cardsWrap.innerHTML = '<span class="rhythm-strip-empty">Nenhum ritmo nesta categoria</span>';
+      cardsWrap.innerHTML = query
+        ? `<span class="rhythm-strip-empty">Nada achado pra "${this.rhythmStripQuery}"</span>`
+        : '<span class="rhythm-strip-empty">Nenhum ritmo nesta categoria</span>';
     }
 
     container.appendChild(cardsWrap);
