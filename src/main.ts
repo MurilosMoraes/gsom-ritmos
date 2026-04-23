@@ -16,6 +16,7 @@ import { KeepAwake } from '@capacitor-community/keep-awake';
 import { HapticsService } from './native/HapticsService';
 import { OfflineCache } from './native/OfflineCache';
 import { StatusBarService } from './native/StatusBarService';
+import { AttributionService } from './native/AttributionService';
 import { PushService } from './native/PushService';
 import { isNativeApp, openExternal } from './native/Platform';
 import { UserRhythmService } from './core/UserRhythmService';
@@ -5562,6 +5563,10 @@ class RhythmSequencer {
 
 // Inicializar quando a página carregar
 window.addEventListener('DOMContentLoaded', () => {
+  // Captura de atribuição — cobre o caso do cara entrar em gdrums.com.br?ref=LUCAS10
+  // diretamente na home do app (sem passar por landing/demo/register).
+  // Se ele já é user logado, o ref sobrescreve atribuição antiga (intenção comercial clara).
+  AttributionService.init();
   new RhythmSequencer();
   void 0; // initialized
 });
