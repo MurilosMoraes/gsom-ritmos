@@ -2884,7 +2884,7 @@ class RhythmSequencer {
           </div>
           <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.55);">
             <span style="width:22px;height:22px;border-radius:6px;background:rgba(139,92,246,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.68rem;font-weight:700;color:rgba(139,92,246,0.85);">2</span>
-            Toque em <strong style="color:#fff;">Ver mais</strong>
+            No menu do iOS, toque em <strong style="color:#fff;">Ver mais</strong> e role
           </div>
           <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.55);">
             <span style="width:22px;height:22px;border-radius:6px;background:rgba(62,232,167,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.68rem;font-weight:700;color:rgba(62,232,167,0.9);">3</span>
@@ -2957,14 +2957,15 @@ class RhythmSequencer {
     const stepsBy: Record<TutKey, TutStep[]> = {
       'ios-safari': [
         { n: '01', body: 'Toque no botão <strong>Compartilhar</strong> na barra do Safari (ícone de caixa com seta pra cima).' },
-        { n: '02', body: 'No menu que abre, role um pouco e toque em <strong>Ver mais</strong>.' },
+        { n: '02', body: 'Vai abrir o menu do iOS. Toque em <strong>Ver mais</strong> e role até encontrar <strong>Adicionar à Tela de Início</strong>.' },
         { n: '03', body: 'Toque em <strong>Adicionar à Tela de Início</strong>.' },
         { n: '04', body: 'Confirme tocando em <strong>Adicionar</strong> no canto superior direito.' },
       ],
       'ios-chrome': [
         { n: '01', body: 'Toque no botão <strong>Compartilhar</strong> no canto direito da barra de endereço do Chrome.' },
-        { n: '02', body: 'Role as opções e toque em <strong>Adicionar à Tela de Início</strong>.' },
-        { n: '03', body: 'Confirme tocando em <strong>Adicionar</strong> no canto superior direito.' },
+        { n: '02', body: 'Vai abrir o menu do iOS. Toque em <strong>Ver mais</strong> e role até encontrar <strong>Adicionar à Tela de Início</strong>.' },
+        { n: '03', body: 'Toque em <strong>Adicionar à Tela de Início</strong>.' },
+        { n: '04', body: 'Confirme tocando em <strong>Adicionar</strong> no canto superior direito.' },
       ],
       'android': [
         { n: '01', body: 'Toque no menu <strong>⋮</strong> (três pontos) no canto superior do Chrome.' },
