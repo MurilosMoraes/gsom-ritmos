@@ -5140,66 +5140,105 @@ class RhythmSequencer {
    * Click num item pula pra ele (comportamento igual ao botão Próximo/Anterior:
    * loadSetlistItem respeita o estado de play).
    */
+  /**
+   * Modal "pular pro ritmo X" do repertório (v2).
+   *
+   * Design idêntico aos outros modais da experience layer:
+   * - x-sheet (bottom-sheet em mobile, center em desktop)
+   * - lista de ritmos com número grande, nome + meta
+   * - "tocando" destacado em verde
+   * - auto-scroll pro atual
+   * - botão "Editar repertório" no rodapé pra abrir o editor completo
+   */
   private showSetlistPicker(): void {
     const items = this.setlistManager.getItems();
     if (items.length === 0) return;
     const currentIdx = this.setlistManager.getCurrentIndex();
 
     // Limpar instâncias anteriores (click duplo)
-    document.querySelectorAll('.setlist-picker-overlay').forEach(el => el.remove());
+    document.querySelectorAll('.x-overlay.x-picker').forEach(el => el.remove());
+
+    const escapeHtml = (s: string): string =>
+      s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
     const overlay = document.createElement('div');
-    overlay.className = 'account-modal-overlay setlist-picker-overlay';
+    overlay.className = 'x-overlay x-picker';
 
     const rows = items.map((item, i) => {
       const isCurrent = i === currentIdx;
-      const baseLine = item.baseRhythmName
-        ? `<span style="color:rgba(0,212,255,0.6);">${item.baseRhythmName}</span>${item.bpm ? ` · ${item.bpm} BPM` : ''}`
-        : item.bpm ? `${item.bpm} BPM` : '';
-      const personalBadge = item.userRhythmId
-        ? '<span style="font-size:0.55rem;color:rgba(139,92,246,0.6);letter-spacing:0.5px;margin-left:0.35rem;">MEU</span>'
+      const nameHtml = item.userRhythmId
+        ? `<span class="x-picker-personal">${escapeHtml(item.name)}</span>`
+        : escapeHtml(item.name);
+      const metaParts: string[] = [];
+      if (item.baseRhythmName) metaParts.push(`base: ${escapeHtml(item.baseRhythmName)}`);
+      if (item.bpm) metaParts.push(`${item.bpm} BPM`);
+      const metaHtml = metaParts.length
+        ? `<span class="x-picker-meta">${metaParts.join(' · ')}</span>`
         : '';
       return `
-        <button class="sp-row ${isCurrent ? 'sp-row-current' : ''}" data-index="${i}">
-          <span class="sp-num">${i + 1}</span>
-          <span class="sp-main">
-            <span class="sp-name">${item.name}${personalBadge}</span>
-            ${baseLine ? `<span class="sp-sub">${baseLine}</span>` : ''}
+        <button class="x-picker-row ${isCurrent ? 'x-picker-row-current' : ''}" data-index="${i}" type="button">
+          <span class="x-picker-num">${i + 1}</span>
+          <span class="x-picker-body">
+            <span class="x-picker-name">${nameHtml}</span>
+            ${metaHtml}
           </span>
-          ${isCurrent ? '<span class="sp-current-badge">tocando</span>' : ''}
+          ${isCurrent
+            ? '<span class="x-picker-now"><span class="x-picker-now-dot"></span>tocando</span>'
+            : '<svg class="x-picker-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'}
         </button>
       `;
     }).join('');
 
     overlay.innerHTML = `
-      <div class="account-modal" style="max-width:420px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">
-        <button class="account-modal-close" id="spClose">&times;</button>
-        <div class="account-header">
-          <div class="account-name">Repertório</div>
-          <div class="account-email">${items.length} ritmo${items.length !== 1 ? 's' : ''} · toque pra pular</div>
+      <div class="x-sheet" role="dialog" aria-label="Repertório">
+        <div class="x-grip"></div>
+        <div class="x-head">
+          <div>
+            <h2 class="x-head-title">Repertório</h2>
+            <div class="x-head-sub">${items.length} ritmo${items.length !== 1 ? 's' : ''} · toque pra pular</div>
+          </div>
+          <button class="x-close" id="xPickerClose" aria-label="Fechar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
-        <div class="sp-list" id="spList" style="overflow-y:auto;flex:1;padding:0 0.25rem 0.5rem;">${rows}</div>
+
+        <div class="x-body x-picker-body-wrap">
+          <div class="x-picker-list">${rows}</div>
+        </div>
+
+        <div class="x-picker-foot">
+          <button class="x-btn x-btn-ghost x-btn-full" id="xPickerEditBtn" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Editar repertório
+          </button>
+        </div>
       </div>
     `;
+
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('active'));
 
-    const close = () => {
+    const close = (): void => {
       overlay.classList.remove('active');
-      setTimeout(() => overlay.remove(), 200);
+      overlay.classList.add('x-exit');
+      setTimeout(() => overlay.remove(), 220);
+      document.removeEventListener('keydown', onEsc);
     };
-    overlay.querySelector('#spClose')?.addEventListener('click', close);
+    const onEsc = (e: KeyboardEvent): void => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onEsc);
+
+    overlay.querySelector('#xPickerClose')?.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
     // Scroll pro atual
-    const list = overlay.querySelector('#spList') as HTMLElement;
-    const currentRow = list?.querySelector('.sp-row-current') as HTMLElement | null;
+    const list = overlay.querySelector('.x-picker-list') as HTMLElement | null;
+    const currentRow = list?.querySelector('.x-picker-row-current') as HTMLElement | null;
     if (currentRow) {
       setTimeout(() => currentRow.scrollIntoView({ block: 'center', behavior: 'auto' }), 0);
     }
 
-    // Click → pular pra aquele item (usa mesmo caminho do botão próximo)
-    overlay.querySelectorAll<HTMLButtonElement>('.sp-row').forEach(row => {
+    // Click na linha → pular pro ritmo
+    overlay.querySelectorAll<HTMLButtonElement>('.x-picker-row').forEach(row => {
       row.addEventListener('click', async () => {
         const targetIdx = parseInt(row.dataset.index || '-1');
         if (targetIdx < 0 || targetIdx === this.setlistManager.getCurrentIndex()) {
@@ -5209,7 +5248,14 @@ class RhythmSequencer {
         close();
         const target = this.setlistManager.goTo(targetIdx);
         if (target) await this.loadSetlistItem(target);
+        HapticsService.light();
       });
+    });
+
+    // Editar repertório → fecha o picker e abre o editor completo
+    overlay.querySelector('#xPickerEditBtn')?.addEventListener('click', () => {
+      close();
+      document.getElementById('setlistEditBtn')?.click();
     });
   }
 
