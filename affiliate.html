@@ -469,6 +469,273 @@
     }
     .aff-share-btn svg { width: 16px; height: 16px; }
 
+    /* ─── Card de saque (destaque) ───────────────────────────── */
+    .aff-payout-card {
+      background: linear-gradient(145deg, rgba(62, 232, 167, 0.08) 0%, rgba(10, 10, 15, 0.4) 60%);
+      border: 1px solid rgba(62, 232, 167, 0.18);
+      padding: 1.5rem 1.4rem;
+    }
+    .aff-payout-head {
+      margin-bottom: 1.1rem;
+    }
+    .aff-payout-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(62, 232, 167, 0.85);
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+    .aff-payout-value {
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: #fff;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 0.4rem;
+    }
+    .aff-payout-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .aff-payout-btn {
+      width: 100%;
+      padding: 0.9rem 1.2rem;
+      background: #3ee8a7;
+      color: #062b1d;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.005em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      transition: opacity 0.15s, transform 0.08s;
+    }
+    .aff-payout-btn:hover:not(:disabled) { opacity: 0.92; }
+    .aff-payout-btn:active:not(:disabled) { transform: scale(0.98); }
+    .aff-payout-btn:disabled {
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.3);
+      cursor: not-allowed;
+    }
+    .aff-payout-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-top: 0.9rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.75rem;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.55);
+    }
+    .aff-payout-note svg { color: rgba(62, 232, 167, 0.7); flex-shrink: 0; margin-top: 2px; }
+    .aff-payout-note strong { color: #fff; font-weight: 600; }
+
+    /* Histórico de saques */
+    .aff-payouts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .aff-payout-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.75rem 0.85rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .aff-payout-row-left {
+      display: flex; flex-direction: column; gap: 0.15rem;
+      min-width: 0;
+    }
+    .aff-payout-row-amount {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+    .aff-payout-row-meta {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .aff-payout-row-status {
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 0.28rem 0.55rem;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+    .aff-payout-row-status.pending {
+      background: rgba(240, 180, 41, 0.15);
+      color: #f0b429;
+    }
+    .aff-payout-row-status.paid {
+      background: rgba(62, 232, 167, 0.15);
+      color: #3ee8a7;
+    }
+    .aff-payout-row-status.canceled {
+      background: rgba(255, 107, 131, 0.12);
+      color: #ff6b83;
+    }
+
+    /* ─── Modal PIX ───────────────────────────────────────────── */
+    .aff-modal-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(2, 2, 10, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0;
+      font-family: inherit;
+    }
+    .aff-modal-overlay.active { display: flex; }
+    @media (min-width: 640px) {
+      .aff-modal-overlay { align-items: center; padding: 1.5rem; }
+    }
+    .aff-modal {
+      background: #0d0d1c;
+      border: 1px solid var(--border);
+      border-top-left-radius: 22px;
+      border-top-right-radius: 22px;
+      width: 100%;
+      max-width: 460px;
+      padding: 1.6rem 1.4rem calc(1.6rem + env(safe-area-inset-bottom, 0));
+      position: relative;
+      animation: affModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @media (min-width: 640px) {
+      .aff-modal { border-radius: 20px; }
+    }
+    @keyframes affModalIn {
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .aff-modal-close {
+      position: absolute; top: 0.85rem; right: 0.85rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      color: rgba(255, 255, 255, 0.65);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.12s;
+    }
+    .aff-modal-close:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+    .aff-modal-overline {
+      font-size: 0.66rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: rgba(62, 232, 167, 0.85);
+      font-weight: 700;
+      margin-bottom: 0.45rem;
+    }
+    .aff-modal-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.55rem;
+      color: #fff;
+    }
+    .aff-modal-title span {
+      color: #3ee8a7;
+      font-variant-numeric: tabular-nums;
+    }
+    .aff-modal-desc {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: var(--text-soft);
+      margin: 0 0 1.3rem;
+    }
+    .aff-modal-desc strong { color: #fff; font-weight: 600; }
+    .aff-modal-field {
+      margin-bottom: 0.95rem;
+    }
+    .aff-modal-field label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.55);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.35rem;
+    }
+    .aff-modal-input,
+    .aff-modal-select {
+      width: 100%;
+      padding: 0.7rem 0.85rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.92rem;
+      outline: none;
+      transition: border-color 0.15s, background 0.15s;
+      -webkit-appearance: none;
+    }
+    .aff-modal-input:focus,
+    .aff-modal-select:focus {
+      border-color: rgba(62, 232, 167, 0.55);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .aff-modal-hint {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+      line-height: 1.4;
+    }
+    .aff-modal-error {
+      background: rgba(255, 107, 131, 0.08);
+      border: 1px solid rgba(255, 107, 131, 0.25);
+      color: #ff8a9d;
+      padding: 0.55rem 0.75rem;
+      border-radius: 9px;
+      font-size: 0.82rem;
+      margin-bottom: 0.85rem;
+    }
+    .aff-modal-submit {
+      width: 100%;
+      padding: 0.95rem;
+      background: #fff;
+      color: #0d0d1c;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      position: relative;
+      transition: opacity 0.15s;
+    }
+    .aff-modal-submit:hover:not(:disabled) { opacity: 0.92; }
+    .aff-modal-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+    .aff-modal-submit .spinner {
+      position: absolute; top: 50%; left: 50%;
+      margin: -9px 0 0 -9px;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(13, 13, 28, 0.3);
+      border-top-color: #0d0d1c;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    .aff-modal-submit.loading .label { visibility: hidden; }
+    .aff-modal-submit.loading .spinner { display: block !important; }
+
     /* PIX card */
     .aff-pix {
       display: flex;
@@ -711,12 +978,41 @@
         <div class="aff-kpi-hint" id="affCommissionHint">&nbsp;</div>
       </div>
       <div class="aff-kpi">
-        <div class="aff-kpi-label">A receber</div>
-        <div class="aff-kpi-value pending" id="affPending">
+        <div class="aff-kpi-label">Em carência (7d)</div>
+        <div class="aff-kpi-value" id="affHoldback">
           <span class="aff-skeleton" style="display:inline-block;width:5rem;height:1.5rem;"></span>
         </div>
-        <div class="aff-kpi-hint">pago via PIX mensalmente</div>
+        <div class="aff-kpi-hint">janela de reembolso — libera automaticamente</div>
       </div>
+    </section>
+
+    <!-- Card de saque: destaque — o afiliado fez pra isso -->
+    <section class="aff-card aff-payout-card">
+      <div class="aff-payout-head">
+        <div class="aff-payout-label">Disponível para saque</div>
+        <div class="aff-payout-value" id="affAvailable">
+          <span class="aff-skeleton" style="display:inline-block;width:7rem;height:2rem;"></span>
+        </div>
+        <div class="aff-payout-sub" id="affAvailableSub">mínimo R$ 50 · PIX em até 48h</div>
+      </div>
+
+      <button class="aff-payout-btn" id="affRequestPayout" type="button" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        <span id="affRequestPayoutLabel">Solicitar saque</span>
+      </button>
+
+      <div class="aff-payout-note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Comissão fica em <strong>carência de 7 dias</strong> após cada venda (janela de reembolso). Depois disso, entra automaticamente em "Disponível".</span>
+      </div>
+    </section>
+
+    <!-- Histórico de saques (só aparece se tiver algum) -->
+    <section class="aff-card" id="affPayoutsHistory" style="display:none;">
+      <div class="aff-card-header">
+        <div class="aff-card-title">Meus saques</div>
+      </div>
+      <div class="aff-payouts-list" id="affPayoutsList"></div>
     </section>
 
     <!-- Cupom -->
@@ -824,6 +1120,43 @@
 
 <!-- Toast global -->
 <div class="aff-toast" id="affToast" role="status" aria-live="polite"></div>
+
+<!-- Modal: solicitar saque / cadastrar PIX -->
+<div class="aff-modal-overlay" id="affPayoutModal" role="dialog" aria-labelledby="affPayoutModalTitle" aria-hidden="true">
+  <div class="aff-modal">
+    <button class="aff-modal-close" id="affPayoutModalClose" aria-label="Fechar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="aff-modal-overline">Saque via PIX</div>
+    <h2 class="aff-modal-title" id="affPayoutModalTitle">Receber <span id="affPayoutModalAmount">—</span></h2>
+    <p class="aff-modal-desc">
+      O valor cai na sua conta em até <strong>48 horas úteis</strong>. Confirme a chave PIX abaixo.
+    </p>
+
+    <div class="aff-modal-field">
+      <label for="affPayoutPixType">Tipo de chave</label>
+      <select id="affPayoutPixType" class="aff-modal-select">
+        <option value="CPF">CPF</option>
+        <option value="Email">Email</option>
+        <option value="Telefone">Telefone</option>
+        <option value="Aleatória">Chave aleatória</option>
+      </select>
+    </div>
+
+    <div class="aff-modal-field">
+      <label for="affPayoutPixKey">Chave PIX</label>
+      <input type="text" id="affPayoutPixKey" class="aff-modal-input" placeholder="Digite sua chave PIX" autocomplete="off" />
+      <div class="aff-modal-hint">Essa chave será usada em todos os saques futuros.</div>
+    </div>
+
+    <div class="aff-modal-error" id="affPayoutError" style="display:none;"></div>
+
+    <button class="aff-modal-submit" id="affPayoutSubmit" type="button">
+      <span class="label">Confirmar saque</span>
+      <span class="spinner" style="display:none;"></span>
+    </button>
+  </div>
+</div>
 
 <script>
 const API = 'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api';
@@ -954,12 +1287,17 @@ function renderDashboard(data) {
   const sales = a.total_sales || 0;
   const revenue = a.total_revenue || 0;
   const commission = a.total_commission || 0;
-  const pending = (a.total_commission || 0) - (a.paid_commission || 0);
+  const balance = data.balance || {};
+  const available = balance.available_cents || 0;
+  const holdback = balance.holdback_cents || 0;
+  const pendingPayout = balance.pending_payout_cents || 0;
+  const minPayout = data.min_payout_cents || 5000;
 
   animateCounter(document.getElementById('affSales'), 0, sales, 900);
   animateCounter(document.getElementById('affRevenue'), 0, revenue, 900, fmtBRL);
   animateCounter(document.getElementById('affCommission'), 0, commission, 900, fmtBRL);
-  animateCounter(document.getElementById('affPending'), 0, pending, 900, fmtBRL);
+  animateCounter(document.getElementById('affHoldback'), 0, holdback, 900, fmtBRL);
+  animateCounter(document.getElementById('affAvailable'), 0, available, 900, fmtBRL);
 
   // Hint contextual
   const salesHint = document.getElementById('affSalesHint');
@@ -971,7 +1309,65 @@ function renderDashboard(data) {
   const paid = a.paid_commission || 0;
   commHint.textContent = paid > 0
     ? fmtBRL(paid) + ' já pago'
-    : 'pago via PIX após acumular';
+    : 'pago via PIX após solicitar saque';
+
+  // ─── Botão de saque ──────────────────────────────────
+  const payoutBtn = document.getElementById('affRequestPayout');
+  const payoutBtnLabel = document.getElementById('affRequestPayoutLabel');
+  const payoutSub = document.getElementById('affAvailableSub');
+
+  if (pendingPayout > 0) {
+    payoutBtn.disabled = true;
+    payoutBtnLabel.textContent = 'Saque em andamento · ' + fmtBRL(pendingPayout);
+    payoutSub.textContent = 'Aguarde o processamento — geralmente até 48h úteis.';
+  } else if (available >= minPayout) {
+    payoutBtn.disabled = false;
+    payoutBtnLabel.textContent = 'Solicitar saque de ' + fmtBRL(available);
+    payoutSub.textContent = 'Recebe no PIX em até 48h úteis.';
+  } else if (available > 0) {
+    payoutBtn.disabled = true;
+    const falta = minPayout - available;
+    payoutBtnLabel.textContent = 'Falta ' + fmtBRL(falta) + ' pro saque';
+    payoutSub.textContent = 'Mínimo pra saque: ' + fmtBRL(minPayout) + ' · PIX em até 48h úteis.';
+  } else {
+    payoutBtn.disabled = true;
+    payoutBtnLabel.textContent = 'Sem saldo disponível ainda';
+    payoutSub.textContent = 'Mínimo pra saque: ' + fmtBRL(minPayout);
+  }
+
+  // Guarda pra usar ao clicar no botão
+  window.__affState = {
+    available, minPayout,
+    pixKey: a.pix_key || '',
+    pixKeyType: a.pix_key_type || a.pix_key_label || 'CPF',
+  };
+
+  // ─── Lista de saques (histórico) ─────────────────────
+  const payouts = data.payouts || [];
+  const historySec = document.getElementById('affPayoutsHistory');
+  const historyList = document.getElementById('affPayoutsList');
+  if (payouts.length > 0) {
+    historySec.style.display = 'block';
+    historyList.innerHTML = payouts.map(function(p) {
+      const date = new Date(p.requested_at).toLocaleDateString('pt-BR');
+      const statusLabel = p.status === 'pending' ? 'em análise'
+        : p.status === 'paid' ? 'pago'
+        : 'cancelado';
+      const paidAt = p.paid_at
+        ? ' · pago em ' + new Date(p.paid_at).toLocaleDateString('pt-BR')
+        : '';
+      return '<div class="aff-payout-row">' +
+        '<div class="aff-payout-row-left">' +
+          '<div class="aff-payout-row-amount">' + fmtBRL(p.amount_cents) + '</div>' +
+          '<div class="aff-payout-row-meta">solicitado em ' + date + paidAt + '</div>' +
+        '</div>' +
+        '<span class="aff-payout-row-status ' + p.status + '">' + statusLabel + '</span>' +
+      '</div>';
+    }).join('');
+  } else {
+    historySec.style.display = 'none';
+    historyList.innerHTML = '';
+  }
 
   // Cupom
   document.getElementById('affCouponCode').textContent = a.coupon_code;
@@ -1059,6 +1455,83 @@ function logout() {
   document.getElementById('affPassword').value = '';
 }
 document.getElementById('affLogoutBtn').addEventListener('click', logout);
+
+// ─── Modal de saque ─────────────────────────────────────────────────
+const payoutModal = document.getElementById('affPayoutModal');
+const payoutModalTitle = document.getElementById('affPayoutModalAmount');
+const payoutPixInput = document.getElementById('affPayoutPixKey');
+const payoutPixType = document.getElementById('affPayoutPixType');
+const payoutError = document.getElementById('affPayoutError');
+const payoutSubmit = document.getElementById('affPayoutSubmit');
+
+function openPayoutModal() {
+  const state = window.__affState || {};
+  payoutModalTitle.textContent = fmtBRL(state.available || 0);
+  payoutPixInput.value = state.pixKey || '';
+  if (state.pixKeyType) payoutPixType.value = state.pixKeyType;
+  payoutError.style.display = 'none';
+  payoutError.textContent = '';
+  payoutSubmit.classList.remove('loading');
+  payoutSubmit.disabled = false;
+  payoutModal.classList.add('active');
+  setTimeout(() => payoutPixInput.focus(), 100);
+}
+function closePayoutModal() {
+  payoutModal.classList.remove('active');
+}
+
+document.getElementById('affRequestPayout').addEventListener('click', openPayoutModal);
+document.getElementById('affPayoutModalClose').addEventListener('click', closePayoutModal);
+payoutModal.addEventListener('click', (e) => { if (e.target === payoutModal) closePayoutModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && payoutModal.classList.contains('active')) closePayoutModal(); });
+
+payoutSubmit.addEventListener('click', async () => {
+  const pix = payoutPixInput.value.trim();
+  const pixLabel = payoutPixType.value;
+  payoutError.style.display = 'none';
+  payoutError.textContent = '';
+
+  if (!pix || pix.length < 5) {
+    payoutError.textContent = 'Digite uma chave PIX válida.';
+    payoutError.style.display = 'block';
+    return;
+  }
+
+  payoutSubmit.classList.add('loading');
+  payoutSubmit.disabled = true;
+
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'request_payout',
+        token,
+        pix_key: pix,
+        pix_key_label: pixLabel,
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      payoutError.textContent = data.error || 'Não foi possível processar o saque.';
+      payoutError.style.display = 'block';
+      payoutSubmit.classList.remove('loading');
+      payoutSubmit.disabled = false;
+      return;
+    }
+
+    closePayoutModal();
+    toast('Saque solicitado! Vamos processar em até 48h.');
+    // Recarrega dashboard pra refletir estado
+    loadDashboard();
+  } catch (err) {
+    payoutError.textContent = 'Erro de rede. Tenta de novo em instantes.';
+    payoutError.style.display = 'block';
+    payoutSubmit.classList.remove('loading');
+    payoutSubmit.disabled = false;
+  }
+});
 
 // ─── Init ───────────────────────────────────────────────────────────
 if (token) {
