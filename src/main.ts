@@ -440,23 +440,23 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '2.6',
+    version: '2.7',
     overline: 'Atualização',
-    title: 'Mais samba na cozinha.',
-    subtitle: 'Chegaram Partido Alto, Roda de Samba, Samba Enredo e Corinho de Fogo (pandeiro). Biblioteca agora com 90 ritmos.',
+    title: 'Mais samba, preview de ritmo e Modo Show.',
+    subtitle: 'Agora toca antes de adicionar no repertório, tem botão pra entrar em modo palco e chegaram 4 ritmos de samba. Biblioteca com 90 ritmos.',
     sections: [
       {
-        label: '+4 ritmos',
+        label: '+4 ritmos de samba',
         featured: true,
-        body: 'Partido Alto, Roda de Samba e Samba Enredo pra quem toca o Brasil de raiz — e Corinho de Fogo (pandeiro) pro louvor em ritmo de samba. Cada um com viradas, intros e finalizações.',
+        body: 'Partido Alto, Roda de Samba, Samba Enredo e Corinho de Fogo (pandeiro). Cada um com viradas, intros e finalizações — prontos pro palco.',
       },
       {
-        label: 'Pandeiro e cajón',
-        body: '3 variações de pandeiro e 3 de cajón no seletor de sons. Já vêm em ritmos prontos: Samba (pandeiro), Vaneira (cajón), Arrocha (cajón), Pop Rock (cajón), Balada 6/8 (cajón) e Guarânia (cajón).',
+        label: 'Preview antes de adicionar',
+        body: 'No editor de repertório, toque no botão verde ▶ ao lado de qualquer ritmo pra ouvir antes. Toca alguns compassos sem quebrar o que já está rodando.',
       },
       {
-        label: 'Groove por célula',
-        body: 'Adianta ou atrasa cada batida em até meio step — contratempo de reggae e swing de verdade. Pressione uma célula ativa e use o slider de Groove.',
+        label: 'Modo Show',
+        body: 'Botão "Modo Show" no menu: tela maior, botões maiores, tela não apaga no palco. Um toque pra entrar, um pra sair.',
       },
     ],
   };
