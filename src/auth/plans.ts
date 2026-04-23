@@ -133,6 +133,17 @@ class PlansPage {
 
     if (!input || !btn) return;
 
+    // Normaliza pra uppercase enquanto digita (mantém cursor position)
+    input.addEventListener('input', () => {
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+      const upper = input.value.toUpperCase();
+      if (input.value !== upper) {
+        input.value = upper;
+        if (start !== null && end !== null) input.setSelectionRange(start, end);
+      }
+    });
+
     // Enter aplica
     input.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') this.applyCoupon();
