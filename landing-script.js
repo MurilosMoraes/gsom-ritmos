@@ -148,4 +148,14 @@ if (heroStats) {
   statsObserver.observe(heroStats);
 }
 
+// Atualiza contagem de ritmos do manifest (fonte única, evita hardcode desatualizado)
+fetch('/rhythm/manifest.json')
+  .then(r => r.json())
+  .then(m => {
+    const n = Array.isArray(m?.rhythms) ? m.rhythms.length : null;
+    if (!n) return;
+    document.querySelectorAll('.js-rhythm-count').forEach(el => { el.textContent = String(n); });
+  })
+  .catch(() => { /* fallback do HTML fica válido */ });
+
 console.log('🎵 GDrums Landing Page loaded successfully!');

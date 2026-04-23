@@ -436,19 +436,19 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '2.5',
+    version: '2.6',
     overline: 'Atualização',
-    title: 'Chegaram pandeiro e cajón.',
-    subtitle: 'O que muita gente tava pedindo: sons acústicos pra quem toca em formato voz-e-violão. E mais 14 ritmos novos.',
+    title: 'Mais samba na cozinha.',
+    subtitle: 'Chegaram Partido Alto, Roda de Samba, Samba Enredo e Corinho de Fogo (pandeiro). Biblioteca agora com 90 ritmos.',
     sections: [
       {
-        label: 'Pandeiro e cajón',
+        label: '+4 ritmos',
         featured: true,
-        body: '3 variações de pandeiro e 3 de cajón no seletor de sons. Já vêm em ritmos prontos: Samba (pandeiro), Vaneira (cajón), Arrocha (cajón), Pop Rock (cajón), Balada 6/8 (cajón) e Guarânia (cajón).',
+        body: 'Partido Alto, Roda de Samba e Samba Enredo pra quem toca o Brasil de raiz — e Corinho de Fogo (pandeiro) pro louvor em ritmo de samba. Cada um com viradas, intros e finalizações.',
       },
       {
-        label: '+14 ritmos',
-        body: 'Bachata, Cumbia, Brega, Funk Groove, Balada, Balada Sertaneja, Bonde do Forró, Reggae 2, Reggae Pop, Rock \'n\' Roll, Pop Rock (cajón), Samba (pandeiro), Vaneira (cajón), Arrocha (cajón), Balada 6/8 (cajón), Guarânia (cajón). Biblioteca agora com 86.',
+        label: 'Pandeiro e cajón',
+        body: '3 variações de pandeiro e 3 de cajón no seletor de sons. Já vêm em ritmos prontos: Samba (pandeiro), Vaneira (cajón), Arrocha (cajón), Pop Rock (cajón), Balada 6/8 (cajón) e Guarânia (cajón).',
       },
       {
         label: 'Groove por célula',

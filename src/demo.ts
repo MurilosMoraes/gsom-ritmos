@@ -10,6 +10,7 @@ import { UIManager } from './ui/UIManager';
 import { MAX_CHANNELS, type PatternType } from './types';
 import { HapticsService } from './native/HapticsService';
 import { AttributionService } from './native/AttributionService';
+import { RHYTHM_COUNT, LOCKED_RHYTHM_COUNT, updateRhythmCountInDom } from './utils/rhythmCount';
 
 // Só 3 ritmos ficam liberados. O resto aparece bloqueado na tira
 // pra mostrar ao user o tamanho REAL da biblioteca — peça central pra
@@ -96,8 +97,8 @@ class DemoPlayer {
   private tourTooltip: HTMLElement | null = null;
   private rhythmsTrocados = 0;
   private conversionShown = false;
-  // Lido do manifest real — evita hardcode de 86 que fica desatualizado
-  private totalRhythms = 86;
+  // Lido do manifest real em runtime. RHYTHM_COUNT é fallback (fonte única)
+  private totalRhythms = RHYTHM_COUNT;
 
   constructor() {
     if (this.isDemoExpired()) {
@@ -115,7 +116,8 @@ class DemoPlayer {
 
     this.setupCallbacks();
     this.setupUI();
-    this.loadManifestCount(); // Atualiza totalRhythms e re-renderiza counter
+    updateRhythmCountInDom();           // atualiza .js-rhythm-count imediatamente
+    this.loadManifestCount();            // e também o contador dinâmico do demo
     this.updateCounter();
     // Timer da demo só inicia no 1º play — não ao abrir a página
     this.saveFingerprint();
@@ -212,7 +214,7 @@ class DemoPlayer {
 
   /**
    * Busca o manifest real pra pegar o número de ritmos do catálogo.
-   * Em caso de falha (offline, manifest quebrado), mantém fallback 86.
+   * Em caso de falha (offline, manifest quebrado), mantém fallback RHYTHM_COUNT.
    */
   private async loadManifestCount(): Promise<void> {
     try {
@@ -490,7 +492,7 @@ class DemoPlayer {
         <h3 class="demo-convert-title">Isso é só uma prévia.</h3>
         <p class="demo-convert-body">
           Você acabou de tocar com acompanhamento profissional.
-          Cria conta pra liberar os outros 83 ritmos, conectar pedal
+          Cria conta pra liberar os outros ${LOCKED_RHYTHM_COUNT} ritmos, conectar pedal
           Bluetooth e montar sua setlist.
         </p>
         <div class="demo-convert-offer">
@@ -719,7 +721,7 @@ class DemoPlayer {
         <div class="demo-expired-overline">Você tocou bem</div>
         <h2>Agora é pegar a banda completa.</h2>
         <p>
-          Você tocou 3 ritmos. A biblioteca tem <strong>86</strong> —
+          Você tocou 3 ritmos. A biblioteca tem <strong>${this.totalRhythms}</strong> —
           Vaneira, Sertanejo, Gospel, Pagode, Forró, Reggae, Rock e muito
           mais, cada um com viradas, intros e finais prontos pra palco.
         </p>
@@ -730,7 +732,7 @@ class DemoPlayer {
         </div>
 
         <div class="demo-expired-features">
-          <div class="demo-expired-feature"><span>86</span>ritmos completos</div>
+          <div class="demo-expired-feature"><span>${this.totalRhythms}</span>ritmos completos</div>
           <div class="demo-expired-feature"><span>BT</span>pedal Bluetooth</div>
           <div class="demo-expired-feature"><span>∞</span>offline no palco</div>
         </div>
