@@ -822,6 +822,167 @@
 }
 
 /* ══════════════════════════════════════════════════════
+   SETLIST PICKER — modal de pular pro ritmo X
+   ══════════════════════════════════════════════════════ */
+
+.x-picker .x-sheet { max-width: 440px; max-height: 85vh; }
+.x-picker-body-wrap { padding-top: 0.25rem; }
+
+.x-picker-list {
+  display: flex; flex-direction: column;
+  gap: 0.35rem;
+}
+
+.x-picker-row {
+  display: flex; align-items: center;
+  gap: 0.8rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--x-surface);
+  border: 1px solid var(--x-border);
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--x-text);
+  transition: background 0.12s, border-color 0.12s, transform 0.08s;
+  -webkit-tap-highlight-color: transparent;
+  min-height: var(--x-tap-lg);
+  width: 100%;
+}
+.x-picker-row:hover {
+  background: var(--x-surface2);
+  border-color: var(--x-border-strong);
+}
+.x-picker-row:active { transform: scale(0.99); }
+
+.x-picker-row-current {
+  background: rgba(var(--x-accent-rgb), 0.1);
+  border-color: rgba(var(--x-accent-rgb), 0.4);
+}
+.x-picker-row-current:hover {
+  background: rgba(var(--x-accent-rgb), 0.15);
+  border-color: rgba(var(--x-accent-rgb), 0.5);
+}
+
+.x-picker-num {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--x-text3);
+  min-width: 28px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+.x-picker-row-current .x-picker-num {
+  color: var(--x-accent);
+}
+
+.x-picker-body {
+  flex: 1;
+  min-width: 0;
+  display: flex; flex-direction: column;
+  gap: 0.15rem;
+}
+.x-picker-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--x-text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.x-picker-personal { color: var(--x-purple); }
+.x-picker-meta {
+  font-size: 0.72rem;
+  color: var(--x-text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.x-picker-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--x-accent);
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(var(--x-accent-rgb), 0.12);
+  flex-shrink: 0;
+}
+.x-picker-now-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--x-accent);
+  box-shadow: 0 0 0 3px rgba(var(--x-accent-rgb), 0.2);
+  animation: xPickerPulse 1.4s ease-in-out infinite;
+}
+@keyframes xPickerPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(0.85); }
+}
+
+.x-picker-chevron {
+  color: var(--x-text3);
+  flex-shrink: 0;
+  transition: transform 0.12s, color 0.12s;
+}
+.x-picker-row:hover .x-picker-chevron {
+  color: var(--x-text);
+  transform: translateX(2px);
+}
+
+.x-picker-foot {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--x-border);
+  background: var(--x-bg);
+}
+
+/* ══════════════════════════════════════════════════════
+   FAV-CENTER — dica visual que é clicável (descoberta)
+   ══════════════════════════════════════════════════════ */
+
+.fav-center-clickable {
+  position: relative;
+}
+.fav-center-clickable::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 14px;
+  height: 14px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(0,212,255,0.55)' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><line x1='8' y1='6' x2='21' y2='6'/><line x1='8' y1='12' x2='21' y2='12'/><line x1='8' y1='18' x2='21' y2='18'/><line x1='3' y1='6' x2='3.01' y2='6'/><line x1='3' y1='12' x2='3.01' y2='12'/><line x1='3' y1='18' x2='3.01' y2='18'/></svg>");
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.7;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.fav-center-clickable:hover::after { opacity: 1; }
+
+/* Subtexto "ver repertório" dentro da fav-center — aparece debaixo do meta
+   só em desktop onde dá pra caber. Em mobile, o ícone já sinaliza. */
+.fav-center-clickable .fav-position {
+  position: relative;
+  padding-right: 14px;
+}
+.fav-center-clickable .fav-position::after {
+  content: " · ver lista";
+  color: rgba(0, 212, 255, 0.5);
+  font-style: normal;
+}
+@media (max-width: 420px) {
+  .fav-center-clickable .fav-position::after { content: ""; }
+}
+
+/* ══════════════════════════════════════════════════════
    MODO SHOW (stage mode) — diferencial de palco
    - esconde topbar, menu, admin
    - keep-awake ativo
