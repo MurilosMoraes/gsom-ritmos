@@ -310,6 +310,7 @@ export class SetlistEditorUI {
             name: rhythm.name,
             path: rhythm.path,
             userRhythmId: rhythm.userRhythmId,
+            bpm: rhythm.bpm,
           });
         });
         actions.appendChild(previewBtn);
@@ -408,6 +409,7 @@ export class SetlistEditorUI {
             name: item.name,
             path: item.path,
             userRhythmId: item.userRhythmId,
+            bpm: item.bpm,
           });
         });
         actions.appendChild(previewBtn);
@@ -502,7 +504,7 @@ export class SetlistEditorUI {
    * Toggle do preview: se já tá tocando esse id, para; senão, inicia.
    * Resolve o rhythmData sob demanda via callback do chamador.
    */
-  private async togglePreview(id: string, item: { name: string; path: string; userRhythmId?: string }): Promise<void> {
+  private async togglePreview(id: string, item: { name: string; path: string; userRhythmId?: string; bpm?: number }): Promise<void> {
     if (!this.previewPlayer) return;
     if (this.previewPlayer.isActive(id)) {
       this.previewPlayer.stop();
@@ -519,7 +521,10 @@ export class SetlistEditorUI {
       if (!catalogItem) return;
       const rhythmData = await this.resolveRhythmData(catalogItem);
       if (!rhythmData) return;
-      await this.previewPlayer.play(id, rhythmData);
+      // BPM correto: prioriza item.bpm (que o catalog popula pro pessoal);
+      // pro de biblioteca, deixa o rhythmData.tempo original.
+      const bpmOverride = item.bpm || catalogItem.bpm;
+      await this.previewPlayer.play(id, rhythmData, bpmOverride ? { bpmOverride } : undefined);
     } catch (err) {
       console.warn('[SetlistEditor] preview falhou:', err);
     }

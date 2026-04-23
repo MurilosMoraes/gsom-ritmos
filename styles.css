@@ -519,9 +519,14 @@ input:checked + .slider:before {
   flex-shrink: 0;
 }
 
-/* Barra: anterior | ATUAL | proximo */
+/* Barra: anterior | ATUAL | proximo
+   Layout estável — larguras laterais FIXAS (grid), centro ocupa o resto.
+   Com flex:1/1.6, nomes longos empurravam o layout e quebravam a hierarquia
+   visual. Agora nome longo simplesmente trunca com ellipsis no próprio slot.
+*/
 .fav-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   align-items: stretch;
   background: rgba(10, 10, 30, 0.7);
   backdrop-filter: blur(20px);
@@ -529,11 +534,11 @@ input:checked + .slider:before {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 16px;
   overflow: hidden;
+  min-height: 64px;
 }
 
 /* Laterais (anterior / proximo) */
 .fav-side {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -543,11 +548,12 @@ input:checked + .slider:before {
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, transform 0.1s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   user-select: none;
-  min-height: 56px;
+  min-width: 0;
+  overflow: hidden;
 }
 .fav-side:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.04);
@@ -556,7 +562,7 @@ input:checked + .slider:before {
   background: rgba(255, 255, 255, 0.06);
   transform: scale(0.97);
 }
-.fav-side:disabled { cursor: default; }
+.fav-side:disabled { cursor: default; opacity: 0.35; }
 
 .fav-side-label {
   font-size: 0.55rem;
@@ -564,67 +570,79 @@ input:checked + .slider:before {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
 }
 .fav-side-name {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.55);
   text-transform: capitalize;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  width: 100%;
+  text-align: center;
+  line-height: 1.2;
 }
 
 /* Centro (ritmo atual) */
 .fav-center {
-  flex: 1.6;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.6rem 0.5rem;
+  padding: 0.55rem 0.6rem;
   border-left: 1px solid rgba(255, 255, 255, 0.06);
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(0, 212, 255, 0.03);
   min-width: 0;
+  overflow: hidden;
+  gap: 0.1rem;
 }
 
 .fav-num {
-  font-size: 2rem;
+  font-size: 1.6rem;
   font-weight: 900;
   color: rgba(0, 212, 255, 0.3);
   line-height: 1;
   letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
+/* Nome do atual — font-size adaptativo pra não dominar quando o nome é longo.
+   Sempre trunca com ellipsis; nunca estica o layout. */
 .fav-current-name {
-  font-size: 1.2rem;
+  font-size: clamp(0.95rem, 3.8vw, 1.2rem);
   font-weight: 700;
   color: #fff;
   text-transform: capitalize;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
-  line-height: 1.3;
+  width: 100%;
+  text-align: center;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
 }
 .fav-current-meta {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 500;
   color: rgba(0, 212, 255, 0.55);
   letter-spacing: 0.3px;
   line-height: 1.2;
-  margin-top: 0.1rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  width: 100%;
+  text-align: center;
 }
 .fav-current-meta:empty { display: none; }
 .fav-position {
   font-size: 0.6rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.25);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 .fav-center.fav-center-clickable {
   cursor: pointer;
