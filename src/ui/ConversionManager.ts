@@ -366,11 +366,16 @@ export class ConversionManager {
     const trigger = TRIGGERS[key];
     if (!trigger) return;
 
-    // Se user veio de afiliado, não sobrescrever cupom dele
-    const fromAffiliate = this.cameFromAffiliate();
+    // Determina o cupom a aplicar:
+    //  - Se user veio de afiliado (?ref=X) E o trigger skip-if-affiliate,
+    //    usa o cupom DO AFILIADO (em vez de TRIAL10 genérico)
+    //  - Caso contrário, usa o cupom do próprio trigger (TRIAL10)
+    // Assim, o afiliado nunca perde a comissão — o user dele sempre
+    // aterrissa no /plans?ref=<cupom_do_afiliado>.
     let coupon = trigger.coupon;
-    if (trigger.skipAfterAffiliate && fromAffiliate) {
-      coupon = undefined; // modal aparece mas sem forçar outro cupom
+    if (trigger.skipAfterAffiliate) {
+      const affCoupon = this.getAffiliateCoupon();
+      if (affCoupon) coupon = affCoupon;
     }
 
     this.markFired(key);
@@ -378,17 +383,21 @@ export class ConversionManager {
   }
 
   /**
-   * Detecta se o user veio via afiliado (tem ?ref=X persistido na atribuição).
-   * Se veio, gatilho não vai sobrescrever o cupom do afiliado com o genérico.
+   * Retorna o coupon_code do afiliado que trouxe o user, ou null se
+   * não veio de afiliado. Lê direto da atribuição salva no localStorage.
    */
-  private cameFromAffiliate(): boolean {
+  private getAffiliateCoupon(): string | null {
     try {
       const raw = localStorage.getItem('gdrums-attr-v1');
-      if (!raw) return false;
+      if (!raw) return null;
       const attr = JSON.parse(raw);
-      return attr.source === 'register_referral' || attr.medium === 'affiliate';
+      const isAffiliate = attr.source === 'register_referral' || attr.medium === 'affiliate';
+      if (!isAffiliate) return null;
+      // campaign contém o coupon_code do afiliado (lowercased em capture;
+      // /plans normaliza via upper() na RPC get_affiliate_coupon)
+      return attr.campaign || null;
     } catch {
-      return false;
+      return null;
     }
   }
 
