@@ -2877,14 +2877,18 @@ class RhythmSequencer {
         </div>
 
         ${isIOS ? `
-        <div style="display:flex;flex-direction:column;gap:0.6rem;margin-bottom:1rem;">
-          <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.5);">
-            <span style="width:24px;height:24px;border-radius:6px;background:rgba(0,212,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.7rem;font-weight:700;color:rgba(0,212,255,0.8);">1</span>
-            Toque em <strong style="color:#fff;">Compartilhar</strong> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.7)" stroke-width="2" style="flex-shrink:0;"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        <div style="display:flex;flex-direction:column;gap:0.55rem;margin-bottom:1rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.55);">
+            <span style="width:22px;height:22px;border-radius:6px;background:rgba(0,212,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.68rem;font-weight:700;color:rgba(0,212,255,0.85);">1</span>
+            Toque em <strong style="color:#fff;">Compartilhar</strong> <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.7)" stroke-width="2" style="flex-shrink:0;"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
           </div>
-          <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.5);">
-            <span style="width:24px;height:24px;border-radius:6px;background:rgba(139,92,246,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.7rem;font-weight:700;color:rgba(139,92,246,0.8);">2</span>
-            <strong style="color:#fff;">Adicionar a Tela de Inicio</strong>
+          <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.55);">
+            <span style="width:22px;height:22px;border-radius:6px;background:rgba(139,92,246,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.68rem;font-weight:700;color:rgba(139,92,246,0.85);">2</span>
+            Toque em <strong style="color:#fff;">Ver mais</strong>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.55);">
+            <span style="width:22px;height:22px;border-radius:6px;background:rgba(62,232,167,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.68rem;font-weight:700;color:rgba(62,232,167,0.9);">3</span>
+            <strong style="color:#fff;">Adicionar à Tela de Início</strong>
           </div>
         </div>
         ` : `
@@ -2934,14 +2938,18 @@ class RhythmSequencer {
       ? [
           {
             n: '01',
-            body: 'Toque no botão <strong>Compartilhar</strong> na barra inferior do Safari.',
+            body: 'Toque no botão <strong>Compartilhar</strong> na barra do Safari (ícone de caixa com seta pra cima).',
           },
           {
             n: '02',
-            body: 'Role pra baixo e toque em <strong>Adicionar à Tela de Início</strong>.',
+            body: 'No menu que abre, role um pouco e toque em <strong>Ver mais</strong> pra ampliar as opções.',
           },
           {
             n: '03',
+            body: 'Toque em <strong>Adicionar à Tela de Início</strong>.',
+          },
+          {
+            n: '04',
             body: 'Confirme tocando em <strong>Adicionar</strong> no canto superior direito.',
           },
         ]
