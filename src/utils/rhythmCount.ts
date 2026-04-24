@@ -7,7 +7,7 @@
  * - em TS/JS: import { RHYTHM_COUNT } from './utils/rhythmCount';
  * - em HTML estático: classe `.js-rhythm-count` é preenchida na carga da página.
  */
-export const RHYTHM_COUNT = 90;
+export const RHYTHM_COUNT = 94;
 
 /** Quantidade liberada no demo sem cadastro. */
 export const DEMO_RHYTHM_COUNT = 3;

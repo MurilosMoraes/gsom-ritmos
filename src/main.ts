@@ -443,7 +443,7 @@ class RhythmSequencer {
     version: '2.7',
     overline: 'Atualização',
     title: 'Mais samba, preview de ritmo e Modo Show.',
-    subtitle: 'Agora toca antes de adicionar no repertório, tem botão pra entrar em modo palco e chegaram 4 ritmos de samba. Biblioteca com 90 ritmos.',
+    subtitle: 'Agora toca antes de adicionar no repertório, tem botão pra entrar em modo palco e chegaram 4 ritmos de samba. Biblioteca com 94 ritmos.',
     sections: [
       {
         label: '+4 ritmos de samba',
