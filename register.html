@@ -239,13 +239,40 @@
     }
     .reg-check:hover { background: rgba(255, 255, 255, 0.025); }
     .reg-check:active { background: rgba(255, 255, 255, 0.05); }
+    /* Checkbox custom — nativo com accent-color:#fff fica branco no branco
+       quando marcado no mobile. Reimplementa com aparência clara. */
     .reg-check input[type="checkbox"] {
-      width: 20px;
-      height: 20px;
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
       margin-top: 1px;
-      accent-color: #fff;
+      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.04);
       flex-shrink: 0;
       cursor: pointer;
+      position: relative;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .reg-check input[type="checkbox"]:checked {
+      background: #3ee8a7;
+      border-color: #3ee8a7;
+    }
+    .reg-check input[type="checkbox"]:checked::after {
+      content: "";
+      position: absolute;
+      left: 6px;
+      top: 2px;
+      width: 6px;
+      height: 11px;
+      border: solid #062b1d;
+      border-width: 0 2.5px 2.5px 0;
+      transform: rotate(45deg);
+    }
+    .reg-check input[type="checkbox"]:focus-visible {
+      outline: 2px solid rgba(62, 232, 167, 0.6);
+      outline-offset: 2px;
     }
     .reg-check span {
       font-size: 0.82rem;
