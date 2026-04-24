@@ -518,14 +518,21 @@ class AdminDashboard {
       // Calcular período anterior (subtrai o atual do total 2× janela)
       const prevDemos = prevRow ? Math.max(0, (prevRow.demos_unicos || 0) - (kpiRow?.demos_unicos || 0)) : 0;
       const prevCadastros = prevRow ? Math.max(0, (prevRow.cadastros || 0) - (kpiRow?.cadastros || 0)) : 0;
-      const prevPagos = prevRow ? Math.max(0, (prevRow.pagos || 0) - (kpiRow?.pagos || 0)) : 0;
+      const prevVendas = prevRow ? Math.max(0, (prevRow.pagamentos_confirmados || 0) - (kpiRow?.pagamentos_confirmados || 0)) : 0;
       const prevReceita = prevRow ? Math.max(0, (prevRow.receita_cents || 0) - (kpiRow?.receita_cents || 0)) : 0;
 
-      const convGlobal = kpiRow && kpiRow.cadastros > 0
-        ? +((kpiRow.pagos / kpiRow.cadastros) * 100).toFixed(1)
+      // "Vendas" = pagamentos_confirmados no período (transações reais)
+      // NÃO usar `pagos` (só conta profiles cadastrados no período que viraram
+      // pagantes, perde quem cadastrou ontem e pagou hoje).
+      const vendasHoje = kpiRow?.pagamentos_confirmados ?? 0;
+
+      // Conversão demo→pago: baseada em pagamentos reais vs demos únicos
+      const convGlobal = kpiRow && kpiRow.demos_unicos > 0
+        ? +((vendasHoje / kpiRow.demos_unicos) * 100).toFixed(1)
         : 0;
-      const prevConv = prevCadastros > 0
-        ? +((prevPagos / prevCadastros) * 100).toFixed(1)
+      const prevDemosForConv = prevDemos;
+      const prevConv = prevDemosForConv > 0
+        ? +((prevVendas / prevDemosForConv) * 100).toFixed(1)
         : 0;
 
       const rangeLabel = `vs ${this.acqDaysBack}d anteriores`;
@@ -546,9 +553,9 @@ class AdminDashboard {
           </div>
           <div class="adm-kpi">
             <span class="adm-kpi-accent green"></span>
-            <span class="adm-kpi-label">Pagantes</span>
-            <span class="adm-kpi-value">${kpiRow?.pagos ?? 0}</span>
-            <div class="adm-kpi-meta">${deltaPill({ current: kpiRow?.pagos ?? 0, previous: prevPagos, compareLabel: rangeLabel })}</div>
+            <span class="adm-kpi-label">Vendas</span>
+            <span class="adm-kpi-value">${vendasHoje}</span>
+            <div class="adm-kpi-meta">${deltaPill({ current: vendasHoje, previous: prevVendas, compareLabel: rangeLabel })}</div>
           </div>
           <div class="adm-kpi">
             <span class="adm-kpi-accent orange"></span>
@@ -572,6 +579,12 @@ class AdminDashboard {
       }
 
       // ─── Funil global (Demo → Cadastro → Pago) — forma trapezoidal real ─
+      // Funil usa COORTE: os 3 níveis olham pra mesma turma de pessoas que
+      // entrou no período. `pagos` aqui é "cadastrou no período E virou pago",
+      // pra manter coerência matemática (evita >100% de conversão em dias
+      // com muitas vendas de cadastros anteriores). Os KPIs acima usam
+      // `pagamentos_confirmados` (vendas reais), que é outra régua — mede
+      // caixa, não conversão da coorte.
       if (globalFunnel) {
         const demos = kpiRow?.demos_unicos ?? 0;
         const cadastros = kpiRow?.cadastros ?? 0;
