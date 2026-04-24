@@ -220,29 +220,42 @@
       transition: width 0.25s, background 0.25s;
     }
 
+    /* Container \u00e9 um <label> — clique em qualquer parte marca o checkbox.
+       Padding generoso pra dar \u00e1rea de toque decente (min 44px de altura). */
     .reg-check {
       display: flex;
       align-items: flex-start;
-      gap: 0.6rem;
+      gap: 0.65rem;
       margin-top: 0.25rem;
+      padding: 0.55rem 0.6rem;
+      margin-left: -0.6rem;
+      margin-right: -0.6rem;
+      border-radius: 8px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: background 0.12s;
     }
+    .reg-check:hover { background: rgba(255, 255, 255, 0.025); }
+    .reg-check:active { background: rgba(255, 255, 255, 0.05); }
     .reg-check input[type="checkbox"] {
-      width: 15px;
-      height: 15px;
-      margin-top: 2px;
+      width: 20px;
+      height: 20px;
+      margin-top: 1px;
       accent-color: #fff;
       flex-shrink: 0;
       cursor: pointer;
     }
     .reg-check span {
-      font-size: 0.78rem;
-      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.6);
       line-height: 1.45;
     }
     .reg-check a {
-      color: rgba(255, 255, 255, 0.85);
+      color: rgba(255, 255, 255, 0.9);
       text-decoration: none;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.25);
       padding-bottom: 1px;
     }
     .reg-check a:hover { color: #fff; }
@@ -397,10 +410,10 @@
           <label for="confirmPassword">Confirmar senha</label>
           <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Repita a senha" autocomplete="new-password" />
         </div>
-        <div class="reg-check">
+        <label class="reg-check" for="acceptTerms">
           <input type="checkbox" id="acceptTerms" required />
-          <span>Aceito os <a href="/terms" target="_blank">termos de uso</a> e a <a href="/privacy" target="_blank">política de privacidade</a></span>
-        </div>
+          <span>Aceito os <a href="/terms" target="_blank" onclick="event.stopPropagation();">termos de uso</a> e a <a href="/privacy" target="_blank" onclick="event.stopPropagation();">política de privacidade</a></span>
+        </label>
         <button type="submit" class="reg-btn" id="registerBtn">
           <span class="btn-text">Começar grátis</span>
           <span class="btn-loader"><div class="spinner-sm"></div></span>
