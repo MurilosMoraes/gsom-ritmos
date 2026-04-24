@@ -279,6 +279,131 @@ class AdminDashboard {
     this.init();
   }
 
+  // ─── URL state ───────────────────────────────────────────────────
+  // Persiste tab + filtros na URL (hash + query). Permite bookmark,
+  // F5 mantém estado, back button volta pra tab anterior.
+  //
+  // Formato:
+  //   /admin                          → dashboard default
+  //   /admin#users?q=joão&page=3
+  //   /admin#subscriptions?status=confirmed
+  //   /admin#leads?filter=expiring_today&q=ana
+  //   /admin#acquisition?days=7
+  //   /admin#payouts?status=paid
+  //
+  // Usa `replaceState` em filtros (evita poluir histórico) e `pushState`
+  // só em troca de tab.
+  private suppressUrlUpdate = false;
+
+  private parseUrl(): { section: string; params: URLSearchParams } {
+    // Formato: #<section>?<params>
+    const raw = window.location.hash.slice(1); // remove '#'
+    const [section, qs] = raw.split('?');
+    return {
+      section: section || 'dashboard',
+      params: new URLSearchParams(qs || ''),
+    };
+  }
+
+  /**
+   * Serializa o estado atual dessa seção pra query string.
+   * Só inclui valores diferentes do default pra URL ficar limpa.
+   */
+  private urlParamsForSection(section: string): URLSearchParams {
+    const p = new URLSearchParams();
+    if (section === 'users') {
+      if (this.userSearch) p.set('q', this.userSearch);
+      if (this.userFilter !== 'all') p.set('filter', this.userFilter);
+      if (this.userPage > 0) p.set('page', String(this.userPage + 1)); // humano conta de 1
+    } else if (section === 'subscriptions') {
+      if (this.txSearch) p.set('q', this.txSearch);
+      if (this.txFilter !== 'all') p.set('status', this.txFilter);
+      if (this.txPage > 0) p.set('page', String(this.txPage + 1));
+    } else if (section === 'leads') {
+      if (this.leadsSearch) p.set('q', this.leadsSearch);
+      if (this.leadsFilter !== 'all') p.set('filter', this.leadsFilter);
+      if (this.leadsPage > 0) p.set('page', String(this.leadsPage + 1));
+    } else if (section === 'acquisition') {
+      if (this.acqDaysBack !== 30) p.set('days', String(this.acqDaysBack));
+    } else if (section === 'payouts') {
+      if (this.payoutsStatus !== 'pending') p.set('status', this.payoutsStatus);
+    }
+    return p;
+  }
+
+  /**
+   * Aplica estado lido da URL aos campos internos. NÃO re-renderiza —
+   * o caller faz isso (init ou popstate).
+   */
+  private applyUrlState(section: string, params: URLSearchParams): void {
+    // Reseta tudo antes pra URL "limpa" dar estado limpo
+    this.userSearch = '';
+    this.userFilter = 'all';
+    this.userPage = 0;
+    this.txSearch = '';
+    this.txFilter = 'all';
+    this.txPage = 0;
+    this.leadsSearch = '';
+    this.leadsFilter = 'all';
+    this.leadsPage = 0;
+
+    if (section === 'users') {
+      this.userSearch = params.get('q') || '';
+      this.userFilter = params.get('filter') || 'all';
+      this.userPage = Math.max(0, parseInt(params.get('page') || '1') - 1);
+    } else if (section === 'subscriptions') {
+      this.txSearch = params.get('q') || '';
+      this.txFilter = params.get('status') || 'all';
+      this.txPage = Math.max(0, parseInt(params.get('page') || '1') - 1);
+    } else if (section === 'leads') {
+      this.leadsSearch = params.get('q') || '';
+      this.leadsFilter = params.get('filter') || 'all';
+      this.leadsPage = Math.max(0, parseInt(params.get('page') || '1') - 1);
+    } else if (section === 'acquisition') {
+      const d = parseInt(params.get('days') || '30');
+      this.acqDaysBack = [1, 2, 7, 30, 90, 365].includes(d) ? d : 30;
+    } else if (section === 'payouts') {
+      const s = params.get('status') || 'pending';
+      this.payoutsStatus = (['pending', 'paid', 'canceled', 'all'].includes(s) ? s : 'pending') as any;
+    }
+
+    // Sincroniza inputs no DOM (pro user ver a busca/filtro preenchidos)
+    const setInput = (id: string, v: string) => {
+      const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
+      if (el) el.value = v;
+    };
+    if (section === 'users') {
+      setInput('userSearchInput', this.userSearch);
+      setInput('userStatusFilter', this.userFilter);
+    } else if (section === 'subscriptions') {
+      setInput('subscriptionSearchInput', this.txSearch);
+      setInput('subscriptionStatusFilter', this.txFilter);
+    } else if (section === 'leads') {
+      setInput('leadsSearchInput', this.leadsSearch);
+      setInput('leadsFilter', this.leadsFilter);
+    } else if (section === 'acquisition') {
+      setInput('acqRangeSelect', String(this.acqDaysBack));
+    } else if (section === 'payouts') {
+      setInput('payoutsStatusFilter', this.payoutsStatus);
+    }
+  }
+
+  /**
+   * Atualiza a URL com o estado atual. `push = true` quando muda de tab,
+   * `false` (default) quando muda filtro/página — pra não poluir histórico.
+   */
+  private updateUrl(push = false): void {
+    if (this.suppressUrlUpdate) return;
+    const params = this.urlParamsForSection(this.currentSection);
+    const qs = params.toString();
+    const hash = `#${this.currentSection}${qs ? '?' + qs : ''}`;
+    const url = window.location.pathname + window.location.search + hash;
+    try {
+      if (push) history.pushState(null, '', url);
+      else history.replaceState(null, '', url);
+    } catch { /* ignora */ }
+  }
+
   private async init(): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = '/login'; return; }
@@ -312,6 +437,35 @@ class AdminDashboard {
     this.setupEditForm();
     this.setupCouponForm();
     this.setupAffiliateForm();
+
+    // ─── Restaurar estado da URL ────────────────────────────────
+    const { section, params } = this.parseUrl();
+    this.currentSection = section;
+    this.applyUrlState(section, params);
+
+    // Ativa a tab certa (sem triggerar updateUrl)
+    this.suppressUrlUpdate = true;
+    document.querySelectorAll('.adm-nav-item').forEach(i => {
+      i.classList.toggle('active', (i as HTMLElement).dataset.section === section);
+    });
+    document.querySelectorAll('.adm-section').forEach(s => s.classList.remove('active'));
+    document.getElementById(`${section}Section`)?.classList.add('active');
+    this.suppressUrlUpdate = false;
+
+    // Back/forward do browser — re-aplica estado da URL sem push
+    window.addEventListener('popstate', () => {
+      const { section: s, params: p } = this.parseUrl();
+      this.suppressUrlUpdate = true;
+      this.currentSection = s;
+      this.applyUrlState(s, p);
+      document.querySelectorAll('.adm-nav-item').forEach(i => {
+        i.classList.toggle('active', (i as HTMLElement).dataset.section === s);
+      });
+      document.querySelectorAll('.adm-section').forEach(sec => sec.classList.remove('active'));
+      document.getElementById(`${s}Section`)?.classList.add('active');
+      this.suppressUrlUpdate = false;
+      this.render();
+    });
 
     // Render skeletons imediatamente para feedback instantâneo
     this.renderSkeletons();
@@ -384,22 +538,30 @@ class AdminDashboard {
 
     document.getElementById('userSearchInput')?.addEventListener('input', (e) => {
       this.userSearch = (e.target as HTMLInputElement).value.toLowerCase();
+      this.userPage = 0;
       this.renderUsers();
+      this.updateUrl();
     });
 
     document.getElementById('userStatusFilter')?.addEventListener('change', (e) => {
       this.userFilter = (e.target as HTMLSelectElement).value;
+      this.userPage = 0;
       this.renderUsers();
+      this.updateUrl();
     });
 
     document.getElementById('subscriptionSearchInput')?.addEventListener('input', (e) => {
       this.txSearch = (e.target as HTMLInputElement).value.toLowerCase();
+      this.txPage = 0;
       this.renderTransactions();
+      this.updateUrl();
     });
 
     document.getElementById('subscriptionStatusFilter')?.addEventListener('change', (e) => {
       this.txFilter = (e.target as HTMLSelectElement).value;
+      this.txPage = 0;
       this.renderTransactions();
+      this.updateUrl();
     });
 
     // Leads
@@ -407,11 +569,13 @@ class AdminDashboard {
       this.leadsSearch = (e.target as HTMLInputElement).value.toLowerCase();
       this.leadsPage = 0;
       this.renderLeads();
+      this.updateUrl();
     });
     document.getElementById('leadsFilter')?.addEventListener('change', (e) => {
       this.leadsFilter = (e.target as HTMLSelectElement).value;
       this.leadsPage = 0;
       this.renderLeads();
+      this.updateUrl();
     });
 
     // Refresh
@@ -447,12 +611,14 @@ class AdminDashboard {
   }
 
   private switchSection(section: string): void {
+    if (this.currentSection === section) return;
     this.currentSection = section;
     document.querySelectorAll('.adm-nav-item').forEach(i => {
       i.classList.toggle('active', (i as HTMLElement).dataset.section === section);
     });
     document.querySelectorAll('.adm-section').forEach(s => s.classList.remove('active'));
     document.getElementById(`${section}Section`)?.classList.add('active');
+    this.updateUrl(true); // push — troca de tab cria entrada no histórico
     this.render();
   }
 
@@ -479,6 +645,7 @@ class AdminDashboard {
       rangeSelect.value = String(this.acqDaysBack);
       rangeSelect.addEventListener('change', () => {
         this.acqDaysBack = parseInt(rangeSelect.value);
+        this.updateUrl();
         this.renderAcquisition();
       });
       rangeSelect.dataset.bound = '1';
@@ -1215,8 +1382,8 @@ class AdminDashboard {
         <span style="font-size:0.78rem;color:rgba(255,255,255,0.4);">${this.userPage + 1} / ${totalPages}</span>
         <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.userPage >= totalPages - 1 ? 'disabled' : ''} id="userNext">Próximo &raquo;</button>
       ` : '';
-      pagEl.querySelector('#userPrev')?.addEventListener('click', () => { this.userPage--; this.renderUsers(); });
-      pagEl.querySelector('#userNext')?.addEventListener('click', () => { this.userPage++; this.renderUsers(); });
+      pagEl.querySelector('#userPrev')?.addEventListener('click', () => { this.userPage--; this.renderUsers(); this.updateUrl(); });
+      pagEl.querySelector('#userNext')?.addEventListener('click', () => { this.userPage++; this.renderUsers(); this.updateUrl(); });
     }
   }
 
@@ -1402,8 +1569,8 @@ class AdminDashboard {
         <span style="font-size:0.78rem;color:rgba(255,255,255,0.4);">${this.txPage + 1} / ${totalPages}</span>
         <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.txPage >= totalPages - 1 ? 'disabled' : ''} id="txNext">Próximo &raquo;</button>
       ` : '';
-      pagEl.querySelector('#txPrev')?.addEventListener('click', () => { this.txPage--; this.renderTransactions(); });
-      pagEl.querySelector('#txNext')?.addEventListener('click', () => { this.txPage++; this.renderTransactions(); });
+      pagEl.querySelector('#txPrev')?.addEventListener('click', () => { this.txPage--; this.renderTransactions(); this.updateUrl(); });
+      pagEl.querySelector('#txNext')?.addEventListener('click', () => { this.txPage++; this.renderTransactions(); this.updateUrl(); });
     }
   }
 
@@ -1601,8 +1768,8 @@ class AdminDashboard {
         <span style="font-size:0.72rem;color:var(--a-text3);">${this.leadsPage + 1} / ${totalPages}</span>
         <button class="adm-btn adm-btn-sm adm-btn-ghost" ${this.leadsPage >= totalPages - 1 ? 'disabled' : ''} id="leadsNext">&raquo;</button>
       ` : '';
-      pagEl.querySelector('#leadsPrev')?.addEventListener('click', () => { this.leadsPage--; this.renderLeads(); });
-      pagEl.querySelector('#leadsNext')?.addEventListener('click', () => { this.leadsPage++; this.renderLeads(); });
+      pagEl.querySelector('#leadsPrev')?.addEventListener('click', () => { this.leadsPage--; this.renderLeads(); this.updateUrl(); });
+      pagEl.querySelector('#leadsNext')?.addEventListener('click', () => { this.leadsPage++; this.renderLeads(); this.updateUrl(); });
     }
 
     // Bind WhatsApp (abre + marca como contatado)
@@ -2117,6 +2284,7 @@ class AdminDashboard {
       this.payoutsBound = true;
       filter?.addEventListener('change', () => {
         this.payoutsStatus = (filter.value as any) || 'pending';
+        this.updateUrl();
         this.renderPayouts();
       });
       document.getElementById('refreshPayoutsBtn')?.addEventListener('click', () => this.renderPayouts());
