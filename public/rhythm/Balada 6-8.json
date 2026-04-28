@@ -1,5 +1,5 @@
 {
-  "version": "1.5",
+  "version": "1.6",
   "tempo": 155,
   "beatsPerBar": 6,
   "patternSteps": {
@@ -327,7 +327,7 @@
         ],
         "volumes": [
           [
-            0.8,
+            0.58,
             0.8,
             0.8,
             0.8,
@@ -1021,7 +1021,7 @@
         ],
         "volumes": [
           [
-            0.8,
+            0.59,
             0.8,
             0.8,
             0.8,
@@ -1715,7 +1715,7 @@
         ],
         "volumes": [
           [
-            0.8,
+            0.64,
             0.8,
             0.8,
             0.8,
@@ -2267,15 +2267,15 @@
         ],
         "volumes": [
           [
+            0.63,
             0.8,
             0.8,
             0.8,
+            0.63,
             0.8,
             0.8,
             0.8,
-            0.8,
-            0.8,
-            0.8,
+            0.67,
             0.8,
             0.8,
             0.8
@@ -2298,8 +2298,8 @@
             0.8,
             0.8,
             0.2,
-            0.5,
-            0.8,
+            0.41,
+            0.57,
             0.8,
             0.8,
             0.8,
@@ -2315,23 +2315,9 @@
             0.8,
             0.8,
             0.8,
-            0.5,
+            0.39,
             0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8
-          ],
-          [
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
+            0.55,
             0.8,
             0.8,
             0.8
@@ -2348,6 +2334,20 @@
             0.8,
             0.8,
             0.8,
+            0.8
+          ],
+          [
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.62,
             0.8
           ],
           [
@@ -2447,14 +2447,14 @@
             "midiPath": "/midi/chimbal_aberto.wav"
           },
           {
-            "fileName": "tom_1.wav",
-            "audioData": "",
-            "midiPath": "/midi/tom_1.wav"
-          },
-          {
             "fileName": "tom_2.wav",
             "audioData": "",
             "midiPath": "/midi/tom_2.wav"
+          },
+          {
+            "fileName": "t3.mp3",
+            "audioData": "",
+            "midiPath": "/midi/t3.mp3"
           },
           {
             "fileName": "",
@@ -2508,10 +2508,10 @@
             false,
             false,
             true,
-            true,
-            true,
             false,
             true,
+            false,
+            false,
             false,
             false,
             false
@@ -2554,8 +2554,36 @@
             false,
             false,
             true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
             true,
             false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
             false
           ],
           [
@@ -2571,34 +2599,6 @@
             false,
             false,
             false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            true,
-            true
-          ],
-          [
-            false,
-            false,
-            true,
-            false,
-            true,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            true
           ],
           [
             false,
@@ -2673,15 +2673,15 @@
         ],
         "volumes": [
           [
+            0.58,
             0.8,
             0.8,
             0.8,
-            0.8,
-            0.8,
+            0.58,
             0.5,
+            0.58,
             0.8,
-            0.8,
-            0.8,
+            0.65,
             0.8,
             0.8,
             0.8
@@ -2708,7 +2708,7 @@
             0.8,
             0.8,
             0.8,
-            0.5,
+            0.34,
             0.8,
             0.8,
             0.8,
@@ -2723,43 +2723,43 @@
             0.8,
             0.5,
             0.8,
+            0.23,
+            0.8,
+            0.8,
+            0.8
+          ],
+          [
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.6,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8
+          ],
+          [
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
+            0.8,
             0.5,
-            0.8,
-            0.8,
             0.8
           ],
           [
             0.8,
             0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8
-          ],
-          [
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.8,
-            0.5,
-            0.8
-          ],
-          [
-            0.8,
-            0.8,
-            0.8,
+            0.59,
             0.8,
             0.8,
             0.8,
@@ -2961,20 +2961,6 @@
             false,
             true,
             false,
-            true,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            true,
-            false,
-            false,
-            false,
-            false,
-            false,
             false,
             false
           ],
@@ -2983,6 +2969,16 @@
             false,
             false,
             false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
             false,
             false,
             false,
@@ -2990,6 +2986,10 @@
             false,
             false,
             false,
+            false,
+            false,
+            false,
+            true,
             false
           ],
           [
@@ -3079,7 +3079,7 @@
         ],
         "volumes": [
           [
-            0.8,
+            0.55,
             0.8,
             0.8,
             0.8,
@@ -3087,7 +3087,7 @@
             0.5,
             0.8,
             0.8,
-            0.8,
+            0.57,
             0.8,
             0.8,
             0.8
@@ -3113,7 +3113,7 @@
             0.5,
             0.8,
             0.8,
-            0.46,
+            0.37,
             0.42,
             0.68,
             0.8,
@@ -3129,7 +3129,7 @@
             0.8,
             0.5,
             0.8,
-            0.5,
+            0.4,
             0.45,
             0.56,
             0.8
@@ -3439,13 +3439,13 @@
         ],
         "volumes": [
           [
-            0.8,
+            0.6,
             0.8,
             0.8,
             0.5,
+            0.52,
             0.8,
-            0.8,
-            0.8,
+            0.51,
             0.8
           ],
           [
@@ -3473,7 +3473,7 @@
             0.8,
             0.8,
             0.8,
-            0.8,
+            0.52,
             0.8,
             0.8,
             0.8
@@ -3483,7 +3483,7 @@
             0.8,
             0.8,
             0.8,
-            0.5,
+            0.44,
             0.8,
             0.8,
             0.8
@@ -4035,13 +4035,12 @@
     ]
   },
   "fillStartSound": {
-    "fileName": "chimbal_fechado.wav",
-    "midiPath": "/midi/chimbal_fechado.wav"
+    "fileName": "prato.mp3",
+    "midiPath": "/midi/prato.mp3"
   },
   "fillReturnSound": {
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-03-27T00:23:59.647Z",
-  "category": "Pop/Rock"
+  "timestamp": "2026-04-27T15:45:58.590Z"
 }
