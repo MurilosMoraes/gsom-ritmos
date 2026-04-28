@@ -440,23 +440,23 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '2.7',
+    version: '2.8',
     overline: 'Atualização',
-    title: 'Mais samba, preview de ritmo e Modo Show.',
-    subtitle: 'Agora toca antes de adicionar no repertório, tem botão pra entrar em modo palco e chegaram 4 ritmos de samba. Biblioteca com 94 ritmos.',
+    title: 'Biblioteca chegou aos 100 ritmos.',
+    subtitle: 'Mais 6 ritmos novos: Arrasta Pé, Maxixe, Pagode Romântico, Congas, Rock (cajón) e Gospel (cajón). E samples de cajón em vários ritmos foram refinados.',
     sections: [
       {
-        label: '+4 ritmos de samba',
+        label: '+6 ritmos novos',
         featured: true,
-        body: 'Partido Alto, Roda de Samba, Samba Enredo e Corinho de Fogo (pandeiro). Cada um com viradas, intros e finalizações — prontos pro palco.',
+        body: 'Arrasta Pé, Maxixe, Pagode Romântico, Congas (latinos), Rock (cajón) e Gospel (cajón). Cada um com viradas, intros e finalizações.',
       },
       {
-        label: 'Preview antes de adicionar',
-        body: 'No editor de repertório, toque no botão verde ▶ ao lado de qualquer ritmo pra ouvir antes. Toca alguns compassos sem quebrar o que já está rodando.',
+        label: 'Ritmos refinados',
+        body: 'Arrocha, Bachata, Boi Bumbá, Bolero, Partido Alto, Seresta (Canindé) e Gospel 2 ganharam ajustes finos no padrão e nos samples.',
       },
       {
-        label: 'Modo Show',
-        body: 'Botão "Modo Show" no menu: tela maior, botões maiores, tela não apaga no palco. Um toque pra entrar, um pra sair.',
+        label: 'Preview e Modo Show',
+        body: 'Lembra do botão verde ▶ no editor pra ouvir antes de adicionar? E do Modo Show pra palco com tela cheia? Tudo continua melhor.',
       },
     ],
   };
