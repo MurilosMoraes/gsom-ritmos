@@ -43,7 +43,7 @@
             false,
             true,
             false,
-            true,
+            false,
             false
           ],
           [
@@ -929,7 +929,7 @@
             false,
             true,
             false,
-            true,
+            false,
             false
           ],
           [
@@ -1815,7 +1815,7 @@
             false,
             true,
             false,
-            true,
+            false,
             false
           ],
           [
@@ -5002,5 +5002,5 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-04-28T19:26:21.475Z"
+  "timestamp": "2026-04-29T00:19:53.580Z"
 }
