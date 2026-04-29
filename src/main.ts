@@ -5089,17 +5089,33 @@ class RhythmSequencer {
     }
   }
 
+  private static midiManifestPromise: Promise<string[]> | null = null;
+  private static rhythmManifestPromise: Promise<{ rhythms: string[]; version: number; categories: any }> | null = null;
+
   private async loadAvailableMidi(): Promise<void> {
     try {
-      // Carregar lista de MIDIs do manifest (dinâmico — basta editar manifest.json)
+      // Carregar lista de MIDIs do manifest (dinâmico — basta editar manifest.json).
+      //
+      // Dedup: se já tem promise em voo, reusa. Sem cache-bust: o SW + a
+      // estratégia networkFirst do vite-plugin-pwa cuidam de pegar versão
+      // nova quando volta online; mandar `?v=Date.now()` por chamada
+      // gerava 3-4 fetches paralelos que travavam em CDN com soluço
+      // (Vercel pendurando timeouts de 32-55s em URLs únicas).
       let midiFiles: string[] = [];
       try {
-        const midiManifestUrl = navigator.onLine ? `/midi/manifest.json?v=${Date.now()}` : '/midi/manifest.json';
-        const res = await fetch(midiManifestUrl);
-        if (res.ok) {
-          const manifest = await res.json();
-          midiFiles = manifest.files || [];
+        if (!RhythmSequencer.midiManifestPromise) {
+          RhythmSequencer.midiManifestPromise = (async () => {
+            const res = await fetch('/midi/manifest.json');
+            if (!res.ok) throw new Error('manifest fetch failed');
+            const manifest = await res.json();
+            return manifest.files || [];
+          })().catch(err => {
+            // Limpa pra próxima tentativa não ficar presa em erro velho
+            RhythmSequencer.midiManifestPromise = null;
+            throw err;
+          });
         }
+        midiFiles = await RhythmSequencer.midiManifestPromise;
       } catch {
         // Fallback hardcoded caso manifest não exista
         midiFiles = [
@@ -5497,34 +5513,29 @@ class RhythmSequencer {
 
   private async loadAvailableRhythms(): Promise<void> {
     try {
-      // Carregar manifest com cache bust
+      // URL limpa, sem `?t=Date.now()`. A CDN da Vercel tem soluço com query
+      // strings (timeouts de 30-55s); SW + manifest.version já versionam.
+      // Promise compartilhada evita rajada quando vários callers chamam junto.
       let rhythmFiles: string[] = [];
       let manifestVersion = 0;
 
       try {
-        // Online: buscar com cache bust pra pegar versao mais recente
-        // Offline: buscar sem cache bust pra usar o precache do SW
-        const manifestUrl = navigator.onLine
-          ? `/rhythm/manifest.json?t=${Date.now()}`
-          : '/rhythm/manifest.json';
-        const manifestResponse = await fetch(manifestUrl);
-        if (manifestResponse.ok) {
-          const manifest = await manifestResponse.json();
-          rhythmFiles = manifest.rhythms || [];
-          manifestVersion = manifest.version || 0;
-          this.rhythmCategories = manifest.categories || {};
+        if (!RhythmSequencer.rhythmManifestPromise) {
+          RhythmSequencer.rhythmManifestPromise = (async () => {
+            const res = await fetch('/rhythm/manifest.json');
+            if (!res.ok) throw new Error('rhythm manifest fetch failed');
+            return await res.json();
+          })().catch(err => {
+            RhythmSequencer.rhythmManifestPromise = null;
+            throw err;
+          });
         }
+        const manifest = await RhythmSequencer.rhythmManifestPromise;
+        rhythmFiles = manifest.rhythms || [];
+        manifestVersion = manifest.version || 0;
+        this.rhythmCategories = manifest.categories || {};
       } catch (e) {
-        // Manifest nao acessivel — tentar sem cache bust
-        try {
-          const fallback = await fetch('/rhythm/manifest.json');
-          if (fallback.ok) {
-            const manifest = await fallback.json();
-            rhythmFiles = manifest.rhythms || [];
-            manifestVersion = manifest.version || 0;
-            this.rhythmCategories = manifest.categories || {};
-          }
-        } catch { /* sem manifest */ }
+        // Manifest indisponível — segue sem catálogo (fallback HEAD-probe abaixo)
       }
 
       // Se não tiver manifest, usar lista de tentativa
@@ -5759,11 +5770,13 @@ class RhythmSequencer {
         this.stop();
       }
 
-      // Carregar ritmo — sem cache bust no offline (Service Worker precisa da URL limpa)
+      // Carregar ritmo — sem cache bust. Vercel CDN tem soluço com query
+      // strings (`?v=`) gerando timeouts de 30-55s. O SW + manifest.version
+      // já cuidam de invalidar cache quando ritmo muda. URL limpa = cache
+      // do SW reusa em ms.
       const cleanPath = path.split('?')[0];
       const encodedPath = encodeURI(cleanPath);
-      const finalPath = navigator.onLine ? `${encodedPath}?v=${this.rhythmVersion || Date.now()}` : encodedPath;
-      await this.fileManager.loadProjectFromPath(finalPath);
+      await this.fileManager.loadProjectFromPath(encodedPath);
 
       // Guardar BPM original do ritmo (antes de aplicar customização)
       this.currentRhythmOriginalBpm = this.stateManager.getTempo();
