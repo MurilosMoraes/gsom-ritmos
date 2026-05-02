@@ -74,6 +74,10 @@ export class SetlistEditorUI {
 
     if (this.overlay) {
       this.overlay.classList.add('sle-exit');
+      // Refocus síncrono no pedalInput dentro do user gesture (iOS exige).
+      // O hasModalOpen() em main.ts ignora .sle-overlay.sle-exit, então
+      // o focus volta na hora — sem precisar tocar a tela depois.
+      (window as any).__refocusPedal?.();
       this.overlay.addEventListener('transitionend', () => {
         this.overlay?.remove();
         this.overlay = null;

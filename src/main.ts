@@ -615,6 +615,7 @@ class RhythmSequencer {
     const close = () => {
       localStorage.setItem(key, wn.version);
       overlay.remove();
+      (window as any).__refocusPedal?.(); // refocus síncrono p/ pedal iOS
     };
 
     overlay.querySelector('.wn-close')?.addEventListener('click', close);
@@ -1606,10 +1607,15 @@ class RhythmSequencer {
         // - .install-tut-overlay: tutorial de instalação
         // - .wn-modal-overlay: What's New
         // - z-index:99999 inline: fallback pra outros dinâmicos antigos
+        // Overlays em animação de saída (.x-exit, .sle-exit, etc) NÃO contam:
+        // o close() já foi disparado, o user clicou pra fechar. O refocus
+        // do pedal precisa rolar AGORA dentro do mesmo user gesture do iOS,
+        // mesmo que o nó ainda esteja no DOM por mais 200-300ms (animação).
         return !!document.querySelector(
-          '.account-modal-overlay, .bpm-modal-overlay, ' +
-          '.x-overlay, .sle-overlay, .install-tut-overlay, .wn-modal-overlay, ' +
-          '[style*="z-index: 99999"], [style*="z-index:99999"]'
+          '.account-modal-overlay:not(.x-exit), .bpm-modal-overlay:not(.x-exit), ' +
+          '.x-overlay:not(.x-exit), .sle-overlay:not(.sle-exit), ' +
+          '.install-tut-overlay:not(.x-exit), .wn-modal-overlay:not(.x-exit), ' +
+          '[style*="z-index: 99999"]:not(.x-exit), [style*="z-index:99999"]:not(.x-exit)'
         );
       };
 
@@ -1638,6 +1644,12 @@ class RhythmSequencer {
       setTimeout(focusPedalInput, 500);
       pedalInput.addEventListener('input', () => { pedalInput.value = ''; });
       pedalInput.addEventListener('blur', () => { if (!hasModalOpen()) focusPedalInput(); });
+
+      // Helper global pros close() de TODOS os modais devolverem o foco
+      // ao pedal dentro do user gesture do iOS. Chamar SÍNCRONO logo após
+      // adicionar a classe `.x-exit` no overlay (o hasModalOpen passa a
+      // ignorar overlays em saída — ver query acima).
+      (window as any).__refocusPedal = focusPedalInput;
     }
   }
 
@@ -2680,7 +2692,7 @@ class RhythmSequencer {
 
     document.body.appendChild(overlay);
 
-    const close = () => overlay.remove();
+    const close = () => { overlay.remove(); (window as any).__refocusPedal?.(); };
     overlay.querySelector('#closePedalInfo')!.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
@@ -2924,7 +2936,7 @@ class RhythmSequencer {
 
     document.body.appendChild(overlay);
 
-    const close = () => overlay.remove();
+    const close = () => { overlay.remove(); (window as any).__refocusPedal?.(); };
     overlay.querySelector('#installDismiss')?.addEventListener('click', close);
     overlay.querySelector('#installDismiss2')?.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
@@ -3347,7 +3359,7 @@ class RhythmSequencer {
 
     document.body.appendChild(overlay);
 
-    const close = () => overlay.remove();
+    const close = () => { overlay.remove(); (window as any).__refocusPedal?.(); };
     overlay.querySelector('#silentModeOk')?.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   }
@@ -3663,6 +3675,7 @@ class RhythmSequencer {
     const close = (): void => {
       overlay.classList.remove('active');
       overlay.classList.add('x-exit');
+      (window as any).__refocusPedal?.(); // refocus síncrono p/ pedal iOS
       setTimeout(() => overlay.remove(), 220);
     };
 
@@ -3758,6 +3771,7 @@ class RhythmSequencer {
     const close = (): void => {
       overlay.classList.remove('active');
       overlay.classList.add('x-exit');
+      (window as any).__refocusPedal?.(); // refocus síncrono p/ pedal iOS
       setTimeout(() => overlay.remove(), 220);
     };
 
@@ -4044,6 +4058,8 @@ class RhythmSequencer {
 
     const close = () => {
       overlay.classList.remove('active');
+      overlay.classList.add('x-exit'); // hasModalOpen passa a ignorar
+      (window as any).__refocusPedal?.(); // refocus síncrono p/ pedal iOS
       setTimeout(() => overlay.remove(), 200);
     };
 
@@ -4264,6 +4280,7 @@ class RhythmSequencer {
       if (cancel) this.stateManager.setTempo(originalTempo);
       overlay.classList.remove('active');
       overlay.classList.add('x-exit');
+      (window as any).__refocusPedal?.(); // refocus síncrono p/ pedal iOS
       setTimeout(() => overlay.remove(), 220);
       document.removeEventListener('keydown', onKeydown);
       // Salva BPM se mudou e NÃO cancelou
@@ -4488,6 +4505,8 @@ class RhythmSequencer {
     // Fechar
     const close = () => {
       overlay.classList.remove('active');
+      overlay.classList.add('x-exit'); // hasModalOpen passa a ignorar
+      (window as any).__refocusPedal?.(); // refocus síncrono p/ pedal iOS
       setTimeout(() => overlay.remove(), 200);
     };
 
@@ -4703,6 +4722,8 @@ class RhythmSequencer {
 
     const close = () => {
       overlay.classList.remove('active');
+      overlay.classList.add('x-exit'); // hasModalOpen passa a ignorar
+      (window as any).__refocusPedal?.(); // refocus síncrono p/ pedal iOS
       setTimeout(() => overlay.remove(), 200);
     };
 
@@ -5341,6 +5362,7 @@ class RhythmSequencer {
     const close = (): void => {
       overlay.classList.remove('active');
       overlay.classList.add('x-exit');
+      (window as any).__refocusPedal?.(); // refocus síncrono p/ pedal iOS
       setTimeout(() => overlay.remove(), 220);
       document.removeEventListener('keydown', onEsc);
     };
