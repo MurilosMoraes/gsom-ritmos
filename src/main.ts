@@ -5615,14 +5615,47 @@ class RhythmSequencer {
       this.updateSetlistUI();
 
       // Carregar ritmo atual do setlist ao iniciar (só no modo user)
-      if (!this.isAdminMode && !this.setlistManager.isEmpty()) {
-        const current = this.setlistManager.getCurrentItem();
-        if (current) {
-          await this.loadSetlistItem(current);
+      if (!this.isAdminMode) {
+        if (!this.setlistManager.isEmpty()) {
+          const current = this.setlistManager.getCurrentItem();
+          if (current) {
+            await this.loadSetlistItem(current);
+          }
+        } else {
+          // Setlist vazio: carrega ritmo default pra app não abrir "vazio".
+          // Suporte reportava muito user travando na lista sem entender que
+          // precisa escolher um ritmo. Com isso, abre tocável.
+          await this.loadDefaultRhythmIfNoSetlist();
         }
       }
     } catch (error) {
       void error;
+    }
+  }
+
+  private async loadDefaultRhythmIfNoSetlist(): Promise<void> {
+    const defaultName = 'Pop';
+    const defaultPath = '/rhythm/Pop.json';
+    try {
+      await this.loadRhythm(defaultName, defaultPath);
+      this.updateSetlistUI();
+      this.uiManager.updatePerformanceGrid();
+      this.uiManager.updateTempoUI(this.stateManager.getTempo());
+      this.uiManager.updateVariationButtons();
+
+      // Toast educativo só no primeiro acesso
+      const seenKey = 'gdrums-default-rhythm-hint-seen';
+      if (!localStorage.getItem(seenKey)) {
+        setTimeout(() => {
+          this.uiManager.showAlert?.(
+            'Carregamos o Pop pra você começar. Escolha outro ritmo na lista abaixo 👇',
+            'info'
+          );
+          localStorage.setItem(seenKey, '1');
+        }, 800);
+      }
+    } catch {
+      // Se Pop falhar, não trava o boot — só loga (tipicamente offline 1ª vez)
     }
   }
 
