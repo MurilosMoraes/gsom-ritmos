@@ -3550,6 +3550,10 @@ class RhythmSequencer {
         background: rgba(2, 0, 15, 0.4);
       }
 
+      /* iOS Safari crashava com filter:drop-shadow + background-clip:text +
+         animação simultânea — rendering em GPU surface estourava limite de
+         textura no WebKit (mesmo em iPhone 16). Solução: text-shadow (CPU,
+         sem inflar surface) + animar só transform/opacity (cheap, GPU compose). */
       .countdown-num {
         font-size: clamp(8rem, 30vw, 16rem);
         font-weight: 900;
@@ -3560,10 +3564,12 @@ class RhythmSequencer {
         line-height: 1;
         opacity: 0;
         transform: scale(0.5);
-        filter: drop-shadow(0 0 40px rgba(249, 115, 22, 0.6))
-                drop-shadow(0 0 80px rgba(249, 115, 22, 0.3));
+        text-shadow:
+          0 0 30px rgba(249, 115, 22, 0.55),
+          0 0 60px rgba(249, 115, 22, 0.25);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
         letter-spacing: -0.05em;
+        will-change: transform, opacity;
       }
 
       .countdown-num.countdown-animate {
@@ -3571,28 +3577,10 @@ class RhythmSequencer {
       }
 
       @keyframes countdownPop {
-        0% {
-          opacity: 0;
-          transform: scale(0.4);
-          filter: drop-shadow(0 0 20px rgba(249, 115, 22, 0.3));
-        }
-        30% {
-          opacity: 1;
-          transform: scale(1.1);
-          filter: drop-shadow(0 0 60px rgba(249, 115, 22, 0.8))
-                  drop-shadow(0 0 120px rgba(249, 115, 22, 0.4));
-        }
-        60% {
-          opacity: 1;
-          transform: scale(1);
-          filter: drop-shadow(0 0 50px rgba(249, 115, 22, 0.6))
-                  drop-shadow(0 0 100px rgba(249, 115, 22, 0.3));
-        }
-        100% {
-          opacity: 0.15;
-          transform: scale(0.95);
-          filter: drop-shadow(0 0 30px rgba(249, 115, 22, 0.2));
-        }
+        0%   { opacity: 0;    transform: scale(0.4); }
+        30%  { opacity: 1;    transform: scale(1.1); }
+        60%  { opacity: 1;    transform: scale(1);   }
+        100% { opacity: 0.15; transform: scale(0.95); }
       }
     `;
     document.head.appendChild(style);
