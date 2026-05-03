@@ -3,6 +3,7 @@
 import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { parseOrderNsu, getPlan } from './PaymentService';
+import { internalNav } from '../native/Platform';
 
 const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
 
@@ -13,12 +14,12 @@ class PaymentSuccessPage {
 
   private async init(): Promise<void> {
     if (!(await authService.isAuthenticated())) {
-      window.location.href = '/login';
+      internalNav('/login');
       return;
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { window.location.href = '/login'; return; }
+    if (!user) { internalNav('/login'); return; }
 
     // Pegar dados do redirect da InfinitePay
     const params = new URLSearchParams(window.location.search);

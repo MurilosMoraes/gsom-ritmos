@@ -19,7 +19,7 @@ import { OfflineCache } from './native/OfflineCache';
 import { StatusBarService } from './native/StatusBarService';
 import { AttributionService } from './native/AttributionService';
 import { PushService } from './native/PushService';
-import { isNativeApp, openExternal } from './native/Platform';
+import { isNativeApp, openExternal, internalNav } from './native/Platform';
 import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
 
@@ -734,7 +734,7 @@ class RhythmSequencer {
         window.addEventListener('online', () => this.checkAccess(), { once: true });
         return true;
       }
-      window.location.href = '/login';
+      internalNav('/login');
       return false;
     }
 
@@ -747,7 +747,7 @@ class RhythmSequencer {
         }
         return true;
       }
-      window.location.href = '/login';
+      internalNav('/login');
       return false;
     }
 
@@ -765,7 +765,7 @@ class RhythmSequencer {
         }
         return true;
       }
-      window.location.href = '/login';
+      internalNav('/login');
       return false;
     }
 
@@ -782,7 +782,7 @@ class RhythmSequencer {
           return true;
         }
         await supabase.auth.signOut();
-        window.location.href = '/login';
+        internalNav('/login');
         return false;
       }
     }
@@ -816,7 +816,7 @@ class RhythmSequencer {
           }),
         }).catch(() => {});
         await supabase.auth.signOut();
-        window.location.href = '/register';
+        internalNav('/register');
         return false;
       }
     }
@@ -832,7 +832,7 @@ class RhythmSequencer {
       // Outra sessão está ativa — deslogar este device
       await supabase.auth.signOut();
       localStorage.clear();
-      window.location.href = '/login';
+      internalNav('/login');
       return false;
     }
 
@@ -922,7 +922,7 @@ class RhythmSequencer {
       this.showSubscribeOnWebsiteNotice();
       return false;
     }
-    window.location.href = '/plans';
+    internalNav('/plans');
     return false;
   }
 

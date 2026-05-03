@@ -3,6 +3,7 @@
 import { supabase } from './supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { OfflineCache } from '../native/OfflineCache';
+import { internalNav } from '../native/Platform';
 
 export interface GDrumsProfile {
   id: string;
@@ -130,7 +131,7 @@ class AuthService {
     localStorage.removeItem('gdrums-toggle-intro');
     localStorage.removeItem('gdrums-toggle-final');
     localStorage.removeItem('gdrums-mode');
-    window.location.href = '/login';
+    internalNav('/login');
   }
 
   // ─── Sessão ─────────────────────────────────────────────────────────
@@ -272,13 +273,13 @@ class AuthService {
 
   requireAuth(): void {
     if (!this.isAuthenticatedSync()) {
-      window.location.href = '/login';
+      internalNav('/login');
     }
   }
 
   requireAdmin(): void {
     if (!this.isAuthenticatedSync()) {
-      window.location.href = '/login';
+      internalNav('/login');
     }
   }
 
