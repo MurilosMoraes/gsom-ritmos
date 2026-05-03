@@ -1,7 +1,8 @@
 // Entry point principal - GSOM Rhythm Sequencer
 
 import { StateManager } from './core/StateManager';
-import { AudioManager } from './core/AudioManager';
+import type { IAudioEngine } from './core/audio/IAudioEngine';
+import { createAudioEngine } from './core/audio/engineFactory';
 import { Scheduler } from './core/Scheduler';
 import { PatternEngine } from './core/PatternEngine';
 import { FileManager } from './io/FileManager';
@@ -20,6 +21,7 @@ import { StatusBarService } from './native/StatusBarService';
 import { AttributionService } from './native/AttributionService';
 import { PushService } from './native/PushService';
 import { isNativeApp, openExternal, internalNav } from './native/Platform';
+import { NowPlayingService } from './native/NowPlayingService';
 import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
 
@@ -32,7 +34,7 @@ const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/plans';
 class RhythmSequencer {
   private audioContext: AudioContext;
   private stateManager: StateManager;
-  private audioManager: AudioManager;
+  private audioManager: IAudioEngine;
   private scheduler: Scheduler;
   private patternEngine: PatternEngine;
   private fileManager: FileManager;
@@ -264,7 +266,12 @@ class RhythmSequencer {
 
     // Inicializar gerenciadores
     this.stateManager = new StateManager();
-    this.audioManager = new AudioManager(this.audioContext);
+    // Factory decide qual engine usar:
+    // - Web/PWA: SEMPRE WebAudioEngine (sem risco)
+    // - Capacitor: WebAudioEngine por default + flag opt-in pra NativeAudioEngine
+    //   ('gdrums-engine'='native' no localStorage). Comportamento idêntico via
+    //   IAudioEngine — Scheduler, FileManager, PreviewPlayer não percebem diferença.
+    this.audioManager = createAudioEngine(this.audioContext);
     this.patternEngine = new PatternEngine(this.stateManager);
     this.scheduler = new Scheduler(this.stateManager, this.audioManager, this.patternEngine);
     this.fileManager = new FileManager(this.stateManager, this.audioManager);
@@ -297,6 +304,34 @@ class RhythmSequencer {
   }
 
   private setupCallbacks(): void {
+    // ═══════════════════════════════════════════════════════════════════════
+    // Remote control do lockscreen iOS (MPRemoteCommandCenter via NowPlaying).
+    // ═══════════════════════════════════════════════════════════════════════
+    // Botões do Control Center / lockscreen / AirPods / BT car deck mapeiam
+    // pra ações no app. Mesmo padrão do Spotify.
+    NowPlayingService.onRemoteCommand((cmd) => {
+      switch (cmd) {
+        case 'play':
+        case 'pause':
+        case 'toggle':
+          this.togglePlayStop();
+          break;
+        case 'next':
+          // Próximo do setlist se tiver, senão próximo ritmo da biblioteca
+          if (!this.setlistManager.isEmpty()) {
+            const next = this.setlistManager.next();
+            if (next) void this.loadSetlistItem(next);
+          }
+          break;
+        case 'previous':
+          if (!this.setlistManager.isEmpty()) {
+            const prev = this.setlistManager.previous();
+            if (prev) void this.loadSetlistItem(prev);
+          }
+          break;
+      }
+    });
+
     // ═══════════════════════════════════════════════════════════════════════
     // Visibilitychange — minimizar/voltar.
     // ═══════════════════════════════════════════════════════════════════════
@@ -3553,6 +3588,13 @@ class RhythmSequencer {
     // configurado no AppDelegate.swift (não precisa do plugin).
     this.startBackgroundAudioService();
 
+    // iOS: atualiza Now Playing card no lockscreen com nome do ritmo + BPM
+    void NowPlayingService.update({
+      title: this.currentRhythmName || 'GDrums',
+      bpm: this.stateManager.getTempo(),
+    });
+    void NowPlayingService.setPlaybackState(true);
+
     // Gatilho de conversão: marca início do play
     this.conversionManager.onPlayStart();
   }
@@ -3591,6 +3633,8 @@ class RhythmSequencer {
     this.stateManager.setPendingEnd(null);
 
     this.scheduler.stop();
+    // iOS Now Playing: marca pausado (lockscreen mostra ícone correto)
+    void NowPlayingService.setPlaybackState(false);
     this.conversionManager.onPlayStop();
 
     // Liberar keep awake quando parar

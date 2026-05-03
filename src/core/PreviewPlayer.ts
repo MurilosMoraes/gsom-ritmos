@@ -9,7 +9,7 @@
 // - Reaproveita cache de buffers do AudioManager (não re-decodifica)
 // - Só toca main variation 0 + canais ativos no step 0..N
 
-import type { AudioManager } from './AudioManager';
+import type { IAudioEngine } from './audio/IAudioEngine';
 import { expandPattern, expandVolumes, normalizeMidiPath } from '../utils/helpers';
 
 interface RhythmData {
@@ -49,12 +49,12 @@ const PREVIEW_MAX_DURATION_S = 14;
 
 export class PreviewPlayer {
   private audioContext: AudioContext;
-  private audioManager: AudioManager;
+  private audioManager: IAudioEngine;
   private active: ActivePreview | null = null;
   // Subscribers pra UI saber quando preview terminou (botão para pulsar)
   private listeners = new Set<(activeId: string | null) => void>();
 
-  constructor(audioContext: AudioContext, audioManager: AudioManager) {
+  constructor(audioContext: AudioContext, audioManager: IAudioEngine) {
     this.audioContext = audioContext;
     this.audioManager = audioManager;
   }

@@ -31,8 +31,13 @@ export default defineConfig({
         // Forçar ativação imediata do novo SW (sem esperar abas fecharem)
         skipWaiting: true,
         clientsClaim: true,
-        // Pré-cachear tudo: app shell + ritmos + samples + imagens
+        // Pré-cachear tudo: app shell + ritmos + samples + imagens.
+        // EXCLUI midi-native/ — esses só são usados pelo NativeAudioEngine
+        // em Capacitor (via bundle do app, não fetch). No web/PWA, web usa
+        // /midi/ original. Incluir no precache web inflaria o download em
+        // ~5MB sem benefício.
         globPatterns: ['**/*.{js,css,html,ico,svg,woff2,json,wav,mp3,png}'],
+        globIgnores: ['**/midi-native/**'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB (logo grande)
         // ═══════════════════════════════════════════════════════════════
         // navigateFallback default do vite-plugin-pwa é '/index.html'.

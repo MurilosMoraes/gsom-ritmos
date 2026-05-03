@@ -2,14 +2,14 @@
 
 import { MAX_CHANNELS, type SavedProject, type SavedPattern, type AudioFileData, type PatternType } from '../types';
 import type { StateManager } from '../core/StateManager';
-import type { AudioManager } from '../core/AudioManager';
+import type { IAudioEngine } from '../core/audio/IAudioEngine';
 import { arrayBufferToBase64, expandPattern, expandVolumes, expandOffsets, normalizeMidiPath } from '../utils/helpers';
 
 export class FileManager {
   private stateManager: StateManager;
-  private audioManager: AudioManager;
+  private audioManager: IAudioEngine;
 
-  constructor(stateManager: StateManager, audioManager: AudioManager) {
+  constructor(stateManager: StateManager, audioManager: IAudioEngine) {
     this.stateManager = stateManager;
     this.audioManager = audioManager;
   }

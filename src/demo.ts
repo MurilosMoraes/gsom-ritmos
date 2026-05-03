@@ -2,7 +2,7 @@
 // Usa mesma UI (styles.css), mesmos IDs, mesma experiencia
 
 import { StateManager } from './core/StateManager';
-import { AudioManager } from './core/AudioManager';
+import { WebAudioEngine } from './core/audio/WebAudioEngine';
 import { Scheduler } from './core/Scheduler';
 import { PatternEngine } from './core/PatternEngine';
 import { FileManager } from './io/FileManager';
@@ -80,7 +80,7 @@ const TOUR_STEPS: TourStep[] = [
 class DemoPlayer {
   private audioContext!: AudioContext;
   private stateManager!: StateManager;
-  private audioManager!: AudioManager;
+  private audioManager!: WebAudioEngine;
   private scheduler!: Scheduler;
   private patternEngine!: PatternEngine;
   private fileManager!: FileManager;
@@ -108,7 +108,8 @@ class DemoPlayer {
 
     this.audioContext = new AudioContext();
     this.stateManager = new StateManager();
-    this.audioManager = new AudioManager(this.audioContext);
+    // Demo é web-only: força WebAudioEngine direto (sem flag, sem nativo).
+    this.audioManager = new WebAudioEngine(this.audioContext);
     this.patternEngine = new PatternEngine(this.stateManager);
     this.scheduler = new Scheduler(this.stateManager, this.audioManager, this.patternEngine);
     this.fileManager = new FileManager(this.stateManager, this.audioManager);

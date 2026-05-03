@@ -1,13 +1,16 @@
 // Scheduling preciso de steps — baseado exclusivamente no Web Audio clock
 
 import type { StateManager } from './StateManager';
-import type { AudioManager } from './AudioManager';
+import type { IAudioEngine } from './audio/IAudioEngine';
 import type { PatternEngine } from './PatternEngine';
 import type { PatternType } from '../types';
 
 export class Scheduler {
   private stateManager: StateManager;
-  private audioManager: AudioManager;
+  /** IAudioEngine — pode ser WebAudioEngine (web/PWA) ou NativeAudioEngine
+   *  (Capacitor com flag native ativa). Comportamento idêntico do ponto de
+   *  vista do Scheduler. */
+  private audioManager: IAudioEngine;
   private patternEngine: PatternEngine;
   private timerId: number | null = null;
   private rafId: number | null = null;
@@ -35,7 +38,7 @@ export class Scheduler {
 
   constructor(
     stateManager: StateManager,
-    audioManager: AudioManager,
+    audioManager: IAudioEngine,
     patternEngine: PatternEngine
   ) {
     this.stateManager = stateManager;
