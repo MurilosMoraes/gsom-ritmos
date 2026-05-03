@@ -301,6 +301,17 @@ class RhythmSequencer {
       }
     });
 
+    // pagehide dispara ANTES do visibilitychange no iOS — chamar resume()
+    // aqui força o WebKit a manter contexto "ativo" durante a transição
+    // pra background. Pode reduzir o silêncio inicial de ~1s reportado.
+    // Na web/Android o pagehide é raro (só fechamento de aba) — chamar
+    // resume() é no-op se contexto já tá running. Zero risco.
+    window.addEventListener('pagehide', () => {
+      if (this.stateManager.isPlaying()) {
+        this.audioManager.resume();
+      }
+    });
+
     // Scheduler -> UI (step visual + beat marker + countdown)
     this.scheduler.setUpdateStepCallback((step: number, pattern: PatternType) => {
       this.uiManager.updateCurrentStepVisual();
