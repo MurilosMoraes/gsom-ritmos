@@ -214,14 +214,18 @@ import AVFoundation
         sequenceAnchor = AVAudioTime(sampleTime: anchorSampleTime, atRate: outputSampleRate)
     }
 
-    /// Agenda um sample no canal indicado pra tocar offsetSeconds APÓS a âncora.
-    /// Sample-accurate — o AVAudioTime é em sampleTime absoluto do engine.
+    /// Agenda um sample no canal pra tocar `offsetSeconds` no FUTURO a partir
+    /// de AGORA (clock nativo). Sample-accurate via AVAudioTime calculado
+    /// dinamicamente com lastRenderTime + offset.
+    ///
+    /// Decisão arquitetural: NÃO usa âncora persistente entre chamadas.
+    /// Clock JS (audioContext) é independente do clock nativo, então âncora
+    /// única no início ficava desincronizada. Cada scheduleSample agora é
+    /// auto-contido — JS calcula "quanto tempo no futuro" e nativo agenda
+    /// nesse tempo relativo ao seu próprio "agora".
     public func scheduleSample(channel: Int, sampleKey: String, offsetSeconds: Double, volume: Float) {
         guard isStarted, channel >= 0, channel < channelCount else { return }
-        guard let anchor = sequenceAnchor else {
-            playOneShotImmediate(channel: channel, sampleKey: sampleKey, volume: volume)
-            return
-        }
+
         var buffer: AVAudioPCMBuffer?
         cacheQueue.sync { buffer = self.sampleCache[sampleKey] }
         guard let buf = buffer else {
@@ -229,42 +233,33 @@ import AVFoundation
             return
         }
 
-        // VALIDAÇÕES anti-NSException — scheduleBuffer crasha se algo abaixo
-        // não bater. Swift puro não pega NSException, então validamos antes.
-
-        // 1) Format do buffer DEVE bater com format do player connect
+        // VALIDAÇÕES anti-NSException
         if let expected = engineFormat,
            buf.format.commonFormat != expected.commonFormat
            || buf.format.sampleRate != expected.sampleRate
            || buf.format.channelCount != expected.channelCount {
-            NSLog("[GDrumsAudioEngine] Format mismatch p/ \(sampleKey): buf=\(buf.format) esperado=\(expected)")
+            NSLog("[GDrumsAudioEngine] Format mismatch p/ \(sampleKey)")
             return
         }
 
-        // 2) Player tem que estar attachado e playing
         let player = channelPlayers[channel]
-        guard player.engine != nil else {
-            NSLog("[GDrumsAudioEngine] Player canal \(channel) sem engine attached")
-            return
-        }
-        if !player.isPlaying {
-            player.play()
-        }
+        guard player.engine != nil else { return }
+        if !player.isPlaying { player.play() }
 
-        // 3) AVAudioTime válido — sampleTime nunca pode ser negativo
-        let offsetFrames = AVAudioFramePosition(offsetSeconds * outputSampleRate)
-        let targetSampleTime = anchor.sampleTime + offsetFrames
-        guard targetSampleTime >= 0 else {
-            NSLog("[GDrumsAudioEngine] sampleTime negativo p/ \(sampleKey): \(targetSampleTime)")
+        // Calcula AVAudioTime baseado em "agora" do clock nativo + offset.
+        // Se offset for negativo (passado), pula.
+        guard offsetSeconds >= 0 else { return }
+        guard let now = engine.outputNode.lastRenderTime, now.isSampleTimeValid else {
+            // Engine ainda não rodou ciclo — toca imediato (at: nil)
+            channelMixers[channel].outputVolume = max(0, min(4, volume))
+            player.scheduleBuffer(buf, at: nil, options: [.interrupts], completionHandler: nil)
             return
         }
+        let offsetFrames = AVAudioFramePosition(offsetSeconds * outputSampleRate)
+        let targetSampleTime = now.sampleTime + offsetFrames
         let when = AVAudioTime(sampleTime: targetSampleTime, atRate: outputSampleRate)
 
-        // Volume por canal — atualiza ANTES de scheduleBuffer
         channelMixers[channel].outputVolume = max(0, min(4, volume))
-
-        // .interrupts corta sample anterior do MESMO player.
-        // Em try mesmo (Swift), pra log se algo der errado.
         player.scheduleBuffer(buf, at: when, options: [.interrupts], completionHandler: nil)
     }
 
