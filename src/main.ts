@@ -347,13 +347,6 @@ class RhythmSequencer {
     // ═══════════════════════════════════════════════════════════════════════
     const isIOSVis = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
                      (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-    // Android NATIVO (Capacitor): FGS + AudioTrack/Web Audio mantém áudio
-    // rodando limpo em background, JS thread também continua. Não precisa
-    // cancelar nada ao voltar — cancelar = blip audível.
-    // Tudo o resto (web Chrome desktop, Chrome Android browser, iOS, PWA):
-    // setTimeout throttle em background → fila de samples agendados drena →
-    // ao voltar, audio thread tocou compensação acavalada com novos = bug.
-    const isAndroidNative = isNativeApp() && /Android/i.test(navigator.userAgent);
     let backgroundStartedAt = 0;
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
@@ -362,20 +355,26 @@ class RhythmSequencer {
         if (isIOSVis && this.stateManager.isPlaying()) {
           this.audioManager.fadeOutAllActive(0.03);
         }
-        // Android nativo: não faz nada. FGS mantém áudio rodando.
+        // Web/Android: não faz nada. Chromium mantém áudio rodando, scheduler
+        // pode ficar throttled mas continua agendando enquanto o audio
+        // exempt vale. Samples tocam limpos.
       } else {
         // Voltou pro foreground.
         if (this.stateManager.isPlaying()) {
-          // Cancelar samples agendados que viraram "música sobre música" ao
-          // voltar do background. Aplica em TODA plataforma onde JS pausou
-          // (web desktop, web mobile, iOS) — exceto Android nativo (FGS
-          // mantém JS thread + audio thread vivos = sem fila acavalada).
-          if (!isAndroidNative) {
+          // SÓ iOS: cancelar TUDO que ficou agendado no audio thread durante
+          // o background. WKWebView pausa JS mas audio thread continua
+          // processando o que já foi agendado pelo scheduleStepFromSnapshot
+          // (até 0.5s de lookahead). Sem cancelar = "música sobre música"
+          // (samples antigos da fila tocando junto com samples novos).
+          // Web/Android: NÃO chamar — áudio nunca pausou de verdade,
+          // cancelar = blip audível desnecessário (regressão reportada
+          // 03/05/2026 quando tinha sido aplicado pra todas plataformas).
+          if (isIOSVis) {
             this.audioManager.cancelAllScheduled();
-            // Background longo (>1s): JS pausou tempo significativo,
-            // currentStep congelou enquanto audio thread tocou da fila.
-            // Volta pro downbeat pra ciclo musical não ficar fora de fase.
-            // Background curto: continua de onde parou (UX natural).
+            // Background longo (>1s) no iOS = JS pausou tempo significativo,
+            // currentStep ficou congelado enquanto audio rodava em bg. Volta
+            // do downbeat (step 0) pra ciclo musical não ficar fora de fase.
+            // Background curto = continua de onde parou (UX mais natural).
             const bgDuration = backgroundStartedAt > 0
               ? performance.now() - backgroundStartedAt
               : 0;
