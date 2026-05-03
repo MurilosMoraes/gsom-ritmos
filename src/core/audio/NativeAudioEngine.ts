@@ -119,14 +119,30 @@ export class NativeAudioEngine implements IAudioEngine {
       return webBuffer;
     }
 
+    // Resolve path: tenta /midi-native/X.wav (PCM 48k mono real, otimizado
+    // pelo script preconvert-samples.js) ANTES de cair pra /midi/X
+    // (que pode ser MP3 disfarçado de .wav, ou WAV stereo 24-bit, etc).
+    // Native engine espera buffer já no formato certo.
     const cleanPath = path.split('?')[0].replace(/^\//, '');
-    const bundlePath = cleanPath.startsWith('public/') ? cleanPath : `public/${cleanPath}`;
+    let nativePath = cleanPath;
+    let bundlePath = '';
+    if (cleanPath.startsWith('midi/') || cleanPath.startsWith('public/midi/')) {
+      // Reroute pra midi-native, sempre .wav
+      const filename = cleanPath.split('/').pop() || '';
+      const wavName = filename.replace(/\.(mp3|m4a|ogg|flac)$/i, '.wav');
+      nativePath = `midi-native/${wavName}`;
+      bundlePath = `public/midi-native/${wavName}`;
+    } else {
+      bundlePath = cleanPath.startsWith('public/') ? cleanPath : `public/${cleanPath}`;
+    }
+    // Usa o cleanPath original como key (pra bufferToKey funcionar com paths
+    // que o resto do código conhece — só path real do bundle muda)
     try {
       await NativePlugin.loadSample({ key: cleanPath, bundlePath, assetPath: bundlePath });
       this.bufferToKey.set(webBuffer, cleanPath);
-      console.log('[NativeAudioEngine] sample registrado:', cleanPath);
+      console.log('[NativeAudioEngine] sample registrado:', cleanPath, '→', bundlePath);
     } catch (e) {
-      console.error('[NativeAudioEngine] loadSample nativo FALHOU:', path, e);
+      console.error('[NativeAudioEngine] loadSample nativo FALHOU:', path, '→', bundlePath, e);
     }
     return webBuffer;
   }
