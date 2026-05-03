@@ -146,6 +146,35 @@ class RhythmSequencer {
       unlockAudio();
       if ((this.audioContext.state as string) === 'running') {
         unlockEvents.forEach(ev => document.removeEventListener(ev, onUnlock));
+        // ═══════════════════════════════════════════════════════════════════
+        // SILENT OSCILLATOR — só iOS — mantém AudioContext "warm"
+        // ═══════════════════════════════════════════════════════════════════
+        // iOS WKWebView suspende AudioContext em background ~500-1000ms após
+        // minimizar, mesmo com UIBackgroundModes=audio + AVAudioSession
+        // configurado. Causa: WebKit hesita em "comprometer" o context como
+        // tocando antes de confirmar audio audível.
+        //
+        // Fix de mercado (Tone.js PR #716, Howler #1525): manter um
+        // OscillatorNode rodando com gain absurdamente baixo (1e-37 — abaixo
+        // do noise floor, inaudível). iOS vê "tem áudio rolando" e mantém
+        // contexto vivo. Reduz silêncio inicial de ~1s pra ~100-200ms.
+        //
+        // Custo bateria/CPU: <1% (oscillator silencioso é praticamente free).
+        // Risco zero pra Android/Web — só roda em iOS.
+        // ═══════════════════════════════════════════════════════════════════
+        const isIOSCtx = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                         (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+        if (isIOSCtx) {
+          try {
+            const silentOsc = this.audioContext.createOscillator();
+            const silentGain = this.audioContext.createGain();
+            silentGain.gain.value = 1e-37; // inaudível, mas iOS conta como "playing"
+            silentOsc.connect(silentGain);
+            silentGain.connect(this.audioContext.destination);
+            silentOsc.start();
+            // Não para nunca — fica rodando enquanto app vive
+          } catch { /* fallback silencioso */ }
+        }
       }
     };
     unlockEvents.forEach(ev => document.addEventListener(ev, onUnlock));
@@ -283,8 +312,10 @@ class RhythmSequencer {
     // ═══════════════════════════════════════════════════════════════════════
     const isIOSVis = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
                      (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    let backgroundStartedAt = 0;
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
+        backgroundStartedAt = performance.now();
         // Indo pro background — iOS fade-out antes do WKWebView pausar
         if (isIOSVis && this.stateManager.isPlaying()) {
           this.audioManager.fadeOutAllActive(0.03);
@@ -303,10 +334,21 @@ class RhythmSequencer {
           // Android/Web: NÃO chamar — áudio nunca pausou, cancelar = blip.
           if (isIOSVis) {
             this.audioManager.cancelAllScheduled();
+            // Background longo (>1s) no iOS = JS pausou tempo significativo,
+            // currentStep ficou congelado enquanto audio rodava em bg. Volta
+            // do downbeat (step 0) pra ciclo musical não ficar fora de fase.
+            // Background curto = continua de onde parou (UX mais natural).
+            const bgDuration = backgroundStartedAt > 0
+              ? performance.now() - backgroundStartedAt
+              : 0;
+            if (bgDuration > 1000) {
+              this.stateManager.resetStep();
+            }
           }
           this.audioManager.resume();
           this.scheduler.restart();
         }
+        backgroundStartedAt = 0;
       }
     });
 
