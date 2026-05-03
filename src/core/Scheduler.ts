@@ -16,6 +16,10 @@ export class Scheduler {
   private nextStepTime = 0;
   private readonly scheduleAheadTime: number;
   private readonly tickInterval: number;
+  // Lookahead estendido em background (setTimeout throttle no Chrome
+  // Android e iOS Safari para de chamar tick → silêncio se a fila acabar).
+  // 5s cobre até throttle de 1Hz por ~5min sem buraco audível.
+  private readonly backgroundScheduleAheadTime: number = 5.0;
 
   // Detectar mobile pra ajustar performance
   private static readonly isMobile = /Android|iPhone|iPad|iPod/i.test(
@@ -42,6 +46,14 @@ export class Scheduler {
     // Desktop: mais preciso
     this.scheduleAheadTime = Scheduler.isMobile ? 0.5 : 0.25;
     this.tickInterval = Scheduler.isMobile ? 25 : 12;
+  }
+
+  /** Lookahead atual: maior em background pra cobrir setTimeout throttle */
+  private getEffectiveLookahead(): number {
+    if (typeof document !== 'undefined' && document.hidden) {
+      return this.backgroundScheduleAheadTime;
+    }
+    return this.scheduleAheadTime;
   }
 
   setUpdateStepCallback(callback: (step: number, pattern: PatternType) => void): void {
@@ -108,7 +120,8 @@ export class Scheduler {
         this.nextStepTime = currentTime + 0.05;
       }
 
-      while (this.nextStepTime < currentTime + this.scheduleAheadTime) {
+      const effectiveLookahead = this.getEffectiveLookahead();
+      while (this.nextStepTime < currentTime + effectiveLookahead) {
         if (!this.stateManager.isPlaying()) break;
 
         // 1. Capturar snapshot do estado ANTES de qualquer mutação
