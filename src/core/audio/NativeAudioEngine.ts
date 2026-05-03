@@ -140,9 +140,9 @@ export class NativeAudioEngine implements IAudioEngine {
     try {
       await NativePlugin.loadSample({ key: cleanPath, bundlePath, assetPath: bundlePath });
       this.bufferToKey.set(webBuffer, cleanPath);
-      console.log('[NativeAudioEngine] sample registrado:', cleanPath, '→', bundlePath);
     } catch (e) {
       console.error('[NativeAudioEngine] loadSample nativo FALHOU:', path, '→', bundlePath, e);
+      DebugOverlay.error(`load FALHOU: ${cleanPath} (${(e as Error).message})`);
     }
     return webBuffer;
   }

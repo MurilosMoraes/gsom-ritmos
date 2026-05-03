@@ -113,21 +113,32 @@ import AVFoundation
     // ─── Sample loading ────────────────────────────────────────────────────
 
     /// Carrega WAV/MP3 de um path do bundle iOS, decodifica e cacheia.
-    /// Caminho típico: "public/midi/bumbo.wav" (Capacitor copia /public pra App.app).
+    /// Caminho típico: "public/midi-native/bumbo.wav" ou "public/midi-native/Bloco 1.wav".
+    ///
+    /// Bundle.main.path(forResource:ofType:inDirectory:) é INSTÁVEL com:
+    /// - nomes com espaço ("Bloco 1.wav")
+    /// - subdiretórios profundos
+    /// Solução: construir URL direta de bundleURL + appendingPathComponent.
     @discardableResult
     public func loadSample(key: String, bundlePath: String) -> Bool {
-        // Resolve path no bundle
+        // Tenta caminho direto primeiro (URL construído manualmente)
+        let directURL = Bundle.main.bundleURL.appendingPathComponent(bundlePath)
+        if FileManager.default.fileExists(atPath: directURL.path) {
+            return loadSampleFromFileURL(key: key, url: directURL)
+        }
+
+        // Fallback: Bundle.main.path() (jeito antigo, falha com espaços)
         let parts = (bundlePath as NSString).pathComponents
         let filename = (parts.last ?? "") as NSString
         let name = filename.deletingPathExtension
         let ext = filename.pathExtension
         let directory = parts.dropLast().joined(separator: "/")
-
-        guard let path = Bundle.main.path(forResource: name, ofType: ext, inDirectory: directory) else {
-            NSLog("[GDrumsAudioEngine] Sample não encontrado no bundle: \(bundlePath)")
-            return false
+        if let path = Bundle.main.path(forResource: name, ofType: ext, inDirectory: directory) {
+            return loadSampleFromFileURL(key: key, url: URL(fileURLWithPath: path))
         }
-        return loadSampleFromFileURL(key: key, url: URL(fileURLWithPath: path))
+
+        NSLog("[GDrumsAudioEngine] Sample NÃO encontrado: \(bundlePath) (testou: \(directURL.path))")
+        return false
     }
 
     /// Carrega de URL do filesystem. Usado pra samples baixados ou base64 decodificados.
