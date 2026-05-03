@@ -57,6 +57,40 @@ class RhythmSequencer {
     this.audioContext = new AudioContext();
 
     // ═══════════════════════════════════════════════════════════════════════
+    // BACKGROUND AUDIO — defesa em profundidade pro WebKit.
+    // ═══════════════════════════════════════════════════════════════════════
+    // navigator.audioSession.type = 'playback' avisa o WebKit (iOS 17.5+)
+    // que esse Web Audio é "playback" e não "ambient" — sem isso, o
+    // AudioContext era cortado em background mesmo com UIBackgroundModes
+    // configurado. Bug WebKit 261554 (resolved iOS 17.5).
+    //
+    // No nativo (Capacitor iOS), o AppDelegate.swift configura
+    // AVAudioSession.setCategory(.playback) — esse JS é defesa redundante
+    // pro caso de PWA web standalone também funcionar.
+    // ═══════════════════════════════════════════════════════════════════════
+    if ('audioSession' in navigator) {
+      try {
+        (navigator as any).audioSession.type = 'playback';
+      } catch { /* silently ignore — pre-iOS 17 sem audioSession API */ }
+    }
+    // MediaSession metadata + action handlers — sinaliza pro WebView/SO
+    // "tem áudio rolando" (Chromium Android usa isso pra não suspender
+    // AudioContext) e habilita controles de play/pause no lockscreen.
+    if ('mediaSession' in navigator) {
+      try {
+        (navigator as any).mediaSession.metadata = new (window as any).MediaMetadata({
+          title: 'GDrums',
+          artist: 'Sequenciador de Ritmos',
+        });
+        (navigator as any).mediaSession.setActionHandler('play', () => this.togglePlayStop());
+        (navigator as any).mediaSession.setActionHandler('pause', () => this.togglePlayStop());
+        (navigator as any).mediaSession.setActionHandler('stop', () => {
+          if (this.stateManager.isPlaying()) this.togglePlayStop();
+        });
+      } catch { /* MediaMetadata/setActionHandler indisponível em browsers velhos */ }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // SILENT UNLOCK — destravar AudioContext no primeiro toque na tela.
     // ═══════════════════════════════════════════════════════════════════════
     // Cliente premium iOS reportava: abre app, pisa pedal, nada toca.
@@ -3446,12 +3480,21 @@ class RhythmSequencer {
     // KeepAwake é fire-and-forget — não bloquear o play
     KeepAwake.keepAwake().catch(() => {});
 
+    // MediaSession 'playing' — sinaliza pro SO/WebView que tem áudio
+    // rolando. Sem isso, Chromium Android suspende AudioContext em bg.
+    if ('mediaSession' in navigator) {
+      try { (navigator as any).mediaSession.playbackState = 'playing'; } catch {}
+    }
+
     // Gatilho de conversão: marca início do play
     this.conversionManager.onPlayStart();
   }
 
   private stop(): void {
     this.stateManager.setPlaying(false);
+    if ('mediaSession' in navigator) {
+      try { (navigator as any).mediaSession.playbackState = 'paused'; } catch {}
+    }
     this.stateManager.resetStep();
     this.stateManager.setActivePattern('main');
     this.stateManager.clearQueue();
