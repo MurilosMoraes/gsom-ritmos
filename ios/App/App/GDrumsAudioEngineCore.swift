@@ -41,6 +41,10 @@ import AVFoundation
     /// Sample rate do output (descoberta dinâmica do device — geralmente 48000)
     private var outputSampleRate: Double = 48000
 
+    /// Format usado nas connects (stereo float32 no sample rate do device).
+    /// Buffers carregados são convertidos pra ESSE format. Mismatch = crash.
+    private var engineFormat: AVAudioFormat?
+
     private var isStarted: Bool = false
 
     // ─── Lifecycle ────────────────────────────────────────────────────────
@@ -55,27 +59,42 @@ import AVFoundation
 
         let mainMixer = engine.mainMixerNode
 
-        // Cria 12 canais — cada um tem player + mixer próprio (volume per-channel)
+        // Format dos canais: STEREO float32 deinterleaved no sample rate do
+        // device. Stereo (não mono) porque mixer pra destination espera
+        // stereo — se conectar mono direto, mismatch = crash em scheduleBuffer.
+        // Buffers carregados em loadSample são convertidos pra ESSE format.
+        guard let playerFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: outputSampleRate,
+            channels: 2,
+            interleaved: false
+        ) else {
+            NSLog("[GDrumsAudioEngine] Format inválido — abortando init")
+            return
+        }
+        self.engineFormat = playerFormat
+
         for _ in 0..<channelCount {
             let player = AVAudioPlayerNode()
             let mixer = AVAudioMixerNode()
             engine.attach(player)
             engine.attach(mixer)
-            // Conecta player → mixer → mainMixer. Format nil deixa o engine decidir.
-            engine.connect(player, to: mixer, format: nil)
-            engine.connect(mixer, to: mainMixer, format: nil)
+            // Conecta com format EXPLÍCITO em ambas as pontas (player→mixer
+            // e mixer→main). Format nil = deixa engine decidir = mismatch
+            // se buffer carregado tiver format diferente = crash.
+            engine.connect(player, to: mixer, format: playerFormat)
+            engine.connect(mixer, to: mainMixer, format: playerFormat)
             channelPlayers.append(player)
             channelMixers.append(mixer)
         }
 
         do {
             try engine.start()
-            // Pre-roll: cada player precisa de play() antes de aceitar scheduleBuffer
             for player in channelPlayers {
                 player.play()
             }
             isStarted = true
-            NSLog("[GDrumsAudioEngine] Started @ \(outputSampleRate)Hz, \(channelCount) channels")
+            NSLog("[GDrumsAudioEngine] Started @ \(outputSampleRate)Hz, \(channelCount) channels (stereo float32)")
         } catch {
             NSLog("[GDrumsAudioEngine] Start failed: \(error)")
         }
@@ -114,6 +133,10 @@ import AVFoundation
     /// Carrega de URL do filesystem. Usado pra samples baixados ou base64 decodificados.
     @discardableResult
     public func loadSampleFromFileURL(key: String, url: URL) -> Bool {
+        guard let targetFormat = engineFormat else {
+            NSLog("[GDrumsAudioEngine] engineFormat não inicializado — initialize() não foi chamado?")
+            return false
+        }
         do {
             let file = try AVAudioFile(forReading: url)
             // Lê tudo pra buffer no formato do arquivo
@@ -123,22 +146,20 @@ import AVFoundation
             ) else { return false }
             try file.read(into: srcBuffer)
 
-            // Converte pro formato preferido do engine (sample rate do output, mono)
-            let targetFormat = AVAudioFormat(
-                commonFormat: .pcmFormatFloat32,
-                sampleRate: outputSampleRate,
-                channels: 1,
-                interleaved: false
-            )!
+            // ALVO: STEREO float32 no sample rate do device. MESMO format
+            // que conectei o player no engine. Se conectar player com format
+            // X e dar scheduleBuffer com format Y = NSException = crash.
+            // Samples mono no source viram stereo aqui (canal duplicado).
 
             let finalBuffer: AVAudioPCMBuffer
-            if file.processingFormat.sampleRate == outputSampleRate
-               && file.processingFormat.channelCount == 1
-               && file.processingFormat.commonFormat == .pcmFormatFloat32 {
+            if file.processingFormat.sampleRate == targetFormat.sampleRate
+               && file.processingFormat.channelCount == targetFormat.channelCount
+               && file.processingFormat.commonFormat == targetFormat.commonFormat
+               && file.processingFormat.isInterleaved == targetFormat.isInterleaved {
                 finalBuffer = srcBuffer
             } else {
-                // Resample + downmix
                 guard let converter = AVAudioConverter(from: file.processingFormat, to: targetFormat) else {
+                    NSLog("[GDrumsAudioEngine] AVAudioConverter falhou de \(file.processingFormat) pra \(targetFormat)")
                     return false
                 }
                 let ratio = targetFormat.sampleRate / file.processingFormat.sampleRate
@@ -156,7 +177,10 @@ import AVFoundation
                     return srcBuffer
                 }
                 converter.convert(to: outBuffer, error: &error, withInputFrom: inputBlock)
-                if error != nil { return false }
+                if let e = error {
+                    NSLog("[GDrumsAudioEngine] convert erro: \(e)")
+                    return false
+                }
                 finalBuffer = outBuffer
             }
 
@@ -195,7 +219,6 @@ import AVFoundation
     public func scheduleSample(channel: Int, sampleKey: String, offsetSeconds: Double, volume: Float) {
         guard isStarted, channel >= 0, channel < channelCount else { return }
         guard let anchor = sequenceAnchor else {
-            // Sem âncora ainda — toca imediatamente (one-shot fora do sequenciador)
             playOneShotImmediate(channel: channel, sampleKey: sampleKey, volume: volume)
             return
         }
@@ -206,19 +229,43 @@ import AVFoundation
             return
         }
 
+        // VALIDAÇÕES anti-NSException — scheduleBuffer crasha se algo abaixo
+        // não bater. Swift puro não pega NSException, então validamos antes.
+
+        // 1) Format do buffer DEVE bater com format do player connect
+        if let expected = engineFormat,
+           buf.format.commonFormat != expected.commonFormat
+           || buf.format.sampleRate != expected.sampleRate
+           || buf.format.channelCount != expected.channelCount {
+            NSLog("[GDrumsAudioEngine] Format mismatch p/ \(sampleKey): buf=\(buf.format) esperado=\(expected)")
+            return
+        }
+
+        // 2) Player tem que estar attachado e playing
+        let player = channelPlayers[channel]
+        guard player.engine != nil else {
+            NSLog("[GDrumsAudioEngine] Player canal \(channel) sem engine attached")
+            return
+        }
+        if !player.isPlaying {
+            player.play()
+        }
+
+        // 3) AVAudioTime válido — sampleTime nunca pode ser negativo
         let offsetFrames = AVAudioFramePosition(offsetSeconds * outputSampleRate)
-        let when = AVAudioTime(
-            sampleTime: anchor.sampleTime + offsetFrames,
-            atRate: outputSampleRate
-        )
+        let targetSampleTime = anchor.sampleTime + offsetFrames
+        guard targetSampleTime >= 0 else {
+            NSLog("[GDrumsAudioEngine] sampleTime negativo p/ \(sampleKey): \(targetSampleTime)")
+            return
+        }
+        let when = AVAudioTime(sampleTime: targetSampleTime, atRate: outputSampleRate)
 
         // Volume por canal — atualiza ANTES de scheduleBuffer
         channelMixers[channel].outputVolume = max(0, min(4, volume))
 
-        // .interrupts = corta sample anterior do MESMO player (1 player por canal,
-        // então corta SÓ esse canal, não os outros). Equivalente ao "corte de
-        // sample anterior por canal com fade" do AudioManager.ts.
-        channelPlayers[channel].scheduleBuffer(buf, at: when, options: [.interrupts], completionHandler: nil)
+        // .interrupts corta sample anterior do MESMO player.
+        // Em try mesmo (Swift), pra log se algo der errado.
+        player.scheduleBuffer(buf, at: when, options: [.interrupts], completionHandler: nil)
     }
 
     /// One-shot imediato (sem âncora) — usado pra prato/feedback.
@@ -227,8 +274,18 @@ import AVFoundation
         var buffer: AVAudioPCMBuffer?
         cacheQueue.sync { buffer = self.sampleCache[sampleKey] }
         guard let buf = buffer else { return }
+        if let expected = engineFormat,
+           buf.format.commonFormat != expected.commonFormat
+           || buf.format.sampleRate != expected.sampleRate
+           || buf.format.channelCount != expected.channelCount {
+            NSLog("[GDrumsAudioEngine] one-shot format mismatch \(sampleKey)")
+            return
+        }
+        let player = channelPlayers[channel]
+        guard player.engine != nil else { return }
+        if !player.isPlaying { player.play() }
         channelMixers[channel].outputVolume = max(0, min(4, volume))
-        channelPlayers[channel].scheduleBuffer(buf, at: nil, options: [.interrupts], completionHandler: nil)
+        player.scheduleBuffer(buf, at: nil, options: [.interrupts], completionHandler: nil)
     }
 
     /// Cancela TODOS os buffers agendados nesse canal (pedal aciona fill).

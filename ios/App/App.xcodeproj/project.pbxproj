@@ -18,6 +18,7 @@
 		F965C71D2FA7FFE200BD2F19 /* GDrumsAudioEngineCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F965C71A2FA7FFE100BD2F19 /* GDrumsAudioEngineCore.swift */; };
 		F965C71E2FA7FFE200BD2F19 /* GDrumsAudioEnginePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F965C71B2FA7FFE100BD2F19 /* GDrumsAudioEnginePlugin.swift */; };
 		F965C71F2FA7FFE200BD2F19 /* GDrumsNowPlayingPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F965C71C2FA7FFE100BD2F19 /* GDrumsNowPlayingPlugin.swift */; };
+		F965C7232FA8062C00BD2F19 /* GDrumsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F965C7222FA8062C00BD2F19 /* GDrumsViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,7 @@
 		F965C71A2FA7FFE100BD2F19 /* GDrumsAudioEngineCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDrumsAudioEngineCore.swift; sourceTree = "<group>"; };
 		F965C71B2FA7FFE100BD2F19 /* GDrumsAudioEnginePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDrumsAudioEnginePlugin.swift; sourceTree = "<group>"; };
 		F965C71C2FA7FFE100BD2F19 /* GDrumsNowPlayingPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDrumsNowPlayingPlugin.swift; sourceTree = "<group>"; };
+		F965C7222FA8062C00BD2F19 /* GDrumsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDrumsViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,6 +70,7 @@
 		504EC3061FED79650016851F /* App */ = {
 			isa = PBXGroup;
 			children = (
+				F965C7222FA8062C00BD2F19 /* GDrumsViewController.swift */,
 				F965C71A2FA7FFE100BD2F19 /* GDrumsAudioEngineCore.swift */,
 				F965C71B2FA7FFE100BD2F19 /* GDrumsAudioEnginePlugin.swift */,
 				F965C71C2FA7FFE100BD2F19 /* GDrumsNowPlayingPlugin.swift */,
@@ -168,6 +171,7 @@
 				F965C71E2FA7FFE200BD2F19 /* GDrumsAudioEnginePlugin.swift in Sources */,
 				F965C71F2FA7FFE200BD2F19 /* GDrumsNowPlayingPlugin.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				F965C7232FA8062C00BD2F19 /* GDrumsViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -308,7 +312,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = 2MW7WMBCB3;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -331,7 +335,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = 2MW7WMBCB3;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
