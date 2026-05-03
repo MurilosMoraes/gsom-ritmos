@@ -24,6 +24,16 @@
 
         </activity>
 
+        <!-- ForegroundService de áudio: mantém WebView vivo + AudioContext rodando
+             em background. mediaPlayback é uma das categorias que SO permite rodar
+             indefinidamente (Doze mode não mata). Notification persistente
+             mostra "GDrums tocando" com botão de Pause/Stop. -->
+        <service
+            android:name=".GDrumsAudioService"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="false"
+            android:stopWithTask="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -40,6 +50,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- ForegroundService pra background audio. FOREGROUND_SERVICE_MEDIA_PLAYBACK
+         obrigatória em Android 14+ (API 34) — sem ela = MissingForegroundServiceTypeException. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Notification do FGS: Android 13+ exige permission runtime. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Bluetooth (pedal) — Android 12+ -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"
                      android:usesPermissionFlags="neverForLocation" />

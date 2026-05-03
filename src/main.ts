@@ -3486,8 +3486,33 @@ class RhythmSequencer {
       try { (navigator as any).mediaSession.playbackState = 'playing'; } catch {}
     }
 
+    // Android: inicia ForegroundService que mantém WebView vivo + áudio
+    // tocando em background com tela bloqueada. iOS já tem AVAudioSession
+    // configurado no AppDelegate.swift (não precisa do plugin).
+    this.startBackgroundAudioService();
+
     // Gatilho de conversão: marca início do play
     this.conversionManager.onPlayStart();
+  }
+
+  private async startBackgroundAudioService(): Promise<void> {
+    if (!isNativeApp()) return;
+    try {
+      const { Capacitor, registerPlugin } = await import('@capacitor/core');
+      if (Capacitor.getPlatform() !== 'android') return;
+      const GDrumsBackground = registerPlugin<{ start: () => Promise<void>; stop: () => Promise<void> }>('GDrumsBackground');
+      await GDrumsBackground.start();
+    } catch { /* plugin não registrado em build antigo — fail silent */ }
+  }
+
+  private async stopBackgroundAudioService(): Promise<void> {
+    if (!isNativeApp()) return;
+    try {
+      const { Capacitor, registerPlugin } = await import('@capacitor/core');
+      if (Capacitor.getPlatform() !== 'android') return;
+      const GDrumsBackground = registerPlugin<{ start: () => Promise<void>; stop: () => Promise<void> }>('GDrumsBackground');
+      await GDrumsBackground.stop();
+    } catch { /* fail silent */ }
   }
 
   private stop(): void {
@@ -3495,6 +3520,8 @@ class RhythmSequencer {
     if ('mediaSession' in navigator) {
       try { (navigator as any).mediaSession.playbackState = 'paused'; } catch {}
     }
+    // Para o ForegroundService Android (notification some)
+    this.stopBackgroundAudioService();
     this.stateManager.resetStep();
     this.stateManager.setActivePattern('main');
     this.stateManager.clearQueue();
