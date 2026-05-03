@@ -22,6 +22,7 @@ import { AttributionService } from './native/AttributionService';
 import { PushService } from './native/PushService';
 import { isNativeApp, openExternal, internalNav } from './native/Platform';
 import { NowPlayingService } from './native/NowPlayingService';
+import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
 
@@ -55,6 +56,9 @@ class RhythmSequencer {
   private installPrompt: any = null;
 
   constructor() {
+    // Debug overlay (só Capacitor app, oculto até 3 taps no canto sup. esq.)
+    DebugOverlay.init();
+
     // Inicializar contexto de áudio
     this.audioContext = new AudioContext();
 

@@ -2,30 +2,33 @@
 // NativeAudioEngine — wrapper TypeScript do plugin Capacitor nativo.
 // ═════════════════════════════════════════════════════════════════════════
 //
+// MODO ESTRITO (03/05/2026): SEM fallback automático pro WebAudio.
+// Se o plugin nativo falhar, o app sinaliza erro VISÍVEL (alerta) em vez
+// de degradar silenciosamente — assim a gente descobre o bug na hora,
+// não fica mudo. Decisão do Murilo: "no nativo, obriga a usar o nativo".
+//
 // Roteia scheduling/playback pro plugin nativo (AVAudioEngine iOS /
-// AudioTrack mixer Android), mantendo Web Audio API só pra:
-//  - Decodificar samples (decodeAudioData → mas APENAS pro fallback web)
-//  - Fallback automático se plugin falhar/não estiver pronto
-//  - Compatibilidade com File API (drag-drop de WAV no editor)
+// AudioTrack mixer Android). Web Audio API ainda é usado SÓ pra:
+//  - Decodificar samples (decodeAudioData) — preciso do AudioBuffer pra
+//    código existente (.duration, etc) sem reescrever StateManager
+//  - Carregar File (drag-drop user — esses samples NÃO vão pro nativo,
+//    e por design não tocam até user salvar como ritmo personalizado)
 //
 // Padrão de operação:
-//  1. loadAudioFromPath(p)   → registra path no plugin nativo + carrega
-//                              AudioBuffer no fallback web (compat)
+//  1. loadAudioFromPath(p) → carrega no nativo (await initPromise).
+//                            Se falhar, log de erro mas continua (sample
+//                            ficará indisponível, scheduleStep pula ele)
 //  2. scheduleStepFromSnapshot → traduz snapshot em chamadas
-//                                scheduleSample(channel, key, offset, vol)
-//                                pro plugin nativo
-//  3. playSound(buffer, t)   → identifica buffer no cache reverso →
-//                              playOneShot no plugin (ou fallback se
-//                              buffer veio de File não cacheado)
-//
-// Quando o native não tá pronto, todas as chamadas caem no WebAudioEngine
-// transparentemente. Zero risco do app ficar mudo durante migração.
+//                                scheduleSample pro plugin nativo
+//  3. playSound(buffer, t) → identifica buffer no cache reverso →
+//                            playOneShot/scheduleSample no nativo
 
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import type { IAudioEngine, AudioEngineKind } from './IAudioEngine';
 import type { AudioSnapshot } from '../AudioManager';
 import { WebAudioEngine } from './WebAudioEngine';
 import { MAX_CHANNELS } from '../../types';
+import { DebugOverlay } from '../../native/DebugOverlay';
 
 // ─── Plugin interface (deve bater com Swift/Java) ───────────────────────
 interface GDrumsAudioEnginePlugin {
@@ -51,23 +54,24 @@ const NativePlugin = registerPlugin<GDrumsAudioEnginePlugin>('GDrumsAudioEngine'
 
 export class NativeAudioEngine implements IAudioEngine {
   readonly kind: AudioEngineKind;
-  /** WebAudioEngine pra fallback + decoding (sempre disponível). */
-  private fallback: WebAudioEngine;
+  /** WebAudioEngine usado APENAS pra decoding (decodeAudioData → AudioBuffer).
+   *  NUNCA toca som — esse é trabalho exclusivo do plugin nativo. */
+  private decoder: WebAudioEngine;
   private nativeReady: boolean = false;
-  /** Mapeia AudioBuffer (referência) → key string registrada no nativo.
-   *  Permite scheduleStepFromSnapshot/playSound (que recebem buffer)
-   *  encontrar a key correspondente pra chamar o plugin. */
+  /** Mapeia AudioBuffer (referência) → key string registrada no nativo. */
   private bufferToKey: WeakMap<AudioBuffer, string> = new WeakMap();
-  /** Anchor ativo? scheduleStep precisa disso pra saber se pode rotear pro nativo. */
+  /** Anchor ativo? */
   private anchored: boolean = false;
   /** Anchor offset: subtraímos do `time` (audioContext.currentTime-based)
    *  pra obter offsetSeconds-relativo-ao-anchor que o nativo espera. */
   private anchorAudioCtxTime: number = 0;
-  /** Pending init promise — chamadas scheduleSample esperam init terminar. */
+  /** Pending init promise — chamadas esperam init terminar. */
   private initPromise: Promise<void>;
+  private initFailed: boolean = false;
+  private alertShown: boolean = false;
 
   constructor(audioContext: AudioContext) {
-    this.fallback = new WebAudioEngine(audioContext);
+    this.decoder = new WebAudioEngine(audioContext);
     this.kind = Capacitor.getPlatform() === 'ios' ? 'native-ios' : 'native-android';
     this.initPromise = this.bootstrap();
   }
@@ -81,100 +85,103 @@ export class NativeAudioEngine implements IAudioEngine {
       this.nativeReady = init.ready === true;
       if (this.nativeReady) {
         console.log('%c[NativeAudioEngine] ✅ MODO NATIVO ATIVO', 'color:lime;font-weight:bold');
+        DebugOverlay.log(`✅ Engine nativo ativo: ${pong.platform} sr=${init.sampleRate}Hz`);
       } else {
-        console.warn('[NativeAudioEngine] plugin retornou ready=false, usando fallback');
+        this.handleInitFailure('Plugin nativo retornou ready=false');
       }
     } catch (e) {
-      console.warn('[NativeAudioEngine] bootstrap falhou — fallback web:', e);
-      this.nativeReady = false;
+      this.handleInitFailure('Plugin nativo não respondeu: ' + (e as Error).message);
     }
+  }
+
+  /** Modo estrito: erro pelo DebugOverlay (não atrapalha teste, abre só
+   *  com 3 taps no canto sup. esq.). Sem fallback web. */
+  private handleInitFailure(reason: string): void {
+    this.initFailed = true;
+    this.nativeReady = false;
+    console.error('[NativeAudioEngine] ❌ FALHA CRÍTICA:', reason);
+    DebugOverlay.error('NativeAudioEngine init falhou: ' + reason);
   }
 
   // ─── Loading ─────────────────────────────────────────────────────────────
 
   async loadAudioFromPath(path: string): Promise<AudioBuffer> {
-    // Sempre carrega no fallback web (precisamos do AudioBuffer pra compat
-    // com código que usa .duration, etc + pro fallback funcionar)
-    const webBuffer = await this.fallback.loadAudioFromPath(path);
+    // Decoda via Web Audio (precisamos do AudioBuffer pra código que usa
+    // .duration etc — não é pra TOCAR, só pra metadata).
+    const webBuffer = await this.decoder.loadAudioFromPath(path);
 
-    // CRÍTICO: aguarda bootstrap antes de tentar registrar no nativo.
-    // Sem await: race condition — loadAudioFromPath é chamado IMEDIATAMENTE
-    // após constructor, mas bootstrap() ainda não terminou → nativeReady=false
-    // → samples nunca registrados no nativo → bufferToKey vazio →
-    // scheduleStepFromSnapshot cai no fallback pra TUDO = app continua web.
+    // Aguarda bootstrap antes de registrar no nativo (race condition fix).
     await this.initPromise.catch(() => {});
 
-    if (this.nativeReady) {
-      // Path típico: "/midi/bumbo.wav"
-      // iOS bundle: "public/midi/bumbo.wav"
-      // Android assets: "public/midi/bumbo.wav"
-      const cleanPath = path.split('?')[0].replace(/^\//, '');
-      const bundlePath = cleanPath.startsWith('public/') ? cleanPath : `public/${cleanPath}`;
-      try {
-        await NativePlugin.loadSample({ key: cleanPath, bundlePath, assetPath: bundlePath });
-        this.bufferToKey.set(webBuffer, cleanPath);
-        console.log('[NativeAudioEngine] sample registrado:', cleanPath);
-      } catch (e) {
-        console.warn('[NativeAudioEngine] loadSample nativo falhou, usando fallback web:', path, e);
-      }
+    if (!this.nativeReady) {
+      // Modo estrito: erro visível. Não silencia.
+      console.error('[NativeAudioEngine] sample NÃO registrado (native off):', path);
+      return webBuffer;
     }
 
+    const cleanPath = path.split('?')[0].replace(/^\//, '');
+    const bundlePath = cleanPath.startsWith('public/') ? cleanPath : `public/${cleanPath}`;
+    try {
+      await NativePlugin.loadSample({ key: cleanPath, bundlePath, assetPath: bundlePath });
+      this.bufferToKey.set(webBuffer, cleanPath);
+      console.log('[NativeAudioEngine] sample registrado:', cleanPath);
+    } catch (e) {
+      console.error('[NativeAudioEngine] loadSample nativo FALHOU:', path, e);
+    }
     return webBuffer;
   }
 
   async loadAudioFromFile(file: File): Promise<AudioBuffer> {
-    // Drag-drop do user — não dá pra carregar no nativo (não é asset do bundle).
-    // Fica só no fallback web. Esse caminho NÃO vai pro nativo na Fase 3.
-    // Suporte a samples user-uploaded no nativo é Fase 7+ (gravação local).
-    return this.fallback.loadAudioFromFile(file);
+    // Drag-drop do user (editor) — só decoda, não vai pro nativo.
+    // Esses samples não são tocados pelo sequencer principal — são pra
+    // edição. Quando user salva como ritmo personalizado, vira midiPath
+    // e aí passa por loadAudioFromPath normal.
+    return this.decoder.loadAudioFromFile(file);
   }
 
   loadAudioFromBase64(base64: string): Promise<AudioBuffer> {
-    return this.fallback.loadAudioFromBase64(base64);
+    // Mesma coisa que File — só decoda.
+    return this.decoder.loadAudioFromBase64(base64);
   }
 
   // ─── Playback ────────────────────────────────────────────────────────────
 
   playSound(buffer: AudioBuffer, time: number, volume: number = 1.0): void {
-    // playSound é usado pra one-shots (prato, fillStart, fillReturn).
-    // Se conhecemos a key do buffer no nativo, usamos. Senão, fallback.
-    const key = this.bufferToKey.get(buffer);
-    if (this.nativeReady && key) {
-      // Canal "extra" pra one-shots — usa o último canal (índice 11, MAX_CHANNELS-1)
-      // pra não brigar com canais 0-10 do sequenciador.
-      // Se houver anchor, agenda no time relativo. Senão, dispara imediato.
-      if (this.anchored) {
-        const offset = Math.max(0, time - this.anchorAudioCtxTime);
-        NativePlugin.scheduleSample({ channel: MAX_CHANNELS - 1, key, offsetSeconds: offset, volume })
-          .catch(e => console.warn('[NativeAudioEngine] scheduleSample one-shot falhou:', e));
-      } else {
-        NativePlugin.playOneShot({ channel: MAX_CHANNELS - 1, key, volume })
-          .catch(e => console.warn('[NativeAudioEngine] playOneShot falhou:', e));
-      }
+    // One-shot (prato, fillStart, fillReturn).
+    if (!this.nativeReady) {
+      console.error('[NativeAudioEngine] playSound chamado mas native não pronto');
       return;
     }
-    // Fallback web (buffer não registrado no nativo, ou native não pronto)
-    this.fallback.playSound(buffer, time, volume);
+    const key = this.bufferToKey.get(buffer);
+    if (!key) {
+      console.error('[NativeAudioEngine] playSound: buffer não registrado no nativo');
+      return;
+    }
+    if (this.anchored) {
+      const offset = Math.max(0, time - this.anchorAudioCtxTime);
+      NativePlugin.scheduleSample({ channel: MAX_CHANNELS - 1, key, offsetSeconds: offset, volume })
+        .catch(e => console.error('[NativeAudioEngine] scheduleSample one-shot falhou:', e));
+    } else {
+      NativePlugin.playOneShot({ channel: MAX_CHANNELS - 1, key, volume })
+        .catch(e => console.error('[NativeAudioEngine] playOneShot falhou:', e));
+    }
   }
 
   scheduleStepFromSnapshot(snapshot: AudioSnapshot, time: number): void {
-    // Se native não tá pronto, fallback web faz tudo (preserva som imediato).
     if (!this.nativeReady) {
-      this.fallback.scheduleStepFromSnapshot(snapshot, time);
+      // Modo estrito: nada de fallback. Só loga.
+      // Isso significa que durante os primeiros ~200ms após boot (enquanto
+      // bootstrap roda), nada toca. Aceitável — usuário não dá play tão
+      // rápido. Se persistir, é bug do plugin.
       return;
     }
 
-    // Se ainda não anchorou (primeira scheduleStep da sessão de play),
-    // anchora AGORA usando o `time` recebido como tempo zero.
-    // Próximas chamadas calculam offset relativo a esse tempo.
     if (!this.anchored) {
       this.anchorAudioCtxTime = time;
       this.anchored = true;
-      // anchorNow no nativo usa "agora + leadIn" — passamos leadIn estimado
-      // baseado em quanto faltava pro `time` chegar
-      const leadInMs = Math.max(20, (time - this.fallback.getCurrentTime()) * 1000);
+      const leadInMs = Math.max(20, (time - this.decoder.getCurrentTime()) * 1000);
       NativePlugin.anchorNow({ leadInMs })
-        .catch(e => console.warn('[NativeAudioEngine] anchorNow falhou:', e));
+        .catch(e => console.error('[NativeAudioEngine] anchorNow falhou:', e));
     }
 
     const offsetSeconds = time - this.anchorAudioCtxTime;
@@ -188,7 +195,7 @@ export class NativeAudioEngine implements IAudioEngine {
           channel: MAX_CHANNELS - 1, key: k, offsetSeconds, volume: masterVolume
         }).catch(() => {});
       } else {
-        this.fallback.playSound(fillStartBuffer, time, masterVolume);
+        DebugOverlay.log('fillStartBuffer sem key registrada');
       }
     }
     if (snapshot.shouldPlayReturnSound && fillReturnBuffer) {
@@ -198,7 +205,7 @@ export class NativeAudioEngine implements IAudioEngine {
           channel: MAX_CHANNELS - 1, key: k, offsetSeconds, volume: masterVolume
         }).catch(() => {});
       } else {
-        this.fallback.playSound(fillReturnBuffer, time, masterVolume);
+        DebugOverlay.log('fillReturnBuffer sem key registrada');
       }
     }
 
@@ -214,9 +221,9 @@ export class NativeAudioEngine implements IAudioEngine {
 
       const key = this.bufferToKey.get(buffer);
       if (!key) {
-        // Sample veio de File (drag-drop) ou base64 — não está no nativo.
-        // Fallback pra esse step específico.
-        this.fallback.playSound(buffer, time, finalVolume);
+        // Sample não registrado no nativo — modo estrito, pula esse step.
+        // Aparece no debug pra identificar buffers órfãos.
+        DebugOverlay.log(`step canal ${channel} sem key (buffer órfão)`);
         continue;
       }
 
@@ -234,35 +241,31 @@ export class NativeAudioEngine implements IAudioEngine {
         key,
         offsetSeconds: cellOffsetSec,
         volume: finalVolume,
-      }).catch(e => console.warn('[NativeAudioEngine] scheduleSample falhou:', e));
+      }).catch(e => DebugOverlay.log('scheduleSample falhou: ' + (e as Error).message));
     }
   }
 
   // ─── Controle ────────────────────────────────────────────────────────────
 
   resume(): void {
-    // Sempre resume o fallback (pra File API funcionar no editor)
-    this.fallback.resume();
-    // Native AVAudioEngine/AudioTrack não tem "resume" equivalente —
-    // são auto-iniciados em initialize() e ficam vivos.
+    // Resume do AudioContext (pra File API/decoder funcionar) — no-op se
+    // já tá running. Não toca o nativo (AVAudioEngine sempre vivo).
+    this.decoder.resume();
   }
 
   getCurrentTime(): number {
-    // Continua usando audioContext.currentTime — é o clock que o Scheduler
-    // já conhece. NativeAudioEngine traduz internamente pra anchor offset.
-    return this.fallback.getCurrentTime();
+    // Usa audioContext.currentTime — clock que o Scheduler já conhece.
+    return this.decoder.getCurrentTime();
   }
 
   getState(): string {
-    return this.fallback.getState();
+    return this.decoder.getState();
   }
 
   fadeOutAllActive(fadeTime: number = 0.03): void {
     if (this.nativeReady) {
-      // Cancel suave no nativo (já tem fade interno de 5ms)
       NativePlugin.cancelAll().catch(() => {});
     }
-    this.fallback.fadeOutAllActive(fadeTime);
   }
 
   cancelAllScheduled(): void {
@@ -270,7 +273,6 @@ export class NativeAudioEngine implements IAudioEngine {
     if (this.nativeReady) {
       NativePlugin.cancelAll().catch(() => {});
     }
-    this.fallback.cancelAllScheduled();
   }
 
   /** True se plugin nativo está respondendo. */
