@@ -933,12 +933,55 @@ class RhythmSequencer {
   }
 
   private showSubscriptionBanner(status: string, expires: Date, plan: string): void {
-    if (status === 'active' && plan !== 'trial') {
+    const isPaidPlan = status === 'active' && plan !== 'trial';
+
+    // ─── Plano pago próximo do vencimento ───────────────────────────────
+    // Antes ficava silencioso até quebrar. User reclamava de "vencer e
+    // não saber" — banner aparece a partir de 7 dias antes pra dar tempo
+    // de renovar com calma.
+    if (isPaidPlan) {
       this.conversionManager.setTrialActive(false);
-      return; // Assinante pago, sem banner nem modais de upsell
+
+      const now = new Date();
+      const daysLeft = Math.floor((expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const hoursLeftPaid = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60 * 60)));
+
+      // Só mostra banner com 7 dias ou menos pra renovar
+      if (daysLeft > 7) return;
+
+      const banner = document.createElement('div');
+      banner.className = 'trial-banner trial-banner-renew';
+
+      // Urgente se for hoje/amanhã
+      if (daysLeft <= 1) banner.classList.add('trial-banner-urgent');
+
+      let renewMsg: string;
+      if (daysLeft <= 0 && hoursLeftPaid <= 24) {
+        renewMsg = `Sua assinatura vence <strong>hoje</strong>`;
+      } else if (daysLeft === 1) {
+        renewMsg = `Sua assinatura vence <strong>amanhã</strong>`;
+      } else {
+        renewMsg = `Sua assinatura vence em <strong>${daysLeft} dias</strong>`;
+      }
+
+      banner.innerHTML = `
+        <span class="trial-banner-text">${renewMsg}</span>
+        <a href="${isNativeApp() ? '#' : '/plans?renew=true'}" class="trial-banner-btn" id="trialBannerCta">Renovar agora</a>
+      `;
+      document.body.appendChild(banner);
+
+      if (isNativeApp()) {
+        banner.querySelector('#trialBannerCta')?.addEventListener('click', (e) => {
+          e.preventDefault();
+          openExternal(PLANS_URL_EXTERNAL + '?renew=true');
+        });
+      }
+
+      this.injectTrialBannerStyles();
+      return;
     }
 
-    // User está em trial — ativar gatilhos de conversão
+    // ─── Trial — comportamento original ─────────────────────────────────
     this.conversionManager.setTrialActive(true);
 
     const now = new Date();
@@ -982,63 +1025,79 @@ class RhythmSequencer {
       });
     }
 
-    // Injetar CSS
-    if (!document.getElementById('trial-banner-css')) {
-      const style = document.createElement('style');
-      style.id = 'trial-banner-css';
-      style.textContent = `
-        .trial-banner {
-          position: fixed;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          background: rgba(10, 10, 15, 0.88);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
-          padding: 0.7rem 1.25rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 1rem;
-          z-index: 9999;
-          animation: bannerSlideUp 0.3s ease;
-        }
-        .trial-banner-urgent {
-          border-top-color: rgba(255, 255, 255, 0.12);
-          background: rgba(14, 10, 10, 0.92);
-        }
-        .trial-banner-text {
-          font-size: 0.8rem;
-          color: rgba(255, 255, 255, 0.55);
-          font-weight: 400;
-          letter-spacing: 0.01em;
-        }
-        .trial-banner-text strong {
-          color: #fff;
-          font-weight: 600;
-        }
-        .trial-banner-btn {
-          font-size: 0.78rem;
-          font-weight: 600;
-          color: #0a0a0f;
-          background: #fff;
-          padding: 0.5rem 1rem;
-          border-radius: 8px;
-          text-decoration: none;
-          white-space: nowrap;
-          transition: opacity 0.15s;
-          letter-spacing: -0.005em;
-        }
-        .trial-banner-btn:hover { opacity: 0.85; }
-        .trial-banner-btn:active { transform: scale(0.98); }
-        @keyframes bannerSlideUp {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
-        }
-      `;
-      document.head.appendChild(style);
-    }
+    this.injectTrialBannerStyles();
+  }
+
+  private injectTrialBannerStyles(): void {
+    if (document.getElementById('trial-banner-css')) return;
+    const style = document.createElement('style');
+    style.id = 'trial-banner-css';
+    style.textContent = `
+      .trial-banner {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(10, 10, 15, 0.88);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 0.7rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        z-index: 9999;
+        animation: bannerSlideUp 0.3s ease;
+      }
+      .trial-banner-urgent {
+        border-top-color: rgba(255, 255, 255, 0.12);
+        background: rgba(14, 10, 10, 0.92);
+      }
+      /* Banner de renovação (assinante pago) — tom laranja "lembrete amigável",
+         contrastando com o trial-banner-urgent que é "alarme vermelho-escuro" */
+      .trial-banner-renew {
+        border-top-color: rgba(249, 115, 22, 0.35);
+        background: linear-gradient(180deg, rgba(249, 115, 22, 0.08) 0%, rgba(10, 10, 15, 0.92) 100%);
+      }
+      .trial-banner-renew.trial-banner-urgent {
+        border-top-color: rgba(249, 115, 22, 0.6);
+        background: linear-gradient(180deg, rgba(249, 115, 22, 0.18) 0%, rgba(14, 10, 10, 0.95) 100%);
+      }
+      .trial-banner-renew .trial-banner-btn {
+        background: linear-gradient(135deg, #F97316 0%, #FF6B35 100%);
+        color: #fff;
+      }
+      .trial-banner-text {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.55);
+        font-weight: 400;
+        letter-spacing: 0.01em;
+      }
+      .trial-banner-text strong {
+        color: #fff;
+        font-weight: 600;
+      }
+      .trial-banner-btn {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #0a0a0f;
+        background: #fff;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: opacity 0.15s;
+        letter-spacing: -0.005em;
+      }
+      .trial-banner-btn:hover { opacity: 0.85; }
+      .trial-banner-btn:active { transform: scale(0.98); }
+      @keyframes bannerSlideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   private generateChannelsHTML(): void {
