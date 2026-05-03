@@ -26,7 +26,15 @@ interface ActiveSource {
 export class AudioManager {
   private audioContext: AudioContext;
   private readonly FADE_TIME: number;
+  // Margem mínima entre currentTime e qualquer time agendado.
+  // Spec do Web Audio: rampa "no passado" vira step function = clique.
+  // 20ms cobre jitter normal de JS thread (GC, render) sem audível atraso.
+  private readonly SAFE_MARGIN = 0.020;
   private bufferCache = new Map<string, AudioBuffer>();
+  // Master node — DynamicsCompressor previne clipping na soma de canais.
+  // Sem isso, masterVolume * stepVolume * múltiplos canais podia somar > 1.0
+  // → clipping digital → harmônicos altos = clique perceptual aleatório.
+  private masterCompressor: DynamicsCompressorNode;
 
   // Rastrear source ativo por canal para cortar sample anterior sem estralo
   private activeSources = new Map<number, ActiveSource>();
@@ -42,7 +50,43 @@ export class AudioManager {
     this.audioContext = audioContext;
     // Mobile (PWA ou Capacitor) precisa de fade maior pra evitar estralos nas transições
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    this.FADE_TIME = isMobile ? 0.012 : 0.005; // 12ms mobile, 5ms desktop
+    this.FADE_TIME = isMobile ? 0.020 : 0.008; // 20ms mobile, 8ms desktop (era 12/5)
+
+    // Master compressor: protege contra clipping no destino. Knee suave +
+    // ratio moderado pra ser inaudível em uso normal mas pegar peaks.
+    this.masterCompressor = audioContext.createDynamicsCompressor();
+    this.masterCompressor.threshold.value = -3;
+    this.masterCompressor.knee.value = 6;
+    this.masterCompressor.ratio.value = 4;
+    this.masterCompressor.attack.value = 0.003;
+    this.masterCompressor.release.value = 0.1;
+    this.masterCompressor.connect(audioContext.destination);
+  }
+
+  /**
+   * Cancelamento robusto de rampa em curso num AudioParam.
+   * cancelScheduledValues + setValueAtTime(.value) tem race condition:
+   * .value é lido no JS thread, pode estar dessincronizado do audio thread.
+   * cancelAndHoldAtTime "congela" o valor exato no time alvo no próprio
+   * audio thread — atômico, sem race. Disponível em todos os browsers
+   * modernos; fallback pro padrão antigo se não suportado.
+   */
+  private cancelAndHold(param: AudioParam, time: number): void {
+    if (typeof (param as any).cancelAndHoldAtTime === 'function') {
+      (param as any).cancelAndHoldAtTime(time);
+    } else {
+      param.cancelScheduledValues(time);
+      param.setValueAtTime(param.value, time);
+    }
+  }
+
+  /**
+   * Garante que o time agendado NUNCA fica no passado.
+   * Web Audio: rampas com time <= currentTime viram step function = clique.
+   */
+  private safeTime(time: number): number {
+    const minTime = this.audioContext.currentTime + this.SAFE_MARGIN;
+    return time < minTime ? minTime : time;
   }
 
   /**
@@ -82,32 +126,39 @@ export class AudioManager {
   playSound(buffer: AudioBuffer, time: number, volume: number = 1.0): void {
     if (!buffer || volume <= 0) return;
 
+    const safeStart = this.safeTime(time);
+
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
 
     const gainNode = this.audioContext.createGain();
     const clampedVolume = Math.max(0, Math.min(4, volume)); // hard limit
 
-    // Fade in suave para eliminar estalos
-    gainNode.gain.setValueAtTime(0, time);
-    gainNode.gain.linearRampToValueAtTime(clampedVolume, time + this.FADE_TIME);
+    // Warmup: valor síncrono ANTES de qualquer rampa elimina race entre
+    // valor "default 1" do GainNode e a rampa começando em 0.
+    gainNode.gain.value = 0;
+    gainNode.gain.setValueAtTime(0, safeStart);
+    gainNode.gain.linearRampToValueAtTime(clampedVolume, safeStart + this.FADE_TIME);
 
-    // Fade out no final do sample
+    // Fade out SEMPRE — mesmo em samples curtos. Antes só fadeava se
+    // duration > FADE*3, samples curtos terminavam abruptos = clique.
+    // Agora pega o menor entre FADE_TIME e 20% da duração.
     const duration = buffer.duration;
-    if (duration > this.FADE_TIME * 3) {
-      gainNode.gain.setValueAtTime(clampedVolume, time + duration - this.FADE_TIME);
-      gainNode.gain.linearRampToValueAtTime(0, time + duration);
+    const fadeOutDur = Math.min(this.FADE_TIME, duration * 0.2);
+    if (fadeOutDur > 0.001) {
+      gainNode.gain.setValueAtTime(clampedVolume, safeStart + duration - fadeOutDur);
+      gainNode.gain.linearRampToValueAtTime(0, safeStart + duration);
     }
 
     source.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    source.start(time);
+    gainNode.connect(this.masterCompressor);
+    source.start(safeStart);
 
     // Rastrear + safety cleanup (Chromium Android às vezes não dispara onended)
     const entry = { source, gain: gainNode };
     this.allNodes.add(entry);
     const nowMs = performance.now();
-    const endMs = (time - this.audioContext.currentTime) * 1000 + duration * 1000 + 200;
+    const endMs = (safeStart - this.audioContext.currentTime) * 1000 + duration * 1000 + 200;
     const safetyDelay = Math.max(100, endMs - (performance.now() - nowMs));
     setTimeout(() => this.forceCleanup(entry), safetyDelay);
 
@@ -124,15 +175,19 @@ export class AudioManager {
   private playSoundOnChannel(channel: number, buffer: AudioBuffer, time: number, volume: number): void {
     if (!buffer || volume <= 0) return;
 
-    // Cortar sample anterior deste canal com fade-out rápido (evita estralo)
+    const safeStart = this.safeTime(time);
+
+    // Cortar sample anterior deste canal com fade-out rápido (evita estralo).
+    // cancelAndHoldAtTime resolve race condition do cancelScheduledValues +
+    // setValueAtTime(.value): .value lido em JS thread vs audio thread podia
+    // estar dessincronizado, gerando "fade de 0 pra 0" sem efeito real,
+    // depois corte abrupto do source.stop() = clique audível clássico.
     const prev = this.activeSources.get(channel);
     if (prev) {
       try {
-        // Cancelar qualquer rampa pendente e fazer fade-out rápido
-        prev.gain.gain.cancelScheduledValues(time);
-        prev.gain.gain.setValueAtTime(prev.gain.gain.value, time);
-        prev.gain.gain.linearRampToValueAtTime(0, time + this.FADE_TIME);
-        prev.source.stop(time + this.FADE_TIME + 0.001);
+        this.cancelAndHold(prev.gain.gain, safeStart);
+        prev.gain.gain.linearRampToValueAtTime(0, safeStart + this.FADE_TIME);
+        prev.source.stop(safeStart + this.FADE_TIME + 0.005);
       } catch {
         // Source já parou naturalmente — ignorar
       }
@@ -144,22 +199,24 @@ export class AudioManager {
     const gainNode = this.audioContext.createGain();
     const clampedVolume = Math.max(0, Math.min(4, volume));
 
-    // Fade in suave
-    gainNode.gain.setValueAtTime(0, time);
-    gainNode.gain.linearRampToValueAtTime(clampedVolume, time + this.FADE_TIME);
+    // Warmup síncrono ANTES da rampa
+    gainNode.gain.value = 0;
+    gainNode.gain.setValueAtTime(0, safeStart);
+    gainNode.gain.linearRampToValueAtTime(clampedVolume, safeStart + this.FADE_TIME);
 
-    // Fade out no final do sample
+    // Fade out SEMPRE — mesmo em samples curtos
     const duration = buffer.duration;
-    if (duration > this.FADE_TIME * 3) {
-      gainNode.gain.setValueAtTime(clampedVolume, time + duration - this.FADE_TIME);
-      gainNode.gain.linearRampToValueAtTime(0, time + duration);
+    const fadeOutDur = Math.min(this.FADE_TIME, duration * 0.2);
+    if (fadeOutDur > 0.001) {
+      gainNode.gain.setValueAtTime(clampedVolume, safeStart + duration - fadeOutDur);
+      gainNode.gain.linearRampToValueAtTime(0, safeStart + duration);
     }
 
     source.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    source.start(time);
+    gainNode.connect(this.masterCompressor);
+    source.start(safeStart);
 
-    const endTime = time + duration;
+    const endTime = safeStart + duration;
 
     // Rastrear como source ativo deste canal
     this.activeSources.set(channel, { source, gain: gainNode, endTime });
@@ -167,7 +224,7 @@ export class AudioManager {
     // Rastrear + safety cleanup (idem playSound)
     const entry = { source, gain: gainNode };
     this.allNodes.add(entry);
-    const endMs = (time - this.audioContext.currentTime) * 1000 + duration * 1000 + 200;
+    const endMs = (safeStart - this.audioContext.currentTime) * 1000 + duration * 1000 + 200;
     setTimeout(() => this.forceCleanup(entry), Math.max(100, endMs));
 
     // Auto-cleanup
@@ -277,10 +334,9 @@ export class AudioManager {
     const now = this.audioContext.currentTime;
     this.activeSources.forEach((entry) => {
       try {
-        entry.gain.gain.cancelScheduledValues(now);
-        entry.gain.gain.setValueAtTime(entry.gain.gain.value, now);
+        this.cancelAndHold(entry.gain.gain, now);
         entry.gain.gain.linearRampToValueAtTime(0, now + fadeTime);
-        entry.source.stop(now + fadeTime + 0.001);
+        entry.source.stop(now + fadeTime + 0.005);
       } catch {
         // source já parou ou foi descartado
       }
