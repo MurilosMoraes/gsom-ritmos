@@ -98,11 +98,12 @@ class PlansPage {
       }
     }
 
-    // Só redirecionar se tem plano PAGO ativo e NÃO veio fazer upgrade
+    // Só redirecionar se tem plano PAGO ativo e NÃO veio fazer upgrade/renovação
     const params = new URLSearchParams(window.location.search);
     const isUpgrade = params.get('upgrade') === 'true';
+    const isRenew = params.get('renew') === 'true';
 
-    if (!isUpgrade && status === 'active' && plan && plan !== 'trial' && profile?.subscription_expires_at) {
+    if (!isUpgrade && !isRenew && status === 'active' && plan && plan !== 'trial' && profile?.subscription_expires_at) {
       if (new Date(profile.subscription_expires_at) > new Date()) {
         window.location.href = '/';
         return;
@@ -111,6 +112,18 @@ class PlansPage {
 
     if (isUpgrade) {
       this.showAlert('Escolha um plano superior para fazer o upgrade da sua assinatura.');
+    } else if (isRenew && plan && plan !== 'trial') {
+      // Renovação proativa (assinante pago veio antes de vencer)
+      const planLabel = (PLANS.find(p => p.id === plan)?.name) || plan;
+      const daysToExp = profile?.subscription_expires_at
+        ? Math.ceil((new Date(profile.subscription_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        : 0;
+      const venceMsg = daysToExp <= 0
+        ? 'sua assinatura vence hoje'
+        : daysToExp === 1
+          ? 'sua assinatura vence amanhã'
+          : `sua assinatura vence em ${daysToExp} dias`;
+      this.showAlert(`Renove seu plano ${planLabel} — ${venceMsg}.`);
     } else if (status === 'expired' || (status === 'trial' && profile?.subscription_expires_at && new Date(profile.subscription_expires_at) <= new Date())) {
       this.showAlert('Sua assinatura expirou. Escolha um plano para continuar.');
     }
@@ -122,7 +135,11 @@ class PlansPage {
     }
 
     this.setupCoupon();
-    this.renderPlans(params.get('plan'));
+    // Renovação destaca o plano atual; upgrade respeita ?plan=X; default usa o "popular"
+    const highlightPlan = isRenew && plan && plan !== 'trial'
+      ? plan
+      : params.get('plan');
+    this.renderPlans(highlightPlan);
   }
 
   // ─── Cupom ──────────────────────────────────────────────────────────
