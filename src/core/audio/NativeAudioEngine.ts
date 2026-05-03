@@ -170,9 +170,10 @@ export class NativeAudioEngine implements IAudioEngine {
     }
     const key = this.bufferToKey.get(buffer);
     if (!key) {
-      console.error('[NativeAudioEngine] playSound: buffer não registrado no nativo');
+      DebugOverlay.error('playSound SEM KEY (buffer não registrado)');
       return;
     }
+    DebugOverlay.log(`playSound key=${key} vol=${volume.toFixed(2)}`);
     if (this.anchored) {
       const offset = Math.max(0, time - this.anchorAudioCtxTime);
       NativePlugin.scheduleSample({ channel: MAX_CHANNELS - 1, key, offsetSeconds: offset, volume })
@@ -183,8 +184,14 @@ export class NativeAudioEngine implements IAudioEngine {
     }
   }
 
+  // Debug: contador pra evitar spam de logs (1 por segundo)
+  private debugLastLog = 0;
+  private debugCallCount = 0;
+  private debugScheduleCount = 0;
+
   scheduleStepFromSnapshot(snapshot: AudioSnapshot, time: number): void {
     if (!this.nativeReady) return;
+    this.debugCallCount++;
 
     // ESTRATÉGIA NOVA: re-anchora a CADA chamada com tempo "agora".
     // Razão: clock JS (audioContext.currentTime) é INDEPENDENTE do clock
@@ -226,9 +233,13 @@ export class NativeAudioEngine implements IAudioEngine {
       }
     }
 
-    // Loop dos canais
+    // Loop dos canais — com diagnóstico inicial
+    let triggers = 0;
+    let withoutKey = 0;
+    let scheduled = 0;
     for (let channel = 0; channel < MAX_CHANNELS; channel++) {
       if (!pattern[channel] || !pattern[channel][step]) continue;
+      triggers++;
       const buffer = channels[channel]?.buffer;
       if (!buffer) continue;
 
@@ -237,7 +248,11 @@ export class NativeAudioEngine implements IAudioEngine {
       if (finalVolume <= 0) continue;
 
       const key = this.bufferToKey.get(buffer);
-      if (!key) continue;
+      if (!key) {
+        withoutKey++;
+        continue;
+      }
+      scheduled++;
 
       // Aplica offset por célula
       let cellDelta = deltaSeconds;
@@ -253,6 +268,20 @@ export class NativeAudioEngine implements IAudioEngine {
         offsetSeconds: cellDelta,
         volume: finalVolume,
       }).catch(() => {});
+      this.debugScheduleCount++;
+    }
+
+    // Log throttled (1x por segundo) com diagnóstico do scheduling
+    const now = Date.now();
+    if (now - this.debugLastLog > 1000) {
+      this.debugLastLog = now;
+      DebugOverlay.log(
+        `sched: calls=${this.debugCallCount}/s scheduled=${this.debugScheduleCount} ` +
+        `step=${step} delta=${deltaSeconds.toFixed(3)}s ` +
+        `triggers=${triggers} sem-key=${withoutKey}`
+      );
+      this.debugCallCount = 0;
+      this.debugScheduleCount = 0;
     }
   }
 
