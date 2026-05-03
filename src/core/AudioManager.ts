@@ -345,6 +345,33 @@ export class AudioManager {
   }
 
   /**
+   * Cancela TUDO que está no audio thread — tanto sources tocando AGORA quanto
+   * sources AGENDADOS pra começar no futuro (lookahead). Usado quando voltamos
+   * de background no iOS: o WKWebView pausa o JS thread mas o audio thread
+   * continua processando os samples que já foram agendados (até 0.5s de
+   * lookahead). Sem cancelar essa fila, ao voltar fica "música sobre música" —
+   * samples antigos da fila tocando junto com samples novos do scheduler novo.
+   *
+   * Diferente do fadeOutAllActive: aquele só pega `activeSources` (samples
+   * que já começaram). Esse pega `allNodes` (que rastreia TODOS criados,
+   * incluindo agendados pra futuro).
+   */
+  cancelAllScheduled(): void {
+    const now = this.audioContext.currentTime;
+    this.allNodes.forEach((entry) => {
+      try {
+        this.cancelAndHold(entry.gain.gain, now);
+        entry.gain.gain.linearRampToValueAtTime(0, now + 0.005);
+        entry.source.stop(now + 0.01);
+      } catch {
+        // source já parou ou ainda nem começou — ignorar
+      }
+    });
+    this.activeSources.clear();
+    // allNodes vai ser limpo via onended/forceCleanup naturalmente
+  }
+
+  /**
    * Retorna o estado atual do AudioContext — usado em debug e fallbacks.
    * iOS tem estado 'interrupted' não-padrão que o TypeScript não conhece.
    */

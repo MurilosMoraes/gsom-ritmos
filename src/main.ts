@@ -293,8 +293,17 @@ class RhythmSequencer {
         // pode ficar throttled mas continua agendando enquanto o audio
         // exempt vale. Samples tocam limpos.
       } else {
-        // Voltou pro foreground — comportamento original que funcionava
+        // Voltou pro foreground.
         if (this.stateManager.isPlaying()) {
+          // SÓ iOS: cancelar TUDO que ficou agendado no audio thread durante
+          // o background. WKWebView pausa JS mas audio thread continua
+          // processando o que já foi agendado pelo scheduleStepFromSnapshot
+          // (até 0.5s de lookahead). Sem cancelar = "música sobre música"
+          // (samples antigos da fila tocando junto com samples novos).
+          // Android/Web: NÃO chamar — áudio nunca pausou, cancelar = blip.
+          if (isIOSVis) {
+            this.audioManager.cancelAllScheduled();
+          }
           this.audioManager.resume();
           this.scheduler.restart();
         }
