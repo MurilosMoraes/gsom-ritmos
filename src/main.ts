@@ -361,29 +361,31 @@ class RhythmSequencer {
       } else {
         // Voltou pro foreground.
         if (this.stateManager.isPlaying()) {
-          // SÓ iOS: cancelar TUDO que ficou agendado no audio thread durante
-          // o background. WKWebView pausa JS mas audio thread continua
-          // processando o que já foi agendado pelo scheduleStepFromSnapshot
-          // (até 0.5s de lookahead). Sem cancelar = "música sobre música"
-          // (samples antigos da fila tocando junto com samples novos).
-          // Web/Android: NÃO chamar — áudio nunca pausou de verdade,
-          // cancelar = blip audível desnecessário (regressão reportada
-          // 03/05/2026 quando tinha sido aplicado pra todas plataformas).
+          // resume() é seguro em qualquer plataforma — no-op se contexto já
+          // tá running (web/Android nativo nunca pausaram de verdade).
+          this.audioManager.resume();
+
+          // SÓ iOS precisa do tratamento abaixo. WKWebView pausa JS thread
+          // de verdade em background — fila de samples agendados é processada
+          // sozinha pelo audio thread, e ao voltar:
+          //   1) scheduler.restart() agendaria NOVOS samples em cima dos
+          //      antigos da fila → "música sobre música"
+          //   2) currentStep congelou → ciclo musical fora de fase
+          // Fix iOS: cancela fila + reset downbeat se bg longo + restart.
+          //
+          // Web/Android: NÃO mexer. Chrome desktop não throttle agressivo
+          // aba com áudio rolando, Android nativo tem FGS. Áudio segue
+          // limpo, cancelar/restart aqui = acavalamento (bug reportado).
           if (isIOSVis) {
             this.audioManager.cancelAllScheduled();
-            // Background longo (>1s) no iOS = JS pausou tempo significativo,
-            // currentStep ficou congelado enquanto audio rodava em bg. Volta
-            // do downbeat (step 0) pra ciclo musical não ficar fora de fase.
-            // Background curto = continua de onde parou (UX mais natural).
             const bgDuration = backgroundStartedAt > 0
               ? performance.now() - backgroundStartedAt
               : 0;
             if (bgDuration > 1000) {
               this.stateManager.resetStep();
             }
+            this.scheduler.restart();
           }
-          this.audioManager.resume();
-          this.scheduler.restart();
         }
         backgroundStartedAt = 0;
       }
