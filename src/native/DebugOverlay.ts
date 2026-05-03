@@ -38,22 +38,41 @@ class DebugOverlayClass {
     if (this.initialized || !this.isAvailable()) return;
     this.initialized = true;
 
-    // Toggle: 3 toques rápidos no CANTO superior esquerdo (40x40px)
-    document.addEventListener('touchstart', (e) => {
-      if (!e.touches[0]) return;
-      const t = e.touches[0];
-      if (t.clientX < 40 && t.clientY < 40) {
-        this.tripleTapCount++;
-        if (this.tripleTapTimer) clearTimeout(this.tripleTapTimer);
-        this.tripleTapTimer = window.setTimeout(() => { this.tripleTapCount = 0; }, 600);
-        if (this.tripleTapCount >= 3) {
-          this.tripleTapCount = 0;
-          this.toggle();
-        }
-      }
-    }, { passive: true });
+    // BOTÃO FIXO 🐛 no canto superior direito — só Capacitor app, sempre visível.
+    // Tap único abre o painel. Tap segurado (1.5s) esconde o botão.
+    const ensureBtn = () => {
+      if (document.getElementById('gdrumsDebugBtn')) return;
+      const btn = document.createElement('button');
+      btn.id = 'gdrumsDebugBtn';
+      btn.textContent = '🐛';
+      btn.style.cssText = `
+        position: fixed; top: env(safe-area-inset-top, 0); right: 8px;
+        width: 44px; height: 44px; border-radius: 22px;
+        background: rgba(255,0,0,0.85); color: #fff;
+        border: 2px solid #fff; font-size: 22px;
+        z-index: 999998; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        font-family: inherit; padding: 0;
+      `;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggle();
+      });
+      // Hold 1.5s pra esconder o botão
+      let holdTimer: number | null = null;
+      btn.addEventListener('touchstart', () => {
+        holdTimer = window.setTimeout(() => { btn.style.display = 'none'; }, 1500);
+      }, { passive: true });
+      btn.addEventListener('touchend', () => {
+        if (holdTimer) clearTimeout(holdTimer);
+      });
+      document.body.appendChild(btn);
+    };
+    if (document.body) ensureBtn();
+    else document.addEventListener('DOMContentLoaded', ensureBtn);
 
-    // Captura erros globais não tratados pra ajudar a debugar
+    // Captura erros globais não tratados
     window.addEventListener('error', (e) => {
       this.error(`window.error: ${e.message} @ ${e.filename}:${e.lineno}`);
     });
