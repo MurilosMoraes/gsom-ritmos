@@ -79,6 +79,11 @@ export class NativeAudioEngine implements IAudioEngine {
       const init = await NativePlugin.initialize();
       console.log('[NativeAudioEngine] initialize:', init);
       this.nativeReady = init.ready === true;
+      if (this.nativeReady) {
+        console.log('%c[NativeAudioEngine] ✅ MODO NATIVO ATIVO', 'color:lime;font-weight:bold');
+      } else {
+        console.warn('[NativeAudioEngine] plugin retornou ready=false, usando fallback');
+      }
     } catch (e) {
       console.warn('[NativeAudioEngine] bootstrap falhou — fallback web:', e);
       this.nativeReady = false;
@@ -92,6 +97,13 @@ export class NativeAudioEngine implements IAudioEngine {
     // com código que usa .duration, etc + pro fallback funcionar)
     const webBuffer = await this.fallback.loadAudioFromPath(path);
 
+    // CRÍTICO: aguarda bootstrap antes de tentar registrar no nativo.
+    // Sem await: race condition — loadAudioFromPath é chamado IMEDIATAMENTE
+    // após constructor, mas bootstrap() ainda não terminou → nativeReady=false
+    // → samples nunca registrados no nativo → bufferToKey vazio →
+    // scheduleStepFromSnapshot cai no fallback pra TUDO = app continua web.
+    await this.initPromise.catch(() => {});
+
     if (this.nativeReady) {
       // Path típico: "/midi/bumbo.wav"
       // iOS bundle: "public/midi/bumbo.wav"
@@ -101,6 +113,7 @@ export class NativeAudioEngine implements IAudioEngine {
       try {
         await NativePlugin.loadSample({ key: cleanPath, bundlePath, assetPath: bundlePath });
         this.bufferToKey.set(webBuffer, cleanPath);
+        console.log('[NativeAudioEngine] sample registrado:', cleanPath);
       } catch (e) {
         console.warn('[NativeAudioEngine] loadSample nativo falhou, usando fallback web:', path, e);
       }

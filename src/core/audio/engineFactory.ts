@@ -15,8 +15,13 @@ import type { IAudioEngine } from './IAudioEngine';
 import { WebAudioEngine } from './WebAudioEngine';
 import { NativeAudioEngine } from './NativeAudioEngine';
 
-/** Mude pra `true` quando NativeAudioEngine estiver pronto pra rollout geral. */
-const useNativeByDefault = false;
+/** Mude pra `true` quando NativeAudioEngine estiver pronto pra rollout geral.
+ *  ATIVADO em 03/05/2026 — Capacitor iOS/Android usa nativo por default.
+ *  Web/PWA continuam SEMPRE com WebAudio (guard explícito abaixo).
+ *  Pra reverter pro WebAudio em Capacitor (debug):
+ *    localStorage.setItem('gdrums-engine', 'web')
+ */
+const useNativeByDefault = true;
 
 export function createAudioEngine(audioContext: AudioContext): IAudioEngine {
   // Web/PWA: SEMPRE WebAudio. Sem bypass possível.
