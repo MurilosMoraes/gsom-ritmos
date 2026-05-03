@@ -7,10 +7,10 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Registrar plugin nativo de background audio (ForegroundService).
-        // Tem que ser ANTES de super.onCreate() pra Capacitor saber do plugin
-        // quando o WebView carregar.
+        // Registrar plugins nativos. Tem que ser ANTES de super.onCreate()
+        // pra Capacitor saber dos plugins quando o WebView carregar.
         registerPlugin(GDrumsBackgroundPlugin.class);
+        registerPlugin(GDrumsAudioEnginePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
