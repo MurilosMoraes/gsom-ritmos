@@ -271,7 +271,13 @@ import AVFoundation
         let when = AVAudioTime(sampleTime: targetSampleTime, atRate: outputSampleRate)
 
         channelMixers[channel].outputVolume = max(0, min(4, volume))
-        player.scheduleBuffer(buf, at: when, options: [.interrupts], completionHandler: nil)
+        // SEM .interrupts — essa flag cancela TODOS os buffers agendados no
+        // player, incluindo futuros que ainda nem tocaram. Com lookahead de
+        // 500ms do scheduler JS, novos schedules cancelavam os antigos da
+        // fila ANTES de tocarem = nenhum som saía. Sem flag, samples se
+        // sobrepõem naturalmente (decay anterior + ataque novo = som
+        // realista de bateria, não atrapalha).
+        player.scheduleBuffer(buf, at: when, options: [], completionHandler: nil)
     }
 
     /// One-shot imediato (sem âncora) — usado pra prato/feedback.
@@ -291,7 +297,7 @@ import AVFoundation
         guard player.engine != nil else { return }
         if !player.isPlaying { player.play() }
         channelMixers[channel].outputVolume = max(0, min(4, volume))
-        player.scheduleBuffer(buf, at: nil, options: [.interrupts], completionHandler: nil)
+        player.scheduleBuffer(buf, at: nil, options: [], completionHandler: nil)
     }
 
     /// Cancela TODOS os buffers agendados nesse canal (pedal aciona fill).
