@@ -2,6 +2,7 @@
 
 import { supabase } from './supabase';
 import { ModalManager } from '../ui/ModalManager';
+import { internalNav } from '../native/Platform';
 
 const modalManager = new ModalManager();
 const ADMIN_API_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/admin-api';
@@ -406,7 +407,7 @@ class AdminDashboard {
 
   private async init(): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { window.location.href = '/login'; return; }
+    if (!user) { internalNav('/login'); return; }
 
     // Verificar admin via query direta (RLS libera select do próprio profile).
     // Antes buscava 827 profiles via edge fn e procurava — lento e frágil.
@@ -525,7 +526,7 @@ class AdminDashboard {
   private setupEvents(): void {
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {
       await supabase.auth.signOut();
-      window.location.href = '/login';
+      internalNav('/login');
     });
 
     document.querySelectorAll('.adm-nav-item').forEach(item => {

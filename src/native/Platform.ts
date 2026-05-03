@@ -35,3 +35,29 @@ export function openExternal(url: string): void {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 }
+
+/**
+ * Navega internamente pra outra página do app (login, plans, register, etc).
+ *
+ * No web (Vercel) usa URLs limpas via rewrites do vercel.json (`/login` →
+ * `/login.html`). No app nativo (Capacitor iOS/Android) NÃO HÁ rewriter —
+ * arquivos são servidos do filesystem. Sem `.html`, o navegador volta pra
+ * `index.html` e cria LOOP DE REDIRECT (tela "Tudo pronto" piscando).
+ *
+ * Sempre usa esse helper em vez de `window.location.href = '/login'`.
+ *
+ * @param path Caminho sem `.html` (ex: '/login', '/plans?renew=true')
+ */
+export function internalNav(path: string): void {
+  if (isNativeApp() && !path.includes('.html')) {
+    // Separa querystring/hash pra adicionar .html no lugar certo
+    const match = path.match(/^([^?#]*)(.*)$/);
+    if (match) {
+      const [, base, rest] = match;
+      const baseWithHtml = base.endsWith('/') ? base + 'index.html' : base + '.html';
+      window.location.href = baseWithHtml + rest;
+      return;
+    }
+  }
+  window.location.href = path;
+}
