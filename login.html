@@ -182,6 +182,38 @@
     }
     .login-footer a:hover { color: #fff; }
 
+    /* CTA "Criar conta grátis" — destaque verde claro com gradient laranja
+       sutil, deixa CLARO o trial 48h sem cartão. */
+    .login-trial-cta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      padding: 0.95rem 1rem;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(0, 230, 140, 0.14) 0%, rgba(249, 115, 22, 0.10) 100%);
+      border: 1px solid rgba(0, 230, 140, 0.35);
+      text-decoration: none;
+      transition: all 0.18s ease;
+    }
+    .login-trial-cta:hover, .login-trial-cta:active {
+      background: linear-gradient(135deg, rgba(0, 230, 140, 0.22) 0%, rgba(249, 115, 22, 0.15) 100%);
+      border-color: rgba(0, 230, 140, 0.55);
+      transform: translateY(-1px);
+    }
+    .login-trial-cta-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: rgba(0, 240, 160, 0.95);
+      letter-spacing: -0.01em;
+    }
+    .login-trial-cta-sub {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: 0.01em;
+    }
+
     .login-alert {
       margin-top: 0.85rem;
       padding: 0.65rem 0.9rem;
@@ -273,9 +305,10 @@
 
     <div class="login-divider"><span>ou</span></div>
 
-    <p class="login-footer">
-      Não tem conta? <a href="/register">Criar conta</a>
-    </p>
+    <a href="/register" class="login-trial-cta" id="loginTrialCta">
+      <span class="login-trial-cta-title">Criar conta grátis</span>
+      <span class="login-trial-cta-sub">48h pra testar todos os ritmos · sem cartão</span>
+    </a>
 
     <div class="login-support">
       <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank">
