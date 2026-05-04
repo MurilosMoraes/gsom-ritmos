@@ -4,6 +4,7 @@ import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { AttributionService } from '../native/AttributionService';
 import { loginSchema, zodErrorsToFieldMap } from './schemas';
+import { isNativeApp, openExternal } from '../native/Platform';
 
 class LoginPage {
   private form: HTMLFormElement;
@@ -41,6 +42,21 @@ class LoginPage {
       return;
     }
     this.setupEventListeners();
+    this.setupNativeRegisterLink();
+  }
+
+  /** No app nativo (iOS/Android), o link "Criar conta" abre o site externo
+   *  pra: (a) compliance Apple/Google — cadastro+pagamento em fluxo único
+   *  na web, evita questionamento sobre IAP, (b) garantir que cadastro
+   *  novo passe pelo funil de pagamento normal do site. */
+  private setupNativeRegisterLink(): void {
+    if (!isNativeApp()) return;
+    document.querySelectorAll<HTMLAnchorElement>('a[href="/register"], a[href="/register.html"]').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        openExternal('https://gdrums.com.br/register');
+      });
+    });
   }
 
   private async handlePasswordRecovery(): Promise<void> {

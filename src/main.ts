@@ -2281,10 +2281,11 @@ class RhythmSequencer {
     // - iOS Safari (não tem beforeinstallprompt): sempre mostra tutorial
     // - Já instalado (standalone): botão fica hidden
     const menuInstallBtn = document.getElementById('menuInstallBtn');
+    // Esconder em PWA standalone OU Capacitor app nativo (já está instalado).
     const isStandalonePWA = window.matchMedia('(display-mode: standalone)').matches
-      || (navigator as any).standalone === true;
+      || (navigator as any).standalone === true
+      || isNativeApp();
     if (menuInstallBtn) {
-      // Sempre mostra se não-standalone (iOS, Android, desktop)
       menuInstallBtn.style.display = isStandalonePWA ? 'none' : '';
 
       menuInstallBtn.addEventListener('click', () => {
@@ -3154,8 +3155,12 @@ class RhythmSequencer {
   }
 
   private showInstallSuggestion(): void {
-    // Não mostrar se já instalado
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    // Não mostrar se já instalado: PWA standalone, iOS Safari home-screen
+    // OU Capacitor app nativo (iOS/Android — usuário já está dentro do app
+    // instalado, sugerir "instale" não faz sentido).
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || (navigator as any).standalone === true
+      || isNativeApp();
     if (isStandalone) return;
 
     // Não mostrar se já viu
@@ -3534,6 +3539,9 @@ class RhythmSequencer {
       try { (navigator as any).mediaSession.playbackState = 'paused'; } catch {}
     }
     void NowPlayingService.setPlaybackState(false);
+    // Para o ForegroundService Android — sem isso, notificação "GDrums
+    // tocando" fica mesmo após pause / após user fechar o app.
+    this.stopBackgroundAudioService();
     const statusAdmin = document.getElementById('status');
     const statusUser = document.getElementById('statusUser');
     if (statusAdmin) statusAdmin.textContent = 'Pausado';
@@ -3710,6 +3718,13 @@ class RhythmSequencer {
     // No iOS, qualquer await antes do resume() quebra a cadeia de gesto
     // e o AudioContext fica permanentemente suspenso (mudo).
     this.audioManager.resume();
+
+    // Sai do estado de pausa em qualquer play (clicar em ritmo, fill, etc).
+    // Sem isso, botão CONTINUAR fica visível mesmo tocando = confusão visual.
+    if (this.isPaused) {
+      this.isPaused = false;
+      this.updatePauseButtonUI();
+    }
 
     this.stateManager.setPlaying(true);
 
@@ -4780,8 +4795,10 @@ class RhythmSequencer {
       actionBtn = `<button class="account-action-btn account-action-upgrade" id="accountActionBtn">${label}</button>`;
     }
 
-    // Verificar se já está instalado como PWA
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    // Verificar se já está instalado (PWA standalone ou Capacitor app nativo)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || (navigator as any).standalone === true
+      || isNativeApp();
 
     // Montar modal
     const overlay = document.createElement('div');
