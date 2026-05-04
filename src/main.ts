@@ -3711,6 +3711,13 @@ class RhythmSequencer {
     // e o AudioContext fica permanentemente suspenso (mudo).
     this.audioManager.resume();
 
+    // Sai do estado de pausa em qualquer play (clicar em ritmo, fill, etc).
+    // Sem isso, botão CONTINUAR fica visível mesmo tocando = confusão visual.
+    if (this.isPaused) {
+      this.isPaused = false;
+      this.updatePauseButtonUI();
+    }
+
     this.stateManager.setPlaying(true);
 
     const activePattern = this.stateManager.getActivePattern();
