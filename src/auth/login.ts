@@ -45,13 +45,16 @@ class LoginPage {
     this.setupNativeRegisterLink();
   }
 
-  /** No app nativo (iOS/Android), o link "Criar conta" abre o site externo
-   *  pra: (a) compliance Apple/Google — cadastro+pagamento em fluxo único
-   *  na web, evita questionamento sobre IAP, (b) garantir que cadastro
-   *  novo passe pelo funil de pagamento normal do site. */
+  /** No app nativo (iOS/Android), os links pra cadastro abrem o site
+   *  externo pra: (a) compliance Apple/Google — cadastro+pagamento em
+   *  fluxo único na web, evita questionamento sobre IAP, (b) garantir
+   *  que cadastro novo passe pelo funil de pagamento normal do site.
+   *  Pega TODOS os links com href="/register" — incluindo o CTA novo
+   *  "Criar conta grátis" e o link clássico. */
   private setupNativeRegisterLink(): void {
     if (!isNativeApp()) return;
-    document.querySelectorAll<HTMLAnchorElement>('a[href="/register"], a[href="/register.html"]').forEach(link => {
+    const selectors = 'a[href="/register"], a[href="/register.html"], #loginTrialCta';
+    document.querySelectorAll<HTMLAnchorElement>(selectors).forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         openExternal('https://gdrums.com.br/register');
