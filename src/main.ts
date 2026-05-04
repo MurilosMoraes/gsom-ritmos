@@ -56,8 +56,10 @@ class RhythmSequencer {
   private installPrompt: any = null;
 
   constructor() {
-    // Debug overlay (só Capacitor app, oculto até 3 taps no canto sup. esq.)
-    DebugOverlay.init();
+    // DebugOverlay desativado em produção — botão 🐛 fixo competia com
+    // o foco do pedalInput (pedal BT iOS sagrado). Pra reativar pra debug:
+    // descomenta a linha abaixo + rebuilda.
+    // DebugOverlay.init();
 
     // Inicializar contexto de áudio
     this.audioContext = new AudioContext();
