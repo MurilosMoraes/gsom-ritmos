@@ -27,9 +27,17 @@ import AVFoundation
 
     // ─── Estado do engine ─────────────────────────────────────────────────
     private let engine = AVAudioEngine()
-    private var channelPlayers: [AVAudioPlayerNode] = []
+    /// Pool de N players POR CANAL — round-robin pra evitar:
+    /// - .interrupts cancelar samples futuros agendados (bug build 17)
+    /// - acumular samples no mesmo player (bug build 18 — fila lota)
+    /// Cada novo schedule pega próximo player do pool. 4 por canal aguenta
+    /// até 4 samples sobrepostos por canal (mais que suficiente — bateria
+    /// raramente toca >2 hits do mesmo canal sobrepostos).
+    private var channelPlayers: [[AVAudioPlayerNode]] = []
     private var channelMixers: [AVAudioMixerNode] = []
+    private var channelRoundRobin: [Int] = []
     private let channelCount = 12
+    private let playersPerChannel = 4
 
     /// Cache de samples decodificados, indexado por key string (ex: "/midi/bumbo.wav")
     private var sampleCache: [String: AVAudioPCMBuffer] = [:]
@@ -74,27 +82,32 @@ import AVFoundation
         }
         self.engineFormat = playerFormat
 
+        // Cria N players por canal — todos conectados no MESMO mixer
+        // do canal (volume per-channel preservado).
         for _ in 0..<channelCount {
-            let player = AVAudioPlayerNode()
             let mixer = AVAudioMixerNode()
-            engine.attach(player)
             engine.attach(mixer)
-            // Conecta com format EXPLÍCITO em ambas as pontas (player→mixer
-            // e mixer→main). Format nil = deixa engine decidir = mismatch
-            // se buffer carregado tiver format diferente = crash.
-            engine.connect(player, to: mixer, format: playerFormat)
             engine.connect(mixer, to: mainMixer, format: playerFormat)
-            channelPlayers.append(player)
+
+            var pool: [AVAudioPlayerNode] = []
+            for _ in 0..<playersPerChannel {
+                let player = AVAudioPlayerNode()
+                engine.attach(player)
+                engine.connect(player, to: mixer, format: playerFormat)
+                pool.append(player)
+            }
+            channelPlayers.append(pool)
             channelMixers.append(mixer)
+            channelRoundRobin.append(0)
         }
 
         do {
             try engine.start()
-            for player in channelPlayers {
-                player.play()
+            for pool in channelPlayers {
+                for player in pool { player.play() }
             }
             isStarted = true
-            NSLog("[GDrumsAudioEngine] Started @ \(outputSampleRate)Hz, \(channelCount) channels (stereo float32)")
+            NSLog("[GDrumsAudioEngine] Started @ \(outputSampleRate)Hz, \(channelCount)x\(playersPerChannel) players (stereo float32)")
         } catch {
             NSLog("[GDrumsAudioEngine] Start failed: \(error)")
         }
@@ -103,10 +116,13 @@ import AVFoundation
     /// Para o engine completamente (raro — geralmente só pra cleanup).
     public func shutdown() {
         guard isStarted else { return }
-        for player in channelPlayers { player.stop() }
+        for pool in channelPlayers {
+            for player in pool { player.stop() }
+        }
         engine.stop()
         channelPlayers.removeAll()
         channelMixers.removeAll()
+        channelRoundRobin.removeAll()
         isStarted = false
     }
 
@@ -234,6 +250,17 @@ import AVFoundation
     /// única no início ficava desincronizada. Cada scheduleSample agora é
     /// auto-contido — JS calcula "quanto tempo no futuro" e nativo agenda
     /// nesse tempo relativo ao seu próprio "agora".
+    /// Pega próximo player do pool em round-robin pro canal.
+    /// Cada chamada retorna um player diferente (cíclico).
+    private func nextPlayer(for channel: Int) -> AVAudioPlayerNode? {
+        guard channel >= 0, channel < channelCount else { return nil }
+        let pool = channelPlayers[channel]
+        guard !pool.isEmpty else { return nil }
+        let idx = channelRoundRobin[channel] % pool.count
+        channelRoundRobin[channel] = (channelRoundRobin[channel] + 1) % pool.count
+        return pool[idx]
+    }
+
     public func scheduleSample(channel: Int, sampleKey: String, offsetSeconds: Double, volume: Float) {
         guard isStarted, channel >= 0, channel < channelCount else { return }
 
@@ -244,7 +271,6 @@ import AVFoundation
             return
         }
 
-        // VALIDAÇÕES anti-NSException
         if let expected = engineFormat,
            buf.format.commonFormat != expected.commonFormat
            || buf.format.sampleRate != expected.sampleRate
@@ -253,30 +279,23 @@ import AVFoundation
             return
         }
 
-        let player = channelPlayers[channel]
+        // Pega próximo player do pool — round-robin evita sobreposição
+        // no mesmo node (que ou seria cancelada com .interrupts ou
+        // enfileirada sem respeitar `at:` sem .interrupts).
+        guard let player = nextPlayer(for: channel) else { return }
         guard player.engine != nil else { return }
         if !player.isPlaying { player.play() }
 
-        // Calcula AVAudioTime baseado em "agora" do clock nativo + offset.
-        // Se offset for negativo (passado), pula.
         guard offsetSeconds >= 0 else { return }
+        channelMixers[channel].outputVolume = max(0, min(4, volume))
+
         guard let now = engine.outputNode.lastRenderTime, now.isSampleTimeValid else {
-            // Engine ainda não rodou ciclo — toca imediato (at: nil)
-            channelMixers[channel].outputVolume = max(0, min(4, volume))
-            player.scheduleBuffer(buf, at: nil, options: [.interrupts], completionHandler: nil)
+            player.scheduleBuffer(buf, at: nil, options: [], completionHandler: nil)
             return
         }
         let offsetFrames = AVAudioFramePosition(offsetSeconds * outputSampleRate)
         let targetSampleTime = now.sampleTime + offsetFrames
         let when = AVAudioTime(sampleTime: targetSampleTime, atRate: outputSampleRate)
-
-        channelMixers[channel].outputVolume = max(0, min(4, volume))
-        // SEM .interrupts — essa flag cancela TODOS os buffers agendados no
-        // player, incluindo futuros que ainda nem tocaram. Com lookahead de
-        // 500ms do scheduler JS, novos schedules cancelavam os antigos da
-        // fila ANTES de tocarem = nenhum som saía. Sem flag, samples se
-        // sobrepõem naturalmente (decay anterior + ataque novo = som
-        // realista de bateria, não atrapalha).
         player.scheduleBuffer(buf, at: when, options: [], completionHandler: nil)
     }
 
@@ -293,7 +312,7 @@ import AVFoundation
             NSLog("[GDrumsAudioEngine] one-shot format mismatch \(sampleKey)")
             return
         }
-        let player = channelPlayers[channel]
+        guard let player = nextPlayer(for: channel) else { return }
         guard player.engine != nil else { return }
         if !player.isPlaying { player.play() }
         channelMixers[channel].outputVolume = max(0, min(4, volume))
@@ -303,17 +322,21 @@ import AVFoundation
     /// Cancela TODOS os buffers agendados nesse canal (pedal aciona fill).
     public func cancelChannel(_ channel: Int) {
         guard isStarted, channel >= 0, channel < channelCount else { return }
-        // stop() cancela tudo. play() reativa pra próximos schedules.
-        channelPlayers[channel].stop()
-        channelPlayers[channel].play()
+        // stop() cancela tudo no player. play() reativa pra próximos schedules.
+        for player in channelPlayers[channel] {
+            player.stop()
+            player.play()
+        }
     }
 
     /// Cancela TUDO em todos os canais (transição grande, parar de vez).
     public func cancelAll() {
         guard isStarted else { return }
-        for player in channelPlayers {
-            player.stop()
-            player.play()
+        for pool in channelPlayers {
+            for player in pool {
+                player.stop()
+                player.play()
+            }
         }
     }
 
