@@ -1,48 +1,25 @@
 // ═════════════════════════════════════════════════════════════════════════
-// engineFactory — decide qual IAudioEngine instanciar baseado em plataforma.
+// engineFactory — sempre retorna WebAudioEngine.
 // ═════════════════════════════════════════════════════════════════════════
 //
-// REGRAS DE OURO (proteção da web/PWA em produção):
-// 1. Web/PWA SEMPRE usa WebAudioEngine. Nunca, em hipótese alguma, native.
-// 2. Capacitor (iOS/Android) usa WebAudioEngine por DEFAULT até a flag virar.
-// 3. Pra ativar native em Capacitor: localStorage.setItem('gdrums-engine', 'native')
-//    Útil pra dev/beta tester antes de liberar pra todos.
-// 4. Quando NativeAudioEngine estiver provado estável em produção, mudar
-//    o `useNativeByDefault` pra true (e a flag vira opt-OUT pra debug).
+// HISTÓRICO (03/05/2026): tentei migração pra NativeAudioEngine (Swift
+// AVAudioEngine + Java AudioTrack) pra eliminar gap de background no iOS.
+// Funcionou parcial mas com problemas de scheduling sample-accurate que
+// exigem dev iOS sênior pra resolver. Decisão do Murilo: reverter pra
+// WebAudio em TODAS plataformas (igual ao que sempre funcionou na web).
+//
+// O código nativo (NativeAudioEngine.ts, GDrumsAudioEngineCore.swift,
+// GDrumsAudioEngineCore.java, plugins) FICA NO REPO como base pra futura
+// retomada (eventual freelancer Swift). Não está sendo executado.
+//
+// Pra retomar o nativo no futuro:
+// 1. Mudar essa factory pra retornar NativeAudioEngine em Capacitor
+// 2. Resolver o problema do AVAudioPlayerNode + lastRenderTime
+//    (provavelmente precisa de pool de players + clock híbrido)
 
-import { Capacitor } from '@capacitor/core';
 import type { IAudioEngine } from './IAudioEngine';
 import { WebAudioEngine } from './WebAudioEngine';
-import { NativeAudioEngine } from './NativeAudioEngine';
-
-/** Mude pra `true` quando NativeAudioEngine estiver pronto pra rollout geral.
- *  ATIVADO em 03/05/2026 — Capacitor iOS/Android usa nativo por default.
- *  Web/PWA continuam SEMPRE com WebAudio (guard explícito abaixo).
- *  Pra reverter pro WebAudio em Capacitor (debug):
- *    localStorage.setItem('gdrums-engine', 'web')
- */
-const useNativeByDefault = true;
 
 export function createAudioEngine(audioContext: AudioContext): IAudioEngine {
-  // Web/PWA: SEMPRE WebAudio. Sem bypass possível.
-  if (!Capacitor.isNativePlatform()) {
-    return new WebAudioEngine(audioContext);
-  }
-
-  // Capacitor: respeita flag explícita do user/dev primeiro.
-  let userOverride: string | null = null;
-  try { userOverride = localStorage.getItem('gdrums-engine'); } catch {}
-
-  if (userOverride === 'web') {
-    // Force web engine (debug/fallback)
-    return new WebAudioEngine(audioContext);
-  }
-  if (userOverride === 'native') {
-    return new NativeAudioEngine(audioContext);
-  }
-
-  // Sem override: respeita default global
-  return useNativeByDefault
-    ? new NativeAudioEngine(audioContext)
-    : new WebAudioEngine(audioContext);
+  return new WebAudioEngine(audioContext);
 }
