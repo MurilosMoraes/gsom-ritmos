@@ -5050,6 +5050,13 @@ class RhythmSequencer {
     supabase: any,
     user: any
   ): Promise<void> {
+    // Defesa: app nativo NUNCA mostra modal de upgrade (compliance Apple/
+    // Google — cobrança direta in-app sem IAP é proibida). Sempre site.
+    if (isNativeApp()) {
+      openExternal(PLANS_URL_EXTERNAL + '?upgrade=true');
+      return;
+    }
+
     const { createCheckoutLink, generateOrderNsu } = await import('./auth/PaymentService');
 
     const planOrder = ['mensal', 'trimestral', 'semestral', 'anual', 'rei-dos-palcos'];
