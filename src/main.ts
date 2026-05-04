@@ -49,15 +49,23 @@ class RhythmSequencer {
   private isAdminMode = false;
   private userRole: 'user' | 'admin' = 'user';
   private rhythmVersion: number = 0;
-  // Pedal fixo — esquerdo e direito
+  // Pedal — esquerdo e direito (2 botões = padrão)
   private pedalLeft = 'ArrowLeft';
   private pedalRight = 'ArrowRight';
+  // Pedal expandido (3 ou 4 botões — MVAVE Chocolate, etc):
+  // - 3 botões: + Play/Pause instantâneo
+  // - 4 botões: + Play/Pause + Finalização (end)
+  private pedalCount: 2 | 3 | 4 = 2;
+  private pedalPlayPause = '';  // tecla pra botão 3 (play/pause)
+  private pedalEnd = '';        // tecla pra botão 4 (finalização)
   private pedalMapperOpen = false;
   private installPrompt: any = null;
 
   constructor() {
-    // Debug overlay (só Capacitor app, oculto até 3 taps no canto sup. esq.)
-    DebugOverlay.init();
+    // DebugOverlay desativado em produção — botão 🐛 fixo competia com
+    // o foco do pedalInput (pedal BT iOS sagrado). Pra reativar pra debug:
+    // descomenta a linha abaixo + rebuilda.
+    // DebugOverlay.init();
 
     // Inicializar contexto de áudio
     this.audioContext = new AudioContext();
@@ -366,30 +374,10 @@ class RhythmSequencer {
         // Voltou pro foreground.
         if (this.stateManager.isPlaying()) {
           // resume() é seguro em qualquer plataforma — no-op se contexto já
-          // tá running (web/Android nativo nunca pausaram de verdade).
+          // tá running. Sem cancel/reset/restart em NENHUMA plataforma —
+          // teste pra ver se iOS se recupera sozinho como web/Android.
+          // Se iOS ficar mudo ou fora de fase, voltamos o tratamento.
           this.audioManager.resume();
-
-          // SÓ iOS precisa do tratamento abaixo. WKWebView pausa JS thread
-          // de verdade em background — fila de samples agendados é processada
-          // sozinha pelo audio thread, e ao voltar:
-          //   1) scheduler.restart() agendaria NOVOS samples em cima dos
-          //      antigos da fila → "música sobre música"
-          //   2) currentStep congelou → ciclo musical fora de fase
-          // Fix iOS: cancela fila + reset downbeat se bg longo + restart.
-          //
-          // Web/Android: NÃO mexer. Chrome desktop não throttle agressivo
-          // aba com áudio rolando, Android nativo tem FGS. Áudio segue
-          // limpo, cancelar/restart aqui = acavalamento (bug reportado).
-          if (isIOSVis) {
-            this.audioManager.cancelAllScheduled();
-            const bgDuration = backgroundStartedAt > 0
-              ? performance.now() - backgroundStartedAt
-              : 0;
-            if (bgDuration > 1000) {
-              this.stateManager.resetStep();
-            }
-            this.scheduler.restart();
-          }
         }
         backgroundStartedAt = 0;
       }
@@ -546,13 +534,16 @@ class RhythmSequencer {
         // Offline — setlist usa cache local automaticamente
       }
 
-      // Carregar teclas do pedal
+      // Carregar teclas do pedal (formato suporta 2/3/4 botões)
       const savedPedal = localStorage.getItem('gdrums_pedal_keys');
       if (savedPedal) {
         try {
           const parsed = JSON.parse(savedPedal);
           if (parsed.left) this.pedalLeft = parsed.left;
           if (parsed.right) this.pedalRight = parsed.right;
+          if (parsed.count === 3 || parsed.count === 4) this.pedalCount = parsed.count;
+          if (parsed.playPause) this.pedalPlayPause = parsed.playPause;
+          if (parsed.end) this.pedalEnd = parsed.end;
         } catch { /* usar padrão */ }
       }
       localStorage.removeItem('gdrums_pedal_map'); // limpar formato antigo
@@ -1323,6 +1314,15 @@ class RhythmSequencer {
       playStopBtn.addEventListener('click', () => { HapticsService.medium(); this.togglePlayStop(); });
     }
 
+    // Pause instantâneo (admin) — pra músico em barzinho
+    const pauseInstantBtn = document.getElementById('pauseInstant');
+    if (pauseInstantBtn) {
+      pauseInstantBtn.addEventListener('click', () => {
+        HapticsService.medium();
+        this.togglePauseInstant();
+      });
+    }
+
     const playStopUserBtn = document.getElementById('playStopUser');
     if (playStopUserBtn) {
       playStopUserBtn.addEventListener('click', () => { HapticsService.medium(); this.togglePlayStop(); });
@@ -1664,6 +1664,8 @@ class RhythmSequencer {
     };
     const pedalLeftCode = KEY_CODES[this.pedalLeft] || 0;
     const pedalRightCode = KEY_CODES[this.pedalRight] || 0;
+    const pedalPlayPauseCode = this.pedalPlayPause ? (KEY_CODES[this.pedalPlayPause] || 0) : 0;
+    const pedalEndCode = this.pedalEnd ? (KEY_CODES[this.pedalEnd] || 0) : 0;
 
     // capture:true + passive:false — essencial no iOS pra capturar antes do scroll do browser
     window.addEventListener('keydown', (e) => {
@@ -1702,6 +1704,19 @@ class RhythmSequencer {
       // Checar pedal mapeado primeiro (por keyCode E por keyId)
       if (kc === pedalLeftCode || keyId === this.pedalLeft) { this.handlePedalLeft(); return; }
       if (kc === pedalRightCode || keyId === this.pedalRight) { this.handlePedalRight(); return; }
+
+      // Pedal expandido: 3º botão (play/pause) e 4º botão (end)
+      if (this.pedalCount >= 3 && this.pedalPlayPause &&
+          (kc === pedalPlayPauseCode || keyId === this.pedalPlayPause)) {
+        this.togglePauseInstant();
+        return;
+      }
+      if (this.pedalCount >= 4 && this.pedalEnd &&
+          (kc === pedalEndCode || keyId === this.pedalEnd)) {
+        if (this.useFinal) this.patternEngine.playEndAndStop();
+        else this.stop();
+        return;
+      }
 
       // Todas as setas ativam pedal (pedais BT enviam Up/Down ou Left/Right)
       // Down/Left = pedal esquerdo, Up/Right = pedal direito
@@ -2910,38 +2925,56 @@ class RhythmSequencer {
 
     let tempLeft = this.pedalLeft;
     let tempRight = this.pedalRight;
-    let listening: 'left' | 'right' | null = null;
+    let tempPlayPause = this.pedalPlayPause;
+    let tempEnd = this.pedalEnd;
+    let tempCount: 2 | 3 | 4 = this.pedalCount;
+    let listening: 'left' | 'right' | 'playPause' | 'end' | null = null;
 
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(20px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
 
+    const pedalButton = (which: 'left'|'right'|'playPause'|'end', label: string, code: string, color: string, hint: string) => {
+      const isListening = listening === which;
+      const colorRgba = (alpha: number) => `rgba(${color},${alpha})`;
+      return `
+        <div style="text-align:center;flex:1;min-width:0;">
+          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:${colorRgba(0.6)};margin-bottom:0.5rem;">${label}</div>
+          <button id="pedalBtn-${which}" style="width:100%;max-width:90px;height:110px;border-radius:16px;border:2px solid ${colorRgba(isListening ? 0.8 : 0.3)};background:${colorRgba(0.08)};cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;font-family:inherit;${isListening ? `box-shadow:0 0 20px ${colorRgba(0.3)};transform:scale(1.05);` : ''}">
+            <div style="font-size:0.7rem;font-weight:700;color:${colorRgba(0.9)};background:${colorRgba(0.15)};padding:0.25rem 0.5rem;border-radius:8px;">${code ? getLabel(code) : '—'}</div>
+          </button>
+          <div style="font-size:0.5rem;color:rgba(255,255,255,0.2);margin-top:0.5rem;line-height:1.4;">${hint}</div>
+        </div>
+      `;
+    };
+
     const render = () => {
+      const buttons: string[] = [
+        pedalButton('left', 'Esquerdo', tempLeft, '139,92,246', 'Parado: play<br>1x prox ritmo<br>2x anterior'),
+        pedalButton('right', 'Direito', tempRight, '249,115,22', 'Parado: prato<br>1x virada<br>2x finaliza'),
+      ];
+      if (tempCount >= 3) {
+        buttons.push(pedalButton('playPause', 'Play/Pause', tempPlayPause, '0,210,255', 'Pausa instantanea<br>(retoma do<br>downbeat)'));
+      }
+      if (tempCount >= 4) {
+        buttons.push(pedalButton('end', 'Finalizar', tempEnd, '255,90,90', 'Toca finalizacao<br>e para'));
+      }
+
       overlay.innerHTML = `
-        <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:2rem;max-width:400px;width:100%;">
+        <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:1.5rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;">
           <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.3rem;text-align:center;">Mapear Pedal</h2>
-          <p style="font-size:0.65rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.5rem;">Clique no pedal e pressione o botao do seu controlador</p>
+          <p style="font-size:0.65rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1rem;">Clique no botao e pise no pedal correspondente</p>
 
-          <div style="display:flex;gap:2rem;justify-content:center;margin-bottom:1.5rem;">
-            <div style="text-align:center;">
-              <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(139,92,246,0.6);margin-bottom:0.5rem;">Esquerdo</div>
-              <button id="pedalLeftBtn" style="width:90px;height:120px;border-radius:16px;border:2px solid rgba(139,92,246,${listening === 'left' ? '0.8' : '0.3'});background:rgba(139,92,246,0.08);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;font-family:inherit;${listening === 'left' ? 'box-shadow:0 0 20px rgba(139,92,246,0.3);transform:scale(1.05);' : ''}">
-                <div style="font-size:0.75rem;font-weight:700;color:rgba(139,92,246,0.9);background:rgba(139,92,246,0.15);padding:0.25rem 0.6rem;border-radius:8px;">${getLabel(tempLeft)}</div>
-              </button>
-              <div style="font-size:0.5rem;color:rgba(255,255,255,0.2);margin-top:0.5rem;line-height:1.4;">Parado: play<br>1x prox ritmo<br>2x anterior</div>
-            </div>
-
-            <div style="width:1px;background:rgba(255,255,255,0.05);"></div>
-
-            <div style="text-align:center;">
-              <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(249,115,22,0.6);margin-bottom:0.5rem;">Direito</div>
-              <button id="pedalRightBtn" style="width:90px;height:120px;border-radius:16px;border:2px solid rgba(249,115,22,${listening === 'right' ? '0.8' : '0.3'});background:rgba(249,115,22,0.08);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;font-family:inherit;${listening === 'right' ? 'box-shadow:0 0 20px rgba(249,115,22,0.3);transform:scale(1.05);' : ''}">
-                <div style="font-size:0.75rem;font-weight:700;color:rgba(249,115,22,0.9);background:rgba(249,115,22,0.15);padding:0.25rem 0.6rem;border-radius:8px;">${getLabel(tempRight)}</div>
-              </button>
-              <div style="font-size:0.5rem;color:rgba(255,255,255,0.2);margin-top:0.5rem;line-height:1.4;">Parado: prato<br>1x virada<br>2x finaliza</div>
-            </div>
+          <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:1.25rem;">
+            ${[2,3,4].map(n => `
+              <button data-count="${n}" class="pedalCountBtn" style="padding:0.5rem 0.9rem;border:1px solid ${tempCount === n ? 'rgba(0,230,140,0.6)' : 'rgba(255,255,255,0.1)'};background:${tempCount === n ? 'rgba(0,230,140,0.12)' : 'rgba(255,255,255,0.03)'};color:${tempCount === n ? 'rgba(0,230,140,0.9)' : 'rgba(255,255,255,0.5)'};border-radius:10px;font-size:0.75rem;font-weight:700;font-family:inherit;cursor:pointer;">${n} botoes</button>
+            `).join('')}
           </div>
 
-          <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(255,255,255,0.2);min-height:1.5rem;margin-bottom:1rem;">${listening ? `Pressione a tecla para o pedal ${listening === 'left' ? 'esquerdo' : 'direito'}...` : ''}</div>
+          <div style="display:flex;gap:0.75rem;justify-content:center;margin-bottom:1.25rem;flex-wrap:wrap;">
+            ${buttons.join('')}
+          </div>
+
+          <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(255,255,255,0.2);min-height:1.5rem;margin-bottom:1rem;">${listening ? `Pise no pedal ${listening}...` : ''}</div>
 
           <div style="display:flex;gap:0.5rem;">
             <button id="pedalReset" style="flex:1;padding:0.6rem;border:none;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Resetar</button>
@@ -2950,27 +2983,53 @@ class RhythmSequencer {
         </div>
       `;
 
-      // Focar mapperInput SÍNCRONO no click (iOS exige user gesture pra focus)
-      overlay.querySelector('#pedalLeftBtn')!.addEventListener('click', (ev) => {
-        ev.stopPropagation(); listening = 'left'; render();
-        mapperInput.focus({ preventScroll: true });
-      });
-      overlay.querySelector('#pedalRightBtn')!.addEventListener('click', (ev) => {
-        ev.stopPropagation(); listening = 'right'; render();
-        mapperInput.focus({ preventScroll: true });
+      // Seletor de count
+      overlay.querySelectorAll<HTMLButtonElement>('.pedalCountBtn').forEach(btn => {
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          tempCount = parseInt(btn.getAttribute('data-count') || '2') as 2 | 3 | 4;
+          listening = null;
+          render();
+          mapperInput.focus({ preventScroll: true });
+        });
       });
 
+      // Botões de pedal — qualquer um focado começa a "ouvir" tecla
+      const wireBtn = (which: 'left'|'right'|'playPause'|'end') => {
+        const el = overlay.querySelector(`#pedalBtn-${which}`);
+        if (!el) return;
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          listening = which;
+          render();
+          mapperInput.focus({ preventScroll: true });
+        });
+      };
+      wireBtn('left'); wireBtn('right');
+      if (tempCount >= 3) wireBtn('playPause');
+      if (tempCount >= 4) wireBtn('end');
+
       overlay.querySelector('#pedalReset')!.addEventListener('click', () => {
-        tempLeft = 'ArrowLeft'; tempRight = 'ArrowRight'; listening = null; render();
+        tempLeft = 'ArrowLeft'; tempRight = 'ArrowRight';
+        tempPlayPause = ''; tempEnd = '';
+        tempCount = 2;
+        listening = null; render();
         mapperInput.focus({ preventScroll: true });
       });
 
       overlay.querySelector('#pedalSave')!.addEventListener('click', () => {
         this.pedalLeft = tempLeft;
         this.pedalRight = tempRight;
-        localStorage.setItem('gdrums_pedal_keys', JSON.stringify({ left: tempLeft, right: tempRight }));
+        this.pedalPlayPause = tempPlayPause;
+        this.pedalEnd = tempEnd;
+        this.pedalCount = tempCount;
+        localStorage.setItem('gdrums_pedal_keys', JSON.stringify({
+          left: tempLeft, right: tempRight,
+          playPause: tempPlayPause, end: tempEnd,
+          count: tempCount,
+        }));
         close();
-        this.modalManager.show('Pedal', 'Mapeamento salvo!', 'success');
+        this.modalManager.show('Pedal', 'Mapeamento salvo! Recarregue se nao funcionar.', 'success');
       });
 
       // Qualquer toque no overlay refoca o input (user gesture)
@@ -3017,7 +3076,9 @@ class RhythmSequencer {
       }
 
       if (listening === 'left') tempLeft = code;
-      else tempRight = code;
+      else if (listening === 'right') tempRight = code;
+      else if (listening === 'playPause') tempPlayPause = code;
+      else if (listening === 'end') tempEnd = code;
 
       const statusEl = overlay.querySelector('#pedalStatus');
       if (statusEl) {
@@ -3431,6 +3492,58 @@ class RhythmSequencer {
     if (nameEl) nameEl.value = name || 'Novo Projeto';
     if (dotEl) {
       dotEl.classList.toggle('loaded', !!name);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PAUSE/RESUME — pra músico em barzinho que pausa pra falar com cliente
+  // ═══════════════════════════════════════════════════════════════════════
+  // Diferente de stop() (que reseta pra step 0 e ativa pattern main).
+  // Pause CONGELA tudo, mantém estado, e ao resume continua do INÍCIO do
+  // compasso (step 0) — facilita "engatar de volta no tempo" pro músico.
+  //
+  // Implementação: scheduler.stop() + flag interna + fade-out anti-clique.
+  // Resume: scheduler.start() de novo. Sem reset de pattern/variation.
+  private isPaused = false;
+
+  private pauseInstant(): void {
+    if (!this.stateManager.isPlaying()) return;
+    this.isPaused = true;
+    // Fade-out rápido pra não cortar sample no meio (clique audível)
+    this.audioManager.fadeOutAllActive(0.04);
+    this.scheduler.stop();
+    this.stateManager.setPlaying(false);
+    this.stateManager.resetStep(); // ao retomar começa do downbeat
+    if ('mediaSession' in navigator) {
+      try { (navigator as any).mediaSession.playbackState = 'paused'; } catch {}
+    }
+    void NowPlayingService.setPlaybackState(false);
+    const statusAdmin = document.getElementById('status');
+    const statusUser = document.getElementById('statusUser');
+    if (statusAdmin) statusAdmin.textContent = 'Pausado';
+    if (statusUser) statusUser.textContent = 'Pausado';
+    this.uiManager.updatePerformanceGrid();
+  }
+
+  private resumeFromPause(): void {
+    if (!this.isPaused) return;
+    this.isPaused = false;
+    // Não chama playIntroAndStart — resume direto, sem countdown
+    this.stateManager.setShouldPlayStartSound(false);
+    this.play();
+  }
+
+  /** Toggle exclusivo de pause/resume — botão e pedal usam esse. */
+  private togglePauseInstant(): void {
+    if (this.isPaused) {
+      this.resumeFromPause();
+    } else if (this.stateManager.isPlaying()) {
+      this.pauseInstant();
+    } else if (this.hasRhythmLoaded()) {
+      // Parado total: dá play normal (mesmo comportamento do botão play)
+      if (this.useIntro) this.patternEngine.playIntroAndStart();
+      else this.stateManager.setShouldPlayStartSound(true);
+      this.play();
     }
   }
 
