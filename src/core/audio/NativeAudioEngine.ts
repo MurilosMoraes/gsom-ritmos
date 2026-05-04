@@ -119,14 +119,30 @@ export class NativeAudioEngine implements IAudioEngine {
       return webBuffer;
     }
 
+    // Resolve path: tenta /midi-native/X.wav (PCM 48k mono real, otimizado
+    // pelo script preconvert-samples.js) ANTES de cair pra /midi/X
+    // (que pode ser MP3 disfarçado de .wav, ou WAV stereo 24-bit, etc).
+    // Native engine espera buffer já no formato certo.
     const cleanPath = path.split('?')[0].replace(/^\//, '');
-    const bundlePath = cleanPath.startsWith('public/') ? cleanPath : `public/${cleanPath}`;
+    let nativePath = cleanPath;
+    let bundlePath = '';
+    if (cleanPath.startsWith('midi/') || cleanPath.startsWith('public/midi/')) {
+      // Reroute pra midi-native, sempre .wav
+      const filename = cleanPath.split('/').pop() || '';
+      const wavName = filename.replace(/\.(mp3|m4a|ogg|flac)$/i, '.wav');
+      nativePath = `midi-native/${wavName}`;
+      bundlePath = `public/midi-native/${wavName}`;
+    } else {
+      bundlePath = cleanPath.startsWith('public/') ? cleanPath : `public/${cleanPath}`;
+    }
+    // Usa o cleanPath original como key (pra bufferToKey funcionar com paths
+    // que o resto do código conhece — só path real do bundle muda)
     try {
       await NativePlugin.loadSample({ key: cleanPath, bundlePath, assetPath: bundlePath });
       this.bufferToKey.set(webBuffer, cleanPath);
-      console.log('[NativeAudioEngine] sample registrado:', cleanPath);
     } catch (e) {
-      console.error('[NativeAudioEngine] loadSample nativo FALHOU:', path, e);
+      console.error('[NativeAudioEngine] loadSample nativo FALHOU:', path, '→', bundlePath, e);
+      DebugOverlay.error(`load FALHOU: ${cleanPath} (${(e as Error).message})`);
     }
     return webBuffer;
   }
@@ -154,9 +170,10 @@ export class NativeAudioEngine implements IAudioEngine {
     }
     const key = this.bufferToKey.get(buffer);
     if (!key) {
-      console.error('[NativeAudioEngine] playSound: buffer não registrado no nativo');
+      DebugOverlay.error('playSound SEM KEY (buffer não registrado)');
       return;
     }
+    DebugOverlay.log(`playSound key=${key} vol=${volume.toFixed(2)}`);
     if (this.anchored) {
       const offset = Math.max(0, time - this.anchorAudioCtxTime);
       NativePlugin.scheduleSample({ channel: MAX_CHANNELS - 1, key, offsetSeconds: offset, volume })
@@ -167,51 +184,62 @@ export class NativeAudioEngine implements IAudioEngine {
     }
   }
 
+  // Debug: contador pra evitar spam de logs (1 por segundo)
+  private debugLastLog = 0;
+  private debugCallCount = 0;
+  private debugScheduleCount = 0;
+
   scheduleStepFromSnapshot(snapshot: AudioSnapshot, time: number): void {
-    if (!this.nativeReady) {
-      // Modo estrito: nada de fallback. Só loga.
-      // Isso significa que durante os primeiros ~200ms após boot (enquanto
-      // bootstrap roda), nada toca. Aceitável — usuário não dá play tão
-      // rápido. Se persistir, é bug do plugin.
+    if (!this.nativeReady) return;
+    this.debugCallCount++;
+
+    // ESTRATÉGIA NOVA: re-anchora a CADA chamada com tempo "agora".
+    // Razão: clock JS (audioContext.currentTime) é INDEPENDENTE do clock
+    // nativo (engine.outputNode.lastRenderTime.sampleTime). Anchor único
+    // no início da sessão fica desincronizado conforme tempo passa →
+    // samples agendados no passado são descartados silenciosamente pelo
+    // AVAudioPlayerNode = ritmo não toca.
+    //
+    // Solução: a cada scheduleStep, calcula quantos segundos no futuro
+    // o sample deve tocar (delta = time - currentTime no clock JS), e
+    // pede pro nativo anchorar AGORA (clock nativo), agendando esse
+    // delta no futuro relativo ao anchor recém-criado. Os 2 clocks
+    // ficam alinhados pelo "agora" comum.
+    const nowJs = this.decoder.getCurrentTime();
+    const deltaSeconds = time - nowJs; // segundos no futuro
+    if (deltaSeconds < 0) {
+      // Sample já no passado — pula (Scheduler tinha lookahead suficiente)
       return;
     }
 
-    if (!this.anchored) {
-      this.anchorAudioCtxTime = time;
-      this.anchored = true;
-      const leadInMs = Math.max(20, (time - this.decoder.getCurrentTime()) * 1000);
-      NativePlugin.anchorNow({ leadInMs })
-        .catch(e => console.error('[NativeAudioEngine] anchorNow falhou:', e));
-    }
-
-    const offsetSeconds = time - this.anchorAudioCtxTime;
     const { step, pattern, channels, volumes, masterVolume, fillStartBuffer, fillReturnBuffer } = snapshot;
 
-    // Sons de fill start/return (tocam no step 0 quando flag setada)
+    // Sons de fill start/return — offsetSeconds = "delta no futuro"
+    // (nativo soma com lastRenderTime atual = AVAudioTime correto)
     if (snapshot.shouldPlayStartSound && fillStartBuffer) {
       const k = this.bufferToKey.get(fillStartBuffer);
       if (k) {
         NativePlugin.scheduleSample({
-          channel: MAX_CHANNELS - 1, key: k, offsetSeconds, volume: masterVolume
+          channel: MAX_CHANNELS - 1, key: k, offsetSeconds: deltaSeconds, volume: masterVolume
         }).catch(() => {});
-      } else {
-        DebugOverlay.log('fillStartBuffer sem key registrada');
       }
     }
     if (snapshot.shouldPlayReturnSound && fillReturnBuffer) {
       const k = this.bufferToKey.get(fillReturnBuffer);
       if (k) {
         NativePlugin.scheduleSample({
-          channel: MAX_CHANNELS - 1, key: k, offsetSeconds, volume: masterVolume
+          channel: MAX_CHANNELS - 1, key: k, offsetSeconds: deltaSeconds, volume: masterVolume
         }).catch(() => {});
-      } else {
-        DebugOverlay.log('fillReturnBuffer sem key registrada');
       }
     }
 
-    // Loop dos canais — agenda cada step ativo via plugin nativo
+    // Loop dos canais — com diagnóstico inicial
+    let triggers = 0;
+    let withoutKey = 0;
+    let scheduled = 0;
     for (let channel = 0; channel < MAX_CHANNELS; channel++) {
       if (!pattern[channel] || !pattern[channel][step]) continue;
+      triggers++;
       const buffer = channels[channel]?.buffer;
       if (!buffer) continue;
 
@@ -221,27 +249,39 @@ export class NativeAudioEngine implements IAudioEngine {
 
       const key = this.bufferToKey.get(buffer);
       if (!key) {
-        // Sample não registrado no nativo — modo estrito, pula esse step.
-        // Aparece no debug pra identificar buffers órfãos.
-        DebugOverlay.log(`step canal ${channel} sem key (buffer órfão)`);
+        withoutKey++;
         continue;
       }
+      scheduled++;
 
-      // Aplica offset por célula (mesma lógica do AudioManager)
-      let cellTime = time;
+      // Aplica offset por célula
+      let cellDelta = deltaSeconds;
       const cellOffset = snapshot.offsets?.[channel]?.[step];
       if (cellOffset && snapshot.stepDuration && snapshot.stepDuration > 0) {
         const clamped = Math.max(-0.5, Math.min(0.5, cellOffset));
-        cellTime = time + clamped * snapshot.stepDuration;
+        cellDelta = Math.max(0, deltaSeconds + clamped * snapshot.stepDuration);
       }
-      const cellOffsetSec = cellTime - this.anchorAudioCtxTime;
 
       NativePlugin.scheduleSample({
         channel,
         key,
-        offsetSeconds: cellOffsetSec,
+        offsetSeconds: cellDelta,
         volume: finalVolume,
-      }).catch(e => DebugOverlay.log('scheduleSample falhou: ' + (e as Error).message));
+      }).catch(() => {});
+      this.debugScheduleCount++;
+    }
+
+    // Log throttled (1x por segundo) com diagnóstico do scheduling
+    const now = Date.now();
+    if (now - this.debugLastLog > 1000) {
+      this.debugLastLog = now;
+      DebugOverlay.log(
+        `sched: calls=${this.debugCallCount}/s scheduled=${this.debugScheduleCount} ` +
+        `step=${step} delta=${deltaSeconds.toFixed(3)}s ` +
+        `triggers=${triggers} sem-key=${withoutKey}`
+      );
+      this.debugCallCount = 0;
+      this.debugScheduleCount = 0;
     }
   }
 
