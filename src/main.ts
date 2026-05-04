@@ -3545,6 +3545,10 @@ class RhythmSequencer {
   private resumeFromPause(): void {
     if (!this.isPaused) return;
     this.isPaused = false;
+    // Toca prato como "deixa" de retomada — facilita pro músico engatar
+    // de volta no tempo. Tocado imediatamente, ANTES do play() agendar
+    // o downbeat (que vai cair ~50ms depois pelo lookahead do scheduler).
+    this.playCymbal();
     // Não chama playIntroAndStart — resume direto, sem countdown
     this.stateManager.setShouldPlayStartSound(false);
     this.play();
