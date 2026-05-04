@@ -1856,8 +1856,10 @@ input:checked + .slider:before {
 }
 
 /* Pause Cell (Cyan) — pra músico em barzinho pausar/continuar instantâneo */
+/* Ocupa linha inteira do grid (3 colunas) — botão grande, fácil de mirar */
 .pause-cell {
   border-color: rgba(0, 210, 255, 0.3);
+  grid-column: 1 / -1;
 }
 
 .pause-cell::before {
