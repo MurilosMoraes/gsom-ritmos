@@ -2942,18 +2942,17 @@ class RhythmSequencer {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(20px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
 
-    // Botão de pedal: card vertical com label, tecla mapeada e hint.
-    // Layout em grid responsivo (2x2 quando 4 botões).
+    // Botão de pedal — sempre largura fixa (110px), centralizado no slot.
     const pedalButton = (which: 'left'|'right'|'playPause'|'end', label: string, code: string, color: string, hint: string) => {
       const isListening = listening === which;
       const colorRgba = (alpha: number) => `rgba(${color},${alpha})`;
       return `
-        <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;min-width:0;">
-          <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:${colorRgba(0.7)};text-align:center;line-height:1;">${label}</div>
-          <button id="pedalBtn-${which}" style="width:100%;max-width:120px;height:80px;border-radius:14px;border:2px solid ${colorRgba(isListening ? 0.8 : 0.3)};background:${colorRgba(0.08)};cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;padding:0.4rem;${isListening ? `box-shadow:0 0 20px ${colorRgba(0.3)};transform:scale(1.04);` : ''}">
-            <div style="font-size:0.7rem;font-weight:700;color:${colorRgba(0.9)};background:${colorRgba(0.15)};padding:0.3rem 0.6rem;border-radius:8px;text-align:center;">${code ? getLabel(code) : '—'}</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;width:110px;flex:0 0 110px;">
+          <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:${colorRgba(0.7)};text-align:center;line-height:1.2;height:1.6rem;display:flex;align-items:center;justify-content:center;">${label}</div>
+          <button id="pedalBtn-${which}" style="width:110px;height:78px;border-radius:14px;border:2px solid ${colorRgba(isListening ? 0.85 : 0.3)};background:${colorRgba(0.08)};cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;padding:0.4rem;${isListening ? `box-shadow:0 0 20px ${colorRgba(0.4)};transform:scale(1.04);` : ''}">
+            <div style="font-size:0.7rem;font-weight:700;color:${colorRgba(0.95)};background:${colorRgba(0.15)};padding:0.3rem 0.55rem;border-radius:8px;text-align:center;">${code ? getLabel(code) : '—'}</div>
           </button>
-          <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-align:center;line-height:1.3;min-height:2.4rem;">${hint}</div>
+          <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-align:center;line-height:1.3;min-height:2.2rem;">${hint}</div>
         </div>
       `;
     };
@@ -2970,11 +2969,16 @@ class RhythmSequencer {
         buttons.push(pedalButton('end', 'Finalizar', tempEnd, '255,90,90', 'Toca final + para'));
       }
 
-      // Grid: 2 cols se ≤2 botões, 2 cols se 4 botões (2x2), 3 cols se 3 botões
-      const gridCols = tempCount === 4 ? 2 : tempCount;
+      // Layout flex centralizado com wrap natural — funciona pra 2/3/4 botões.
+      // Cada card tem largura fixa (110px), flex distribui igual com wrap.
+      const gridHtml = `
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:0.7rem 0.6rem;margin-bottom:0.9rem;">
+          ${buttons.join('')}
+        </div>
+      `;
 
       overlay.innerHTML = `
-        <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:1.25rem;max-width:380px;width:100%;max-height:92vh;overflow-y:auto;">
+        <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:1.25rem;max-width:340px;width:100%;max-height:92vh;overflow-y:auto;">
           <h2 style="font-size:1.05rem;font-weight:700;color:#fff;margin:0 0 0.25rem;text-align:center;">Mapear Pedal</h2>
           <p style="font-size:0.62rem;color:rgba(255,255,255,0.35);text-align:center;margin:0 0 0.9rem;">Toque no botão e pise no pedal correspondente</p>
 
@@ -2984,11 +2988,9 @@ class RhythmSequencer {
             `).join('')}
           </div>
 
-          <div style="display:grid;grid-template-columns:repeat(${gridCols}, 1fr);gap:0.6rem;margin-bottom:0.9rem;">
-            ${buttons.join('')}
-          </div>
+          ${gridHtml}
 
-          <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(0,210,255,0.6);min-height:1.5rem;margin-bottom:0.9rem;">${listening ? `Pise no pedal "${listening === 'playPause' ? 'Pausar' : listening}"...` : ''}</div>
+          <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(0,210,255,0.7);min-height:1.4rem;margin-bottom:0.9rem;">${listening ? `Pise no pedal "${listening === 'playPause' ? 'Pausar/Continuar' : listening === 'end' ? 'Finalizar' : listening === 'left' ? 'Esquerdo' : 'Direito'}"...` : ''}</div>
 
           <div style="display:flex;gap:0.5rem;">
             <button id="pedalReset" style="flex:1;padding:0.6rem;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">Resetar</button>
@@ -3543,6 +3545,10 @@ class RhythmSequencer {
   private resumeFromPause(): void {
     if (!this.isPaused) return;
     this.isPaused = false;
+    // Toca prato como "deixa" de retomada — facilita pro músico engatar
+    // de volta no tempo. Tocado imediatamente, ANTES do play() agendar
+    // o downbeat (que vai cair ~50ms depois pelo lookahead do scheduler).
+    this.playCymbal();
     // Não chama playIntroAndStart — resume direto, sem countdown
     this.stateManager.setShouldPlayStartSound(false);
     this.play();
