@@ -1,5 +1,5 @@
 {
-  "version": 34,
+  "version": 35,
   "rhythms": [
     "Anos 60.json",
     "Anunciação.json",
@@ -104,6 +104,7 @@
   ],
   "categories": {
     "Brasileiro": [
+      "Anunciação.json",
       "Arrasta Pé.json",
       "Arrocha (cajon).json",
       "Arrocha.json",
@@ -197,7 +198,6 @@
       "Xote.json"
     ],
     "Gospel": [
-      "Anunciação.json",
       "Celebração.json",
       "Corinho de fogo (pandeiro).json",
       "Corinho de fogo.json",
