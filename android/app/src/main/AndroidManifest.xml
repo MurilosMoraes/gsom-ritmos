@@ -32,7 +32,7 @@
             android:name=".GDrumsAudioService"
             android:foregroundServiceType="mediaPlayback"
             android:exported="false"
-            android:stopWithTask="false" />
+            android:stopWithTask="true" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
