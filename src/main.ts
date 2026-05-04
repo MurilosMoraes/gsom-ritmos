@@ -1323,6 +1323,15 @@ class RhythmSequencer {
       });
     }
 
+    // Pause instantâneo (user) — célula no performance grid
+    const pauseBtnUser = document.getElementById('pauseBtnUser');
+    if (pauseBtnUser) {
+      pauseBtnUser.addEventListener('click', () => {
+        HapticsService.medium();
+        this.togglePauseInstant();
+      });
+    }
+
     const playStopUserBtn = document.getElementById('playStopUser');
     if (playStopUserBtn) {
       playStopUserBtn.addEventListener('click', () => { HapticsService.medium(); this.togglePlayStop(); });
@@ -2933,52 +2942,57 @@ class RhythmSequencer {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(20px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
 
+    // Botão de pedal: card vertical com label, tecla mapeada e hint.
+    // Layout em grid responsivo (2x2 quando 4 botões).
     const pedalButton = (which: 'left'|'right'|'playPause'|'end', label: string, code: string, color: string, hint: string) => {
       const isListening = listening === which;
       const colorRgba = (alpha: number) => `rgba(${color},${alpha})`;
       return `
-        <div style="text-align:center;flex:1;min-width:0;">
-          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:${colorRgba(0.6)};margin-bottom:0.5rem;">${label}</div>
-          <button id="pedalBtn-${which}" style="width:100%;max-width:90px;height:110px;border-radius:16px;border:2px solid ${colorRgba(isListening ? 0.8 : 0.3)};background:${colorRgba(0.08)};cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;font-family:inherit;${isListening ? `box-shadow:0 0 20px ${colorRgba(0.3)};transform:scale(1.05);` : ''}">
-            <div style="font-size:0.7rem;font-weight:700;color:${colorRgba(0.9)};background:${colorRgba(0.15)};padding:0.25rem 0.5rem;border-radius:8px;">${code ? getLabel(code) : '—'}</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;min-width:0;">
+          <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:${colorRgba(0.7)};text-align:center;line-height:1;">${label}</div>
+          <button id="pedalBtn-${which}" style="width:100%;max-width:120px;height:80px;border-radius:14px;border:2px solid ${colorRgba(isListening ? 0.8 : 0.3)};background:${colorRgba(0.08)};cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;padding:0.4rem;${isListening ? `box-shadow:0 0 20px ${colorRgba(0.3)};transform:scale(1.04);` : ''}">
+            <div style="font-size:0.7rem;font-weight:700;color:${colorRgba(0.9)};background:${colorRgba(0.15)};padding:0.3rem 0.6rem;border-radius:8px;text-align:center;">${code ? getLabel(code) : '—'}</div>
           </button>
-          <div style="font-size:0.5rem;color:rgba(255,255,255,0.2);margin-top:0.5rem;line-height:1.4;">${hint}</div>
+          <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-align:center;line-height:1.3;min-height:2.4rem;">${hint}</div>
         </div>
       `;
     };
 
     const render = () => {
       const buttons: string[] = [
-        pedalButton('left', 'Esquerdo', tempLeft, '139,92,246', 'Parado: play<br>1x prox ritmo<br>2x anterior'),
-        pedalButton('right', 'Direito', tempRight, '249,115,22', 'Parado: prato<br>1x virada<br>2x finaliza'),
+        pedalButton('left', 'Esquerdo', tempLeft, '139,92,246', 'Play / virada<br>2x: ritmo anterior'),
+        pedalButton('right', 'Direito', tempRight, '249,115,22', 'Prato / virada<br>2x: finaliza'),
       ];
       if (tempCount >= 3) {
-        buttons.push(pedalButton('playPause', 'Play/Pause', tempPlayPause, '0,210,255', 'Pausa instantanea<br>(retoma do<br>downbeat)'));
+        buttons.push(pedalButton('playPause', 'Pausar/Continuar', tempPlayPause, '0,210,255', 'Pausa instantânea<br>(barzinho)'));
       }
       if (tempCount >= 4) {
-        buttons.push(pedalButton('end', 'Finalizar', tempEnd, '255,90,90', 'Toca finalizacao<br>e para'));
+        buttons.push(pedalButton('end', 'Finalizar', tempEnd, '255,90,90', 'Toca final + para'));
       }
 
-      overlay.innerHTML = `
-        <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:1.5rem;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;">
-          <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.3rem;text-align:center;">Mapear Pedal</h2>
-          <p style="font-size:0.65rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1rem;">Clique no botao e pise no pedal correspondente</p>
+      // Grid: 2 cols se ≤2 botões, 2 cols se 4 botões (2x2), 3 cols se 3 botões
+      const gridCols = tempCount === 4 ? 2 : tempCount;
 
-          <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:1.25rem;">
+      overlay.innerHTML = `
+        <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:1.25rem;max-width:380px;width:100%;max-height:92vh;overflow-y:auto;">
+          <h2 style="font-size:1.05rem;font-weight:700;color:#fff;margin:0 0 0.25rem;text-align:center;">Mapear Pedal</h2>
+          <p style="font-size:0.62rem;color:rgba(255,255,255,0.35);text-align:center;margin:0 0 0.9rem;">Toque no botão e pise no pedal correspondente</p>
+
+          <div style="display:flex;gap:0.4rem;justify-content:center;margin-bottom:1rem;">
             ${[2,3,4].map(n => `
-              <button data-count="${n}" class="pedalCountBtn" style="padding:0.5rem 0.9rem;border:1px solid ${tempCount === n ? 'rgba(0,230,140,0.6)' : 'rgba(255,255,255,0.1)'};background:${tempCount === n ? 'rgba(0,230,140,0.12)' : 'rgba(255,255,255,0.03)'};color:${tempCount === n ? 'rgba(0,230,140,0.9)' : 'rgba(255,255,255,0.5)'};border-radius:10px;font-size:0.75rem;font-weight:700;font-family:inherit;cursor:pointer;">${n} botoes</button>
+              <button data-count="${n}" class="pedalCountBtn" style="flex:1;max-width:90px;padding:0.45rem 0.4rem;border:1px solid ${tempCount === n ? 'rgba(0,230,140,0.6)' : 'rgba(255,255,255,0.1)'};background:${tempCount === n ? 'rgba(0,230,140,0.12)' : 'rgba(255,255,255,0.03)'};color:${tempCount === n ? 'rgba(0,230,140,0.9)' : 'rgba(255,255,255,0.5)'};border-radius:9px;font-size:0.7rem;font-weight:700;font-family:inherit;cursor:pointer;">${n} botões</button>
             `).join('')}
           </div>
 
-          <div style="display:flex;gap:0.75rem;justify-content:center;margin-bottom:1.25rem;flex-wrap:wrap;">
+          <div style="display:grid;grid-template-columns:repeat(${gridCols}, 1fr);gap:0.6rem;margin-bottom:0.9rem;">
             ${buttons.join('')}
           </div>
 
-          <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(255,255,255,0.2);min-height:1.5rem;margin-bottom:1rem;">${listening ? `Pise no pedal ${listening}...` : ''}</div>
+          <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(0,210,255,0.6);min-height:1.5rem;margin-bottom:0.9rem;">${listening ? `Pise no pedal "${listening === 'playPause' ? 'Pausar' : listening}"...` : ''}</div>
 
           <div style="display:flex;gap:0.5rem;">
-            <button id="pedalReset" style="flex:1;padding:0.6rem;border:none;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Resetar</button>
-            <button id="pedalSave" style="flex:2;padding:0.6rem;border:none;border-radius:10px;background:rgba(0,230,140,0.12);border:1px solid rgba(0,230,140,0.25);color:rgba(0,230,140,0.9);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Salvar</button>
+            <button id="pedalReset" style="flex:1;padding:0.6rem;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">Resetar</button>
+            <button id="pedalSave" style="flex:2;padding:0.6rem;border-radius:10px;background:rgba(0,230,140,0.12);border:1px solid rgba(0,230,140,0.25);color:rgba(0,230,140,0.9);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">Salvar</button>
           </div>
         </div>
       `;
@@ -3523,6 +3537,7 @@ class RhythmSequencer {
     if (statusAdmin) statusAdmin.textContent = 'Pausado';
     if (statusUser) statusUser.textContent = 'Pausado';
     this.uiManager.updatePerformanceGrid();
+    this.updatePauseButtonUI();
   }
 
   private resumeFromPause(): void {
@@ -3531,6 +3546,15 @@ class RhythmSequencer {
     // Não chama playIntroAndStart — resume direto, sem countdown
     this.stateManager.setShouldPlayStartSound(false);
     this.play();
+    this.updatePauseButtonUI();
+  }
+
+  /** Atualiza label e classe .active do botão pause user. */
+  private updatePauseButtonUI(): void {
+    const cell = document.getElementById('pauseBtnUser');
+    const label = document.getElementById('pauseBtnLabel');
+    if (cell) cell.classList.toggle('active', this.isPaused);
+    if (label) label.textContent = this.isPaused ? 'CONTINUAR' : 'PAUSAR';
   }
 
   /** Toggle exclusivo de pause/resume — botão e pedal usam esse. */
@@ -3742,6 +3766,8 @@ class RhythmSequencer {
 
   private stop(): void {
     this.stateManager.setPlaying(false);
+    this.isPaused = false;
+    this.updatePauseButtonUI();
     if ('mediaSession' in navigator) {
       try { (navigator as any).mediaSession.playbackState = 'paused'; } catch {}
     }

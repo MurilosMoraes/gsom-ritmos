@@ -1855,6 +1855,41 @@ input:checked + .slider:before {
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.12));
 }
 
+/* Pause Cell (Cyan) — pra músico em barzinho pausar/continuar instantâneo */
+.pause-cell {
+  border-color: rgba(0, 210, 255, 0.3);
+}
+
+.pause-cell::before {
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.15), rgba(96, 165, 250, 0.1));
+}
+
+.pause-cell:hover {
+  border-color: rgba(0, 210, 255, 0.45);
+}
+
+.pause-cell:hover::before {
+  opacity: 1;
+}
+
+/* Estado "pausado" — célula pulsa pra mostrar que tá esperando user retomar */
+.pause-cell.active {
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.25), rgba(96, 165, 250, 0.15));
+  border-color: rgba(0, 210, 255, 0.6);
+  box-shadow: 0 0 40px rgba(0, 210, 255, 0.3), inset 0 0 30px rgba(0, 210, 255, 0.05);
+  animation: pauseCellPulse 1.6s ease-in-out infinite;
+}
+
+.pause-cell.active::before {
+  opacity: 1;
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.2), rgba(96, 165, 250, 0.12));
+}
+
+@keyframes pauseCellPulse {
+  0%, 100% { box-shadow: 0 0 40px rgba(0, 210, 255, 0.3), inset 0 0 30px rgba(0, 210, 255, 0.05); }
+  50% { box-shadow: 0 0 60px rgba(0, 210, 255, 0.5), inset 0 0 40px rgba(0, 210, 255, 0.1); }
+}
+
 /* Cell Number (estilo pedalboard) */
 .cell-number {
   font-size: 1.6rem;
