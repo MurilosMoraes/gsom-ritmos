@@ -366,30 +366,10 @@ class RhythmSequencer {
         // Voltou pro foreground.
         if (this.stateManager.isPlaying()) {
           // resume() é seguro em qualquer plataforma — no-op se contexto já
-          // tá running (web/Android nativo nunca pausaram de verdade).
+          // tá running. Sem cancel/reset/restart em NENHUMA plataforma —
+          // teste pra ver se iOS se recupera sozinho como web/Android.
+          // Se iOS ficar mudo ou fora de fase, voltamos o tratamento.
           this.audioManager.resume();
-
-          // SÓ iOS precisa do tratamento abaixo. WKWebView pausa JS thread
-          // de verdade em background — fila de samples agendados é processada
-          // sozinha pelo audio thread, e ao voltar:
-          //   1) scheduler.restart() agendaria NOVOS samples em cima dos
-          //      antigos da fila → "música sobre música"
-          //   2) currentStep congelou → ciclo musical fora de fase
-          // Fix iOS: cancela fila + reset downbeat se bg longo + restart.
-          //
-          // Web/Android: NÃO mexer. Chrome desktop não throttle agressivo
-          // aba com áudio rolando, Android nativo tem FGS. Áudio segue
-          // limpo, cancelar/restart aqui = acavalamento (bug reportado).
-          if (isIOSVis) {
-            this.audioManager.cancelAllScheduled();
-            const bgDuration = backgroundStartedAt > 0
-              ? performance.now() - backgroundStartedAt
-              : 0;
-            if (bgDuration > 1000) {
-              this.stateManager.resetStep();
-            }
-            this.scheduler.restart();
-          }
         }
         backgroundStartedAt = 0;
       }
