@@ -3,6 +3,7 @@
 import { supabase } from './supabase';
 import { ModalManager } from '../ui/ModalManager';
 import { internalNav } from '../native/Platform';
+import { redirectIfRecoveryHash } from './recoveryGuard';
 
 const modalManager = new ModalManager();
 const ADMIN_API_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/admin-api';
@@ -2454,5 +2455,6 @@ class AdminDashboard {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  if (redirectIfRecoveryHash()) return;
   new AdminDashboard();
 });

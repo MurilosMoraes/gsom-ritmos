@@ -25,6 +25,7 @@ import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
+import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
 // Pra Google Play / App Store: app nativo não pode ter fluxo de pagamento
 // de produto digital (teria que usar Play Billing / IAP com taxa 30%).
@@ -6546,6 +6547,12 @@ class RhythmSequencer {
 
 // Inicializar quando a página carregar
 window.addEventListener('DOMContentLoaded', () => {
+  // Defesa: se chegou aqui com link de recovery do email (#type=recovery),
+  // o Supabase processou a sessão automaticamente e o user vai cair no
+  // app principal sem nunca ver a tela de "Nova senha". Redireciona pro
+  // /login.html mantendo o hash. Nada mais roda nessa carga.
+  if (redirectIfRecoveryHash()) return;
+
   // Captura de atribuição — cobre o caso do cara entrar em gdrums.com.br?ref=LUCAS10
   // diretamente na home do app (sem passar por landing/demo/register).
   // Se ele já é user logado, o ref sobrescreve atribuição antiga (intenção comercial clara).

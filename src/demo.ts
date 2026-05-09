@@ -11,6 +11,7 @@ import { MAX_CHANNELS, type PatternType } from './types';
 import { HapticsService } from './native/HapticsService';
 import { AttributionService } from './native/AttributionService';
 import { RHYTHM_COUNT, LOCKED_RHYTHM_COUNT, updateRhythmCountInDom } from './utils/rhythmCount';
+import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
 // Só 3 ritmos ficam liberados. O resto aparece bloqueado na tira
 // pra mostrar ao user o tamanho REAL da biblioteca — peça central pra
@@ -811,6 +812,7 @@ class DemoPlayer {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  if (redirectIfRecoveryHash()) return;
   AttributionService.init();
   new DemoPlayer();
 });

@@ -50,11 +50,23 @@
       padding: 2.5rem 2rem 1.75rem;
     }
 
+    .login-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1.75rem;
+    }
     .login-logo {
       display: block;
-      height: 28px;
-      margin: 0 auto 1.75rem;
-      opacity: 0.85;
+      height: 32px;
+      width: auto;
+    }
+    .login-brand-text {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #fff;
     }
 
     .login-title {
@@ -268,11 +280,139 @@
       margin: 0 auto;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Modal de recuperação de senha ───────────────────────────── */
+    .fp-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      animation: fp-fade-in 0.18s ease;
+    }
+    @keyframes fp-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+    .fp-modal-card {
+      width: 100%;
+      max-width: 420px;
+      background: #0a0a0f;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 1.75rem 1.5rem 1.25rem;
+      animation: fp-slide-in 0.22s ease;
+    }
+    @keyframes fp-slide-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fp-modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.015em;
+    }
+    .fp-modal-sub {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 1.25rem;
+    }
+
+    .fp-field { margin-bottom: 1rem; }
+    .fp-field label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.4rem;
+    }
+    .fp-field input {
+      width: 100%;
+      padding: 0.8rem 0.9rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .fp-field input:focus {
+      border-color: rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .fp-field input::placeholder { color: rgba(255, 255, 255, 0.25); }
+
+    .fp-modal-alert {
+      display: none;
+      padding: 0.7rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .fp-modal-alert.error {
+      background: rgba(255, 68, 102, 0.1);
+      color: #ff6b83;
+      border: 1px solid rgba(255, 68, 102, 0.25);
+    }
+    .fp-modal-alert.success {
+      background: rgba(0, 230, 140, 0.1);
+      color: #3ee8a7;
+      border: 1px solid rgba(0, 230, 140, 0.25);
+    }
+
+    .fp-modal-actions {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.5rem;
+    }
+    .fp-btn-cancel,
+    .fp-btn-send {
+      flex: 1;
+      padding: 0.85rem;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .fp-btn-cancel {
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .fp-btn-cancel:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+    .fp-btn-send {
+      background: #fff;
+      color: #0a0a0f;
+    }
+    .fp-btn-send:hover { opacity: 0.9; }
+    .fp-btn-send:disabled { opacity: 0.55; cursor: default; }
+    .fp-btn-loader { display: none; align-items: center; justify-content: center; }
   </style>
 </head>
 <body>
   <div class="login-card">
-    <img src="/img/logo.png" alt="GDrums" class="login-logo" />
+    <div class="login-brand">
+      <img src="/img/logo.png" alt="GDrums" class="login-logo" />
+      <span class="login-brand-text">GDrums</span>
+    </div>
     <h1 class="login-title">Entrar na sua conta.</h1>
     <p class="login-sub">Continue de onde parou.</p>
 

@@ -46,8 +46,12 @@ body {
   padding: 0 1.5rem; height: 52px;
   display: flex; align-items: center; justify-content: space-between;
 }
-.adm-brand { display: flex; align-items: center; gap: 0.5rem; }
-.adm-logo { height: 22px; opacity: 0.8; }
+.adm-brand { display: flex; align-items: center; gap: 0.4rem; }
+.adm-logo { height: 24px; width: auto; }
+.adm-brand-name {
+  font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em;
+  color: #fff;
+}
 .adm-brand-label {
   font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 2px; color: var(--a-cyan); opacity: 0.5;

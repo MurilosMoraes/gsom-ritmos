@@ -45,10 +45,22 @@
     }
 
     /* Logo compacto só no canto — não rouba atenção */
-    .demo-topbar-logo {
-      height: 20px;
-      opacity: 0.85;
+    .demo-topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
       flex-shrink: 0;
+    }
+    .demo-topbar-logo {
+      height: 22px;
+      width: auto;
+      flex-shrink: 0;
+    }
+    .demo-topbar-brand-text {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #fff;
     }
 
     /* Separador vertical */
@@ -132,6 +144,7 @@
         min-height: 3.1rem;
       }
       .demo-topbar-logo { height: 18px; }
+      .demo-topbar-brand-text { font-size: 0.85rem; }
       .demo-topbar-sep { display: none; }
       .demo-topbar-headline {
         font-size: 0.75rem;
@@ -664,7 +677,10 @@
 <body>
   <!-- Topbar ativo de conversão -->
   <div class="demo-topbar">
-    <img src="/img/logo.png" alt="GDrums" class="demo-topbar-logo">
+    <div class="demo-topbar-brand">
+      <img src="/img/logo.png" alt="GDrums" class="demo-topbar-logo">
+      <span class="demo-topbar-brand-text">GDrums</span>
+    </div>
     <span class="demo-topbar-sep"></span>
     <div class="demo-topbar-mid">
       <span class="demo-topbar-headline">

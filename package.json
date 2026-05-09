@@ -31,6 +31,7 @@
     "@capacitor/ios": "^8.2.0",
     "@capacitor/push-notifications": "^8.0.2",
     "@capacitor/status-bar": "^8.0.1",
+    "@capgo/native-purchases": "^8.3.6",
     "@supabase/supabase-js": "^2.99.3",
     "vite-plugin-pwa": "^1.2.0",
     "zod": "^4.3.6"

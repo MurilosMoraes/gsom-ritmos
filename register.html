@@ -54,11 +54,23 @@
       color: #fff;
     }
 
+    .register-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
     .register-logo {
-      height: 28px;
+      height: 32px;
+      width: auto;
       display: block;
-      margin: 0 auto 1.5rem;
-      opacity: 0.85;
+    }
+    .register-brand-text {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #fff;
     }
 
     /* Hero — overline + título + corpo */
@@ -382,7 +394,10 @@
 <body>
   <div class="register-page">
     <div class="register-card">
-      <img src="/img/logo.png" alt="GDrums" class="register-logo" />
+      <div class="register-brand">
+        <img src="/img/logo.png" alt="GDrums" class="register-logo" />
+        <span class="register-brand-text">GDrums</span>
+      </div>
 
       <div class="register-hero">
         <div class="register-overline">Teste grátis de 48h</div>

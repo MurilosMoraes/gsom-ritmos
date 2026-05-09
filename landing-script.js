@@ -1,5 +1,21 @@
 // Landing Page Animations and Interactions
 
+// Defesa: link de recovery do email pode cair aqui se Supabase Site URL
+// estiver na raiz. Detecta hash de recovery e redireciona pro /login.html
+// preservando o fragmento. Síncrono no topo pra rodar antes de qualquer
+// outra coisa.
+(function recoveryGuard() {
+  try {
+    var h = window.location.hash || '';
+    if (!h) return;
+    var isRecovery = h.indexOf('type=recovery') !== -1 || h.indexOf('type=magiclink') !== -1 || h.indexOf('type=signup') !== -1;
+    if (!isRecovery) return;
+    var path = window.location.pathname || '/';
+    if (/\/login(\.html)?$/i.test(path)) return;
+    window.location.replace('/login.html' + window.location.search + h);
+  } catch (e) { /* noop */ }
+})();
+
 // Smooth scroll para navegação
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener('click', function (e) {
