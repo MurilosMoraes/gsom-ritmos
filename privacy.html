@@ -17,7 +17,9 @@
     body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif; background:#030014; color:rgba(255,255,255,0.7); line-height:1.8; }
     .legal-container { max-width:720px; margin:0 auto; padding:2rem 1.5rem 4rem; }
     .legal-header { text-align:center; margin-bottom:2.5rem; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:1.5rem; }
-    .legal-header img { height:28px; opacity:0.7; margin-bottom:1rem; }
+    .legal-brand { display:flex; align-items:center; justify-content:center; gap:0.45rem; margin-bottom:1rem; }
+    .legal-brand img { height:28px; width:auto; }
+    .legal-brand span { font-size:1rem; font-weight:700; letter-spacing:-0.01em; color:#fff; }
     .legal-header h1 { color:#fff; font-size:1.4rem; font-weight:700; margin-bottom:0.3rem; }
     .legal-header p { font-size:0.78rem; color:rgba(255,255,255,0.3); }
     h2 { color:#fff; font-size:1rem; font-weight:700; margin:2rem 0 0.75rem; }
@@ -39,7 +41,10 @@
     <a href="javascript:void(0)" class="legal-back" onclick="history.length>1?history.back():location.href='/landing'">&larr; Voltar</a>
 
     <div class="legal-header">
-      <img src="/img/logo.png" alt="GDrums">
+      <div class="legal-brand">
+        <img src="/img/logo.png" alt="GDrums">
+        <span>GDrums</span>
+      </div>
       <h1>Politica de Privacidade</h1>
       <p>Ultima atualizacao: 05 de abril de 2026</p>
     </div>

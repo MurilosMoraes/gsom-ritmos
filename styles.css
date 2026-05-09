@@ -258,11 +258,21 @@ input:checked + .slider:before {
   margin: 0 auto;
   width: 100%;
 }
+.global-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
 .global-logo-img {
-  height: 36px;
+  height: 32px;
   width: auto;
   object-fit: contain;
-  opacity: 0.8;
+}
+.global-brand-text {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
 }
 .topbar-menu-btn {
   width: 38px;

@@ -4,6 +4,7 @@ import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { parseOrderNsu, getPlan } from './PaymentService';
 import { internalNav } from '../native/Platform';
+import { redirectIfRecoveryHash } from './recoveryGuard';
 
 const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
 
@@ -27,6 +28,41 @@ class PaymentSuccessPage {
     const transactionNsu = params.get('transaction_nsu');
     const slug = params.get('slug');
     const captureMethod = params.get('capture_method');
+    const isIOSIAP = params.get('ios_iap') === '1';
+    const isRestore = params.get('restore') === '1';
+
+    // Fluxo Apple IAP: o backend (apple-iap-verify) já atualizou o
+    // gdrums_profiles antes de retornar pro cliente. Aqui só confirmamos.
+    if (isIOSIAP) {
+      const { data: iapProfile } = await supabase
+        .from('gdrums_profiles')
+        .select('subscription_status, subscription_plan')
+        .eq('id', user.id)
+        .single();
+
+      if (iapProfile?.subscription_status === 'active' || iapProfile?.subscription_status === 'trial') {
+        const planLabel = getPlan(iapProfile.subscription_plan || '')?.displayName || 'GDrums Pro';
+        await this.showSuccess(isRestore ? `${planLabel} (restaurada)` : planLabel);
+        return;
+      }
+
+      // Se chegou aqui mesmo o webhook tendo retornado success, faz polling curto
+      for (let i = 0; i < 3; i++) {
+        await new Promise(r => setTimeout(r, 1500));
+        const { data: retry } = await supabase
+          .from('gdrums_profiles')
+          .select('subscription_status, subscription_plan')
+          .eq('id', user.id)
+          .single();
+        if (retry?.subscription_status === 'active' || retry?.subscription_status === 'trial') {
+          const planLabel = getPlan(retry.subscription_plan || '')?.displayName || 'GDrums Pro';
+          await this.showSuccess(planLabel);
+          return;
+        }
+      }
+      this.showPending();
+      return;
+    }
 
     const pending = localStorage.getItem('gdrums-pending-order');
     const pendingOrder = pending ? JSON.parse(pending) : null;
@@ -166,4 +202,7 @@ class PaymentSuccessPage {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => { new PaymentSuccessPage(); });
+window.addEventListener('DOMContentLoaded', () => {
+  if (redirectIfRecoveryHash()) return;
+  new PaymentSuccessPage();
+});

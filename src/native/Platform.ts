@@ -21,6 +21,24 @@ export function isNativeApp(): boolean {
   }
 }
 
+/** True se rodando no app nativo iOS (Capacitor). Usado pra IAP da Apple. */
+export function isIOSNative(): boolean {
+  try {
+    return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
+  } catch {
+    return false;
+  }
+}
+
+/** True se rodando no app nativo Android (Capacitor). */
+export function isAndroidNative(): boolean {
+  try {
+    return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Abre uma URL externamente (fora do app).
  * - App nativo: abre no navegador do sistema (Chrome/Safari).

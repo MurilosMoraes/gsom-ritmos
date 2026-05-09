@@ -26,13 +26,28 @@ class LoginPage {
   }
 
   private async init(): Promise<void> {
-    // Detectar recovery token na URL (reset de senha via email)
+    // Detectar recovery token na URL (reset de senha via email).
+    // Supabase coloca #access_token=...&type=recovery — pode chegar:
+    //   (a) já processado (sessão criada antes desse JS rodar)
+    //   (b) processando (vai disparar PASSWORD_RECOVERY no onAuthStateChange)
+    //   (c) inválido/expirado (nada acontece — timeout)
+    // Por isso: tenta detectar pelas 3 vias antes de seguir o fluxo normal.
     const hash = window.location.hash;
-    if (hash.includes('type=recovery') || hash.includes('type=magiclink')) {
-      // Supabase coloca #access_token=...&type=recovery na URL.
-      // O client SDK detecta e faz login automático via onAuthStateChange.
-      // Esperar o Supabase processar o token e mostrar form de nova senha.
-      await this.handlePasswordRecovery();
+    const looksLikeRecovery =
+      hash.includes('type=recovery') ||
+      hash.includes('type=magiclink') ||
+      hash.includes('access_token=');
+
+    if (looksLikeRecovery) {
+      const ok = await this.waitForRecoverySession();
+      if (ok) {
+        await this.handlePasswordRecovery();
+        return;
+      }
+      // Token inválido/expirado → mostra erro mas deixa o form de login
+      this.showAlert('Link de recuperação inválido ou expirado. Peça outro.', 'error');
+      this.setupEventListeners();
+      this.setupNativeRegisterLink();
       return;
     }
 
@@ -43,6 +58,48 @@ class LoginPage {
     }
     this.setupEventListeners();
     this.setupNativeRegisterLink();
+  }
+
+  /**
+   * Aguarda o Supabase processar o token do hash. Retorna true se
+   * conseguiu uma sessão válida (de recovery), false se deu timeout.
+   *
+   * Estratégia: usa onAuthStateChange + getSession em paralelo. Quem
+   * chegar primeiro com sessão ganha. Timeout 4s pra evitar travar a UI.
+   */
+  private waitForRecoverySession(): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      let done = false;
+      const finish = (ok: boolean) => {
+        if (done) return;
+        done = true;
+        resolve(ok);
+      };
+
+      // 1. Listener do SDK — pega quando o hash for processado
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (done) return;
+        if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+          finish(true);
+        }
+      });
+
+      // 2. Polling defensivo — caso o evento já tenha disparado antes
+      let tries = 0;
+      const interval = setInterval(async () => {
+        if (done) { clearInterval(interval); return; }
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) { clearInterval(interval); finish(true); }
+        if (++tries >= 20) clearInterval(interval); // 20 * 200ms = 4s
+      }, 200);
+
+      // 3. Timeout final
+      setTimeout(() => {
+        clearInterval(interval);
+        subscription?.unsubscribe();
+        finish(false);
+      }, 4500);
+    });
   }
 
   /** No app nativo (iOS/Android), os links pra cadastro abrem o site
@@ -63,15 +120,7 @@ class LoginPage {
   }
 
   private async handlePasswordRecovery(): Promise<void> {
-    // Aguardar Supabase processar o token do hash
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      // Token inválido ou expirado
-      this.showAlert('Link de recuperação inválido ou expirado. Peça outro.', 'error');
-      this.setupEventListeners();
-      return;
-    }
-
+    // Caller (init) já confirmou que existe sessão de recovery.
     // Esconder formulário de login, mostrar form de nova senha
     const card = document.querySelector('.login-card') as HTMLElement;
     const title = card.querySelector('.login-title') as HTMLElement;
@@ -146,47 +195,146 @@ class LoginPage {
     this.form.addEventListener('submit', (e) => this.handleSubmit(e));
 
     const forgotBtn = document.getElementById('forgotPasswordBtn') as HTMLElement;
-    let forgotCooldown = false;
-    forgotBtn?.addEventListener('click', async (e) => {
+    forgotBtn?.addEventListener('click', (e) => {
       e.preventDefault();
-      if (forgotCooldown) return;
+      this.openForgotPasswordModal();
+    });
+  }
 
-      const email = this.emailInput.value.trim();
-      if (!email) {
-        this.showAlert('Digite seu e-mail primeiro', 'error');
-        this.emailInput.focus();
+  /**
+   * Modal explícito de recuperação de senha. Antes era "1 clique manda email"
+   * — usuário velho clicava sem querer. Agora exige: ver tela, conferir email,
+   * clicar "Enviar link". Inclui botão "Cancelar" pra escapar.
+   */
+  private openForgotPasswordModal(): void {
+    // Já existe? Não duplica.
+    if (document.getElementById('forgotPasswordModal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'forgotPasswordModal';
+    modal.className = 'fp-modal-backdrop';
+    modal.innerHTML = `
+      <div class="fp-modal-card" role="dialog" aria-modal="true" aria-labelledby="fpModalTitle">
+        <h2 id="fpModalTitle" class="fp-modal-title">Recuperar senha</h2>
+        <p class="fp-modal-sub">
+          Vamos enviar um link no seu e-mail pra você criar uma senha nova.
+          Confere o e-mail e clica em "Enviar link".
+        </p>
+
+        <div class="fp-field">
+          <label for="fpEmailInput">Seu e-mail</label>
+          <input type="email" id="fpEmailInput" placeholder="seu@email.com" autocomplete="email" />
+        </div>
+
+        <div class="fp-modal-alert" id="fpAlert" role="alert"></div>
+
+        <div class="fp-modal-actions">
+          <button type="button" class="fp-btn-cancel" id="fpCancelBtn">Cancelar</button>
+          <button type="button" class="fp-btn-send" id="fpSendBtn">
+            <span class="fp-btn-text">Enviar link</span>
+            <span class="fp-btn-loader"><div class="spinner-sm"></div></span>
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const emailInput = modal.querySelector<HTMLInputElement>('#fpEmailInput')!;
+    const sendBtn = modal.querySelector<HTMLButtonElement>('#fpSendBtn')!;
+    const cancelBtn = modal.querySelector<HTMLButtonElement>('#fpCancelBtn')!;
+    const alertEl = modal.querySelector<HTMLElement>('#fpAlert')!;
+
+    // Pré-preenche se o user já digitou no login
+    emailInput.value = this.emailInput.value.trim();
+
+    // Foca o campo se vazio, senão foca o botão pra UX direta
+    setTimeout(() => {
+      if (!emailInput.value) emailInput.focus();
+      else sendBtn.focus();
+    }, 50);
+
+    const closeModal = () => {
+      modal.remove();
+    };
+
+    cancelBtn.addEventListener('click', closeModal);
+
+    // Fecha clicando fora do card
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    // ESC fecha
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+
+    // Enter no campo manda
+    emailInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendBtn.click();
+    });
+
+    let sending = false;
+    sendBtn.addEventListener('click', async () => {
+      if (sending) return;
+
+      const email = emailInput.value.trim();
+      if (!email || !email.includes('@')) {
+        this.fpAlert(alertEl, 'Digite um e-mail válido', 'error');
+        emailInput.focus();
         return;
       }
 
-      // Bloquear cliques repetidos + feedback visual
-      forgotCooldown = true;
-      const originalText = forgotBtn.textContent || '';
-      forgotBtn.textContent = 'Enviando...';
-      forgotBtn.style.opacity = '0.5';
-      forgotBtn.style.pointerEvents = 'none';
+      sending = true;
+      this.fpSetLoading(sendBtn, true);
+      this.fpAlert(alertEl, '', null);
 
+      // SEMPRE manda pro site público (não pro app nativo).
+      // Se usar window.location.origin no app: vira capacitor://localhost
+      // → o link no email não abre, navegador cai na landing e mostra
+      // "Cadastrar grátis" — o user pensa que tem que cadastrar de novo.
+      // URL fixa garante que abra sempre na tela de redefinir senha.
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login.html`,
+        redirectTo: 'https://gdrums.com.br/login.html',
       });
 
       if (error) {
-        this.showAlert('Erro ao enviar e-mail de recuperação. Verifique o e-mail digitado.', 'error');
-        forgotBtn.textContent = originalText;
-        forgotBtn.style.opacity = '1';
-        forgotBtn.style.pointerEvents = 'auto';
-        forgotCooldown = false;
-      } else {
-        this.showAlert('E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'success');
-        forgotBtn.textContent = 'E-mail enviado!';
-        // Cooldown de 60s pra não martelar
-        setTimeout(() => {
-          forgotBtn.textContent = originalText;
-          forgotBtn.style.opacity = '1';
-          forgotBtn.style.pointerEvents = 'auto';
-          forgotCooldown = false;
-        }, 60000);
+        this.fpSetLoading(sendBtn, false);
+        sending = false;
+        this.fpAlert(alertEl, 'Não foi possível enviar. Confere o e-mail e tenta de novo.', 'error');
+        return;
       }
+
+      this.fpAlert(alertEl, 'Link enviado! Verifica seu e-mail (e a caixa de spam).', 'success');
+      // Espera o user ler antes de fechar
+      setTimeout(() => {
+        closeModal();
+      }, 2500);
     });
+  }
+
+  private fpSetLoading(btn: HTMLButtonElement, loading: boolean): void {
+    btn.disabled = loading;
+    const text = btn.querySelector<HTMLElement>('.fp-btn-text');
+    const loader = btn.querySelector<HTMLElement>('.fp-btn-loader');
+    if (text) text.style.display = loading ? 'none' : 'inline';
+    if (loader) loader.style.display = loading ? 'inline-flex' : 'none';
+  }
+
+  private fpAlert(el: HTMLElement, msg: string, type: 'success' | 'error' | null): void {
+    if (!msg || !type) {
+      el.style.display = 'none';
+      el.textContent = '';
+      el.className = 'fp-modal-alert';
+      return;
+    }
+    el.textContent = msg;
+    el.className = `fp-modal-alert ${type}`;
+    el.style.display = 'block';
   }
 
   private async handleSubmit(e: Event): Promise<void> {

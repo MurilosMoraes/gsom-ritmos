@@ -7,6 +7,7 @@ import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
 import { AttributionService } from '../native/AttributionService';
 import { registerSchema, zodErrorsToFieldMap } from './schemas';
 import { updateRhythmCountInDom } from '../utils/rhythmCount';
+import { redirectIfRecoveryHash } from './recoveryGuard';
 
 class RegisterPage {
   private form: HTMLFormElement;
@@ -473,6 +474,7 @@ class RegisterPage {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  if (redirectIfRecoveryHash()) return;
   AttributionService.init();
   updateRhythmCountInDom();
   new RegisterPage();

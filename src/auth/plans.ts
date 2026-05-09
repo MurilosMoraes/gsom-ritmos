@@ -4,7 +4,9 @@ import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { PLANS, generateOrderNsu, createCheckoutLink } from './PaymentService';
 import type { Plan } from './PaymentService';
-import { internalNav } from '../native/Platform';
+import { internalNav, isIOSNative } from '../native/Platform';
+import { purchasePlan as iapPurchase, restorePurchases as iapRestore, loadProducts as iapLoadProducts } from '../native/IAPService';
+import { redirectIfRecoveryHash } from './recoveryGuard';
 
 interface AppliedCoupon {
   code: string;
@@ -136,11 +138,62 @@ class PlansPage {
     }
 
     this.setupCoupon();
+    this.setupIAPRestore();
     // Renovação destaca o plano atual; upgrade respeita ?plan=X; default usa o "popular"
     const highlightPlan = isRenew && plan && plan !== 'trial'
       ? plan
       : params.get('plan');
     this.renderPlans(highlightPlan);
+
+    // Pré-carrega produtos da App Store em background pra acelerar o
+    // primeiro tap (a Apple às vezes demora 1-2s na 1ª query).
+    if (isIOSNative()) {
+      iapLoadProducts().catch(() => {});
+    }
+  }
+
+  // ─── Restore Purchases (Apple obriga visível) ───────────────────────
+  //
+  // Apple Review Guideline 3.1.1: apps com IAP DEVEM ter botão pra
+  // restaurar compras (caso user reinstale, troque de device, etc).
+  // Renderiza um link discreto abaixo da grade de planos, só no iOS.
+
+  private setupIAPRestore(): void {
+    if (!isIOSNative()) return;
+
+    // Container existente — adiciona após a grade de planos
+    const grid = document.getElementById('plansGrid');
+    if (!grid) return;
+
+    let restoreEl = document.getElementById('iapRestoreLink');
+    if (!restoreEl) {
+      restoreEl = document.createElement('div');
+      restoreEl.id = 'iapRestoreLink';
+      restoreEl.style.cssText = 'text-align:center;margin-top:1.5rem;font-size:0.85rem;';
+      restoreEl.innerHTML = `
+        <a href="#" style="color:rgba(255,255,255,0.6);text-decoration:underline;">
+          Restaurar compras
+        </a>
+      `;
+      grid.parentElement?.insertBefore(restoreEl, grid.nextSibling);
+    }
+
+    const link = restoreEl.querySelector('a');
+    link?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const loading = document.getElementById('plansLoading');
+      if (loading) loading.classList.add('active');
+
+      const result = await iapRestore();
+
+      if (loading) loading.classList.remove('active');
+
+      if (result.success) {
+        window.location.href = '/payment-success.html?ios_iap=1&restore=1';
+      } else {
+        this.showAlert(result.error || 'Nenhuma assinatura encontrada para restaurar.');
+      }
+    });
   }
 
   // ─── Cupom ──────────────────────────────────────────────────────────
@@ -150,6 +203,15 @@ class PlansPage {
     const btn = document.getElementById('couponBtn') as HTMLButtonElement;
 
     if (!input || !btn) return;
+
+    // App Store Review Guideline 3.1.1: pagamento iOS DEVE usar IAP, e
+    // a Apple não permite cupons/desconto fora do StoreKit. Esconder
+    // toda a UI de cupom quando rodando no app iOS nativo.
+    if (isIOSNative()) {
+      const couponSection = document.getElementById('couponSection');
+      if (couponSection) couponSection.style.display = 'none';
+      return;
+    }
 
     // Normaliza pra uppercase enquanto digita (mantém cursor position)
     input.addEventListener('input', () => {
@@ -389,6 +451,30 @@ class PlansPage {
     const loading = document.getElementById('plansLoading');
     if (loading) loading.classList.add('active');
 
+    // iOS nativo: pagamento via Apple IAP (StoreKit). Sem cupom, sem
+    // crédito de upgrade — Apple gerencia tudo. Compliance Guideline 3.1.1.
+    if (isIOSNative()) {
+      try {
+        const result = await iapPurchase(plan.id);
+        if (loading) loading.classList.remove('active');
+
+        if (result.canceled) {
+          // User fechou o sheet — silencioso, sem alerta.
+          return;
+        }
+        if (!result.success) {
+          this.showAlert(result.error || 'Erro ao processar compra. Tente novamente.');
+          return;
+        }
+        // Sucesso: backend já atualizou o profile. Redireciona pro app.
+        window.location.href = '/payment-success.html?ios_iap=1';
+      } catch (e) {
+        if (loading) loading.classList.remove('active');
+        this.showAlert('Erro ao processar compra. Tente novamente.');
+      }
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { internalNav('/login'); return; }
@@ -468,4 +554,7 @@ class PlansPage {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => { new PlansPage(); });
+window.addEventListener('DOMContentLoaded', () => {
+  if (redirectIfRecoveryHash()) return;
+  new PlansPage();
+});

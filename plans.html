@@ -74,9 +74,20 @@
       max-width: 960px;
       margin-bottom: 2.5rem;
     }
+    .plans-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
     .plans-logo {
-      height: 22px;
-      opacity: 0.85;
+      height: 24px;
+      width: auto;
+    }
+    .plans-brand-text {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #fff;
     }
     .plans-top-actions {
       display: flex;
@@ -430,7 +441,10 @@
 <body>
   <div class="plans-container">
     <div class="plans-topbar">
-      <img src="/img/logo.png" alt="GDrums" class="plans-logo" />
+      <div class="plans-brand">
+        <img src="/img/logo.png" alt="GDrums" class="plans-logo" />
+        <span class="plans-brand-text">GDrums</span>
+      </div>
       <div class="plans-top-actions">
         <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank" class="plans-top-link">Suporte</a>
         <button id="plansLogoutBtn" class="plans-logout-btn">Sair</button>
