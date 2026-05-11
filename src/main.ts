@@ -2902,6 +2902,15 @@ class RhythmSequencer {
     if (document.body.classList.contains('stage-mode')) return;
     document.body.classList.add('stage-mode');
 
+    // No Modo Show a barra de categorias fica escondida (CSS), então
+    // limpa o filtro ativo e re-renderiza pra mostrar TODOS os ritmos.
+    // Sem isso, se user estava filtrando "Gospel", veria só Gospel sem
+    // ter como trocar.
+    if (this.activeCategory) {
+      this.activeCategory = '';
+      this.renderRhythmStrip();
+    }
+
     // Ativa keep-awake (ignora erro se não for native)
     KeepAwake.keepAwake().catch(() => { /* navegador web — sem efeito */ });
 
