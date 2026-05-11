@@ -893,34 +893,36 @@ class RhythmSequencer {
     // Guardar role do usuário (vindo do banco, não do client)
     this.userRole = (profile?.role === 'admin') ? 'admin' : 'user';
 
-    // Bloquear contas sem CPF criadas após 03/04/2026 (trial farming)
-    // Contas antigas sem CPF passam (cadastraram antes da exigência)
-    if (profile && !profile.cpf_hash && profile.role !== 'admin') {
-      const created = new Date(session.user.created_at || 0);
-      const cutoff = new Date('2026-04-03T00:00:00Z');
-
-      if (created >= cutoff) {
-        // Conta nova sem CPF = criada por API burlando a UI
-        fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/security-log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: session.user.id,
-            email: session.user.email,
-            name: session.user.user_metadata?.name || '',
-            event: 'blocked_no_cpf',
-            details: 'Conta sem CPF bloqueada — possível trial farming',
-          }),
-        }).catch(() => {});
-        await supabase.auth.signOut();
-        internalNav('/register');
+    // Conta incompleta (sem CPF OU sem phone) — sempre redireciona pra
+    // /completar-cadastro em vez de signOut + register. Mais amigável:
+    // user pagante (ex: Romilson) não perde acesso, só preenche os campos.
+    // Admin é exceção (não precisa de CPF/phone pra logar no painel).
+    if (profile && profile.role !== 'admin') {
+      const incomplete = !profile.cpf_hash || !profile.phone;
+      if (incomplete) {
+        // Log de segurança só pra contas criadas após o cutoff (mantém
+        // rastreabilidade de trial farming sem bloquear acesso)
+        const created = new Date(session.user.created_at || 0);
+        const cutoff = new Date('2026-04-03T00:00:00Z');
+        if (created >= cutoff) {
+          fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/security-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: session.user.id,
+              email: session.user.email,
+              name: session.user.user_metadata?.name || '',
+              event: 'incomplete_profile',
+              details: 'Conta sem CPF ou telefone — redirecionada pra completar',
+            }),
+          }).catch(() => {});
+        }
+        // Evita loop se já tá na página de completar
+        if (!/\/completar-cadastro/i.test(window.location.pathname)) {
+          internalNav('/completar-cadastro');
+        }
         return false;
       }
-    }
-
-    // Pedir telefone se não tem (usuários antigos)
-    if (profile && !profile.phone) {
-      this.showPhoneModal(session.user.id);
     }
 
     // Sessão única — verificar se este device é o ativo

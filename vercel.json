@@ -46,6 +46,10 @@
     {
       "source": "/links",
       "destination": "/links.html"
+    },
+    {
+      "source": "/completar-cadastro",
+      "destination": "/completar-cadastro.html"
     }
   ],
   "headers": [

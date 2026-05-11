@@ -199,6 +199,27 @@ class LoginPage {
       e.preventDefault();
       this.openForgotPasswordModal();
     });
+
+    const backBtn = document.getElementById('loginBackBtn') as HTMLButtonElement | null;
+    backBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.resetToEmailStep();
+    });
+
+    // Enter no campo email avança pro step 2
+    this.emailInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && this.loginStep === 'email') {
+        e.preventDefault();
+        this.form.requestSubmit();
+      }
+    });
+
+    // Se a URL veio com ?email=X, pré-preenche e já avança
+    const params = new URLSearchParams(window.location.search);
+    const emailParam = params.get('email');
+    if (emailParam) {
+      this.emailInput.value = emailParam;
+    }
   }
 
   /**
@@ -337,27 +358,168 @@ class LoginPage {
     el.style.display = 'block';
   }
 
+  // Step do fluxo inteligente: 'email' = pede email, 'password' = email
+  // já confirmado, pede senha.
+  private loginStep: 'email' | 'password' = 'email';
+
   private async handleSubmit(e: Event): Promise<void> {
     e.preventDefault();
-    if (!this.validateForm()) return;
+
+    if (this.loginStep === 'email') {
+      await this.handleEmailStep();
+    } else {
+      await this.handlePasswordStep();
+    }
+  }
+
+  /**
+   * Step 1 — Verifica o estado do email antes de pedir senha.
+   * - complete: avança pra step 2 (campo senha)
+   * - incomplete: faz login E redireciona pra /completar-cadastro
+   * - not_found: vai pro /register com email pré-preenchido
+   */
+  private async handleEmailStep(): Promise<void> {
+    const email = this.emailInput.value.trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      this.showAlert('Digite um e-mail válido', 'error');
+      this.emailInput.focus();
+      return;
+    }
+
+    this.setLoading(true);
+    this.hideAlert();
+
+    try {
+      const { data, error } = await supabase.rpc('check_email_status', { p_email: email });
+      if (error) throw error;
+
+      const status = (data as { status?: string } | null)?.status;
+
+      if (status === 'not_found') {
+        // Conta não existe — leva pro cadastro pré-preenchido
+        this.setLoading(false);
+        const dest = `/register?email=${encodeURIComponent(email)}`;
+        if (isNativeApp()) {
+          openExternal('https://gdrums.com.br' + dest);
+        } else {
+          window.location.href = dest;
+        }
+        return;
+      }
+
+      // 'complete' ou 'incomplete' — em ambos os casos pede senha. Se
+      // incomplete, depois do login a gente redireciona pra completar.
+      this.advanceToPasswordStep(email, status === 'incomplete');
+      this.setLoading(false);
+    } catch (err) {
+      this.showAlert('Não foi possível verificar o e-mail. Tente novamente.', 'error');
+      this.setLoading(false);
+    }
+  }
+
+  /** Avança a UI do step 1 → step 2 (mostra senha, esconde campo email). */
+  private incompleteAccount = false;
+
+  private advanceToPasswordStep(email: string, incomplete: boolean): void {
+    this.loginStep = 'password';
+    this.incompleteAccount = incomplete;
+
+    const emailField = document.getElementById('emailField');
+    const passwordField = document.getElementById('passwordField');
+    const options = document.getElementById('loginOptions');
+    const backBtn = document.getElementById('loginBackBtn');
+    const btnText = document.getElementById('loginBtnText');
+
+    if (emailField) emailField.style.display = 'none';
+    if (passwordField) passwordField.style.display = '';
+    if (options) options.style.display = '';
+    if (backBtn) backBtn.style.display = '';
+    if (btnText) btnText.textContent = 'Entrar';
+
+    // Pill mostrando o email travado, com botão pra trocar
+    let pill = document.getElementById('loginEmailPill');
+    if (!pill) {
+      pill = document.createElement('div');
+      pill.id = 'loginEmailPill';
+      pill.className = 'login-email-pill';
+      pill.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="18" height="14" rx="2"/>
+          <polyline points="3,7 12,13 21,7"/>
+        </svg>
+        <span></span>
+      `;
+      this.form.insertBefore(pill, this.form.firstChild);
+    }
+    const span = pill.querySelector('span');
+    if (span) span.textContent = email;
+
+    // Aviso se conta incompleta
+    if (incomplete) {
+      this.showAlert('Sua conta precisa de uns dados extras. Após entrar a gente termina o cadastro.', 'success');
+    }
+
+    // Foca o campo senha
+    setTimeout(() => this.passwordInput.focus(), 50);
+  }
+
+  /** Volta pro step 1 (trocar email). */
+  private resetToEmailStep(): void {
+    this.loginStep = 'email';
+    this.incompleteAccount = false;
+
+    const emailField = document.getElementById('emailField');
+    const passwordField = document.getElementById('passwordField');
+    const options = document.getElementById('loginOptions');
+    const backBtn = document.getElementById('loginBackBtn');
+    const btnText = document.getElementById('loginBtnText');
+    const pill = document.getElementById('loginEmailPill');
+
+    if (emailField) emailField.style.display = '';
+    if (passwordField) passwordField.style.display = 'none';
+    if (options) options.style.display = 'none';
+    if (backBtn) backBtn.style.display = 'none';
+    if (btnText) btnText.textContent = 'Continuar';
+    if (pill) pill.remove();
+    this.passwordInput.value = '';
+    this.hideAlert();
+    this.emailInput.focus();
+  }
+
+  /** Step 2 — faz login propriamente dito. */
+  private async handlePasswordStep(): Promise<void> {
+    // Validação via Zod (email já tá ok do step 1, valida senha)
+    const password = this.passwordInput.value;
+    if (!password || password.length < 6) {
+      this.showAlert('Digite sua senha (mínimo 6 caracteres)', 'error');
+      this.passwordInput.focus();
+      return;
+    }
 
     this.setLoading(true);
     this.hideAlert();
 
     const response = await authService.login({
       email: this.emailInput.value.trim(),
-      password: this.passwordInput.value,
-      rememberMe: this.rememberMeCheckbox.checked
+      password,
+      rememberMe: this.rememberMeCheckbox.checked,
     });
 
     if (response.success && response.user) {
-      // Gerar sessão única (invalida outros devices)
+      // Sessão única (invalida outros devices)
       const sessionId = crypto.randomUUID();
       await supabase
         .from('gdrums_profiles')
         .update({ active_session_id: sessionId })
         .eq('id', response.user.id);
       localStorage.setItem('gdrums-session-id', sessionId);
+
+      // Se conta incompleta, vai pra /completar-cadastro em vez do app
+      if (this.incompleteAccount) {
+        this.showAlert('Login feito! Falta um passo...', 'success');
+        setTimeout(() => { window.location.href = '/completar-cadastro.html'; }, 600);
+        return;
+      }
 
       this.showAlert('Login realizado! Redirecionando...', 'success');
       const dest = await this.getDestination();

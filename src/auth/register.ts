@@ -2,8 +2,7 @@
 
 import { authService } from './AuthService';
 import { supabase } from './supabase';
-import { calculateTrialExpiry } from './PaymentService';
-import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
+import { validateCPF, formatCPF } from '../utils/cpf';
 import { AttributionService } from '../native/AttributionService';
 import { registerSchema, zodErrorsToFieldMap } from './schemas';
 import { updateRhythmCountInDom } from '../utils/rhythmCount';
@@ -236,128 +235,74 @@ class RegisterPage {
     this.setLoading(true);
     this.hideAlert();
 
-    // 1. Validar CPF
-    const cpfHash = await hashCPF(this.cpfInput.value);
+    // FLUXO NOVO: tudo via Edge Function register-account.
+    // Servidor cria user + perfil COMPLETO numa única chamada com rollback
+    // real se algo falhar. Cliente nunca fica com conta órfã.
 
-    // 2. Verificar se CPF já foi usado (trial único)
-    const { data: existing } = await supabase
-      .from('gdrums_profiles')
-      .select('id')
-      .eq('cpf_hash', cpfHash)
-      .single();
+    const attr = AttributionService.getAttribution() || AttributionService.captureNow();
 
-    if (existing) {
-      this.showAlert('Este CPF já possui uma conta cadastrada. Se não consegue acessar, entre em contato pelo WhatsApp.', 'error');
-      this.setLoading(false);
-      return;
-    }
+    try {
+      const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
+      const ANON_KEY = 'sb_publishable_qjW2fGXMHtQvqVKgyyiiUg_HczRwmXy';
 
-    // 2b. Verificar se telefone já foi usado
-    const phone = this.phoneInput.value.replace(/\D/g, '');
-    const { data: existingPhone } = await supabase
-      .from('gdrums_profiles')
-      .select('id')
-      .eq('phone', phone)
-      .single();
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/register-account`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ANON_KEY}`,
+          'apikey': ANON_KEY,
+        },
+        body: JSON.stringify({
+          name: this.nameInput.value.trim(),
+          email: this.emailInput.value.trim(),
+          password: this.passwordInput.value,
+          cpf: this.cpfInput.value,
+          phone: this.phoneInput.value.replace(/\D/g, ''),
+          signup_source: attr.source,
+          signup_medium: attr.medium,
+          signup_campaign: attr.campaign,
+          signup_referrer: attr.referrer,
+        }),
+      });
 
-    if (existingPhone) {
-      this.showAlert('Este WhatsApp já possui uma conta cadastrada. Se não consegue acessar, entre em contato pelo WhatsApp.', 'error');
-      this.setLoading(false);
-      return;
-    }
+      const result = await response.json();
 
-    // 3. Criar conta
-    const response = await authService.register({
-      name: this.nameInput.value.trim(),
-      email: this.emailInput.value.trim(),
-      password: this.passwordInput.value
-    });
-
-    if (response.success && response.user) {
-      // Capturar atribuição (first-touch do user — de onde ele veio)
-      const attr = AttributionService.getAttribution() || AttributionService.captureNow();
-      const attributionFields = {
-        signup_source: attr.source,
-        signup_medium: attr.medium,
-        signup_campaign: attr.campaign,
-        signup_referrer: attr.referrer,
-      };
-
-      // 4. Salvar CPF hash e telefone — com retry (trigger pode demorar pra criar o profile).
-      //    Se o erro for duplicata (23505), abortar imediatamente — retry não resolve.
-      let cpfSaved = false;
-      let duplicateField: 'cpf' | 'phone' | null = null;
-
-      for (let attempt = 0; attempt < 5; attempt++) {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 800));
-        const { error } = await supabase
-          .from('gdrums_profiles')
-          .update({ cpf_hash: cpfHash, phone, ...attributionFields })
-          .eq('id', response.user.id);
-        if (!error) {
-          cpfSaved = true;
-          break;
-        }
-        // UNIQUE violation: não adianta retentar
-        if ((error as any).code === '23505') {
-          duplicateField = ((error as any).message || '').includes('phone') ? 'phone' : 'cpf';
-          break;
-        }
-      }
-
-      if (!cpfSaved && !duplicateField) {
-        // Último recurso — tentar upsert direto (profile ainda não existia)
-        const trialExpiry = calculateTrialExpiry();
-        const { error: upsertError } = await supabase
-          .from('gdrums_profiles')
-          .upsert({
-            id: response.user.id,
-            name: this.nameInput.value.trim(),
-            cpf_hash: cpfHash,
-            phone,
-            subscription_status: 'trial',
-            subscription_plan: 'trial',
-            subscription_expires_at: trialExpiry,
-            updated_at: new Date().toISOString(),
-            ...attributionFields,
-          });
-        if (upsertError) {
-          if ((upsertError as any).code === '23505') {
-            duplicateField = ((upsertError as any).message || '').includes('phone') ? 'phone' : 'cpf';
-          } else {
-            await supabase.auth.signOut();
-            this.showAlert('Erro ao finalizar cadastro. Tente novamente.', 'error');
-            this.setLoading(false);
-            return;
-          }
-        } else {
-          cpfSaved = true;
-        }
-      }
-
-      if (duplicateField) {
-        // Alguém driblou o pré-check (race / bypass de UI). Banco é fonte de verdade.
-        await supabase.auth.signOut();
-        const msg = duplicateField === 'phone'
-          ? 'Este WhatsApp já possui uma conta cadastrada. Se não consegue acessar, entre em contato pelo WhatsApp.'
-          : 'Este CPF já possui uma conta cadastrada. Se não consegue acessar, entre em contato pelo WhatsApp.';
+      if (!response.ok || !result.success) {
+        // Mapeia erros estruturados pra mensagens claras
+        const code = result.code;
+        let msg = result.error || 'Erro ao criar conta. Tente novamente.';
+        if (code === 'cpf_duplicate') msg = 'Este CPF já possui uma conta cadastrada. Se não consegue acessar, fale com o suporte.';
+        else if (code === 'phone_duplicate') msg = 'Este WhatsApp já possui uma conta cadastrada. Se não consegue acessar, fale com o suporte.';
+        else if (code === 'email_duplicate') msg = 'Este e-mail já está cadastrado. Faça login normalmente.';
         this.showAlert(msg, 'error');
         this.setLoading(false);
         return;
       }
 
-      // 5. Gerar session ID único
-      const sessionId = crypto.randomUUID();
-      await supabase
-        .from('gdrums_profiles')
-        .update({ active_session_id: sessionId })
-        .eq('id', response.user.id);
-      localStorage.setItem('gdrums-session-id', sessionId);
+      // Sucesso: servidor garantiu que conta tá completa. Agora faz signIn
+      // pelo cliente pra gerar a sessão JWT local.
+      const signIn = await supabase.auth.signInWithPassword({
+        email: this.emailInput.value.trim(),
+        password: this.passwordInput.value,
+      });
+
+      if (signIn.error || !signIn.data.session) {
+        // Servidor criou tudo mas signIn falhou — improvável. User pode
+        // fazer login manual.
+        this.showAlert('Conta criada! Faça login pra entrar.', 'success');
+        setTimeout(() => { window.location.href = '/login.html'; }, 1500);
+        return;
+      }
+
+      // Grava session_id local (servidor já gravou no profile)
+      if (result.session_id) {
+        localStorage.setItem('gdrums-session-id', result.session_id);
+      }
 
       this.showAlert('Conta criada! Teste grátis por 48h ativado!', 'success');
       setTimeout(() => { window.location.href = '/'; }, 1000);
-    } else {
-      this.showAlert(response.message || 'Erro ao criar conta', 'error');
+    } catch (err) {
+      this.showAlert('Erro de conexão. Verifique sua internet e tente novamente.', 'error');
       this.setLoading(false);
     }
   }

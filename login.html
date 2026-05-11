@@ -159,6 +159,36 @@
     .login-btn:hover { opacity: 0.9; }
     .login-btn:active { transform: scale(0.99); }
     .login-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+    /* Botão "trocar e-mail" — aparece no step 2 do login inteligente */
+    .login-back-btn {
+      width: 100%;
+      margin-top: 0.65rem;
+      padding: 0.55rem;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.82rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .login-back-btn:hover { color: rgba(255, 255, 255, 0.85); }
+
+    /* Pill exibindo o email travado no step 2 */
+    .login-email-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 0.85rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      font-size: 0.88rem;
+      margin-bottom: 0.9rem;
+      color: rgba(255, 255, 255, 0.75);
+    }
+    .login-email-pill svg { flex-shrink: 0; opacity: 0.5; }
     .login-btn .btn-loader { display: none; }
     .login-btn .btn-loader.active { display: block; }
     .login-btn .btn-text.hidden { display: none; }
@@ -416,18 +446,18 @@
     <h1 class="login-title">Entrar na sua conta.</h1>
     <p class="login-sub">Continue de onde parou.</p>
 
-    <form id="loginForm">
-      <div class="login-field">
+    <form id="loginForm" novalidate>
+      <div class="login-field" id="emailField">
         <label for="email">E-mail</label>
         <input type="email" id="email" name="email" required placeholder="seu@email.com" autocomplete="email" />
       </div>
 
-      <div class="login-field">
+      <div class="login-field" id="passwordField" style="display:none;">
         <label for="password">Senha</label>
-        <input type="password" id="password" name="password" required placeholder="Sua senha" autocomplete="current-password" />
+        <input type="password" id="password" name="password" placeholder="Sua senha" autocomplete="current-password" />
       </div>
 
-      <div class="login-options">
+      <div class="login-options" id="loginOptions" style="display:none;">
         <label>
           <input type="checkbox" id="rememberMe" />
           <span>Lembrar de mim</span>
@@ -436,8 +466,12 @@
       </div>
 
       <button type="submit" class="login-btn" id="loginBtn">
-        <span class="btn-text">Entrar</span>
+        <span class="btn-text" id="loginBtnText">Continuar</span>
         <span class="btn-loader"><div class="spinner-sm"></div></span>
+      </button>
+
+      <button type="button" class="login-back-btn" id="loginBackBtn" style="display:none;">
+        ← Trocar e-mail
       </button>
     </form>
 

@@ -21,7 +21,8 @@ export default defineConfig({
         terms: './terms.html',
         privacy: './privacy.html',
         excluirConta: './excluir-conta.html',
-        links: './links.html'
+        links: './links.html',
+        completarCadastro: './completar-cadastro.html'
       }
     }
   },
@@ -63,6 +64,7 @@ export default defineConfig({
           /^\/privacy(\.html)?/,
           /^\/excluir-conta(\.html)?/,
           /^\/links(\.html)?/,
+          /^\/completar-cadastro(\.html)?/,
         ],
         // Cachear runtime: samples e ritmos
         runtimeCaching: [

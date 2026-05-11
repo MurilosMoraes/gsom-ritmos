@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Completar cadastro — GDrums</title>
+  <meta name="robots" content="noindex, follow">
+  <meta name="theme-color" content="#030014">
+
+  <link rel="icon" type="image/png" sizes="512x512" href="/img/icon-512.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/img/icon-192.png">
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: #030014;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .cc-card {
+      width: 100%;
+      max-width: 440px;
+      background: #0a0a0f;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 2rem 1.75rem 1.5rem;
+    }
+
+    .cc-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .cc-logo { height: 32px; width: auto; }
+    .cc-brand-text {
+      font-size: 1.35rem; font-weight: 700;
+      letter-spacing: -0.02em; color: #fff;
+    }
+
+    .cc-overline {
+      display: inline-block;
+      padding: 0.3rem 0.7rem;
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 50px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #00D4FF;
+      margin-bottom: 0.85rem;
+    }
+    .cc-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+    .cc-sub {
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 1.5rem;
+    }
+
+    .cc-field { margin-bottom: 0.9rem; }
+    .cc-field label {
+      display: block;
+      font-size: 0.7rem; font-weight: 500;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.35rem;
+    }
+    .cc-field input {
+      width: 100%;
+      padding: 0.8rem 0.9rem;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      color: #fff; font-size: 0.95rem;
+      font-family: inherit; outline: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .cc-field input:focus {
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .cc-field input::placeholder { color: rgba(255, 255, 255, 0.22); }
+    .cc-field-error {
+      display: none;
+      color: #ff6b83;
+      font-size: 0.75rem;
+      margin-top: 0.3rem;
+    }
+    .cc-field-error.active { display: block; }
+
+    .cc-btn {
+      width: 100%;
+      padding: 0.9rem;
+      border: none;
+      border-radius: 10px;
+      background: #fff;
+      color: #0a0a0f;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-top: 0.5rem;
+    }
+    .cc-btn:hover { opacity: 0.9; }
+    .cc-btn:disabled { opacity: 0.5; cursor: default; }
+
+    .cc-alert {
+      margin-top: 0.85rem;
+      padding: 0.7rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      display: none;
+      text-align: center;
+    }
+    .cc-alert.error { background: rgba(255, 68, 102, 0.08); color: #ff6b83; border: 1px solid rgba(255, 68, 102, 0.2); }
+    .cc-alert.success { background: rgba(0, 230, 140, 0.08); color: #3ee8a7; border: 1px solid rgba(0, 230, 140, 0.2); }
+
+    .cc-logout {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.4);
+    }
+    .cc-logout a {
+      color: rgba(255, 255, 255, 0.65);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="cc-card">
+    <div class="cc-brand">
+      <img src="/img/logo.png" alt="GDrums" class="cc-logo" />
+      <span class="cc-brand-text">GDrums</span>
+    </div>
+
+    <div class="cc-overline">Falta pouco!</div>
+    <h1 class="cc-title">Termina seu cadastro</h1>
+    <p class="cc-sub">
+      A gente precisa do seu CPF e WhatsApp pra confirmar sua conta e te
+      avisar de novidades. Leva 30 segundos.
+    </p>
+
+    <form id="ccForm" novalidate>
+      <div class="cc-field">
+        <label for="ccCpf">CPF</label>
+        <input type="text" id="ccCpf" required placeholder="000.000.000-00" inputmode="numeric" autocomplete="off" />
+        <div class="cc-field-error" id="ccCpfError"></div>
+      </div>
+
+      <div class="cc-field">
+        <label for="ccPhone">WhatsApp</label>
+        <input type="tel" id="ccPhone" required placeholder="(00) 00000-0000" inputmode="tel" autocomplete="tel" />
+        <div class="cc-field-error" id="ccPhoneError"></div>
+      </div>
+
+      <button type="submit" class="cc-btn" id="ccSubmit">
+        <span id="ccSubmitText">Concluir</span>
+      </button>
+    </form>
+
+    <div class="cc-alert" id="ccAlert" role="alert"></div>
+
+    <p class="cc-logout">
+      Não é você? <a id="ccLogout">Sair</a>
+    </p>
+  </div>
+
+  <script type="module" src="/src/auth/completar-cadastro.ts"></script>
+</body>
+</html>
