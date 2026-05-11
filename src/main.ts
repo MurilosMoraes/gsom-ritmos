@@ -1905,7 +1905,8 @@ class RhythmSequencer {
         this.pedalLeftLastPress = now;
         if (this.pedalLeftTimeout) clearTimeout(this.pedalLeftTimeout);
         this.pedalLeftTimeout = window.setTimeout(() => {
-          this.patternEngine.playFillToNextRhythm();
+          // Pedal long-press = próximo ritmo (rotativo). Respeita toggle VIRADAS.
+          this.cyclePedalRhythm(+1);
           this.pedalLeftTimeout = null;
         }, 500);
       }
@@ -1968,8 +1969,8 @@ class RhythmSequencer {
             // Evita parar acidentalmente (cliques sem querer no pad ativo).
             // Pra parar, usar o botão FINAL ou o pedal.
           } else {
-            // Tocando outro ritmo → fazer virada antes de mudar
-            this.patternEngine.playFillToNextRhythm(variationIndex);
+            // Tocando outro ritmo → trocar (com ou sem virada, conforme toggle)
+            this.changeMainRhythm(variationIndex);
           }
         } else if (cellType === 'fill') {
           if (this.stateManager.isPlaying()) {
@@ -2002,23 +2003,33 @@ class RhythmSequencer {
     }
   }
 
-  // ─── Toggles Intro/Final (persistidos) ───────────────────────────
+  // ─── Toggles Intro/Viradas/Final (persistidos) ───────────────────
 
   private useIntro = true;
+  private useFills = true;   // Viradas ao trocar de ritmo (default ON)
   private useFinal = true;
 
   private setupToggles(): void {
     // Carregar do localStorage
     const savedIntro = localStorage.getItem('gdrums-toggle-intro');
+    const savedFills = localStorage.getItem('gdrums-toggle-fills');
     const savedFinal = localStorage.getItem('gdrums-toggle-final');
     if (savedIntro !== null) this.useIntro = savedIntro === 'true';
+    if (savedFills !== null) this.useFills = savedFills === 'true';
     if (savedFinal !== null) this.useFinal = savedFinal === 'true';
 
     const introToggle = document.getElementById('toggleIntro');
+    const fillsToggle = document.getElementById('toggleFills');
     const finalToggle = document.getElementById('toggleFinal');
 
     // Aplicar estado inicial
     if (introToggle) introToggle.classList.toggle('active', this.useIntro);
+    if (fillsToggle) {
+      fillsToggle.classList.toggle('active', this.useFills);
+      fillsToggle.title = this.useFills
+        ? 'Viradas ao trocar de ritmo: ligadas'
+        : 'Viradas ao trocar de ritmo: desligadas (troca direto)';
+    }
     if (finalToggle) finalToggle.classList.toggle('active', this.useFinal);
 
     introToggle?.addEventListener('click', () => {
@@ -2027,11 +2038,66 @@ class RhythmSequencer {
       localStorage.setItem('gdrums-toggle-intro', String(this.useIntro));
     });
 
+    fillsToggle?.addEventListener('click', () => {
+      this.useFills = !this.useFills;
+      fillsToggle.classList.toggle('active', this.useFills);
+      fillsToggle.title = this.useFills
+        ? 'Viradas ao trocar de ritmo: ligadas'
+        : 'Viradas ao trocar de ritmo: desligadas (troca direto)';
+      localStorage.setItem('gdrums-toggle-fills', String(this.useFills));
+    });
+
     finalToggle?.addEventListener('click', () => {
       this.useFinal = !this.useFinal;
       finalToggle.classList.toggle('active', this.useFinal);
       localStorage.setItem('gdrums-toggle-final', String(this.useFinal));
     });
+  }
+
+  /**
+   * Troca de ritmo respeitando o toggle "VIRADAS":
+   * - useFills=true  → playFillToNextRhythm (toca virada → muda)
+   * - useFills=false → activateRhythm direto (muda imediato, sem fill)
+   * Usado pelo clique nas células de ritmo.
+   */
+  private changeMainRhythm(targetVariation: number): void {
+    if (this.useFills) {
+      this.patternEngine.playFillToNextRhythm(targetVariation);
+    } else {
+      this.patternEngine.activateRhythm(targetVariation);
+    }
+  }
+
+  /**
+   * Rotação de ritmo via pedal (long-press) ou pedal-direito (single-tap).
+   * Direção +1 = próximo, -1 = anterior. Pula ritmos vazios.
+   * Respeita toggle VIRADAS: ON faz virada antes, OFF troca direto.
+   */
+  private cyclePedalRhythm(direction: 1 | -1): void {
+    const state = this.stateManager.getState();
+    const available = state.variations.main
+      .map((v, index) => ({ index, hasContent: v.pattern.some(row => row.some(s => s === true)) }))
+      .filter(r => r.hasContent);
+
+    if (available.length <= 1) {
+      // Só 1 ritmo (ou nenhum) — fallback pro fill rotativo se VIRADAS ON,
+      // senão não faz nada.
+      if (this.useFills) this.patternEngine.playFillToNextRhythm();
+      return;
+    }
+
+    const currentIndex = this.stateManager.getCurrentVariation('main');
+    const currentPos = available.findIndex(r => r.index === currentIndex);
+    const nextPos = direction === 1
+      ? (currentPos + 1) % available.length
+      : (currentPos - 1 + available.length) % available.length;
+    const targetVariation = available[nextPos].index;
+
+    if (this.useFills) {
+      this.patternEngine.playFillToNextRhythm(targetVariation);
+    } else {
+      this.patternEngine.activateRhythm(targetVariation);
+    }
   }
 
   private setupFileOperations(): void {
@@ -2242,12 +2308,17 @@ class RhythmSequencer {
       });
     }
 
-    // Modo Show — toggle palco profissional
-    const stageModeBtn = document.getElementById('stageModeBtn');
-    if (stageModeBtn) {
-      stageModeBtn.addEventListener('click', () => {
-        if (fabDropdown) fabDropdown.style.display = 'none';
-        this.enterStageMode();
+    // Modo Show — switch sempre visível na topbar (1 clique liga/desliga)
+    const stageModeSwitch = document.getElementById('stageModeSwitch') as HTMLInputElement | null;
+    if (stageModeSwitch) {
+      // Sincroniza estado inicial caso usuário recarregue com stage-mode ativo
+      stageModeSwitch.checked = document.body.classList.contains('stage-mode');
+      stageModeSwitch.addEventListener('change', () => {
+        if (stageModeSwitch.checked) {
+          this.enterStageMode();
+        } else {
+          this.exitStageMode();
+        }
       });
     }
 
@@ -2847,6 +2918,10 @@ class RhythmSequencer {
 
     banner.querySelector('#xStageExit')?.addEventListener('click', () => this.exitStageMode());
 
+    // Sincroniza o switch da topbar (caso ativação tenha vindo de outro caminho)
+    const sw = document.getElementById('stageModeSwitch') as HTMLInputElement | null;
+    if (sw) sw.checked = true;
+
     HapticsService.success();
     Toast.show('Modo Show ativo · tela não vai apagar', { type: 'success' });
   }
@@ -2861,6 +2936,11 @@ class RhythmSequencer {
     }
 
     document.getElementById('xStageBanner')?.remove();
+
+    // Sincroniza o switch da topbar (caso saída tenha vindo pelo botão do banner)
+    const sw = document.getElementById('stageModeSwitch') as HTMLInputElement | null;
+    if (sw) sw.checked = false;
+
     HapticsService.light();
   }
 
@@ -3615,22 +3695,8 @@ class RhythmSequencer {
   }
 
   private playFillToPreviousRhythm(): void {
-    const state = this.stateManager.getState();
-    const availableRhythms = state.variations.main
-      .map((v, index) => ({
-        index,
-        hasContent: v.pattern.some(row => row.some(step => step === true))
-      }))
-      .filter(r => r.hasContent);
-
-    if (availableRhythms.length <= 1) return;
-
-    const currentIndex = this.stateManager.getCurrentVariation('main');
-    const currentPosition = availableRhythms.findIndex(r => r.index === currentIndex);
-    const prevPosition = (currentPosition - 1 + availableRhythms.length) % availableRhythms.length;
-    const prevVariation = availableRhythms[prevPosition].index;
-
-    this.patternEngine.playFillToNextRhythm(prevVariation);
+    // Delegado pro cyclePedalRhythm, que respeita toggle VIRADAS.
+    this.cyclePedalRhythm(-1);
   }
 
   private hasRhythmLoaded(): boolean {
@@ -5883,6 +5949,10 @@ class RhythmSequencer {
     const stripCards = document.getElementById('rhythmStripCards');
     const favBar = document.querySelector('.fav-bar') as HTMLElement;
 
+    // ✦ Categorias de ritmos ficam SEMPRE visíveis (mesmo com setlist).
+    // User pediu: continuar navegando categorias mesmo com repertório montado.
+    if (stripCards) stripCards.style.display = 'flex';
+
     if (this.setlistManager.isEmpty()) {
       if (numEl) numEl.textContent = '#';
       if (positionEl) positionEl.textContent = '';
@@ -5892,12 +5962,11 @@ class RhythmSequencer {
       if (nextNameEl) nextNameEl.textContent = '--';
       if (prevBtn) { prevBtn.disabled = true; prevBtn.style.opacity = '0.25'; }
       if (nextBtn) { nextBtn.disabled = true; nextBtn.style.opacity = '0.25'; }
-      if (stripCards) stripCards.style.display = 'flex';
       if (favBar) favBar.style.display = 'none';
       return;
     }
 
-    if (stripCards) stripCards.style.display = 'none';
+    // Tem setlist: fav-bar visível + categorias logo abaixo
     // Usa empty string pra herdar o display do CSS (.fav-bar é grid)
     if (favBar) favBar.style.display = '';
 

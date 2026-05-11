@@ -274,6 +274,11 @@ input:checked + .slider:before {
   letter-spacing: -0.01em;
   color: #fff;
 }
+.global-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .topbar-menu-btn {
   width: 38px;
   height: 38px;
@@ -291,6 +296,55 @@ input:checked + .slider:before {
 .topbar-menu-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* ─── Switch Modo Show na topbar ────────────────────────────────────
+   Pílula com ícone + label. OFF = cinza, ON = verde (var --neon-green).
+   Click no track inteiro alterna; checkbox real fica escondido. */
+.stage-switch {
+  display: inline-flex;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.stage-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.stage-switch-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.7rem;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  transition: all 0.18s ease;
+}
+.stage-switch:hover .stage-switch-track {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+}
+.stage-switch input:checked + .stage-switch-track {
+  background: rgba(0, 230, 140, 0.13);
+  border-color: rgba(0, 230, 140, 0.4);
+  color: #3ee8a7;
+  box-shadow: 0 0 12px rgba(0, 230, 140, 0.15);
+}
+.stage-switch input:checked + .stage-switch-track .stage-switch-icon {
+  animation: stage-pulse 1.8s ease-in-out infinite;
+}
+@keyframes stage-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+}
+
+/* Mobile pequeno: esconde o texto, mantém só o ícone */
+@media (max-width: 380px) {
+  .stage-switch-text { display: none; }
+  .stage-switch-track { padding: 0.45rem 0.55rem; }
 }
 .topbar-dropdown {
   position: absolute;
