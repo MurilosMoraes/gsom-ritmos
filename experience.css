@@ -1076,6 +1076,10 @@ body.stage-mode .app-container {
    (user acessa pelo pedal + setlist já carregada). */
 body.stage-mode .fav-edit-btn { display: none !important; }
 
+/* Esconde a strip de categorias de ritmos no palco — no Modo Show
+   o user opera pela setlist + pedal, não navega ritmos novos. */
+body.stage-mode .rhythm-strip-cards { display: none !important; }
+
 /* BPM e controles ficam maiores */
 body.stage-mode .ctrl-value,
 body.stage-mode .ctrl-value-tap {
