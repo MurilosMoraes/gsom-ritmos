@@ -755,3 +755,71 @@ body {
   .adm-affiliates-grid { grid-template-columns: 1fr; }
   .adm-empty { padding: 2rem 1rem; }
 }
+
+/* ─── Links (bio link page admin) ──────────────────────────────── */
+.adm-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.adm-link-row {
+  display: grid;
+  grid-template-columns: 28px 36px 1fr auto auto;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: var(--a-bg2);
+  border: 1px solid var(--a-border);
+  border-radius: 10px;
+  transition: background 0.12s, border-color 0.12s, opacity 0.18s, transform 0.18s;
+}
+.adm-link-row:hover { background: var(--a-bg3); }
+.adm-link-row.is-inactive { opacity: 0.45; }
+.adm-link-row.is-dragging { opacity: 0.3; transform: scale(0.98); }
+.adm-link-row.drag-over { border-color: var(--a-cyan); background: rgba(0,212,255,0.04); }
+
+.adm-link-handle {
+  cursor: grab;
+  color: var(--a-text2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+.adm-link-handle:active { cursor: grabbing; }
+
+.adm-link-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+}
+.adm-link-icon svg { width: 20px; height: 20px; }
+
+.adm-link-text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.adm-link-title { font-size: 0.85rem; font-weight: 600; color: #fff; }
+.adm-link-url {
+  font-size: 0.7rem; color: var(--a-text2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+.adm-link-stats {
+  font-size: 0.7rem; color: var(--a-text2);
+  text-align: right; min-width: 64px;
+}
+.adm-link-stats-num { font-size: 0.85rem; font-weight: 600; color: #fff; }
+
+.adm-link-actions { display: flex; gap: 0.4rem; }
+.adm-link-actions .adm-btn { padding: 0.35rem 0.65rem; font-size: 0.7rem; }
+
+@media (max-width: 640px) {
+  .adm-link-row {
+    grid-template-columns: 24px 32px 1fr auto;
+    gap: 0.5rem;
+    padding: 0.7rem 0.8rem;
+  }
+  .adm-link-stats { display: none; }
+  .adm-link-url { max-width: 160px; }
+}

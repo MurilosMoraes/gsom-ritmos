@@ -42,6 +42,10 @@
     {
       "source": "/terms",
       "destination": "/terms.html"
+    },
+    {
+      "source": "/links",
+      "destination": "/links.html"
     }
   ],
   "headers": [

@@ -204,11 +204,29 @@
            target="_blank" rel="noopener"
            class="store-badge"
            aria-label="Baixar na Google Play">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .61-.92z" fill="#00D4FF"/>
-            <path d="M16.81 15.013l-2.13 2.143-10.46-6.04 12.59 3.897z" fill="#3ee8a7"/>
-            <path d="M20.16 10.81c.69.39.69 1.39 0 1.78l-3.5 2.02-2.32-2.61 2.32-2.61 3.5 1.42z" fill="#ff9500"/>
-            <path d="M14.68 6.844l2.13 2.143-12.59 3.897 10.46-6.04z" fill="#f44336"/>
+          <svg width="22" height="24" viewBox="0 0 24 24" aria-hidden="true">
+            <defs>
+              <linearGradient id="gp-hero-blue" x1="3" y1="2" x2="13" y2="12" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#00A0FF"/>
+                <stop offset="1" stop-color="#00DFFF"/>
+              </linearGradient>
+              <linearGradient id="gp-hero-green" x1="3" y1="2" x2="13" y2="12" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#00F076"/>
+                <stop offset="1" stop-color="#32A071"/>
+              </linearGradient>
+              <linearGradient id="gp-hero-red" x1="13" y1="12" x2="3" y2="22" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#FF3A44"/>
+                <stop offset="1" stop-color="#C31162"/>
+              </linearGradient>
+              <linearGradient id="gp-hero-orange" x1="13" y1="9" x2="13" y2="15" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#FFE000"/>
+                <stop offset="1" stop-color="#FF9C00"/>
+              </linearGradient>
+            </defs>
+            <path d="M3.5 2.2c-.3.3-.5.7-.5 1.3v17c0 .6.2 1 .5 1.3l9.4-9.4v-.7L3.5 2.2z" fill="url(#gp-hero-blue)"/>
+            <path d="M16 14.4l-3.1-3.1v-.6L16 7.6l3.7 2.1c1 .6 1 1.6 0 2.2L16 14.4z" fill="url(#gp-hero-orange)"/>
+            <path d="M16 14.4l-3.1-3.1L3.5 21.8c.4.4.9.4 1.6 0L16 14.4z" fill="url(#gp-hero-red)"/>
+            <path d="M16 7.6L5.1 2.2c-.7-.4-1.2-.4-1.6 0l9.4 9.1L16 7.6z" fill="url(#gp-hero-green)"/>
           </svg>
           <div class="store-badge-text">
             <span class="store-badge-small">Disponível no</span>

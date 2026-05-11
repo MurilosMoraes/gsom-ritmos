@@ -634,6 +634,7 @@ class AdminDashboard {
       case 'leads': this.renderLeads(); break;
       case 'affiliates': this.renderAffiliates(); break;
       case 'payouts': this.renderPayouts(); break;
+      case 'links': this.renderLinks(); break;
     }
   }
 
@@ -2451,6 +2452,286 @@ class AdminDashboard {
         }
       });
     });
+  }
+
+  // ─── Links (bio link page admin) ────────────────────────────────────
+
+  private linksCache: any[] = [];
+
+  private async renderLinks(): Promise<void> {
+    const refreshBtn = document.getElementById('refreshLinksBtn');
+    if (refreshBtn && !refreshBtn.dataset.bound) {
+      refreshBtn.addEventListener('click', () => this.loadLinks());
+      refreshBtn.dataset.bound = '1';
+    }
+
+    const newBtn = document.getElementById('newLinkBtn');
+    if (newBtn && !newBtn.dataset.bound) {
+      newBtn.addEventListener('click', () => this.openLinkModal(null));
+      newBtn.dataset.bound = '1';
+    }
+
+    const form = document.getElementById('linkForm') as HTMLFormElement;
+    if (form && !form.dataset.bound) {
+      form.addEventListener('submit', (e) => this.submitLinkForm(e));
+      form.dataset.bound = '1';
+    }
+
+    const delBtn = document.getElementById('linkDeleteBtn');
+    if (delBtn && !delBtn.dataset.bound) {
+      delBtn.addEventListener('click', () => this.deleteCurrentLink());
+      delBtn.dataset.bound = '1';
+    }
+
+    await this.loadLinks();
+  }
+
+  private async loadLinks(): Promise<void> {
+    const container = document.getElementById('linksContent');
+    if (!container) return;
+    container.innerHTML = `<div class="adm-empty" style="padding:2rem;text-align:center;color:var(--a-text2);">Carregando…</div>`;
+
+    try {
+      // Edge function admin-api: fetch retorna TODAS rows (inclui active=false).
+      const rows = await adminCall({
+        action: 'fetch',
+        table: 'gdrums_links',
+        params: { order: { column: 'position', ascending: true } },
+      });
+      this.linksCache = rows || [];
+      this.renderLinksTable();
+    } catch (e) {
+      container.innerHTML = `<div class="adm-empty" style="padding:2rem;text-align:center;color:var(--a-red);">Erro ao carregar: ${String(e)}</div>`;
+    }
+  }
+
+  private renderLinksTable(): void {
+    const container = document.getElementById('linksContent');
+    if (!container) return;
+
+    if (this.linksCache.length === 0) {
+      container.innerHTML = `
+        <div class="adm-empty">
+          <div class="adm-empty-title">Nenhum link cadastrado</div>
+          <div class="adm-empty-desc">Clique em "+ Novo link" pra criar o primeiro.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const html = `
+      <div class="adm-link-list" id="adminLinksList">
+        ${this.linksCache.map(link => this.renderLinkRow(link)).join('')}
+      </div>
+    `;
+    container.innerHTML = html;
+
+    this.attachLinkRowListeners();
+    this.attachLinkDragDrop();
+  }
+
+  private renderLinkRow(link: any): string {
+    const icon = this.linkIconSVG(link.icon || 'web');
+    const inactive = link.active === false ? 'is-inactive' : '';
+    const escaped = (s: string) => (s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[ch] || ch);
+    return `
+      <div class="adm-link-row ${inactive}" draggable="true" data-id="${link.id}">
+        <div class="adm-link-handle" title="Arrastar pra reordenar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+        </div>
+        <div class="adm-link-icon">${icon}</div>
+        <div class="adm-link-text">
+          <span class="adm-link-title">${escaped(link.title)}${link.active === false ? ' <span style="color:var(--a-text2);font-weight:400;font-size:0.7rem;">(inativo)</span>' : ''}</span>
+          <span class="adm-link-url">${escaped(link.url)}</span>
+        </div>
+        <div class="adm-link-stats" title="Cliques">
+          <div class="adm-link-stats-num">${link.click_count || 0}</div>
+          <div>cliques</div>
+        </div>
+        <div class="adm-link-actions">
+          <button class="adm-btn adm-btn-outline" data-link-edit="${link.id}">Editar</button>
+        </div>
+      </div>
+    `;
+  }
+
+  private linkIconSVG(name: string): string {
+    const icons: Record<string, string> = {
+      instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.9" fill="currentColor"/></svg>',
+      whatsapp: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .04C5.4.04.05 5.4.05 12c0 2.1.55 4.16 1.6 5.98L0 24l6.2-1.62A11.9 11.9 0 0012 23.96c6.6 0 11.95-5.35 11.95-11.95C23.95 5.4 18.6.04 12 .04zm6.96 16.9c-.29.82-1.7 1.57-2.37 1.67-.6.09-1.36.13-2.2-.14-.51-.16-1.16-.38-1.99-.74-3.5-1.5-5.79-5.04-5.96-5.27-.17-.23-1.43-1.9-1.43-3.62 0-1.72.9-2.57 1.22-2.92.32-.35.7-.43.94-.43.23 0 .47.01.68.02.22.01.51-.08.8.61.29.7 1 2.42 1.09 2.6.08.17.14.38.03.6-.11.23-.17.37-.34.57-.17.2-.36.45-.51.6-.17.17-.35.35-.15.7.2.34.88 1.45 1.89 2.35 1.3 1.16 2.4 1.52 2.74 1.7.34.17.54.14.74-.09.2-.23.85-1 1.08-1.34.23-.34.46-.29.78-.17.31.11 2 .95 2.34 1.12.34.17.57.26.65.4.09.14.09.81-.2 1.63z"/></svg>',
+      youtube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 00.5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 002.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 002.1-2.1c.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8zM9.5 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>',
+      tiktok: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.6 6.7a4.8 4.8 0 01-3.8-4.3V2h-3.4v13.7a2.9 2.9 0 11-2.9-2.9c.3 0 .6.04.9.13V9.4a6.8 6.8 0 00-1-.05A6.33 6.33 0 105.8 20.1a6.34 6.34 0 0010.9-4.4V8.5a8.42 8.42 0 004.9 1.6V6.7z"/></svg>',
+      spotify: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.3c-.24.4-.66.5-1 .2-2.8-1.7-6.4-2.1-10.6-1.1-.4.1-.8-.2-.9-.5-.1-.4.2-.8.5-.9 4.6-1 8.5-.6 11.6 1.3.4.2.5.7.3 1zm1.5-3.3c-.3.4-.8.6-1.3.3-3.2-2-8.2-2.6-12-1.4-.5.1-1-.1-1.1-.6-.1-.5.1-1 .6-1.1 4.3-1.3 9.8-.6 13.5 1.6.4.2.6.8.3 1.2zm.1-3.4c-3.8-2.3-10.2-2.5-13.9-1.4-.6.2-1.2-.2-1.4-.7-.2-.6.2-1.2.7-1.4 4.3-1.3 11.3-1 15.7 1.6.5.3.7 1 .4 1.6-.3.4-1 .6-1.5.3z"/></svg>',
+      applemusic: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 6.12c0-.74-.06-1.47-.24-2.19-.32-1.31-1.06-2.31-2.18-3.04C21 .52 20.37.28 19.7.16 19.18.07 18.66.03 18.14.01 18.1.01 18.06 0 18.02 0H5.99c-.15.01-.3.02-.46.03-.75.03-1.49.11-2.2.39-1.33.53-2.3 1.45-2.86 2.78C.28 3.65.18 4.13.11 4.61.05 5.01.02 5.4 0 5.8v12.42c.01.12.02.24.03.35.04.7.1 1.4.3 2.05.5 1.7 1.5 2.97 3.07 3.68.62.28 1.27.42 1.94.52.4.05.79.08 1.19.09H18.04c.19 0 .37-.02.56-.03.96-.03 1.92-.14 2.83-.5 1.42-.54 2.5-1.53 3.11-2.95.3-.67.45-1.39.52-2.11.04-.4.07-.79.08-1.18.02-.31.02-.62.02-.93V6.42c0-.1-.01-.21-.02-.3z"/></svg>',
+      applestore: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.7 19.5c-.83 1.24-1.7 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>',
+      playstore: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.6 1.8c-.3.3-.5.7-.5 1.3v17.8c0 .6.2 1 .5 1.3l.1.1L13.8 12 3.7 1.8zM17 14.3l-3.4-3.4v-.5L17 7.7l.1.1 4 2.3c1.2.6 1.2 1.8 0 2.4l-4 2.3-.1.1zm-3.4-3.4l-9.5 9.5c.4.4 1 .4 1.7.1l11.2-6.4-3.4-3.2zM15 6.6L4 0c-.8-.5-1.4-.4-1.9.1l9.5 9.5L15 6.6z"/></svg>',
+      email: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3,7 12,13 21,7"/></svg>',
+      web: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><line x1="3" y1="12" x2="21" y2="12"/></svg>',
+    };
+    return icons[name] || icons.web;
+  }
+
+  private attachLinkRowListeners(): void {
+    document.querySelectorAll<HTMLButtonElement>('[data-link-edit]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.linkEdit;
+        const link = this.linksCache.find(l => l.id === id);
+        if (link) this.openLinkModal(link);
+      });
+    });
+  }
+
+  // Drag-drop nativo (HTML5). Funciona em desktop e tablet; mobile usa
+  // touch que o navegador transforma em mouse events em iOS recente.
+  private attachLinkDragDrop(): void {
+    const list = document.getElementById('adminLinksList');
+    if (!list) return;
+    let draggingEl: HTMLElement | null = null;
+
+    list.querySelectorAll<HTMLElement>('.adm-link-row').forEach(row => {
+      row.addEventListener('dragstart', (e) => {
+        draggingEl = row;
+        row.classList.add('is-dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', row.dataset.id || '');
+        }
+      });
+      row.addEventListener('dragend', () => {
+        row.classList.remove('is-dragging');
+        list.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        draggingEl = null;
+      });
+      row.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (draggingEl && draggingEl !== row) {
+          row.classList.add('drag-over');
+        }
+      });
+      row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+      row.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        row.classList.remove('drag-over');
+        if (!draggingEl || draggingEl === row) return;
+
+        // Decide se insere antes ou depois com base na metade vertical
+        const rect = row.getBoundingClientRect();
+        const after = (e as DragEvent).clientY > rect.top + rect.height / 2;
+        if (after) {
+          row.parentElement?.insertBefore(draggingEl, row.nextSibling);
+        } else {
+          row.parentElement?.insertBefore(draggingEl, row);
+        }
+        await this.persistLinkOrder();
+      });
+    });
+  }
+
+  private async persistLinkOrder(): Promise<void> {
+    const list = document.getElementById('adminLinksList');
+    if (!list) return;
+    const ids = Array.from(list.querySelectorAll<HTMLElement>('.adm-link-row'))
+      .map(r => r.dataset.id)
+      .filter(Boolean) as string[];
+
+    // Reatribui posições espaçadas (10, 20, 30...) pra novas inserções
+    // futuras caberem entre sem renumerar tudo
+    const items = ids.map((id, i) => ({ id, position: (i + 1) * 10 }));
+
+    try {
+      await adminCall({ action: 'reorder_links', items });
+      // Atualiza cache local sem refetch
+      this.linksCache.sort((a, b) => {
+        const ai = ids.indexOf(a.id);
+        const bi = ids.indexOf(b.id);
+        return ai - bi;
+      });
+      this.linksCache.forEach((l, i) => { l.position = (i + 1) * 10; });
+    } catch (e) {
+      modalManager.show('Erro', 'Não foi possível salvar a ordem. Recarregue.', 'error');
+    }
+  }
+
+  private currentLinkId: string | null = null;
+
+  private openLinkModal(link: any | null): void {
+    const modal = document.getElementById('linkModal');
+    const title = document.getElementById('linkModalTitle');
+    const deleteBtn = document.getElementById('linkDeleteBtn');
+    if (!modal || !title) return;
+
+    if (link) {
+      this.currentLinkId = link.id;
+      title.textContent = 'Editar Link';
+      if (deleteBtn) deleteBtn.style.display = '';
+      (document.getElementById('linkId') as HTMLInputElement).value = link.id;
+      (document.getElementById('linkTitle') as HTMLInputElement).value = link.title || '';
+      (document.getElementById('linkSubtitle') as HTMLInputElement).value = link.subtitle || '';
+      (document.getElementById('linkUrl') as HTMLInputElement).value = link.url || '';
+      (document.getElementById('linkIcon') as HTMLSelectElement).value = link.icon || 'web';
+      (document.getElementById('linkPosition') as HTMLInputElement).value = String(link.position ?? 10);
+      (document.getElementById('linkActive') as HTMLSelectElement).value = link.active === false ? 'false' : 'true';
+    } else {
+      this.currentLinkId = null;
+      title.textContent = 'Novo Link';
+      if (deleteBtn) deleteBtn.style.display = 'none';
+      (document.getElementById('linkId') as HTMLInputElement).value = '';
+      (document.getElementById('linkTitle') as HTMLInputElement).value = '';
+      (document.getElementById('linkSubtitle') as HTMLInputElement).value = '';
+      (document.getElementById('linkUrl') as HTMLInputElement).value = '';
+      (document.getElementById('linkIcon') as HTMLSelectElement).value = 'web';
+      // Próxima posição = última + 10
+      const nextPos = this.linksCache.length > 0
+        ? Math.max(...this.linksCache.map(l => l.position || 0)) + 10
+        : 10;
+      (document.getElementById('linkPosition') as HTMLInputElement).value = String(nextPos);
+      (document.getElementById('linkActive') as HTMLSelectElement).value = 'true';
+    }
+
+    modal.classList.add('active');
+  }
+
+  private async submitLinkForm(e: Event): Promise<void> {
+    e.preventDefault();
+    const id = (document.getElementById('linkId') as HTMLInputElement).value;
+    const payload = {
+      title: (document.getElementById('linkTitle') as HTMLInputElement).value.trim(),
+      subtitle: (document.getElementById('linkSubtitle') as HTMLInputElement).value.trim() || null,
+      url: (document.getElementById('linkUrl') as HTMLInputElement).value.trim(),
+      icon: (document.getElementById('linkIcon') as HTMLSelectElement).value,
+      position: parseInt((document.getElementById('linkPosition') as HTMLInputElement).value, 10) || 0,
+      active: (document.getElementById('linkActive') as HTMLSelectElement).value === 'true',
+    };
+
+    if (!payload.title || !payload.url) {
+      modalManager.show('Erro', 'Título e URL são obrigatórios', 'error');
+      return;
+    }
+
+    try {
+      if (id) {
+        await adminCall({ action: 'update', table: 'gdrums_links', id, data: payload });
+      } else {
+        await adminCall({ action: 'insert', table: 'gdrums_links', data: payload });
+      }
+      document.getElementById('linkModal')?.classList.remove('active');
+      await this.loadLinks();
+    } catch (err) {
+      modalManager.show('Erro', `Não foi possível salvar: ${String(err)}`, 'error');
+    }
+  }
+
+  private async deleteCurrentLink(): Promise<void> {
+    if (!this.currentLinkId) return;
+    const ok = await modalManager.confirm('Excluir link?', 'Essa ação não pode ser desfeita.');
+    if (!ok) return;
+    try {
+      await adminCall({ action: 'delete', table: 'gdrums_links', id: this.currentLinkId });
+      document.getElementById('linkModal')?.classList.remove('active');
+      await this.loadLinks();
+    } catch (err) {
+      modalManager.show('Erro', `Não foi possível excluir: ${String(err)}`, 'error');
+    }
   }
 }
 
