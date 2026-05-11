@@ -39,6 +39,7 @@
       <a href="#affiliates" class="adm-nav-item" data-section="affiliates"><span>Afiliados</span></a>
       <a href="#payouts" class="adm-nav-item" data-section="payouts"><span>Saques</span></a>
       <a href="#links" class="adm-nav-item" data-section="links"><span>Links</span></a>
+      <a href="#smartlinks" class="adm-nav-item" data-section="smartlinks"><span>Smart Links</span></a>
     </nav>
 
     <div class="adm-shell">
@@ -80,6 +81,10 @@
           <a href="#links" class="adm-nav-item" data-section="links">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
             <span>Links</span>
+          </a>
+          <a href="#smartlinks" class="adm-nav-item" data-section="smartlinks">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.5"/><line x1="12" y1="18" x2="12.01" y2="18"/><path d="M9 6h6"/></svg>
+            <span>Smart Links</span>
           </a>
         </nav>
       </aside>
@@ -387,6 +392,29 @@
           </div>
         </section>
 
+        <!-- ═══ Smart Links — redirector por device ═══ -->
+        <section id="smartlinksSection" class="adm-section">
+          <div class="adm-section-top">
+            <div>
+              <h2 class="adm-title">Smart Links</h2>
+              <div class="adm-subtitle">
+                Links únicos que redirecionam Android, iOS e Desktop pra destinos diferentes.<br/>
+                URL: <code style="color:var(--a-cyan);">gdrums.com.br/download/&lt;slug&gt;</code> — o slug <code>download</code> é o link principal sem path extra.
+              </div>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <button class="adm-btn adm-btn-outline" id="refreshSmartLinksBtn">Atualizar</button>
+              <button class="adm-btn" id="newSmartLinkBtn">+ Novo Smart Link</button>
+            </div>
+          </div>
+
+          <div id="smartLinksContent">
+            <div class="adm-empty" style="padding:2rem;text-align:center;color:var(--a-text2);">
+              Carregando...
+            </div>
+          </div>
+        </section>
+
       </main>
     </div>
 
@@ -592,6 +620,73 @@
           <div class="adm-modal-foot">
             <button type="button" class="adm-btn adm-btn-ghost adm-btn-danger" id="linkDeleteBtn" style="margin-right:auto;display:none;">Excluir</button>
             <button type="button" class="adm-btn adm-btn-ghost" data-modal="linkModal">Cancelar</button>
+            <button type="submit" class="adm-btn adm-btn-primary">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Novo/Editar Smart Link -->
+    <div class="adm-modal-overlay" id="smartLinkModal">
+      <div class="adm-modal">
+        <div class="adm-modal-head">
+          <h3 id="smartLinkModalTitle">Novo Smart Link</h3>
+          <button class="adm-modal-close" data-modal="smartLinkModal">&times;</button>
+        </div>
+        <form id="smartLinkForm">
+          <input type="hidden" id="smartLinkId" />
+          <div class="adm-modal-body">
+            <div class="adm-field-row">
+              <div class="adm-field">
+                <label>Nome interno</label>
+                <input type="text" id="smartLinkName" class="adm-input" required placeholder='Ex: Campanha Black Friday' />
+              </div>
+              <div class="adm-field">
+                <label>Slug (URL)</label>
+                <input type="text" id="smartLinkSlug" class="adm-input" required placeholder="ex: promo" style="text-transform:lowercase;" />
+              </div>
+            </div>
+            <div class="adm-field-hint" id="smartLinkPreview" style="margin-top:-0.5rem;margin-bottom:0.85rem;font-size:0.75rem;color:var(--a-text2);">
+              URL final: <span id="smartLinkPreviewUrl" style="color:var(--a-cyan);">gdrums.com.br/download/...</span>
+            </div>
+
+            <div class="adm-field">
+              <label>
+                Destino Android
+                <span style="color:var(--a-text2);font-weight:400;">(deixe vazio pra usar o destino padrão)</span>
+              </label>
+              <input type="url" id="smartLinkAndroidUrl" class="adm-input" placeholder="https://play.google.com/store/apps/details?id=..." />
+            </div>
+
+            <div class="adm-field">
+              <label>
+                Destino iOS
+                <span style="color:var(--a-text2);font-weight:400;">(deixe vazio pra usar o destino padrão)</span>
+              </label>
+              <input type="url" id="smartLinkIosUrl" class="adm-input" placeholder="https://apps.apple.com/... ou https://gdrums.com.br/demo" />
+            </div>
+
+            <div class="adm-field">
+              <label>Destino padrão <span style="color:var(--a-red);">*</span></label>
+              <input type="url" id="smartLinkDefaultUrl" class="adm-input" required placeholder="https://gdrums.com.br/demo" />
+              <div style="font-size:0.7rem;color:var(--a-text2);margin-top:0.3rem;">
+                Usado em desktop e como fallback se Android/iOS estiver vazio.
+              </div>
+            </div>
+
+            <div class="adm-field-row">
+              <div class="adm-field">
+                <label>Ativo</label>
+                <select id="smartLinkActive" class="adm-input">
+                  <option value="true">Sim</option>
+                  <option value="false">Não</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="adm-modal-foot">
+            <button type="button" class="adm-btn adm-btn-ghost adm-btn-danger" id="smartLinkDeleteBtn" style="margin-right:auto;display:none;">Excluir</button>
+            <button type="button" class="adm-btn adm-btn-ghost" data-modal="smartLinkModal">Cancelar</button>
             <button type="submit" class="adm-btn adm-btn-primary">Salvar</button>
           </div>
         </form>

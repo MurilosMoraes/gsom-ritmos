@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Baixar GDrums</title>
+  <meta name="description" content="Baixe o GDrums — baterista virtual com pedal Bluetooth. Disponível no Android, em breve no iOS.">
+  <meta name="robots" content="noindex, follow">
+  <meta name="theme-color" content="#030014">
+
+  <link rel="icon" type="image/png" sizes="512x512" href="/img/icon-512.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
+
+  <!-- OG pra preview decente quando compartilhar no WhatsApp/Insta -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Baixar GDrums">
+  <meta property="og:description" content="Baterista virtual com pedal Bluetooth. 100+ ritmos brasileiros.">
+  <meta property="og:image" content="https://gdrums.com.br/img/icon-512.png">
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: #030014;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .dl-card {
+      text-align: center;
+      max-width: 380px;
+    }
+    .dl-logo {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.2rem;
+      background: #0a0a0f;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .dl-logo img { width: 70%; height: 70%; object-fit: contain; }
+    .dl-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.4rem;
+    }
+    .dl-sub {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.5);
+      line-height: 1.5;
+    }
+    .dl-spinner {
+      width: 28px;
+      height: 28px;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-top-color: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      margin: 1.5rem auto 0;
+      animation: dl-spin 0.8s linear infinite;
+    }
+    @keyframes dl-spin { to { transform: rotate(360deg); } }
+    .dl-fallback {
+      display: none;
+      margin-top: 1.5rem;
+    }
+    .dl-fallback a {
+      display: inline-block;
+      padding: 0.75rem 1.2rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .dl-fallback a:hover { background: rgba(255, 255, 255, 0.1); }
+  </style>
+</head>
+<body>
+  <div class="dl-card">
+    <div class="dl-logo">
+      <img src="/img/logo.png" alt="GDrums" />
+    </div>
+    <div class="dl-title" id="dlTitle">Te levando pro lugar certo…</div>
+    <div class="dl-sub" id="dlSub">Detectando seu dispositivo</div>
+    <div class="dl-spinner" id="dlSpinner"></div>
+
+    <div class="dl-fallback" id="dlFallback">
+      <a id="dlFallbackLink" href="/">Continuar manualmente</a>
+    </div>
+  </div>
+
+  <script type="module" src="/src/download.ts"></script>
+</body>
+</html>

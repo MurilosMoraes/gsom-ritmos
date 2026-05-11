@@ -823,3 +823,109 @@ body {
   .adm-link-stats { display: none; }
   .adm-link-url { max-width: 160px; }
 }
+
+/* ─── Smart Links admin cards ──────────────────────────────────── */
+.adm-smartlink-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 0.85rem;
+}
+.adm-smartlink-card {
+  background: var(--a-bg2);
+  border: 1px solid var(--a-border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  transition: border-color 0.12s, background 0.12s;
+}
+.adm-smartlink-card:hover {
+  border-color: rgba(0, 212, 255, 0.25);
+  background: var(--a-bg3);
+}
+.adm-smartlink-card.is-inactive { opacity: 0.55; }
+
+.adm-smartlink-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+.adm-smartlink-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.005em;
+}
+.adm-smartlink-url-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(0, 212, 255, 0.07);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  color: var(--a-cyan);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  word-break: break-all;
+}
+.adm-smartlink-url-pill a {
+  color: inherit; text-decoration: none;
+}
+.adm-smartlink-copy-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--a-text2);
+  cursor: pointer;
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+}
+.adm-smartlink-copy-btn:hover { color: #fff; }
+
+.adm-smartlink-destinations {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  border-top: 1px solid var(--a-border);
+  padding-top: 0.7rem;
+}
+.adm-smartlink-dest {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.adm-smartlink-dest-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--a-text2);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.adm-smartlink-dest-clicks {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+.adm-smartlink-dest-empty {
+  font-size: 0.7rem;
+  color: var(--a-text2);
+  font-style: italic;
+}
+
+.adm-smartlink-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+.adm-smartlink-actions .adm-btn { padding: 0.35rem 0.65rem; font-size: 0.72rem; flex: 1; }
+
+@media (max-width: 640px) {
+  .adm-smartlink-grid { grid-template-columns: 1fr; }
+  .adm-smartlink-destinations { grid-template-columns: repeat(3, 1fr); gap: 0.3rem; }
+}

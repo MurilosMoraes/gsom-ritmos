@@ -50,6 +50,14 @@
     {
       "source": "/completar-cadastro",
       "destination": "/completar-cadastro.html"
+    },
+    {
+      "source": "/download",
+      "destination": "/download.html"
+    },
+    {
+      "source": "/download/:slug",
+      "destination": "/download.html"
     }
   ],
   "headers": [

@@ -635,6 +635,7 @@ class AdminDashboard {
       case 'affiliates': this.renderAffiliates(); break;
       case 'payouts': this.renderPayouts(); break;
       case 'links': this.renderLinks(); break;
+      case 'smartlinks': this.renderSmartLinks(); break;
     }
   }
 
@@ -2729,6 +2730,258 @@ class AdminDashboard {
       await adminCall({ action: 'delete', table: 'gdrums_links', id: this.currentLinkId });
       document.getElementById('linkModal')?.classList.remove('active');
       await this.loadLinks();
+    } catch (err) {
+      modalManager.show('Erro', `Não foi possível excluir: ${String(err)}`, 'error');
+    }
+  }
+
+  // ─── Smart Links (redirector por device) ────────────────────────────
+
+  private smartLinksCache: any[] = [];
+  private currentSmartLinkId: string | null = null;
+
+  private async renderSmartLinks(): Promise<void> {
+    const refreshBtn = document.getElementById('refreshSmartLinksBtn');
+    if (refreshBtn && !refreshBtn.dataset.bound) {
+      refreshBtn.addEventListener('click', () => this.loadSmartLinks());
+      refreshBtn.dataset.bound = '1';
+    }
+    const newBtn = document.getElementById('newSmartLinkBtn');
+    if (newBtn && !newBtn.dataset.bound) {
+      newBtn.addEventListener('click', () => this.openSmartLinkModal(null));
+      newBtn.dataset.bound = '1';
+    }
+    const form = document.getElementById('smartLinkForm') as HTMLFormElement;
+    if (form && !form.dataset.bound) {
+      form.addEventListener('submit', (e) => this.submitSmartLinkForm(e));
+      form.dataset.bound = '1';
+    }
+    const delBtn = document.getElementById('smartLinkDeleteBtn');
+    if (delBtn && !delBtn.dataset.bound) {
+      delBtn.addEventListener('click', () => this.deleteCurrentSmartLink());
+      delBtn.dataset.bound = '1';
+    }
+    // Preview da URL em tempo real conforme digita o slug
+    const slugInput = document.getElementById('smartLinkSlug') as HTMLInputElement;
+    if (slugInput && !slugInput.dataset.bound) {
+      slugInput.addEventListener('input', () => {
+        // Normaliza: minúsculo, sem espaço, só [a-z0-9-_]
+        slugInput.value = slugInput.value.toLowerCase().replace(/[^a-z0-9\-_]/g, '');
+        this.updateSmartLinkPreview();
+      });
+      slugInput.dataset.bound = '1';
+    }
+
+    await this.loadSmartLinks();
+  }
+
+  private async loadSmartLinks(): Promise<void> {
+    const container = document.getElementById('smartLinksContent');
+    if (!container) return;
+    container.innerHTML = `<div class="adm-empty" style="padding:2rem;text-align:center;color:var(--a-text2);">Carregando…</div>`;
+
+    try {
+      const rows = await adminCall({
+        action: 'fetch',
+        table: 'gdrums_smart_links',
+        params: { order: { column: 'created_at', ascending: false } },
+      });
+      this.smartLinksCache = rows || [];
+      this.renderSmartLinksGrid();
+    } catch (e) {
+      container.innerHTML = `<div class="adm-empty" style="padding:2rem;text-align:center;color:var(--a-red);">Erro ao carregar: ${String(e)}</div>`;
+    }
+  }
+
+  private renderSmartLinksGrid(): void {
+    const container = document.getElementById('smartLinksContent');
+    if (!container) return;
+
+    if (this.smartLinksCache.length === 0) {
+      container.innerHTML = `
+        <div class="adm-empty">
+          <div class="adm-empty-title">Nenhum smart link ainda</div>
+          <div class="adm-empty-desc">Clique em "+ Novo Smart Link" pra criar um.</div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="adm-smartlink-grid">
+        ${this.smartLinksCache.map(sl => this.renderSmartLinkCard(sl)).join('')}
+      </div>
+    `;
+    this.attachSmartLinkCardListeners();
+  }
+
+  private renderSmartLinkCard(sl: any): string {
+    const esc = (s: string) => (s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[ch] || ch);
+    const fullUrl = `gdrums.com.br/download/${sl.slug}`;
+    const inactive = sl.active === false ? 'is-inactive' : '';
+    return `
+      <div class="adm-smartlink-card ${inactive}">
+        <div class="adm-smartlink-head">
+          <div>
+            <div class="adm-smartlink-name">${esc(sl.name)}${sl.active === false ? ' <span style="color:var(--a-text2);font-weight:400;font-size:0.7rem;">(inativo)</span>' : ''}</div>
+          </div>
+        </div>
+
+        <div class="adm-smartlink-url-pill">
+          <a href="https://${fullUrl}" target="_blank" rel="noopener">${esc(fullUrl)}</a>
+          <button class="adm-smartlink-copy-btn" data-copy="https://${esc(fullUrl)}" title="Copiar URL">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="adm-smartlink-destinations">
+          <div class="adm-smartlink-dest">
+            <span class="adm-smartlink-dest-label">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.341a1 1 0 11-2 0 1 1 0 012 0zm-9.046 0a1 1 0 11-2 0 1 1 0 012 0zm9.428-5.158l1.668-2.889a.347.347 0 00-.6-.347l-1.69 2.925a10.401 10.401 0 00-8.566 0L7.027 6.947a.347.347 0 00-.6.347l1.668 2.889C5.232 11.78 3.262 14.65 3 18h18c-.262-3.35-2.232-6.22-5.095-7.817z"/></svg>
+              Android
+            </span>
+            ${sl.android_url ? `<span class="adm-smartlink-dest-clicks">${sl.click_count_android || 0}</span>` : '<span class="adm-smartlink-dest-empty">usa padrão</span>'}
+          </div>
+          <div class="adm-smartlink-dest">
+            <span class="adm-smartlink-dest-label">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              iOS
+            </span>
+            ${sl.ios_url ? `<span class="adm-smartlink-dest-clicks">${sl.click_count_ios || 0}</span>` : '<span class="adm-smartlink-dest-empty">usa padrão</span>'}
+          </div>
+          <div class="adm-smartlink-dest">
+            <span class="adm-smartlink-dest-label">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+              Desktop
+            </span>
+            <span class="adm-smartlink-dest-clicks">${sl.click_count_other || 0}</span>
+          </div>
+        </div>
+
+        <div class="adm-smartlink-actions">
+          <button class="adm-btn adm-btn-outline" data-smartlink-edit="${sl.id}">Editar</button>
+        </div>
+      </div>
+    `;
+  }
+
+  private attachSmartLinkCardListeners(): void {
+    document.querySelectorAll<HTMLButtonElement>('[data-smartlink-edit]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.smartlinkEdit;
+        const sl = this.smartLinksCache.find(l => l.id === id);
+        if (sl) this.openSmartLinkModal(sl);
+      });
+    });
+    document.querySelectorAll<HTMLButtonElement>('.adm-smartlink-copy-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const url = btn.dataset.copy || '';
+        try {
+          await navigator.clipboard.writeText(url);
+          const orig = btn.innerHTML;
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ee8a7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+          setTimeout(() => { btn.innerHTML = orig; }, 1500);
+        } catch { /* clipboard pode falhar em http */ }
+      });
+    });
+  }
+
+  private updateSmartLinkPreview(): void {
+    const slugInput = document.getElementById('smartLinkSlug') as HTMLInputElement | null;
+    const preview = document.getElementById('smartLinkPreviewUrl');
+    if (!slugInput || !preview) return;
+    const slug = slugInput.value || '...';
+    preview.textContent = `gdrums.com.br/download/${slug}`;
+  }
+
+  private openSmartLinkModal(sl: any | null): void {
+    const modal = document.getElementById('smartLinkModal');
+    const title = document.getElementById('smartLinkModalTitle');
+    const deleteBtn = document.getElementById('smartLinkDeleteBtn');
+    if (!modal || !title) return;
+
+    if (sl) {
+      this.currentSmartLinkId = sl.id;
+      title.textContent = 'Editar Smart Link';
+      if (deleteBtn) deleteBtn.style.display = '';
+      (document.getElementById('smartLinkId') as HTMLInputElement).value = sl.id;
+      (document.getElementById('smartLinkName') as HTMLInputElement).value = sl.name || '';
+      (document.getElementById('smartLinkSlug') as HTMLInputElement).value = sl.slug || '';
+      (document.getElementById('smartLinkAndroidUrl') as HTMLInputElement).value = sl.android_url || '';
+      (document.getElementById('smartLinkIosUrl') as HTMLInputElement).value = sl.ios_url || '';
+      (document.getElementById('smartLinkDefaultUrl') as HTMLInputElement).value = sl.default_url || '';
+      (document.getElementById('smartLinkActive') as HTMLSelectElement).value = sl.active === false ? 'false' : 'true';
+    } else {
+      this.currentSmartLinkId = null;
+      title.textContent = 'Novo Smart Link';
+      if (deleteBtn) deleteBtn.style.display = 'none';
+      (document.getElementById('smartLinkId') as HTMLInputElement).value = '';
+      (document.getElementById('smartLinkName') as HTMLInputElement).value = '';
+      (document.getElementById('smartLinkSlug') as HTMLInputElement).value = '';
+      (document.getElementById('smartLinkAndroidUrl') as HTMLInputElement).value = '';
+      (document.getElementById('smartLinkIosUrl') as HTMLInputElement).value = '';
+      (document.getElementById('smartLinkDefaultUrl') as HTMLInputElement).value = 'https://gdrums.com.br/demo';
+      (document.getElementById('smartLinkActive') as HTMLSelectElement).value = 'true';
+    }
+    this.updateSmartLinkPreview();
+    modal.classList.add('active');
+  }
+
+  private async submitSmartLinkForm(e: Event): Promise<void> {
+    e.preventDefault();
+    const id = (document.getElementById('smartLinkId') as HTMLInputElement).value;
+    const slug = (document.getElementById('smartLinkSlug') as HTMLInputElement).value.trim().toLowerCase();
+    if (!/^[a-z0-9\-_]+$/.test(slug)) {
+      modalManager.show('Erro', 'Slug inválido. Use só letras minúsculas, números, hífen e underscore.', 'error');
+      return;
+    }
+    const payload = {
+      name: (document.getElementById('smartLinkName') as HTMLInputElement).value.trim(),
+      slug,
+      android_url: (document.getElementById('smartLinkAndroidUrl') as HTMLInputElement).value.trim() || null,
+      ios_url: (document.getElementById('smartLinkIosUrl') as HTMLInputElement).value.trim() || null,
+      default_url: (document.getElementById('smartLinkDefaultUrl') as HTMLInputElement).value.trim(),
+      active: (document.getElementById('smartLinkActive') as HTMLSelectElement).value === 'true',
+    };
+    if (!payload.name || !payload.default_url) {
+      modalManager.show('Erro', 'Nome e destino padrão são obrigatórios.', 'error');
+      return;
+    }
+    try {
+      if (id) {
+        await adminCall({ action: 'update', table: 'gdrums_smart_links', id, data: payload });
+      } else {
+        await adminCall({ action: 'insert', table: 'gdrums_smart_links', data: payload });
+      }
+      document.getElementById('smartLinkModal')?.classList.remove('active');
+      await this.loadSmartLinks();
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes('duplicate') || msg.includes('23505')) {
+        modalManager.show('Erro', `Já existe um smart link com o slug "${slug}". Escolhe outro.`, 'error');
+      } else {
+        modalManager.show('Erro', `Não foi possível salvar: ${msg}`, 'error');
+      }
+    }
+  }
+
+  private async deleteCurrentSmartLink(): Promise<void> {
+    if (!this.currentSmartLinkId) return;
+    const sl = this.smartLinksCache.find(l => l.id === this.currentSmartLinkId);
+    if (sl?.slug === 'download') {
+      modalManager.show('Aviso', 'O smart link principal "download" não pode ser excluído — apenas desativado.', 'info');
+      return;
+    }
+    const ok = await modalManager.confirm('Excluir smart link?', 'Essa ação não pode ser desfeita. Quem acessar a URL antiga vai cair em "Link não encontrado".');
+    if (!ok) return;
+    try {
+      await adminCall({ action: 'delete', table: 'gdrums_smart_links', id: this.currentSmartLinkId });
+      document.getElementById('smartLinkModal')?.classList.remove('active');
+      await this.loadSmartLinks();
     } catch (err) {
       modalManager.show('Erro', `Não foi possível excluir: ${String(err)}`, 'error');
     }
