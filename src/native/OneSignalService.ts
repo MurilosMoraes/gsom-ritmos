@@ -103,12 +103,28 @@ export function initOneSignal(): Promise<void> {
  * Linka o user do Supabase ao subscriber do OneSignal via External ID.
  * Chamado após login. Mesmo subscriber pode ter External ID atualizado
  * (ex: user trocou de conta no mesmo browser).
+ *
+ * Se o user já tem permissão concedida mas não tem subscription ativa
+ * (caso quando admin deletou o user no servidor mas o token local
+ * ainda existe), força optIn pra recriar a subscription.
  */
 export async function linkUserToPush(userId: string): Promise<void> {
   try {
     await initOneSignal();
     if (!sdkLoaded || !window.OneSignal) return;
     await window.OneSignal.login(userId);
+
+    // Defesa contra estado fantasma: se browser tem permissão mas o
+    // OneSignal não tem subscription ativa, força criar de novo.
+    try {
+      const hasPerm = !!window.OneSignal.Notifications?.permission;
+      if (hasPerm && window.OneSignal.User?.PushSubscription) {
+        const isOpted = window.OneSignal.User.PushSubscription.optedIn;
+        if (isOpted === false) {
+          await window.OneSignal.User.PushSubscription.optIn();
+        }
+      }
+    } catch { /* noop */ }
   } catch (e) {
     console.warn('[OneSignal] linkUserToPush falhou:', e);
   }
