@@ -51,6 +51,22 @@ export function initOneSignal(): Promise<void> {
         return;
       }
 
+      // Migração: usuários antigos têm SW separado em /OneSignalSDKWorker.js
+      // que conflitava com nosso Workbox SW. Agora o SW unificado em /sw.js
+      // importa o OneSignal SDK. Desregistra o velho pra evitar 2 SWs
+      // disputando scope "/" (problema antigo: push entrava pelo SW errado
+      // e Chrome Android mostrava successful=1 mas received=0).
+      if (navigator.serviceWorker?.getRegistrations) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          for (const reg of regs) {
+            const url = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL || '';
+            if (url.endsWith('/OneSignalSDKWorker.js')) {
+              reg.unregister().catch(() => { /* noop */ });
+            }
+          }
+        }).catch(() => { /* noop */ });
+      }
+
       // Fila Deferred do OneSignal — chamadas antes do SDK carregar entram aqui
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async (OneSignal: any) => {
@@ -58,6 +74,12 @@ export function initOneSignal(): Promise<void> {
           await OneSignal.init({
             appId: ONESIGNAL_APP_ID,
             safari_web_id: ONESIGNAL_SAFARI_WEB_ID,
+            // O OneSignal SDK é importado pelo nosso SW unificado em /sw.js
+            // (via importScripts). Tem que apontar pro mesmo SW pra evitar
+            // conflito de scope — antes havia 2 SWs disputando "/" e o
+            // OneSignal perdia, fazendo push não chegar no Chrome Android.
+            serviceWorkerParam: { scope: '/' },
+            serviceWorkerPath: 'sw.js',
             // UI default do OneSignal é horrível (popup gigante "Thanks for
             // subscribing"). Desativamos tudo e controlamos pela nossa UI
             // (banner soft em main.ts).
@@ -112,7 +134,17 @@ export async function linkUserToPush(userId: string): Promise<void> {
   try {
     await initOneSignal();
     if (!sdkLoaded || !window.OneSignal) return;
+
+    // OneSignal.login pode retornar antes do servidor processar.
+    // Aguarda o externalId ficar refletido em User pra ter certeza.
     await window.OneSignal.login(userId);
+
+    // Confirma que ligou — espera até 5s pelo external_id sincronizar
+    for (let i = 0; i < 10; i++) {
+      const ext = window.OneSignal.User?.externalId;
+      if (ext === userId) break;
+      await new Promise(r => setTimeout(r, 500));
+    }
 
     // Defesa contra estado fantasma: se browser tem permissão mas o
     // OneSignal não tem subscription ativa, força criar de novo.
