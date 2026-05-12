@@ -571,23 +571,31 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '2.8',
+    version: '2.9',
     overline: 'Atualização',
-    title: 'Biblioteca chegou aos 100 ritmos.',
-    subtitle: 'Mais 6 ritmos novos: Arrasta Pé, Maxixe, Pagode Romântico, Congas, Rock (cajón) e Gospel (cajón). E samples de cajón em vários ritmos foram refinados.',
+    title: 'Toggle de viradas, biblioteca em 109 ritmos e Modo Show na mão.',
+    subtitle: 'Tu pediu e tá no app: liga/desliga a virada na troca de ritmo, Modo Show com 1 toque na topbar, e 9 ritmos novos. Os 100 ritmos antigos foram refinados.',
     sections: [
       {
-        label: '+6 ritmos novos',
+        label: 'Toggle VIRADAS',
         featured: true,
-        body: 'Arrasta Pé, Maxixe, Pagode Romântico, Congas (latinos), Rock (cajón) e Gospel (cajón). Cada um com viradas, intros e finalizações.',
+        body: 'Terceiro botão no painel, ao lado de INTRO e FINAL. Ligado, troca de ritmo com virada normal. Desligado, troca direto sem virada. Pra quem prefere que cada parte da música decida o momento.',
       },
       {
-        label: 'Ritmos refinados',
-        body: 'Arrocha, Bachata, Boi Bumbá, Bolero, Partido Alto, Seresta (Canindé) e Gospel 2 ganharam ajustes finos no padrão e nos samples.',
+        label: 'Modo Show no botão',
+        body: 'Agora tem um switch SHOW direto na topbar — 1 toque liga/desliga, sem abrir menu. Tela fica acesa, layout limpo pro palco, sem distração de categoria/busca.',
       },
       {
-        label: 'Preview e Modo Show',
-        body: 'Lembra do botão verde ▶ no editor pra ouvir antes de adicionar? E do Modo Show pra palco com tela cheia? Tudo continua melhor.',
+        label: '+9 ritmos novos',
+        body: 'Carimbó, Forró (Aviões), Forró (Cajon), Gospel (Crescente), Pop (Cajon), Rockabilly, Samba Reggae, Swingueira e Vaquejada. Biblioteca agora tem 109 ritmos.',
+      },
+      {
+        label: '100 ritmos refinados',
+        body: 'Toda a biblioteca antiga foi substituída pela versão nova — padrões mais limpos, viradas mais musicais, samples ajustados. Seu repertório continua intacto.',
+      },
+      {
+        label: 'Categorias com setlist',
+        body: 'Antes, ao montar repertório, as categorias sumiam. Agora ficam visíveis embaixo — dá pra trocar de ritmo na hora sem desfazer nada.',
       },
     ],
   };
@@ -1387,7 +1395,6 @@ class RhythmSequencer {
 
     // Performance grid
     this.setupPerformanceGrid();
-    this.setupIntroButton();
     this.setupToggles();
 
     // File operations
@@ -1988,19 +1995,6 @@ class RhythmSequencer {
         }
       });
     });
-  }
-
-  private setupIntroButton(): void {
-    const introBtn = document.getElementById('introBtnUser');
-    if (introBtn) {
-      introBtn.addEventListener('click', () => {
-        if (!this.stateManager.isPlaying() && this.hasRhythmLoaded()) {
-          HapticsService.medium();
-          this.patternEngine.playIntroAndStart();
-          this.play();
-        }
-      });
-    }
   }
 
   // ─── Toggles Intro/Viradas/Final (persistidos) ───────────────────
