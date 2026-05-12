@@ -19,7 +19,8 @@ import { HapticsService } from './native/HapticsService';
 import { OfflineCache } from './native/OfflineCache';
 import { StatusBarService } from './native/StatusBarService';
 import { AttributionService } from './native/AttributionService';
-import { PushService } from './native/PushService';
+// PushService removido — push agora é gerenciado pelo OneSignalService
+// (tanto web quanto Capacitor nativo via onesignal-cordova-plugin).
 import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore } from './native/Platform';
 import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
@@ -310,7 +311,6 @@ class RhythmSequencer {
 
     // Inicializar serviços nativos (iOS/Android)
     StatusBarService.init();
-    // PushService.init(); // desativado até configurar Firebase — estava crashando Android
 
     // Inicializar UI
     this.init();
