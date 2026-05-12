@@ -58,11 +58,22 @@ export function initOneSignal(): Promise<void> {
           await OneSignal.init({
             appId: ONESIGNAL_APP_ID,
             safari_web_id: ONESIGNAL_SAFARI_WEB_ID,
-            // Não usa notifyButton — UI nossa controla a permissão via
-            // banner customizado pra controlar quando aparecer.
+            // UI default do OneSignal é horrível (popup gigante "Thanks for
+            // subscribing"). Desativamos tudo e controlamos pela nossa UI
+            // (banner soft em main.ts).
             notifyButton: { enable: false },
-            // ServiceWorker path: deixa o default (OneSignalSDKWorker.js).
-            // OneSignal serve esse SW automaticamente.
+            // Bloqueia a "Welcome Notification" automática que aparecia
+            // como spam quando o user inscrevia
+            welcomeNotification: {
+              disable: true,
+            },
+            // Bloqueia o slidedown nativo (prompt feio)
+            promptOptions: {
+              slidedown: {
+                prompts: [],
+              },
+              autoPrompt: false,
+            },
             allowLocalhostAsSecureOrigin: true,
           });
           sdkLoaded = true;
@@ -112,21 +123,28 @@ export async function unlinkUserFromPush(): Promise<void> {
 }
 
 /**
- * Pega o subscription ID atual do OneSignal e grava em
- * gdrums_profiles.onesignal_id. Permite que o admin mande push pra
- * user específico via REST API (POST /notifications com include_aliases).
+ * Pega o OneSignal USER ID (não o subscription) e grava em
+ * gdrums_profiles.onesignal_id.
+ *
+ * Importante: User ID agrupa TODOS os devices do user (Chrome no PC +
+ * Chrome no celular + Safari etc são subscriptions diferentes mas mesmo
+ * user). Salvar user ID permite que o admin mande push pra um user
+ * específico atingindo TODOS os devices dele via include_aliases.
+ *
+ * Antes salvava o subscription ID, que limitava ao último device.
  *
  * Idempotente — só grava se mudou.
  */
 export async function syncSubscriptionId(userId: string, supabase: any): Promise<void> {
   try {
     await initOneSignal();
-    if (!window.OneSignal?.User?.PushSubscription) return;
+    if (!window.OneSignal?.User) return;
 
-    // Espera o subscription ID ficar disponível (pode levar 1-2s após init)
+    // Espera o user ID ficar disponível (pode levar 1-2s após init).
+    // V16 API: window.OneSignal.User.onesignalId
     let onesignalId: string | null = null;
     for (let i = 0; i < 10; i++) {
-      onesignalId = window.OneSignal.User.PushSubscription.id || null;
+      onesignalId = window.OneSignal.User.onesignalId || null;
       if (onesignalId) break;
       await new Promise(r => setTimeout(r, 500));
     }
