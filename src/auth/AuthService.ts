@@ -123,13 +123,20 @@ class AuthService {
 
   async logout(): Promise<void> {
     await supabase.auth.signOut();
-    // Desvincula o user do OneSignal (subscription continua existindo,
-    // só o External ID é removido — não recebe mais push direcionados
-    // pra este user até relogar)
-    try {
-      const { unlinkUserFromPush } = await import('../native/OneSignalService');
-      await unlinkUserFromPush();
-    } catch { /* noop */ }
+    // IMPORTANTE: NÃO chamar OneSignal.logout() aqui.
+    // Logout do GDrums em 1 device (ex: deslogar no Mac) NÃO deve
+    // desvincular o user dos OUTROS devices (Android, celular, etc).
+    // O OneSignal.logout() apaga o external_id no SERVIDOR — todos os
+    // subscriptions (Mac + Android + iOS) ficam órfãos e não recebem
+    // mais push direcionados a esse user.
+    //
+    // Quando o user logar de novo (mesma conta ou outra), o
+    // OneSignal.login(novoUserId) sobrescreve o external_id sem
+    // afetar outros devices.
+    //
+    // Se quiser realmente cancelar push (ex: user pediu "não me mande
+    // mais nada"), criamos uma RPC dedicada que limpa onesignal_id no
+    // gdrums_profiles + chama OneSignal.User.PushSubscription.optOut().
     localStorage.removeItem('gdrums-onesignal-id');
     // Limpa SÓ dados de sessão e estado transitório.
     // PRESERVA: gdrums-setlist (repertório), gdrums-user-rhythms (ritmos
