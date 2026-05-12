@@ -30,7 +30,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://qsfziivubwdgtmwyzt
 // SUPABASE_SERVICE_ROLE_KEY. Nunca commitar valor real no repo.
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const EXPECTED_BUNDLE_ID = "com.gdrums.app";
-const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1491970416720478297/dzQS-EFHsMrEFsWilzwe__kWbPHLfCFnKD_dLFqdP0oa83HiDspGERRLEDpEjmjSj0pQ";
+// Discord webhook injetado via env var. Setar em Supabase Dashboard →
+// Edge Functions → Secrets como DISCORD_WEBHOOK_URL.
+const DISCORD_WEBHOOK = Deno.env.get("DISCORD_WEBHOOK_URL") || "";
 
 const PRODUCT_TO_PLAN: Record<string, string> = {
   "com.gdrums.app.mensal": "mensal",
@@ -106,6 +108,7 @@ interface JWSTransactionDecoded {
 }
 
 async function notifyDiscord(title: string, fields: Record<string, string>) {
+  if (!DISCORD_WEBHOOK) return; // env var não configurada — silencioso
   try {
     await fetch(DISCORD_WEBHOOK, {
       method: "POST",

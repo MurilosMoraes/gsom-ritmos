@@ -54,7 +54,9 @@ const PLAN_DURATIONS: Record<string, number> = {
   "rei-dos-palcos": 36,
 };
 
-const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1491970416720478297/dzQS-EFHsMrEFsWilzwe__kWbPHLfCFnKD_dLFqdP0oa83HiDspGERRLEDpEjmjSj0pQ";
+// Discord webhook injetado via env var. Setar em Supabase Dashboard →
+// Edge Functions → Secrets como DISCORD_WEBHOOK_URL.
+const DISCORD_WEBHOOK = Deno.env.get("DISCORD_WEBHOOK_URL") || "";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -174,6 +176,7 @@ function validateTransaction(
 async function notifyDiscord(
   fields: { user_email?: string; user_name?: string; planId: string; amount?: number; environment?: string; transactionId: string },
 ) {
+  if (!DISCORD_WEBHOOK) return; // env var não configurada — silencioso
   try {
     const amountRS = fields.amount ? `R$ ${(fields.amount / 100).toFixed(2)}` : "—";
     await fetch(DISCORD_WEBHOOK, {

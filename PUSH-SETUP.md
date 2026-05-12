@@ -30,10 +30,12 @@ No Supabase Dashboard → **Edge Functions** → **Secrets**:
 Adiciona estas 3 vars:
 
 ```
-ONESIGNAL_APP_ID=30db2eda-9227-48ef-ab48-5b3eb26465e8
-ONESIGNAL_API_KEY=os_v2_app_gdns5wuse5eo7k2ilm7lezdf5adlyn2g44uei65rwmwd24dbmiavw6hsjqagoazagdcwhfm44erp4q2zj2zs3hpfq5trs6bveiugfpq
+ONESIGNAL_APP_ID=<APP_ID público do OneSignal Dashboard>
+ONESIGNAL_API_KEY=<COLAR DO DASHBOARD do OneSignal — começa com os_v2_app_>
 CRON_SECRET=<gere uma string random aqui, qualquer coisa, ex: openssl rand -hex 32>
 ```
+
+> ⚠️ **Nunca commitar o valor real da API Key nesse arquivo nem em outro arquivo do repo.** Cola direto no Supabase Dashboard → Edge Functions → Secrets.
 
 A `CRON_SECRET` protege a edge fn de cron de ser chamada por qualquer um. Eu sugiro `openssl rand -hex 32` no terminal pra gerar.
 
