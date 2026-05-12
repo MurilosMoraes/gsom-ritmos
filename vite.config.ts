@@ -40,7 +40,9 @@ export default defineConfig({
         // /midi/ original. Incluir no precache web inflaria o download em
         // ~5MB sem benefício.
         globPatterns: ['**/*.{js,css,html,ico,svg,woff2,json,wav,mp3,png}'],
-        globIgnores: ['**/midi-native/**'],
+        // OneSignalSDKWorker.js é um SW separado (controlado pelo OneSignal).
+        // Não pode entrar no precache do Workbox nem ser fallbacked.
+        globIgnores: ['**/midi-native/**', '**/OneSignalSDKWorker.js'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB (logo grande)
         // ═══════════════════════════════════════════════════════════════
         // navigateFallback default do vite-plugin-pwa é '/index.html'.
