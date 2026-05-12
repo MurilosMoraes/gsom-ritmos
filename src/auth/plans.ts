@@ -377,16 +377,29 @@ class PlansPage {
       const card = document.createElement('div');
       card.className = 'plan-card' + (isHighlighted ? ' popular' : '');
 
-      // Aplicar desconto do cupom
       const discount = this.appliedCoupon?.discount_percent || 0;
-      const originalPrice = plan.priceCents;
-      let finalPrice = Math.round(originalPrice * (1 - discount / 100));
       const hasDiscount = discount > 0;
-
-      // Aplicar crédito de upgrade (após cupom)
+      const originalPrice = plan.priceCents;
       const hasCredit = this.upgradeCredit > 0;
+
+      // ORDEM IMPORTA: em upgrade, primeiro desconta o crédito (dinheiro
+      // que o user "já tinha"), depois aplica cupom sobre o valor a pagar.
+      //
+      // Caso o cupom fosse aplicado ANTES (regra antiga e bugada):
+      //   trimestral (R$ 81) → semestral (R$ 144) com cupom 50%
+      //   - cupom 50% sobre R$ 144 = R$ 72 desconto → preço fica R$ 72
+      //   - crédito R$ 74,70 → preço fica R$ 0 (saiu de graça, perdemos $)
+      //
+      // Ordem correta:
+      //   - crédito R$ 74,70 sobre R$ 144 → diferença R$ 69,30
+      //   - cupom 50% sobre R$ 69,30 = R$ 34,65 desconto
+      //   - paga R$ 34,65 (justo: ele tinha crédito, ganhou + 50% no resto)
+      let finalPrice = originalPrice;
       const creditApplied = hasCredit ? Math.min(this.upgradeCredit, finalPrice) : 0;
       finalPrice = Math.max(0, finalPrice - creditApplied);
+      if (hasDiscount) {
+        finalPrice = Math.round(finalPrice * (1 - discount / 100));
+      }
 
       const finalPerMonth = plan.durationMonths > 0
         ? Math.round(finalPrice / plan.durationMonths / 100)

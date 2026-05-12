@@ -158,9 +158,17 @@ export async function requestPushPermission(): Promise<boolean> {
   try {
     await initOneSignal();
     if (!window.OneSignal) return false;
-    // V16 API: usa Notifications namespace
-    const result = await window.OneSignal.Notifications.requestPermission();
-    return !!result;
+    // V16 API: usa Notifications namespace.
+    // Pode lançar "Permission dismissed" se o user fechar o popup do browser
+    // sem clicar nada — isso NÃO é erro fatal: a subscription já foi criada,
+    // só falta o user aceitar de novo. Engolimos o erro silenciosamente.
+    try {
+      await window.OneSignal.Notifications.requestPermission();
+    } catch {
+      // Permission dismissed / blocked — segue pra checar estado real
+    }
+    // Verifica o estado REAL da permissão após o popup
+    return !!window.OneSignal.Notifications?.permission;
   } catch (e) {
     console.warn('[OneSignal] requestPermission falhou:', e);
     return false;

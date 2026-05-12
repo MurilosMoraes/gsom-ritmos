@@ -99,6 +99,20 @@ export default defineConfig({
             }
           },
           {
+            // HTMLs — NetworkFirst pra pegar CSP/cabeçalhos atualizados.
+            // Antes era precache (CacheFirst) e isso fazia CSP antiga ficar
+            // grudada no browser por dias mesmo após deploy. Agora o SW
+            // tenta network primeiro, só cai pro cache se offline.
+            urlPattern: ({ request }: { request: Request }) => request.destination === 'document',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'gdrums-html',
+              networkTimeoutSeconds: 3,
+              expiration: { maxAgeSeconds: 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
+          {
             // Manifest dos ritmos — network first (precisa estar atualizado)
             urlPattern: /\/rhythm\/manifest\.json$/,
             handler: 'NetworkFirst',
