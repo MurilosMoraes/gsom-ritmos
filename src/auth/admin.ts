@@ -3126,6 +3126,14 @@ class AdminDashboard {
     const segmentSelect = document.getElementById('pushSegment') as HTMLSelectElement;
     const titleInput = document.getElementById('pushTitle') as HTMLInputElement;
     const bodyInput = document.getElementById('pushBody') as HTMLTextAreaElement;
+    const urlInput = document.getElementById('pushUrl') as HTMLInputElement;
+    const couponSelect = document.getElementById('pushCoupon') as HTMLSelectElement;
+    const campaignInput = document.getElementById('pushCampaign') as HTMLInputElement;
+
+    // Popula dropdown de cupons (uma vez)
+    if (couponSelect && couponSelect.options.length <= 1) {
+      this.populateCouponDropdown(couponSelect);
+    }
 
     // Bind único
     if (sendBtn && !sendBtn.dataset.bound) {
@@ -3135,6 +3143,9 @@ class AdminDashboard {
       segmentSelect?.addEventListener('change', () => this.updatePushPreview());
       titleInput?.addEventListener('input', () => this.updatePushPreview());
       bodyInput?.addEventListener('input', () => this.updatePushPreview());
+      couponSelect?.addEventListener('change', () => this.updatePushPreview());
+      campaignInput?.addEventListener('input', () => this.updatePushPreview());
+      urlInput?.addEventListener('input', () => this.updatePushPreview());
     }
 
     await Promise.all([
@@ -3142,6 +3153,25 @@ class AdminDashboard {
       this.renderPushHistory(),
       this.updatePushPreview(),
     ]);
+  }
+
+  private populateCouponDropdown(select: HTMLSelectElement): void {
+    // Lê os cupons ativos do cache (já carregado em loadData)
+    const now = new Date();
+    const activeCoupons = this.coupons.filter(c => {
+      if (!c.active) return false;
+      if (c.valid_until && new Date(c.valid_until) < now) return false;
+      if (c.max_uses && c.current_uses >= c.max_uses) return false;
+      return true;
+    }).sort((a, b) => (b.discount_percent || 0) - (a.discount_percent || 0));
+
+    activeCoupons.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.code;
+      const remaining = c.max_uses ? (c.max_uses - (c.current_uses || 0)) : 9999;
+      opt.textContent = `${c.code} — ${c.discount_percent}% OFF (${remaining} usos)`;
+      select.appendChild(opt);
+    });
   }
 
   private async renderPushStats(): Promise<void> {
@@ -3252,14 +3282,59 @@ class AdminDashboard {
       label = `users com status "${st}"`;
     }
 
-    preview.innerHTML = `<strong>Audiência estimada:</strong> ${count} subscribers (${label})`;
+    // Mostra também URL final com cupom + UTM
+    const baseUrl = (document.getElementById('pushUrl') as HTMLInputElement)?.value || '';
+    const coupon = (document.getElementById('pushCoupon') as HTMLSelectElement)?.value || '';
+    const campaign = (document.getElementById('pushCampaign') as HTMLInputElement)?.value || '';
+    const finalUrl = this.buildPushUrl(baseUrl, coupon, campaign);
+
+    let couponInfo = '';
+    if (coupon) {
+      const cup = this.coupons.find(c => c.code === coupon);
+      if (cup) {
+        const remaining = cup.max_uses ? cup.max_uses - (cup.current_uses || 0) : 9999;
+        const warning = remaining < count ? ` <span style="color:var(--a-red);">⚠️ só ${remaining} usos sobrando</span>` : '';
+        couponInfo = `<div style="margin-top:0.4rem;"><strong>Cupom:</strong> <span style="color:var(--a-cyan);">${coupon}</span> (${cup.discount_percent}% OFF, ${remaining} usos disponíveis)${warning}</div>`;
+      }
+    }
+
+    preview.innerHTML = `
+      <div><strong>Audiência:</strong> ${count} subscribers (${label})</div>
+      ${couponInfo}
+      ${finalUrl ? `<div style="margin-top:0.4rem;font-size:0.7rem;word-break:break-all;"><strong>Link final:</strong> <code style="color:var(--a-cyan);">${finalUrl}</code></div>` : ''}
+    `;
     return Promise.resolve();
+  }
+
+  /**
+   * Constrói URL final com cupom + utm preservando query existentes.
+   * Ex: https://gdrums.com.br/plans + coupon=VOLTA50 + utm_*
+   *     → https://gdrums.com.br/plans?coupon=VOLTA50&utm_source=push&utm_campaign=fim_de_mes
+   */
+  private buildPushUrl(baseUrl: string, coupon: string, campaign: string): string {
+    if (!baseUrl) return baseUrl;
+    try {
+      const u = new URL(baseUrl);
+      if (coupon) u.searchParams.set('coupon', coupon);
+      // UTM tracking — só se cupom OU campaign foram informados
+      if (coupon || campaign) {
+        u.searchParams.set('utm_source', 'push');
+        if (campaign) u.searchParams.set('utm_campaign', campaign);
+        else if (coupon) u.searchParams.set('utm_campaign', coupon.toLowerCase());
+      }
+      return u.toString();
+    } catch {
+      // URL inválida — devolve original sem quebrar
+      return baseUrl;
+    }
   }
 
   private async sendPushClick(): Promise<void> {
     const title = (document.getElementById('pushTitle') as HTMLInputElement).value.trim();
     const body = (document.getElementById('pushBody') as HTMLTextAreaElement).value.trim();
-    const url = (document.getElementById('pushUrl') as HTMLInputElement).value.trim();
+    const baseUrl = (document.getElementById('pushUrl') as HTMLInputElement).value.trim();
+    const coupon = (document.getElementById('pushCoupon') as HTMLSelectElement).value.trim();
+    const campaign = (document.getElementById('pushCampaign') as HTMLInputElement).value.trim();
     const segmentRaw = (document.getElementById('pushSegment') as HTMLSelectElement).value;
 
     if (!title || !body) {
@@ -3274,9 +3349,33 @@ class AdminDashboard {
       status_filter = segmentRaw.split(':')[1];
     }
 
+    // Valida cupom contra audiência estimada
+    if (coupon) {
+      const cup = this.coupons.find(c => c.code === coupon);
+      if (cup && cup.max_uses) {
+        const remaining = cup.max_uses - (cup.current_uses || 0);
+        const audiencePreview = document.getElementById('pushPreview')?.textContent || '';
+        const match = audiencePreview.match(/(\d+)\s+subscribers/);
+        const audience = match ? parseInt(match[1]) : 0;
+        if (remaining < audience && remaining < 50) {
+          const ok = await modalManager.confirm(
+            'Atenção: cupom pode esgotar',
+            `Cupom "${coupon}" tem só ${remaining} usos sobrando, mas push vai pra ${audience} users. Os primeiros vão usar até esgotar. Continuar?`
+          );
+          if (!ok) {
+            return;
+          }
+        }
+      }
+    }
+
+    // Constrói URL final com cupom + UTM
+    const finalUrl = this.buildPushUrl(baseUrl, coupon, campaign);
+
+    const segmentLabel = segmentRaw + (coupon ? ` + cupom ${coupon}` : '');
     const confirmed = await modalManager.confirm(
       'Enviar push?',
-      `Vai disparar pra todo mundo no segmento "${segmentRaw}". Não dá pra desfazer.`
+      `Vai disparar pra "${segmentLabel}". Link: ${finalUrl}. Não dá pra desfazer.`
     );
     if (!confirmed) return;
 
@@ -3292,7 +3391,7 @@ class AdminDashboard {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ title, body, url: url || undefined, segment, status_filter }),
+        body: JSON.stringify({ title, body, url: finalUrl || undefined, segment, status_filter }),
       });
       const data = await res.json();
 
@@ -3303,6 +3402,9 @@ class AdminDashboard {
         // Limpa campos
         (document.getElementById('pushTitle') as HTMLInputElement).value = '';
         (document.getElementById('pushBody') as HTMLTextAreaElement).value = '';
+        (document.getElementById('pushCoupon') as HTMLSelectElement).value = '';
+        (document.getElementById('pushCampaign') as HTMLInputElement).value = '';
+        this.updatePushPreview();
         // Atualiza histórico
         await this.renderPushHistory();
       }

@@ -463,6 +463,22 @@
                   <input type="url" id="pushUrl" class="adm-input" placeholder="https://gdrums.com.br/plans" value="https://gdrums.com.br/plans" />
                 </div>
                 <div class="adm-field">
+                  <label>Cupom a aplicar (opcional)</label>
+                  <select id="pushCoupon" class="adm-input">
+                    <option value="">— Sem cupom —</option>
+                  </select>
+                  <div style="font-size:0.7rem;color:var(--a-text2);margin-top:0.25rem;">
+                    Anexa <code style="color:var(--a-cyan);">?coupon=CÓDIGO</code> na URL — cupom é aplicado automaticamente no checkout.
+                  </div>
+                </div>
+                <div class="adm-field">
+                  <label>Tag de campanha (opcional)</label>
+                  <input type="text" id="pushCampaign" class="adm-input" placeholder="ex: black_friday_2026, volta50_winback" maxlength="40" />
+                  <div style="font-size:0.7rem;color:var(--a-text2);margin-top:0.25rem;">
+                    Pra rastrear conversões — vira <code style="color:var(--a-cyan);">?utm_source=push&utm_campaign=...</code>
+                  </div>
+                </div>
+                <div class="adm-field">
                   <label>Segmento</label>
                   <select id="pushSegment" class="adm-input">
                     <option value="all">Todos os subscribers</option>
