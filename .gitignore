@@ -33,3 +33,4 @@ key.properties
 
 # Pasta duplicada criada pelo Xcode em algum momento — ignorar de vez
 ios/App/App 2.xcodeproj/
+_backup_rhythms_*/

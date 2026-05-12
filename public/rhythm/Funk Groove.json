@@ -1,5 +1,5 @@
 {
-  "version": "1.5",
+  "version": "1.6",
   "tempo": 212,
   "beatsPerBar": 4,
   "patternSteps": {
@@ -231,7 +231,7 @@
         ],
         "volumes": [
           [
-            0.8,
+            0.7,
             0.2,
             0.5,
             0.5,
@@ -241,7 +241,7 @@
             0.5,
             0.5,
             0.8,
-            0.8,
+            0.71,
             0.2,
             0.8,
             0.5,
@@ -733,7 +733,7 @@
         ],
         "volumes": [
           [
-            0.8,
+            0.69,
             0.2,
             0.5,
             0.5,
@@ -743,7 +743,7 @@
             0.5,
             0.5,
             0.8,
-            0.8,
+            0.7,
             0.2,
             0.8,
             0.5,
@@ -1109,37 +1109,37 @@
           [
             true,
             false,
-            true,
+            false,
             false,
             true,
             false,
-            true,
+            false,
             false,
             true,
             false,
-            true,
+            false,
             false,
             true,
             false,
-            true,
+            false,
             false
           ],
           [
             false,
             false,
+            true,
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
+            true,
             false
           ],
           [
@@ -1235,7 +1235,7 @@
         ],
         "volumes": [
           [
-            0.8,
+            0.7,
             0.2,
             0.5,
             0.5,
@@ -1245,7 +1245,7 @@
             0.5,
             0.5,
             0.8,
-            0.8,
+            0.68,
             0.2,
             0.8,
             0.5,
@@ -1320,7 +1320,7 @@
             0.5,
             0.08,
             0.5,
-            0.56,
+            0.38,
             0.5,
             0.2
           ],
@@ -1345,19 +1345,19 @@
           [
             0,
             0.8,
-            0.1,
+            0.5,
             0,
             0,
             0,
+            0.5,
             0,
             0,
             0,
-            0,
-            0,
+            0.5,
             0,
             0,
             0.8,
-            0,
+            0.5,
             0
           ],
           [
@@ -1483,9 +1483,9 @@
             "midiPath": "/midi/ride.wav"
           },
           {
-            "fileName": "cg1.wav",
+            "fileName": "ride.wav",
             "audioData": "",
-            "midiPath": "/midi/cg1.wav"
+            "midiPath": "/midi/ride.wav"
           },
           {
             "fileName": "surdo.wav",
@@ -1643,7 +1643,7 @@
         ],
         "volumes": [
           [
-            1,
+            0.64,
             0.8,
             0.8,
             0,
@@ -1654,10 +1654,10 @@
           ],
           [
             0.5,
-            0.5,
+            0.34,
             0.8,
-            0.5,
-            0.5,
+            0.34,
+            0.39,
             1,
             1,
             1
@@ -1678,8 +1678,8 @@
             0.8,
             0.8,
             1,
-            0.5,
-            0.5,
+            0.2,
+            0.28,
             1
           ],
           [
@@ -1704,7 +1704,7 @@
           ],
           [
             0.8,
-            0.8,
+            0.62,
             0,
             0.8,
             1,
@@ -1720,7 +1720,7 @@
             1,
             1,
             1,
-            0.5
+            0.32
           ],
           [
             1,
@@ -2067,9 +2067,9 @@
             1
           ],
           [
-            0.5,
+            0.31,
             0.8,
-            0.5,
+            0.35,
             0.75,
             0,
             0.8,
@@ -2109,7 +2109,7 @@
             0,
             0,
             0,
-            0.5,
+            0.22,
             0.28,
             0.5,
             0.5,
@@ -2125,7 +2125,7 @@
             0,
             0.8,
             0,
-            0.8,
+            0.76,
             0,
             0,
             0,
@@ -2157,7 +2157,7 @@
             1
           ],
           [
-            0.8,
+            0.53,
             0,
             0.8,
             0,
@@ -2185,9 +2185,9 @@
             0,
             1,
             1,
-            0.5,
+            0.27,
             0.69,
-            0.5,
+            0.32,
             1,
             1,
             1
@@ -2207,7 +2207,7 @@
             1,
             1,
             1,
-            0.5,
+            0.24,
             1
           ],
           [
@@ -2569,7 +2569,7 @@
             1
           ],
           [
-            0.5,
+            0.45,
             0.8,
             0.7,
             0.75,
@@ -2611,7 +2611,7 @@
             0,
             0,
             0,
-            0.5,
+            0.26,
             0.28,
             0.5,
             0.5,
@@ -2707,7 +2707,7 @@
             1,
             1,
             1,
-            0.5,
+            0.21,
             1,
             0.5,
             1
@@ -2846,8 +2846,8 @@
             false,
             true,
             false,
-            true,
             false,
+            true,
             false,
             false,
             true,
@@ -2860,24 +2860,6 @@
             false,
             false,
             false,
-            false,
-            false,
-            false,
-            true,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            true,
-            true,
             false,
             false,
             false,
@@ -2895,8 +2877,26 @@
             false,
             false,
             false,
-            false,
             true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
             true,
             false,
             false,
@@ -2917,10 +2917,10 @@
             false,
             false,
             false,
+            true,
             false,
             false,
-            true,
-            true,
+            false,
             false,
             false,
             false,
@@ -2938,8 +2938,8 @@
             false,
             false,
             false,
-            false,
             true,
+            false,
             false,
             false,
             false
@@ -3057,23 +3057,23 @@
           [
             1,
             0,
-            0.8,
+            0.6,
             0,
             0,
             0,
             0.9,
-            0.8,
+            0.68,
             1,
-            0.8,
+            0.57,
+            0.5,
             1,
             1,
-            1,
-            0.8,
+            0.59,
             1,
             1
           ],
           [
-            0.5,
+            0.36,
             0,
             0.9,
             0,
@@ -3081,7 +3081,7 @@
             0,
             1,
             1,
-            0.44,
+            0.38,
             1,
             1,
             1,
@@ -3095,27 +3095,9 @@
             0.8,
             0,
             0.5,
+            0.22,
             0.8,
             0.8,
-            0,
-            0,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            0,
-            0,
-            0,
-            0.8,
-            0,
-            0.5,
-            0.5,
             0,
             1,
             1,
@@ -3130,12 +3112,30 @@
             0,
             0,
             0,
+            0.8,
             0,
-            0,
-            0,
-            0,
+            0.5,
+            0.24,
             0,
             1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0.28,
             1,
             0.5,
             0.8,
@@ -3156,14 +3156,14 @@
             1,
             1,
             1,
-            1,
+            0.28,
             0.46,
             1,
             1,
             1
           ],
           [
-            1,
+            0.66,
             0,
             0,
             0,
@@ -3171,7 +3171,7 @@
             0,
             0,
             1,
-            1,
+            0.6,
             1,
             1,
             1,
@@ -3195,8 +3195,8 @@
             1,
             1,
             1,
-            0.38,
-            0.8
+            0.09,
+            0.27
           ],
           [
             1,
@@ -3293,14 +3293,14 @@
             "midiPath": "/midi/t3.mp3"
           },
           {
-            "fileName": "chimbal_fechado.wav",
+            "fileName": "t2 dp.wav",
             "audioData": "",
-            "midiPath": "/midi/chimbal_fechado.wav"
+            "midiPath": "/midi/t2 dp.wav"
           },
           {
-            "fileName": "chimbal_aberto.wav",
+            "fileName": "t3 dp.wav",
             "audioData": "",
-            "midiPath": "/midi/chimbal_aberto.wav"
+            "midiPath": "/midi/t3 dp.wav"
           },
           {
             "fileName": "prato.mp3",
@@ -3658,5 +3658,5 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-04-09T15:40:00.728Z"
+  "timestamp": "2026-05-05T15:55:25.919Z"
 }

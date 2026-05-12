@@ -231,7 +231,7 @@
         ],
         "volumes": [
           [
-            0.59,
+            0.42,
             0,
             0,
             0.5,
@@ -241,7 +241,7 @@
             0.27,
             0.42,
             0.8,
-            0.55,
+            0.41,
             0.5,
             0.43,
             0.8,
@@ -540,51 +540,51 @@
             true,
             false,
             false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          [
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
             true,
             false,
             false,
             false,
             false,
-            true,
+            false,
             false,
             false,
             true
-          ],
-          [
-            true,
-            false,
-            true,
-            false,
-            true,
-            false,
-            true,
-            false,
-            true,
-            false,
-            true,
-            false,
-            false,
-            false,
-            true,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
           ],
           [
             false,
@@ -733,7 +733,7 @@
         ],
         "volumes": [
           [
-            0.59,
+            0.43,
             0,
             0,
             0.5,
@@ -741,9 +741,9 @@
             0.8,
             0.5,
             0.31,
-            0.47,
+            0.35,
             0.8,
-            0.55,
+            0.46,
             0.5,
             0.43,
             0.8,
@@ -794,6 +794,7 @@
             0,
             0,
             0,
+            0.41,
             0,
             0,
             0,
@@ -801,8 +802,7 @@
             0,
             0,
             0,
-            0,
-            0
+            0.3
           ],
           [
             0.5,
@@ -966,9 +966,9 @@
             "midiPath": "/midi/cajon 3.mp3"
           },
           {
-            "fileName": "tom_2.wav",
+            "fileName": "cajon 2.mp3",
             "audioData": "",
-            "midiPath": "/midi/tom_2.wav"
+            "midiPath": "/midi/cajon 2.mp3"
           },
           {
             "fileName": "chimbal_fechado.wav",
@@ -1042,12 +1042,12 @@
             true,
             false,
             false,
-            true,
-            false,
-            true,
             false,
             false,
             true,
+            false,
+            false,
+            false,
             false,
             false,
             false
@@ -1078,12 +1078,12 @@
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
             false,
-            false,
-            false,
+            true,
             false,
             false,
             false
@@ -1235,7 +1235,7 @@
         ],
         "volumes": [
           [
-            0.59,
+            0.42,
             0,
             0,
             0.5,
@@ -1245,7 +1245,7 @@
             0.31,
             0.33,
             0.8,
-            0.55,
+            0.45,
             0.5,
             0.43,
             0.8,
@@ -1296,12 +1296,12 @@
             0,
             0,
             0,
+            0.4,
             0,
             0,
             0,
             0,
-            0,
-            0,
+            0.45,
             0,
             0,
             0
@@ -1468,9 +1468,9 @@
             "midiPath": "/midi/cajon 3.mp3"
           },
           {
-            "fileName": "tom_2.wav",
+            "fileName": "cajon 2.mp3",
             "audioData": "",
-            "midiPath": "/midi/tom_2.wav"
+            "midiPath": "/midi/cajon 2.mp3"
           },
           {
             "fileName": "chimbal_fechado.wav",
@@ -1645,9 +1645,9 @@
           [
             1,
             0.61,
-            0.6,
+            0.34,
             0,
-            0.6,
+            0.44,
             0.59,
             0,
             0
@@ -1663,7 +1663,7 @@
             0.54
           ],
           [
-            0.42,
+            0.34,
             0.8,
             0.5,
             0.43,
@@ -2173,35 +2173,35 @@
           [
             1,
             0.8,
-            0.6,
+            0.39,
             0.8,
-            0.8,
+            0.35,
             0,
             0,
             0,
-            0.6,
+            0.4,
             1,
             1,
             1,
             1,
             1,
-            0.58,
+            0.4,
             0.58
           ],
           [
-            0.67,
+            0.5,
             0,
             0.7,
             0.75,
             0,
             0.8,
-            0.66,
+            0.5,
             0,
             1,
             1,
             1,
             1,
-            0.8,
+            0.5,
             0.8,
             0.8,
             1
@@ -2677,9 +2677,9 @@
             0.8,
             0.6,
             0.8,
-            0.61,
+            0.38,
             0,
-            0.61,
+            0.39,
             0,
             0.6,
             1,
@@ -2699,10 +2699,10 @@
             0.8,
             0.8,
             0,
-            0.8,
+            0.5,
             1,
             1,
-            0.8,
+            0.5,
             0.8,
             0.8,
             0.8,
@@ -3179,7 +3179,7 @@
           [
             1,
             0.5,
-            0.6,
+            0.41,
             0,
             0,
             0,
@@ -3190,12 +3190,12 @@
             1,
             1,
             1,
-            0.61,
+            0.44,
             1,
             1
           ],
           [
-            0.64,
+            0.52,
             0,
             0.9,
             0,
@@ -3203,7 +3203,7 @@
             0,
             1,
             1,
-            0.65,
+            0.54,
             1,
             1,
             0.5,
@@ -3592,7 +3592,7 @@
             0,
             0,
             0,
-            0.64
+            0.37
           ],
           [
             0,
@@ -3625,11 +3625,11 @@
             0
           ],
           [
-            0.7,
+            0.54,
             0,
-            0.75,
+            0.46,
             0,
-            0.8,
+            0.54,
             0,
             0.9,
             0
@@ -3641,7 +3641,7 @@
             0,
             0,
             0,
-            0.59,
+            0.42,
             0
           ],
           [
@@ -3780,5 +3780,5 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-04-28T12:32:04.976Z"
+  "timestamp": "2026-05-09T18:08:05.301Z"
 }

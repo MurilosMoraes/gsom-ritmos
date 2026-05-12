@@ -1,10 +1,10 @@
 {
-  "version": "1.5",
+  "version": "1.6",
   "tempo": 130,
   "beatsPerBar": 4,
   "patternSteps": {
     "main": 16,
-    "fill": 16,
+    "fill": 8,
     "end": 16,
     "intro": 8
   },
@@ -231,8 +231,8 @@
         ],
         "volumes": [
           [
-            0.8,
-            0.2,
+            0.69,
+            0.27,
             0,
             0.5,
             0.8,
@@ -240,8 +240,8 @@
             0.8,
             0.5,
             0.5,
-            0.8,
-            0.8,
+            0.62,
+            0.7,
             0.2,
             0.8,
             0.8,
@@ -271,6 +271,7 @@
             0,
             0,
             0,
+            0.2,
             0,
             0,
             0,
@@ -278,8 +279,7 @@
             0,
             0,
             0,
-            0,
-            0,
+            0.2,
             0,
             0,
             0
@@ -335,7 +335,7 @@
             0,
             0,
             0,
-            0.2,
+            0.26,
             0
           ],
           [
@@ -459,9 +459,9 @@
             "midiPath": "/midi/caixa.wav"
           },
           {
-            "fileName": "tom_1.wav",
+            "fileName": "cx grave.wav",
             "audioData": "",
-            "midiPath": "/midi/tom_1.wav"
+            "midiPath": "/midi/cx grave.wav"
           },
           {
             "fileName": "tom_2.wav",
@@ -607,37 +607,37 @@
           [
             true,
             false,
-            true,
+            false,
             false,
             true,
             false,
-            true,
+            false,
             false,
             true,
             false,
-            true,
+            false,
             false,
             true,
             false,
-            true,
+            false,
             false
           ],
           [
             false,
             false,
+            true,
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
+            true,
             false
           ],
           [
@@ -733,17 +733,17 @@
         ],
         "volumes": [
           [
-            0.8,
+            0.68,
             0.2,
-            0.8,
+            0.66,
             0.5,
             0.8,
             0,
             0.8,
+            0.46,
             0.5,
-            0.5,
-            0.8,
-            0.8,
+            0.62,
+            0.69,
             0.2,
             0.8,
             0.8,
@@ -843,19 +843,19 @@
           [
             0,
             0,
+            0.25,
             0,
             0,
             0,
+            0.25,
             0,
             0,
             0,
-            0,
-            0,
-            0,
+            0.25,
             0,
             0,
             0.8,
-            0,
+            0.24,
             0
           ],
           [
@@ -981,9 +981,9 @@
             "midiPath": "/midi/chimbal_aberto.wav"
           },
           {
-            "fileName": "prato.mp3",
+            "fileName": "chimbal_aberto.wav",
             "audioData": "",
-            "midiPath": "/midi/prato.mp3"
+            "midiPath": "/midi/chimbal_aberto.wav"
           },
           {
             "fileName": "surdo.wav",
@@ -1109,37 +1109,37 @@
           [
             true,
             false,
-            true,
+            false,
             false,
             true,
             false,
-            true,
+            false,
             false,
             true,
             false,
-            true,
+            false,
             false,
             true,
             false,
-            true,
+            false,
             false
           ],
           [
             false,
             false,
+            true,
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
+            true,
             false
           ],
           [
@@ -1235,17 +1235,17 @@
         ],
         "volumes": [
           [
-            0.8,
+            0.69,
             0.2,
-            0.8,
+            0.69,
             0.5,
             0.8,
             0,
             0.8,
+            0.59,
             0.5,
-            0.5,
-            0.8,
-            0.8,
+            0.61,
+            0.69,
             0.2,
             0.8,
             0.8,
@@ -1325,19 +1325,19 @@
             0.2
           ],
           [
-            0.5,
+            0.35,
             0,
             0.2,
             0,
-            0.5,
+            0.3,
             0,
             0.2,
             0,
-            0.5,
+            0.35,
             0,
             0.2,
             0,
-            0.5,
+            0.3,
             0,
             0.2,
             0
@@ -1345,35 +1345,35 @@
           [
             0,
             0,
+            0.2,
             0,
             0,
             0,
+            0.2,
             0,
             0,
             0,
-            0,
-            0,
-            0,
+            0.2,
             0,
             0,
             0.8,
-            0,
+            0.2,
             0
           ],
           [
-            1,
+            0.2,
             0,
             0,
             0,
+            0.2,
             0,
             0,
             0,
-            0,
-            0.85,
-            0,
+            0.2,
             0,
             0,
             0,
+            0.2,
             0,
             0,
             0
@@ -1483,14 +1483,14 @@
             "midiPath": "/midi/prato 3.wav"
           },
           {
-            "fileName": "prato.mp3",
+            "fileName": "prato 3.wav",
             "audioData": "",
-            "midiPath": "/midi/prato.mp3"
+            "midiPath": "/midi/prato 3.wav"
           },
           {
-            "fileName": "surdo.wav",
+            "fileName": "prato 2.wav",
             "audioData": "",
-            "midiPath": "/midi/surdo.wav"
+            "midiPath": "/midi/prato 2.wav"
           },
           {
             "fileName": "",
@@ -1523,7 +1523,7 @@
           [
             true,
             false,
-            false,
+            true,
             false,
             false,
             false,
@@ -1643,9 +1643,9 @@
         ],
         "volumes": [
           [
-            1,
+            0.67,
             0.8,
-            0.8,
+            0.27,
             0,
             1,
             1,
@@ -1656,8 +1656,8 @@
             0.5,
             0.8,
             0.8,
+            0.73,
             0.8,
-            1,
             1,
             1,
             1
@@ -1678,8 +1678,8 @@
             0.8,
             0.8,
             1,
-            0.5,
-            1,
+            0.14,
+            0.27,
             1
           ],
           [
@@ -1704,7 +1704,7 @@
           ],
           [
             0.8,
-            0.8,
+            0.61,
             0,
             0.8,
             1,
@@ -1720,7 +1720,7 @@
             1,
             1,
             1,
-            1
+            0.32
           ],
           [
             1,
@@ -1971,7 +1971,7 @@
             true,
             true,
             false,
-            true,
+            false,
             false
           ],
           [
@@ -1989,7 +1989,7 @@
             false,
             false,
             false,
-            false,
+            true,
             false
           ],
           [
@@ -2067,9 +2067,9 @@
             0.5
           ],
           [
+            0.74,
             0.8,
-            0.8,
-            0.7,
+            0.66,
             0.75,
             0,
             0.8,
@@ -2090,7 +2090,7 @@
             0.5,
             0.5,
             0.5,
-            0,
+            0.8,
             0.8,
             0.85,
             1,
@@ -2109,9 +2109,9 @@
             0,
             0,
             0,
-            0.5,
-            0.5,
-            0.5,
+            0.13,
+            0.26,
+            0.27,
             0.5,
             0.5,
             0.5,
@@ -2125,7 +2125,7 @@
             0,
             0.8,
             0,
-            0.8,
+            0.56,
             0,
             0,
             0,
@@ -2157,9 +2157,9 @@
             1
           ],
           [
-            0.8,
+            0.37,
             0,
-            0.8,
+            0.41,
             0,
             0,
             0,
@@ -2185,11 +2185,11 @@
             0,
             1,
             1,
-            0.5,
-            0.69,
-            0.5,
+            0.13,
+            0.25,
+            0.3,
             1,
-            0.72,
+            0.43,
             1
           ],
           [
@@ -2207,7 +2207,7 @@
             1,
             1,
             1,
-            1,
+            0.21,
             1
           ],
           [
@@ -2307,9 +2307,9 @@
             "midiPath": "/midi/surdo.wav"
           },
           {
-            "fileName": "",
+            "fileName": "surdo dp.wav",
             "audioData": "",
-            "midiPath": ""
+            "midiPath": "/midi/surdo dp.wav"
           },
           {
             "fileName": "",
@@ -2553,9 +2553,9 @@
           [
             1,
             0.8,
+            0.54,
             0.8,
-            0.8,
-            0.8,
+            0.67,
             0,
             0,
             0,
@@ -2569,13 +2569,13 @@
             1
           ],
           [
-            0.8,
+            0.5,
             0.8,
             0.7,
             0.75,
             0.8,
             0.8,
-            0.85,
+            0.4,
             0,
             1,
             1,
@@ -2595,9 +2595,9 @@
             0,
             0.8,
             0.85,
-            0.34,
-            0.5,
-            0.5,
+            0.17,
+            0.24,
+            0.27,
             1,
             1,
             1,
@@ -2616,9 +2616,9 @@
             1,
             1,
             0.5,
-            0.5,
-            0.74,
-            0.8,
+            0.11,
+            0.21,
+            0.29,
             1,
             1
           ],
@@ -2665,7 +2665,7 @@
             0,
             0,
             0,
-            0.3,
+            0.24,
             0,
             1,
             1,
@@ -2691,8 +2691,8 @@
             1,
             1,
             1,
-            0.65,
-            0.8
+            0.18,
+            0.23
           ],
           [
             1,
@@ -2774,19 +2774,19 @@
             "midiPath": "/midi/bumbo.wav"
           },
           {
-            "fileName": "caixa.wav",
+            "fileName": "caixa dp.wav",
             "audioData": "",
-            "midiPath": "/midi/caixa.wav"
-          },
-          {
-            "fileName": "tom_1.wav",
-            "audioData": "",
-            "midiPath": "/midi/tom_1.wav"
+            "midiPath": "/midi/caixa dp.wav"
           },
           {
             "fileName": "tom_2.wav",
             "audioData": "",
             "midiPath": "/midi/tom_2.wav"
+          },
+          {
+            "fileName": "t3.mp3",
+            "audioData": "",
+            "midiPath": "/midi/t3.mp3"
           },
           {
             "fileName": "chimbal_fechado.wav",
@@ -3057,23 +3057,23 @@
           [
             1,
             0,
-            0.8,
+            0.58,
             0,
             0,
             0,
             0.9,
+            0.59,
+            1,
+            0.59,
             1,
             1,
             1,
-            1,
-            1,
-            1,
-            1,
+            0.59,
             1,
             1
           ],
           [
-            0.8,
+            0.76,
             0,
             0.9,
             0,
@@ -3081,25 +3081,7 @@
             0,
             1,
             1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            0,
-            0.8,
-            0,
-            0.8,
-            0.8,
-            0.8,
-            0,
-            0,
-            1,
+            0.72,
             1,
             1,
             1,
@@ -3110,12 +3092,12 @@
           ],
           [
             0,
-            0,
-            0,
             0.8,
             0,
+            0.16,
+            0.31,
             0.8,
-            0.8,
+            0,
             0,
             1,
             1,
@@ -3130,15 +3112,33 @@
             0,
             0,
             0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            1,
-            0.5,
             0.8,
+            0,
+            0.17,
+            0.3,
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            0.2,
+            0.3,
             1,
             1,
             1,
@@ -3163,7 +3163,7 @@
             1
           ],
           [
-            1,
+            0.58,
             0,
             0,
             0,
@@ -3171,7 +3171,7 @@
             0,
             0,
             1,
-            1,
+            0.47,
             1,
             1,
             1,
@@ -3195,8 +3195,8 @@
             1,
             1,
             1,
-            0.38,
-            0.8
+            0.19,
+            0.27
           ],
           [
             1,
@@ -3293,9 +3293,9 @@
             "midiPath": "/midi/tom_2.wav"
           },
           {
-            "fileName": "chimbal_fechado.wav",
+            "fileName": "t2 dp.wav",
             "audioData": "",
-            "midiPath": "/midi/chimbal_fechado.wav"
+            "midiPath": "/midi/t2 dp.wav"
           },
           {
             "fileName": "chimbal_aberto.wav",
@@ -3658,6 +3658,5 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-03-27T00:49:56.319Z",
-  "category": "Gospel"
+  "timestamp": "2026-05-05T16:32:16.997Z"
 }
