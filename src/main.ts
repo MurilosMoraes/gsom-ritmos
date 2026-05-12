@@ -691,9 +691,10 @@ class RhythmSequencer {
       const allowBtn = banner.querySelector('#pushBannerAllow') as HTMLButtonElement;
       allowBtn.disabled = true;
       allowBtn.textContent = 'Aguarde...';
+      let granted = false;
       try {
         const { requestPushPermission, syncSubscriptionId } = await import('./native/OneSignalService');
-        const granted = await requestPushPermission();
+        granted = await requestPushPermission();
         if (granted) {
           // Sincroniza ID com Supabase
           const { supabase } = await import('./auth/supabase');
@@ -706,7 +707,12 @@ class RhythmSequencer {
           Toast.show('Você pode ativar depois nas configurações do navegador.', { type: 'info' });
         }
       } catch { /* noop */ }
-      dismiss(true);
+      // Só marca como dismissed se permissão foi NEGADA — assim, se algo
+      // der ruim (estado fantasma do OneSignal, server delete, etc), o
+      // banner volta no próximo login pro user tentar de novo. Se ele
+      // permitiu, o filtro hasPushPermission() vai esconder o banner
+      // naturalmente.
+      dismiss(!granted);
     });
   }
 
