@@ -123,13 +123,17 @@ class AuthService {
 
   async logout(): Promise<void> {
     await supabase.auth.signOut();
-    // Limpar dados locais (favoritos, sessão, cache offline, etc)
+    // Limpa SÓ dados de sessão e estado transitório.
+    // PRESERVA: gdrums-setlist (repertório), gdrums-user-rhythms (ritmos
+    // personalizados), gdrums_pedal_keys (mapeamento de pedal), toggles.
+    // Justificativa: setlist é trabalho do user — se ele logar de novo
+    // (mesma conta ou não), o repertório fica disponível. No initWithUser
+    // o setlist do banco do user atual sobrescreve o local com merge defensivo.
+    // Se ele logar com OUTRA conta, o initWithUser puxa o setlist da nova conta
+    // e o antigo fica em backup local (não some).
     OfflineCache.clear();
-    localStorage.removeItem('gdrums-setlist');
     localStorage.removeItem('gdrums-session-id');
     localStorage.removeItem('gdrums-pending-order');
-    localStorage.removeItem('gdrums-toggle-intro');
-    localStorage.removeItem('gdrums-toggle-final');
     localStorage.removeItem('gdrums-mode');
     internalNav('/login');
   }

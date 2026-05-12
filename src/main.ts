@@ -767,6 +767,28 @@ class RhythmSequencer {
     document.addEventListener('keydown', onKey);
   }
 
+  /**
+   * Limpa apenas dados de SESSÃO do localStorage, preservando dados do USER
+   * (setlist, ritmos personalizados, mapeamento de pedal, etc).
+   *
+   * Usado quando detectamos que outra sessão tomou o lugar deste device.
+   * Antes era localStorage.clear() — apagava setlist do user só porque ele
+   * abriu o app em outro celular, causando perda silenciosa de repertório.
+   */
+  private clearSessionDataOnly(): void {
+    // SÓ remove o que é de sessão/transitório:
+    localStorage.removeItem('gdrums-session-id');
+    localStorage.removeItem('gdrums-pending-order');
+    localStorage.removeItem('gdrums-mode');
+    // Token do Supabase (formato: sb-<ref>-auth-token) — remove tudo que
+    // começa com sb- pra evitar resíduo de sessão
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('sb-'))
+      .forEach(k => localStorage.removeItem(k));
+    // PRESERVA explicitamente: gdrums-setlist, gdrums-user-rhythms,
+    // gdrums_pedal_keys, gdrums-toggle-*, gdrums-attr-v1, gdrums-whats-new-seen
+  }
+
   private async checkAccess(): Promise<boolean> {
     const { supabase } = await import('./auth/supabase');
 
@@ -936,9 +958,12 @@ class RhythmSequencer {
     // Sessão única — verificar se este device é o ativo
     const localSessionId = localStorage.getItem('gdrums-session-id');
     if (profile?.active_session_id && localSessionId && localSessionId !== profile.active_session_id) {
-      // Outra sessão está ativa — deslogar este device
+      // Outra sessão está ativa — deslogar este device.
+      // CRÍTICO: NÃO chamar localStorage.clear() — apaga setlist, ritmos
+      // salvos, mapeamento de pedal, preferências, e o cara perde tudo só
+      // porque abriu o app em outro device. Só tira o que é da sessão.
       await supabase.auth.signOut();
-      localStorage.clear();
+      this.clearSessionDataOnly();
       internalNav('/login');
       return false;
     }
