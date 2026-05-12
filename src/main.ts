@@ -530,6 +530,16 @@ class RhythmSequencer {
         if (session?.user) {
           await this.setlistManager.initWithUser(session.user.id, supabase);
           await this.userRhythmService.initWithUser(session.user.id, supabase);
+
+          // OneSignal: linka o user ao subscriber pra segmentação
+          // Fire-and-forget — não bloqueia o app se OneSignal falhar
+          import('./native/OneSignalService').then(async ({ initOneSignal, linkUserToPush, syncSubscriptionId }) => {
+            await initOneSignal();
+            await linkUserToPush(session.user.id);
+            // Após linkar, salva o onesignal_id no Supabase pra admin
+            // poder mandar push pra user específico
+            syncSubscriptionId(session.user.id, supabase).catch(() => {});
+          }).catch(() => { /* SDK falhou — sem push, app continua */ });
         }
       } catch {
         // Offline — setlist usa cache local automaticamente
@@ -568,6 +578,10 @@ class RhythmSequencer {
 
       // Modal de download offline — 1a vez ou quando manifest atualizar
       setTimeout(() => this.maybeShowOfflineDownload(), 6500);
+
+      // Banner soft de notificações push — aparece pra user autenticado
+      // que ainda não permitiu e não dismissou recentemente
+      setTimeout(() => this.maybeShowPushBanner(), 10000);
     });
   }
 
@@ -609,6 +623,151 @@ class RhythmSequencer {
   // manifest do servidor tem version maior que a versão baixada.
   // Baixa todos os ritmos + samples em paralelo (4 concurrent) com
   // barra de progresso. Não bloqueia: user pode pular.
+
+  // ─── Push notifications — banner soft ─────────────────────────────
+  //
+  // Aparece quando:
+  // - User autenticado
+  // - Browser suporta push (iOS Safari comum não suporta)
+  // - Permissão ainda não foi concedida nem negada
+  // - User não dismissou nos últimos 7 dias
+  //
+  // Toast discreto no rodapé com "Permitir" / "Agora não". Click em
+  // "Permitir" dispara o prompt nativo do browser (precisa de gesture).
+
+  private async maybeShowPushBanner(): Promise<void> {
+    try {
+      const { isPushSupported, hasPushPermission, isBannerDismissedRecently } = await import('./native/OneSignalService');
+
+      if (!isPushSupported()) return;
+      if (isBannerDismissedRecently()) return;
+      if (await hasPushPermission()) return;
+
+      // Estado da permissão ainda é "default" (não pediu nada) — mostra banner
+      this.showPushBanner();
+    } catch { /* noop */ }
+  }
+
+  private showPushBanner(): void {
+    if (document.getElementById('pushBanner')) return; // já existe
+
+    const banner = document.createElement('div');
+    banner.id = 'pushBanner';
+    banner.className = 'push-banner';
+    banner.innerHTML = `
+      <div class="push-banner-content">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
+        <div class="push-banner-text">
+          <strong>Receba avisos importantes</strong>
+          <span>Trial expirando, promoções e novidades — só o essencial.</span>
+        </div>
+      </div>
+      <div class="push-banner-actions">
+        <button class="push-banner-skip" id="pushBannerSkip">Agora não</button>
+        <button class="push-banner-allow" id="pushBannerAllow">Permitir</button>
+      </div>
+    `;
+    document.body.appendChild(banner);
+    this.injectPushBannerCss();
+
+    // Anima entrada
+    setTimeout(() => banner.classList.add('push-banner-visible'), 50);
+
+    const dismiss = async (markDismissed: boolean) => {
+      if (markDismissed) {
+        const { markBannerDismissed } = await import('./native/OneSignalService');
+        markBannerDismissed();
+      }
+      banner.classList.remove('push-banner-visible');
+      setTimeout(() => banner.remove(), 220);
+    };
+
+    banner.querySelector('#pushBannerSkip')?.addEventListener('click', () => dismiss(true));
+
+    banner.querySelector('#pushBannerAllow')?.addEventListener('click', async () => {
+      const allowBtn = banner.querySelector('#pushBannerAllow') as HTMLButtonElement;
+      allowBtn.disabled = true;
+      allowBtn.textContent = 'Aguarde...';
+      try {
+        const { requestPushPermission, syncSubscriptionId } = await import('./native/OneSignalService');
+        const granted = await requestPushPermission();
+        if (granted) {
+          // Sincroniza ID com Supabase
+          const { supabase } = await import('./auth/supabase');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            syncSubscriptionId(session.user.id, supabase).catch(() => {});
+          }
+          Toast.show('Notificações ativadas! 🔔', { type: 'success' });
+        } else {
+          Toast.show('Você pode ativar depois nas configurações do navegador.', { type: 'info' });
+        }
+      } catch { /* noop */ }
+      dismiss(true);
+    });
+  }
+
+  private injectPushBannerCss(): void {
+    if (document.getElementById('push-banner-css')) return;
+    const style = document.createElement('style');
+    style.id = 'push-banner-css';
+    style.textContent = `
+      .push-banner {
+        position: fixed;
+        bottom: 1rem; left: 50%;
+        transform: translateX(-50%) translateY(120%);
+        width: calc(100% - 2rem); max-width: 480px;
+        background: #0a0a0f;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 14px;
+        padding: 0.85rem 1rem 0.9rem;
+        z-index: 9998;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        backdrop-filter: blur(10px);
+      }
+      .push-banner-visible { transform: translateX(-50%) translateY(0); }
+      .push-banner-content {
+        display: flex; align-items: flex-start; gap: 0.7rem;
+        margin-bottom: 0.65rem;
+        color: rgba(255, 255, 255, 0.9);
+      }
+      .push-banner-content svg {
+        flex-shrink: 0; color: #00D4FF; margin-top: 0.1rem;
+      }
+      .push-banner-text { display: flex; flex-direction: column; gap: 0.15rem; }
+      .push-banner-text strong {
+        font-size: 0.95rem; font-weight: 600; letter-spacing: -0.005em;
+      }
+      .push-banner-text span {
+        font-size: 0.78rem; color: rgba(255, 255, 255, 0.55); line-height: 1.4;
+      }
+      .push-banner-actions { display: flex; gap: 0.5rem; }
+      .push-banner-skip, .push-banner-allow {
+        flex: 1; padding: 0.65rem;
+        border: none; border-radius: 9px;
+        font-size: 0.85rem; font-weight: 600;
+        font-family: inherit; cursor: pointer;
+        transition: opacity 0.15s, background 0.15s;
+      }
+      .push-banner-skip {
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.65);
+      }
+      .push-banner-skip:hover {
+        background: rgba(255, 255, 255, 0.08); color: #fff;
+      }
+      .push-banner-allow {
+        background: #00D4FF; color: #0a0a0f;
+      }
+      .push-banner-allow:hover { opacity: 0.9; }
+      .push-banner-allow:disabled { opacity: 0.6; cursor: default; }
+    `;
+    document.head.appendChild(style);
+  }
 
   private async maybeShowOfflineDownload(): Promise<void> {
     try {

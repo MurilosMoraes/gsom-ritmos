@@ -123,6 +123,14 @@ class AuthService {
 
   async logout(): Promise<void> {
     await supabase.auth.signOut();
+    // Desvincula o user do OneSignal (subscription continua existindo,
+    // só o External ID é removido — não recebe mais push direcionados
+    // pra este user até relogar)
+    try {
+      const { unlinkUserFromPush } = await import('../native/OneSignalService');
+      await unlinkUserFromPush();
+    } catch { /* noop */ }
+    localStorage.removeItem('gdrums-onesignal-id');
     // Limpa SÓ dados de sessão e estado transitório.
     // PRESERVA: gdrums-setlist (repertório), gdrums-user-rhythms (ritmos
     // personalizados), gdrums_pedal_keys (mapeamento de pedal), toggles.

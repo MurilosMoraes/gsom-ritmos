@@ -40,6 +40,7 @@
       <a href="#payouts" class="adm-nav-item" data-section="payouts"><span>Saques</span></a>
       <a href="#links" class="adm-nav-item" data-section="links"><span>Links</span></a>
       <a href="#smartlinks" class="adm-nav-item" data-section="smartlinks"><span>Smart Links</span></a>
+      <a href="#push" class="adm-nav-item" data-section="push"><span>Push</span></a>
     </nav>
 
     <div class="adm-shell">
@@ -85,6 +86,10 @@
           <a href="#smartlinks" class="adm-nav-item" data-section="smartlinks">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.5"/><line x1="12" y1="18" x2="12.01" y2="18"/><path d="M9 6h6"/></svg>
             <span>Smart Links</span>
+          </a>
+          <a href="#push" class="adm-nav-item" data-section="push">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+            <span>Push</span>
           </a>
         </nav>
       </aside>
@@ -425,6 +430,66 @@
             <div class="adm-empty" style="padding:2rem;text-align:center;color:var(--a-text2);">
               Carregando...
             </div>
+          </div>
+        </section>
+
+        <!-- ═══ Push — disparar notificações ═══ -->
+        <section id="pushSection" class="adm-section">
+          <div class="adm-section-top">
+            <div>
+              <h2 class="adm-title">Push Notifications</h2>
+              <div class="adm-subtitle">
+                Dispare comunicados pros users. Segmenta por trial / pagantes / etc.
+                Não envia pra quem não autorizou notificações.
+              </div>
+            </div>
+          </div>
+
+          <div class="adm-cards-row" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <!-- Compose -->
+            <div class="adm-card">
+              <h3 class="adm-card-title">Compor mensagem</h3>
+              <div class="adm-card-body">
+                <div class="adm-field">
+                  <label>Título</label>
+                  <input type="text" id="pushTitle" class="adm-input" maxlength="60" placeholder="🔥 Oferta especial pra você" />
+                </div>
+                <div class="adm-field">
+                  <label>Corpo</label>
+                  <textarea id="pushBody" class="adm-input" rows="3" maxlength="180" placeholder="Ative o plano agora com 20% OFF. Só por 24h."></textarea>
+                </div>
+                <div class="adm-field">
+                  <label>URL ao clicar (opcional)</label>
+                  <input type="url" id="pushUrl" class="adm-input" placeholder="https://gdrums.com.br/plans" value="https://gdrums.com.br/plans" />
+                </div>
+                <div class="adm-field">
+                  <label>Segmento</label>
+                  <select id="pushSegment" class="adm-input">
+                    <option value="all">Todos os subscribers</option>
+                    <option value="expiring_24h">Trial expirando em 24h</option>
+                    <option value="recent_expired">Expirados últimos 7 dias</option>
+                    <optgroup label="Por status">
+                      <option value="status:trial">Trial ativo</option>
+                      <option value="status:active">Pagantes ativos</option>
+                      <option value="status:expired">Expirados</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <div id="pushPreview" style="padding: 0.75rem; background: rgba(255,255,255,0.04); border-radius: 8px; margin: 0.75rem 0; font-size: 0.78rem; color: var(--a-text2);"></div>
+                <button class="adm-btn adm-btn-primary" id="pushSendBtn" style="width:100%;">Enviar push</button>
+              </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="adm-card">
+              <h3 class="adm-card-title">Estatísticas</h3>
+              <div class="adm-card-body" id="pushStats"></div>
+            </div>
+          </div>
+
+          <div class="adm-card" style="margin-top: 1rem;">
+            <h3 class="adm-card-title">Histórico</h3>
+            <div class="adm-card-body" id="pushHistory"></div>
           </div>
         </section>
 

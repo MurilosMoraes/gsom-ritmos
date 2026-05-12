@@ -23,6 +23,7 @@ interface Profile {
   last_contacted_at: string | null;
   contact_method: string | null;
   email?: string;
+  onesignal_id?: string | null;
 }
 
 interface Transaction {
@@ -755,6 +756,7 @@ class AdminDashboard {
       case 'payouts': this.renderPayouts(); break;
       case 'links': this.renderLinks(); break;
       case 'smartlinks': this.renderSmartLinks(); break;
+      case 'push': this.renderPush(); break;
     }
   }
 
@@ -3114,6 +3116,201 @@ class AdminDashboard {
       await this.loadSmartLinks();
     } catch (err) {
       modalManager.show('Erro', `Não foi possível excluir: ${String(err)}`, 'error');
+    }
+  }
+
+  // ─── Push Notifications ────────────────────────────────────────────
+
+  private async renderPush(): Promise<void> {
+    const sendBtn = document.getElementById('pushSendBtn') as HTMLButtonElement;
+    const segmentSelect = document.getElementById('pushSegment') as HTMLSelectElement;
+    const titleInput = document.getElementById('pushTitle') as HTMLInputElement;
+    const bodyInput = document.getElementById('pushBody') as HTMLTextAreaElement;
+
+    // Bind único
+    if (sendBtn && !sendBtn.dataset.bound) {
+      sendBtn.dataset.bound = '1';
+      sendBtn.addEventListener('click', () => this.sendPushClick());
+
+      segmentSelect?.addEventListener('change', () => this.updatePushPreview());
+      titleInput?.addEventListener('input', () => this.updatePushPreview());
+      bodyInput?.addEventListener('input', () => this.updatePushPreview());
+    }
+
+    await Promise.all([
+      this.renderPushStats(),
+      this.renderPushHistory(),
+      this.updatePushPreview(),
+    ]);
+  }
+
+  private async renderPushStats(): Promise<void> {
+    const el = document.getElementById('pushStats');
+    if (!el) return;
+
+    const subscribers = this.profiles.filter(p => p.onesignal_id).length;
+    const total = this.profiles.length;
+    const pct = total > 0 ? Math.round(subscribers / total * 100) : 0;
+
+    el.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:0.85rem;">
+        <div>
+          <div style="font-size:1.8rem;font-weight:700;color:var(--a-cyan);">${subscribers}</div>
+          <div style="font-size:0.75rem;color:var(--a-text2);">subscribers ativos (${pct}% dos users)</div>
+        </div>
+        <div style="border-top:1px solid var(--a-border);padding-top:0.85rem;">
+          <div style="font-size:0.8rem;color:var(--a-text2);margin-bottom:0.4rem;">Cron automático (a cada hora):</div>
+          <div style="font-size:0.75rem;line-height:1.6;color:rgba(255,255,255,0.6);">
+            • Trial expirando em 24h → push automático<br/>
+            • Trial expirado nas últimas 6h → push automático
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private async renderPushHistory(): Promise<void> {
+    const el = document.getElementById('pushHistory');
+    if (!el) return;
+
+    el.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--a-text2);">Carregando...</div>';
+
+    try {
+      const history = await adminRpc('admin_push_history', { p_limit: 50 });
+      if (!Array.isArray(history) || history.length === 0) {
+        el.innerHTML = '<div class="adm-empty"><div class="adm-empty-title">Nenhum push enviado ainda</div></div>';
+        return;
+      }
+
+      const esc = (s: string) => (s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[ch] || ch);
+
+      el.innerHTML = `
+        <div class="adm-table-wrap">
+          <table class="adm-table">
+            <thead>
+              <tr><th>Data</th><th>Título</th><th>Segmento</th><th>Origem</th><th>Recebidos</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              ${history.map((h: any) => {
+                const date = new Date(h.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                const statusColor = h.status === 'sent' ? 'success' : h.status === 'failed' ? 'error' : 'warning';
+                return `
+                  <tr>
+                    <td style="font-size:0.7rem;color:var(--a-text2);">${date}</td>
+                    <td>${esc(h.title)}</td>
+                    <td><code style="font-size:0.7rem;color:var(--a-cyan);">${h.segment || '—'}</code></td>
+                    <td style="font-size:0.7rem;color:var(--a-text2);">${h.source}</td>
+                    <td>${h.recipients || 0}</td>
+                    <td><span class="badge badge-${statusColor}">${h.status}</span></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } catch (e) {
+      el.innerHTML = `<div class="adm-empty"><div class="adm-empty-title" style="color:var(--a-red);">Erro: ${String(e)}</div></div>`;
+    }
+  }
+
+  private updatePushPreview(): Promise<void> {
+    const segmentSelect = document.getElementById('pushSegment') as HTMLSelectElement;
+    const preview = document.getElementById('pushPreview');
+    if (!preview) return Promise.resolve();
+
+    const seg = segmentSelect?.value || 'all';
+    let count = 0;
+    let label = '';
+
+    if (seg === 'all') {
+      count = this.profiles.filter(p => p.onesignal_id).length;
+      label = 'todos os subscribers';
+    } else if (seg === 'expiring_24h') {
+      const in24h = Date.now() + 26 * 3600 * 1000;
+      const in22h = Date.now() + 22 * 3600 * 1000;
+      count = this.profiles.filter(p =>
+        p.onesignal_id &&
+        p.subscription_status === 'trial' &&
+        p.subscription_expires_at &&
+        new Date(p.subscription_expires_at).getTime() >= in22h &&
+        new Date(p.subscription_expires_at).getTime() <= in24h
+      ).length;
+      label = 'trials expirando em 22-26h';
+    } else if (seg === 'recent_expired') {
+      const week = Date.now() - 7 * 24 * 3600 * 1000;
+      count = this.profiles.filter(p =>
+        p.onesignal_id &&
+        p.subscription_status === 'expired' &&
+        p.subscription_expires_at &&
+        new Date(p.subscription_expires_at).getTime() >= week
+      ).length;
+      label = 'expirados nos últimos 7 dias';
+    } else if (seg.startsWith('status:')) {
+      const st = seg.split(':')[1];
+      count = this.profiles.filter(p => p.onesignal_id && p.subscription_status === st).length;
+      label = `users com status "${st}"`;
+    }
+
+    preview.innerHTML = `<strong>Audiência estimada:</strong> ${count} subscribers (${label})`;
+    return Promise.resolve();
+  }
+
+  private async sendPushClick(): Promise<void> {
+    const title = (document.getElementById('pushTitle') as HTMLInputElement).value.trim();
+    const body = (document.getElementById('pushBody') as HTMLTextAreaElement).value.trim();
+    const url = (document.getElementById('pushUrl') as HTMLInputElement).value.trim();
+    const segmentRaw = (document.getElementById('pushSegment') as HTMLSelectElement).value;
+
+    if (!title || !body) {
+      modalManager.show('Erro', 'Título e corpo são obrigatórios.', 'error');
+      return;
+    }
+
+    let segment = segmentRaw;
+    let status_filter: string | undefined;
+    if (segmentRaw.startsWith('status:')) {
+      segment = 'status';
+      status_filter = segmentRaw.split(':')[1];
+    }
+
+    const confirmed = await modalManager.confirm(
+      'Enviar push?',
+      `Vai disparar pra todo mundo no segmento "${segmentRaw}". Não dá pra desfazer.`
+    );
+    if (!confirmed) return;
+
+    const sendBtn = document.getElementById('pushSendBtn') as HTMLButtonElement;
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Enviando...';
+
+    try {
+      const token = await getAuthToken();
+      const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/send-push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title, body, url: url || undefined, segment, status_filter }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        modalManager.show('Erro', `Falha: ${data.error || 'erro desconhecido'}`, 'error');
+      } else {
+        modalManager.show('Push enviado!', `Recipients estimados: ${data.recipients || '—'}.`, 'success');
+        // Limpa campos
+        (document.getElementById('pushTitle') as HTMLInputElement).value = '';
+        (document.getElementById('pushBody') as HTMLTextAreaElement).value = '';
+        // Atualiza histórico
+        await this.renderPushHistory();
+      }
+    } catch (e) {
+      modalManager.show('Erro', `Erro de conexão: ${String(e)}`, 'error');
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Enviar push';
     }
   }
 }
