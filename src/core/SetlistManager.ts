@@ -12,9 +12,11 @@
 // 4. initWithUser faz MERGE inteligente quando ambos os lados têm dados
 
 import type { Setlist, SetlistItem } from '../types';
+import { persistSet, persistGet, requestPersistentStorage } from '../utils/persistentStore';
 
 const LOCAL_KEY = 'gdrums-setlist';
 const LOCAL_BACKUP_KEY = 'gdrums-setlist-backup'; // Cópia adicional em caso de corrupção
+const IDB_KEY = 'setlist'; // chave no IndexedDB
 
 interface TimedSetlist extends Setlist {
   lastModified?: number; // timestamp ms da última edição (do device que editou)
@@ -28,6 +30,32 @@ export class SetlistManager {
 
   constructor() {
     this.setlist = this.loadLocal();
+    // Storage persistente (Chrome/Firefox) — pede ao browser pra não apagar
+    // IndexedDB quando disco encher. Idempotente, fire-and-forget.
+    requestPersistentStorage().catch(() => { /* noop */ });
+    // Se localStorage estava vazio mas IndexedDB pode ter backup, recupera
+    // assíncrono. Isso cobre o caso onde o browser limpou localStorage mas
+    // preservou IndexedDB (cenário comum em Safari iOS).
+    if (this.setlist.items.length === 0) {
+      this.tryRestoreFromIndexedDB();
+    }
+  }
+
+  private async tryRestoreFromIndexedDB(): Promise<void> {
+    try {
+      const recovered = await persistGet<TimedSetlist>(IDB_KEY);
+      if (recovered && Array.isArray(recovered.items) && recovered.items.length > 0) {
+        // Só restaura se ainda estiver vazio (não pisa em algo que o
+        // user já adicionou nesse meio tempo).
+        if (this.setlist.items.length === 0) {
+          console.warn('[SetlistManager] Recuperando setlist do IndexedDB:', recovered.items.length, 'itens');
+          this.setlist = recovered;
+          // Re-grava no localStorage pra próxima vez ser síncrono
+          this.writeToLocalStorage();
+          this.onChange?.();
+        }
+      }
+    } catch { /* IDB pode não estar disponível */ }
   }
 
   // ─── Init com Supabase (chamado após auth) ──────────────────────────
@@ -239,6 +267,16 @@ export class SetlistManager {
   // ─── Persistência Local (cache) ─────────────────────────────────────
 
   private saveLocal(): void {
+    this.writeToLocalStorage();
+    // IndexedDB em paralelo (fire-and-forget) — última linha de defesa
+    // pra quando localStorage for limpo pelo browser. Só grava setlists
+    // com itens (não sobrescreve IDB bom com vazio em caso de bug).
+    if (this.setlist.items.length > 0) {
+      persistSet(IDB_KEY, this.setlist).catch(() => { /* noop */ });
+    }
+  }
+
+  private writeToLocalStorage(): void {
     try {
       const serialized = JSON.stringify(this.setlist);
       localStorage.setItem(LOCAL_KEY, serialized);

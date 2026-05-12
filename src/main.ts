@@ -565,6 +565,9 @@ class RhythmSequencer {
 
       // Sugerir instalação do app (1x, só se não está instalado)
       setTimeout(() => this.showInstallSuggestion(), 4000);
+
+      // Modal de download offline — 1a vez ou quando manifest atualizar
+      setTimeout(() => this.maybeShowOfflineDownload(), 6500);
     });
   }
 
@@ -599,6 +602,278 @@ class RhythmSequencer {
       },
     ],
   };
+
+  // ─── Download Offline ─────────────────────────────────────────────
+  //
+  // Modal que aparece (a) na 1a vez que o user loga, ou (b) quando o
+  // manifest do servidor tem version maior que a versão baixada.
+  // Baixa todos os ritmos + samples em paralelo (4 concurrent) com
+  // barra de progresso. Não bloqueia: user pode pular.
+
+  private async maybeShowOfflineDownload(): Promise<void> {
+    try {
+      // Só dispara quando online (offline não faz sentido baixar)
+      if (!navigator.onLine) return;
+
+      const { getOfflineStatus } = await import('./native/OfflineDownloader');
+      const status = await getOfflineStatus();
+
+      // Lê versão atual do servidor — se mesma da baixada, não precisa
+      const manifestRes = await fetch('/rhythm/manifest.json').catch(() => null);
+      if (!manifestRes || !manifestRes.ok) return;
+      const manifest = await manifestRes.json();
+      const currentVersion = manifest.version || 0;
+
+      if (status.ready && status.manifestVersion === currentVersion) {
+        return; // já tá em dia
+      }
+
+      // Dismiss persistente: se user pulou nessa versão, não pergunta de novo
+      // até a próxima atualização do manifest
+      const skippedVersion = parseInt(localStorage.getItem('gdrums-offline-skipped') || '0');
+      if (skippedVersion === currentVersion) return;
+
+      this.showOfflineDownloadModal(currentVersion, status.ready);
+    } catch {
+      /* falha silenciosa — não bloqueia o app */
+    }
+  }
+
+  private showOfflineDownloadModal(targetVersion: number, isUpdate: boolean): void {
+    const overlay = document.createElement('div');
+    overlay.className = 'offline-modal-overlay';
+    overlay.innerHTML = `
+      <div class="offline-modal">
+        <div class="offline-icon">
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </div>
+        <h2 class="offline-title">${isUpdate ? 'Conteúdo atualizado' : 'Pronto pro modo offline?'}</h2>
+        <p class="offline-sub">${isUpdate
+          ? 'Tem ritmos novos e melhorias. Baixar tudo agora pra usar offline?'
+          : 'Vamos baixar todos os ritmos e sons pro seu celular. Depois disso, o app funciona sem internet — perfeito pra palco, lugar sem sinal, no avião.'}</p>
+
+        <div class="offline-stats" id="offlineStats" style="display:none;">
+          <div class="offline-progress-bar">
+            <div class="offline-progress-fill" id="offlineProgressFill" style="width:0%;"></div>
+          </div>
+          <div class="offline-progress-text" id="offlineProgressText">Preparando…</div>
+          <div class="offline-current-file" id="offlineCurrentFile"></div>
+        </div>
+
+        <div class="offline-actions" id="offlineActions">
+          <button class="offline-btn offline-btn-skip" id="offlineSkipBtn">Agora não</button>
+          <button class="offline-btn offline-btn-go" id="offlineStartBtn">Baixar agora</button>
+        </div>
+
+        <div class="offline-actions offline-actions-during" id="offlineActionsDuring" style="display:none;">
+          <button class="offline-btn offline-btn-skip" id="offlineCancelBtn">Cancelar</button>
+          <button class="offline-btn offline-btn-go" id="offlineBgBtn">Continuar em 2º plano</button>
+        </div>
+
+        <div class="offline-done" id="offlineDone" style="display:none;">
+          <div class="offline-done-icon">✓</div>
+          <div class="offline-done-text">Tudo baixado! O app funciona offline agora.</div>
+          <button class="offline-btn offline-btn-go" id="offlineCloseBtn">Fechar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    this.injectOfflineCss();
+
+    const skipBtn = overlay.querySelector('#offlineSkipBtn') as HTMLButtonElement;
+    const startBtn = overlay.querySelector('#offlineStartBtn') as HTMLButtonElement;
+    const statsDiv = overlay.querySelector('#offlineStats') as HTMLElement;
+    const actionsInitial = overlay.querySelector('#offlineActions') as HTMLElement;
+    const actionsDuring = overlay.querySelector('#offlineActionsDuring') as HTMLElement;
+    const doneDiv = overlay.querySelector('#offlineDone') as HTMLElement;
+    const progressFill = overlay.querySelector('#offlineProgressFill') as HTMLElement;
+    const progressText = overlay.querySelector('#offlineProgressText') as HTMLElement;
+    const currentFile = overlay.querySelector('#offlineCurrentFile') as HTMLElement;
+    const cancelBtn = overlay.querySelector('#offlineCancelBtn') as HTMLButtonElement;
+    const bgBtn = overlay.querySelector('#offlineBgBtn') as HTMLButtonElement;
+    const closeBtn = overlay.querySelector('#offlineCloseBtn') as HTMLButtonElement;
+
+    const abortController = new AbortController();
+    let inBackground = false;
+
+    const closeModal = () => { overlay.remove(); };
+
+    skipBtn?.addEventListener('click', () => {
+      // Salva versão pulada — não pergunta de novo até subir manifest novo
+      localStorage.setItem('gdrums-offline-skipped', String(targetVersion));
+      closeModal();
+    });
+
+    cancelBtn?.addEventListener('click', () => {
+      abortController.abort();
+      closeModal();
+    });
+
+    bgBtn?.addEventListener('click', () => {
+      inBackground = true;
+      closeModal();
+      Toast.show('Baixando em 2º plano…', { type: 'info' });
+    });
+
+    closeBtn?.addEventListener('click', closeModal);
+
+    startBtn?.addEventListener('click', async () => {
+      actionsInitial.style.display = 'none';
+      actionsDuring.style.display = '';
+      statsDiv.style.display = '';
+
+      try {
+        const { downloadEverything } = await import('./native/OfflineDownloader');
+        const result = await downloadEverything((progress) => {
+          if (inBackground) return; // não atualiza UI se foi pra background
+          const pct = Math.round((progress.current / progress.total) * 100);
+          progressFill.style.width = pct + '%';
+          progressText.textContent = `${progress.current} de ${progress.total} (${pct}%)`;
+          currentFile.textContent = progress.currentFile;
+        }, abortController.signal);
+
+        if (inBackground) {
+          if (result.success) {
+            Toast.show('Tudo pronto! O app funciona offline agora.', { type: 'success' });
+          } else if (result.failed.length > 0) {
+            Toast.show(`Download terminou com ${result.failed.length} falhas. Tente de novo no menu.`, { type: 'warn' });
+          }
+          return;
+        }
+
+        // Fluxo em primeiro plano: mostra tela "tudo pronto"
+        if (result.success) {
+          actionsDuring.style.display = 'none';
+          statsDiv.style.display = 'none';
+          doneDiv.style.display = '';
+          HapticsService.success();
+        } else if (result.failed.length > 0) {
+          // Mostra opção de retry
+          actionsDuring.style.display = 'none';
+          actionsInitial.style.display = '';
+          progressText.textContent = `${result.failed.length} arquivos falharam — toque "Baixar agora" pra tentar de novo`;
+          startBtn.textContent = 'Tentar de novo';
+        }
+      } catch (e) {
+        if (!inBackground && !abortController.signal.aborted) {
+          progressText.textContent = 'Erro no download. Tente de novo.';
+          actionsDuring.style.display = 'none';
+          actionsInitial.style.display = '';
+        }
+      }
+    });
+  }
+
+  private injectOfflineCss(): void {
+    if (document.getElementById('offline-modal-css')) return;
+    const style = document.createElement('style');
+    style.id = 'offline-modal-css';
+    style.textContent = `
+      .offline-modal-overlay {
+        position: fixed; inset: 0; z-index: 99999;
+        background: rgba(0, 0, 0, 0.78);
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        display: flex; align-items: center; justify-content: center;
+        padding: 1.5rem;
+        animation: offline-fade-in 0.2s ease;
+      }
+      @keyframes offline-fade-in { from { opacity: 0; } to { opacity: 1; } }
+      .offline-modal {
+        width: 100%; max-width: 460px;
+        background: #0a0a0f;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 18px;
+        padding: 2rem 1.75rem 1.5rem;
+        text-align: center;
+        animation: offline-slide-in 0.25s ease;
+      }
+      @keyframes offline-slide-in {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .offline-icon {
+        width: 64px; height: 64px;
+        background: rgba(0, 212, 255, 0.1);
+        border: 1px solid rgba(0, 212, 255, 0.3);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 1rem;
+        color: #00D4FF;
+      }
+      .offline-title {
+        font-size: 1.3rem; font-weight: 700;
+        letter-spacing: -0.02em; color: #fff;
+        margin-bottom: 0.5rem;
+      }
+      .offline-sub {
+        font-size: 0.9rem; line-height: 1.5;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 1.5rem;
+      }
+      .offline-stats { margin-bottom: 1.5rem; }
+      .offline-progress-bar {
+        width: 100%; height: 8px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 4px; overflow: hidden;
+        margin-bottom: 0.6rem;
+      }
+      .offline-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #00D4FF, #3ee8a7);
+        transition: width 0.18s ease;
+        border-radius: 4px;
+      }
+      .offline-progress-text {
+        font-size: 0.85rem; font-weight: 600;
+        color: #fff;
+        margin-bottom: 0.3rem;
+      }
+      .offline-current-file {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.4);
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .offline-actions {
+        display: flex; gap: 0.6rem;
+      }
+      .offline-btn {
+        flex: 1;
+        padding: 0.85rem;
+        border: none; border-radius: 10px;
+        font-size: 0.92rem; font-weight: 600;
+        font-family: inherit; cursor: pointer;
+        transition: opacity 0.15s, background 0.15s;
+      }
+      .offline-btn-skip {
+        background: rgba(255,255,255,0.05);
+        color: rgba(255,255,255,0.7);
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      .offline-btn-skip:hover {
+        background: rgba(255,255,255,0.08); color: #fff;
+      }
+      .offline-btn-go {
+        background: #fff; color: #0a0a0f;
+      }
+      .offline-btn-go:hover { opacity: 0.9; }
+      .offline-done { text-align: center; }
+      .offline-done-icon {
+        font-size: 3rem;
+        color: #3ee8a7;
+        margin-bottom: 0.5rem;
+      }
+      .offline-done-text {
+        font-size: 0.95rem; color: #fff;
+        margin-bottom: 1.25rem;
+      }
+    `;
+    document.head.appendChild(style);
+  }
 
   private showWhatsNew(): void {
     const key = 'gdrums-whats-new-seen';
@@ -2315,6 +2590,25 @@ class RhythmSequencer {
       pedalInfoBtn.addEventListener('click', () => {
         if (fabDropdown) fabDropdown.style.display = 'none';
         this.showPedalInfo();
+      });
+    }
+
+    // Baixar offline (manual — user pode forçar mesmo se já tá baixado)
+    const offlineBtn = document.getElementById('menuOfflineBtn');
+    if (offlineBtn) {
+      offlineBtn.addEventListener('click', async () => {
+        if (fabDropdown) fabDropdown.style.display = 'none';
+        // Limpa o "pulado" pra modal mostrar de novo
+        localStorage.removeItem('gdrums-offline-skipped');
+        try {
+          const manifestRes = await fetch('/rhythm/manifest.json');
+          const manifest = await manifestRes.json();
+          const { getOfflineStatus } = await import('./native/OfflineDownloader');
+          const status = await getOfflineStatus();
+          this.showOfflineDownloadModal(manifest.version || 0, status.ready);
+        } catch {
+          Toast.show('Não foi possível verificar offline. Tente de novo.', { type: 'warn' });
+        }
       });
     }
 
