@@ -95,6 +95,23 @@ async function init(): Promise<void> {
     }).then(() => { /* ok */ });
   } catch { /* noop */ }
 
+  // Android + URL da Play Store: usa market:// pra abrir direto no app
+  // da loja, sem prompt do Chrome "Abrir no Play Store?". Fallback pro
+  // HTTPS em 800ms se o esquema falhar (raro — só se user não tem Play
+  // Store instalada). Banco continua armazenando o HTTPS como fonte de
+  // verdade, intercepta só na renderização.
+  if (platform === 'android' && /play\.google\.com\/store\/apps\/details\?id=/i.test(target)) {
+    const idMatch = target.match(/[?&]id=([^&]+)/);
+    if (idMatch) {
+      const marketUrl = 'market://details?id=' + idMatch[1];
+      window.location.href = marketUrl;
+      setTimeout(() => {
+        if (!document.hidden) window.location.replace(target);
+      }, 800);
+      return;
+    }
+  }
+
   // Redirect imediato — replace pra não voltar na pilha do navegador
   // (botão "voltar" não retorna pra /download)
   window.location.replace(target);

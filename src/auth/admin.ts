@@ -2949,7 +2949,11 @@ class AdminDashboard {
 
   private renderSmartLinkCard(sl: any): string {
     const esc = (s: string) => (s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[ch] || ch);
-    const fullUrl = `gdrums.com.br/download/${sl.slug}`;
+    // Slug 'download' é o link principal — exibe sem repetir o segmento
+    // (caso contrário vira "gdrums.com.br/download/download", feio).
+    const fullUrl = sl.slug === 'download'
+      ? 'gdrums.com.br/download'
+      : `gdrums.com.br/download/${sl.slug}`;
     const inactive = sl.active === false ? 'is-inactive' : '';
     return `
       <div class="adm-smartlink-card ${inactive}">
@@ -3027,7 +3031,10 @@ class AdminDashboard {
     const preview = document.getElementById('smartLinkPreviewUrl');
     if (!slugInput || !preview) return;
     const slug = slugInput.value || '...';
-    preview.textContent = `gdrums.com.br/download/${slug}`;
+    // Slug 'download' é o link principal — não repete o segmento
+    preview.textContent = slug === 'download'
+      ? 'gdrums.com.br/download'
+      : `gdrums.com.br/download/${slug}`;
   }
 
   private openSmartLinkModal(sl: any | null): void {

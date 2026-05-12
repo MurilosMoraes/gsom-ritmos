@@ -40,6 +40,59 @@ export function isAndroidNative(): boolean {
 }
 
 /**
+ * True se o user está num browser Android (NÃO no app Capacitor).
+ *
+ * Usado pra desviar o fluxo de "Instalar app" do PWA pra Play Store —
+ * com app publicado, oferecer PWA fragmenta usuários e os notification
+ * channels divergem do app nativo. Play Store > PWA quando ambos existem.
+ */
+export function isAndroidWeb(): boolean {
+  if (isNativeApp()) return false;
+  try {
+    return /Android/i.test(navigator.userAgent);
+  } catch {
+    return false;
+  }
+}
+
+/** URL HTTPS da Play Store (fallback pra desktop e quando market:// falha). */
+export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.gdrums.app&hl=pt';
+
+/**
+ * Esquema `market://` abre direto o app Play Store nativo no Android,
+ * pulando a página web intermediária do Chrome ("Abrir no Play Store?").
+ * Em desktop / outras plataformas o esquema falha silencioso, então
+ * caímos no URL HTTPS.
+ */
+const PLAY_STORE_MARKET_URL = 'market://details?id=com.gdrums.app';
+
+/**
+ * Abre a Play Store do GDrums.
+ *
+ * Estratégia:
+ * - Android web: tenta `market://` (abre app nativo da Play Store direto).
+ *   Se não tiver Play Store instalada (raro), o navegador cai no HTTPS
+ *   automaticamente porque setamos location pro market e ele falha
+ *   silencioso → setTimeout fallback pro https.
+ * - Desktop / outros: HTTPS em nova aba.
+ */
+export function openPlayStore(): void {
+  if (isAndroidWeb()) {
+    // location.href com market:// abre o app Play Store sem prompt do Chrome
+    window.location.href = PLAY_STORE_MARKET_URL;
+    // Fallback: se em 800ms a página ainda estiver visível (= market:// falhou
+    // porque user não tem Play Store), abre HTTPS em nova aba.
+    setTimeout(() => {
+      if (!document.hidden) {
+        window.open(PLAY_STORE_URL, '_blank', 'noopener,noreferrer');
+      }
+    }, 800);
+    return;
+  }
+  openExternal(PLAY_STORE_URL);
+}
+
+/**
  * Abre uma URL externamente (fora do app).
  * - App nativo: abre no navegador do sistema (Chrome/Safari).
  * - Web: navega na mesma aba (comportamento padrão).

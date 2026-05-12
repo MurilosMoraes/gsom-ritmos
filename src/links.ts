@@ -120,15 +120,32 @@ async function loadAndRender(): Promise<void> {
     </a>
   `).join('');
 
+  // No Android web, troca <a href="https://play.google.com/..."> pra usar
+  // market:// (abre Play Store direto, sem prompt do Chrome).
+  const isAndroidWeb = /Android/i.test(navigator.userAgent || '');
+
   // Tracking de clique — fire-and-forget, não bloqueia a navegação
   container.querySelectorAll<HTMLAnchorElement>('.link-item').forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', (e) => {
       const id = el.dataset.id;
-      if (!id) return;
-      // sendBeacon não suporta RPC, então usa fetch sem await
-      try {
-        supabase.rpc('increment_link_click', { link_id: id }).then(() => { /* ok */ });
-      } catch { /* noop */ }
+      if (id) {
+        try {
+          supabase.rpc('increment_link_click', { link_id: id }).then(() => { /* ok */ });
+        } catch { /* noop */ }
+      }
+
+      // Intercepta Play Store no Android pra abrir direto no app da loja
+      if (isAndroidWeb) {
+        const href = el.getAttribute('href') || '';
+        const idMatch = href.match(/play\.google\.com\/store\/apps\/details\?id=([^&]+)/i);
+        if (idMatch) {
+          e.preventDefault();
+          window.location.href = 'market://details?id=' + idMatch[1];
+          setTimeout(() => {
+            if (!document.hidden) window.open(href, '_blank', 'noopener,noreferrer');
+          }, 800);
+        }
+      }
     });
   });
 }

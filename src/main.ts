@@ -20,7 +20,7 @@ import { OfflineCache } from './native/OfflineCache';
 import { StatusBarService } from './native/StatusBarService';
 import { AttributionService } from './native/AttributionService';
 import { PushService } from './native/PushService';
-import { isNativeApp, openExternal, internalNav } from './native/Platform';
+import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore } from './native/Platform';
 import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
@@ -2840,12 +2840,25 @@ class RhythmSequencer {
     if (menuInstallBtn) {
       menuInstallBtn.style.display = isStandalonePWA ? 'none' : '';
 
+      // Android web: existe app oficial na Play Store. Label muda pra ficar
+      // claro que vai abrir a loja, não instalar PWA.
+      if (isAndroidWeb()) {
+        menuInstallBtn.textContent = 'Baixar app na Play Store';
+      }
+
       menuInstallBtn.addEventListener('click', () => {
         const fabDropdown = document.getElementById('fabDropdown');
         if (fabDropdown) fabDropdown.style.display = 'none';
 
+        // Android web: existe app nativo na Play Store, então PWA fragmenta
+        // a base de usuários. Sempre prioriza loja sobre PWA.
+        if (isAndroidWeb()) {
+          openPlayStore();
+          return;
+        }
+
         if (this.installPrompt) {
-          // Android/Desktop com prompt capturado — dispara nativo
+          // Desktop com prompt capturado — dispara nativo
           this.installPrompt.prompt();
           this.installPrompt.userChoice.then((choice: any) => {
             if (choice.outcome === 'accepted') {
@@ -2855,7 +2868,7 @@ class RhythmSequencer {
             this.installPrompt = null;
           });
         } else {
-          // iOS OU Android sem prompt disponível — tutorial manual
+          // iOS OU Desktop sem prompt disponível — tutorial manual
           this.showInstallTutorial();
         }
       });
@@ -3739,20 +3752,31 @@ class RhythmSequencer {
 
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
                   (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    const isAndroid = isAndroidWeb();
 
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.88);backdrop-filter:blur(16px);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:1rem;';
+
+    // Android: oferece Play Store em vez de PWA (app nativo é o canal oficial).
+    const headline = isAndroid ? 'Baixe o app oficial' : 'Instale o GDrums';
+    const subline = isAndroid
+      ? 'Versão completa na Play Store — performance nativa e notificações'
+      : 'Acesso rapido, tela cheia e funciona offline';
 
     overlay.innerHTML = `
       <div style="background:rgba(10,10,30,0.97);border:1px solid rgba(255,255,255,0.08);border-radius:20px 20px 0 0;padding:1.5rem 1.5rem 2rem;max-width:400px;width:100%;animation:slideUp 0.3s ease-out;">
         <style>@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}</style>
         <div style="text-align:center;margin-bottom:1rem;">
           <img src="/img/icon-192.png" alt="GDrums" style="width:56px;height:56px;border-radius:14px;margin-bottom:0.75rem;">
-          <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.25rem;">Instale o GDrums</h2>
-          <p style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin:0;">Acesso rapido, tela cheia e funciona offline</p>
+          <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.25rem;">${headline}</h2>
+          <p style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin:0;">${subline}</p>
         </div>
 
-        ${isIOS ? `
+        ${isAndroid ? `
+        <div style="font-size:0.78rem;color:rgba(255,255,255,0.5);text-align:center;margin-bottom:1rem;">
+          Toque em <strong style="color:#fff;">Abrir Play Store</strong> para instalar
+        </div>
+        ` : isIOS ? `
         <div style="display:flex;flex-direction:column;gap:0.55rem;margin-bottom:1rem;">
           <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.55);">
             <span style="width:22px;height:22px;border-radius:6px;background:rgba(0,212,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.68rem;font-weight:700;color:rgba(0,212,255,0.85);">1</span>
@@ -3775,7 +3799,9 @@ class RhythmSequencer {
 
         <div style="display:flex;gap:0.5rem;">
           <button id="installDismiss" style="flex:1;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Agora nao</button>
-          ${!isIOS && this.installPrompt ? `
+          ${isAndroid ? `
+          <button id="installPlayStore" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(62,232,167,0.15);border:1px solid rgba(62,232,167,0.3);color:rgba(62,232,167,0.95);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">Abrir Play Store</button>
+          ` : !isIOS && this.installPrompt ? `
           <button id="installAccept" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.3);color:rgba(0,212,255,0.9);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">Instalar App</button>
           ` : `
           <button id="installDismiss2" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.3);color:rgba(0,212,255,0.9);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">Entendi</button>
@@ -3790,6 +3816,11 @@ class RhythmSequencer {
     overlay.querySelector('#installDismiss')?.addEventListener('click', close);
     overlay.querySelector('#installDismiss2')?.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    overlay.querySelector('#installPlayStore')?.addEventListener('click', () => {
+      openPlayStore();
+      close();
+    });
 
     overlay.querySelector('#installAccept')?.addEventListener('click', () => {
       if (this.installPrompt) {
@@ -3808,6 +3839,15 @@ class RhythmSequencer {
    * pode trocar pra ver o outro (caso precise instruir alguém).
    */
   private showInstallTutorial(): void {
+    // Defesa em profundidade: Android web nunca deveria chegar aqui (os
+    // entry points já desviam pra Play Store), mas se algum caller esquecer,
+    // pula tutorial e abre a loja direto. iOS continua tendo só o tutorial
+    // PWA porque app nativo iOS ainda não foi publicado.
+    if (isAndroidWeb()) {
+      openPlayStore();
+      return;
+    }
+
     const ua = navigator.userAgent;
     const isIOS = /iPhone|iPad|iPod/i.test(ua) ||
                   (/Mac/i.test(ua) && navigator.maxTouchPoints > 1);

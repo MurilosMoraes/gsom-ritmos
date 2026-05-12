@@ -16,6 +16,26 @@
   } catch (e) { /* noop */ }
 })();
 
+// Intercepta clique nos badges da Play Store pra abrir direto no app
+// (market://) no Android web em vez do https que mostra prompt do Chrome.
+// Em desktop / iOS o link cai no comportamento padrão (https → web).
+(function () {
+  var ua = navigator.userAgent || '';
+  var isAndroidWeb = /Android/i.test(ua); // landing nunca roda em Capacitor
+  if (!isAndroidWeb) return;
+  document.querySelectorAll('a[href*="play.google.com"]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      window.location.href = 'market://details?id=com.gdrums.app';
+      setTimeout(function () {
+        if (!document.hidden) {
+          window.open(a.href, '_blank', 'noopener,noreferrer');
+        }
+      }, 800);
+    });
+  });
+})();
+
 // Smooth scroll para navegação
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener('click', function (e) {
