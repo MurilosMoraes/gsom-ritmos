@@ -1203,6 +1203,8 @@ class AdminDashboard {
       if (typeof Globe !== 'function') {
         throw new Error('Globe is not a function (default export missing)');
       }
+      // Carrega THREE + textura de glow pros sprites
+      await this.ensureThreeAndTexture();
     } catch (e) {
       console.error('[admin] globe.gl falhou ao carregar:', e);
       container.innerHTML = `<div style="color:var(--a-red);font-size:0.75rem;text-align:center;padding:2rem;">Erro ao carregar globo:<br><code style="font-size:0.65rem;opacity:0.6;">${String(e).slice(0, 200)}</code></div>`;
@@ -1241,8 +1243,7 @@ class AdminDashboard {
 
     // Se já tem globo criado, só atualiza dados
     if (this.globeInstance) {
-      this.globeInstance.pointsData(points);
-      // Rings só pros 5 estados mais cheios (não toda lista — fica bagunça)
+      this.globeInstance.customLayerData(points);
       this.globeInstance.ringsData(this.topRingsFromPoints(points));
       return;
     }
@@ -1285,18 +1286,18 @@ class AdminDashboard {
       .showAtmosphere(true)
       .atmosphereColor('#00D4FF')
       .atmosphereAltitude(0.18)
-      // Pontos achatados (não cilindros): altura quase zero + radius pequeno
-      // = visual de ponto de luz na superfície do globo, não barra projetada.
-      // 1 ponto por usuário; cor depende da densidade do estado dele.
-      .pointsData(points)
-      .pointAltitude(0)
-      .pointRadius(0.25)
-      .pointColor((d: any) => this.intensityColor(d.intensity))
-      .pointLabel((d: any) => `
-        <div style="background:rgba(3,0,20,0.95);border:1px solid rgba(0,212,255,0.4);border-radius:8px;padding:0.5rem 0.75rem;font-family:-apple-system,sans-serif;color:#fff;font-size:0.85rem;">
-          <div style="font-weight:700;">${d.city} (${d.state})</div>
-        </div>
-      `)
+      // Custom layer: cada user vira um sprite brilhante (THREE.Sprite com
+      // additive blending). Vantagens vs pointsData:
+      // - Sem cilindros (sprite é 2D, sempre voltado pra câmera)
+      // - Glow real: textura circular gradiente + additive blending faz
+      //   clusters se acumularem em brilho (densidade visual de verdade)
+      // - Não sobrepõe feio (additive funde luzes em vez de tapar)
+      .customLayerData(points)
+      .customThreeObject((d: any) => this.createGlowSprite(d.intensity))
+      .customThreeObjectUpdate((obj: any, d: any) => {
+        // Posicionar o sprite na superfície do globo (lat/lng → 3D)
+        Object.assign(obj.position, this.globeInstance.getCoords(d.lat, d.lng, 0.005));
+      })
       // Rings: anéis animados SÓ nos top 5 estados mais cheios (efeito de
       // "hotspot" — chama atenção pras regiões mais densas).
       .ringsData(this.topRingsFromPoints(points))
@@ -1401,6 +1402,63 @@ class AdminDashboard {
         document.addEventListener('keydown', escHandler);
       }
     }
+  }
+
+  /**
+   * THREE module + textura circular cacheados. Carregados uma vez antes
+   * de criar o primeiro sprite, daí ficam sincronos pro resto.
+   */
+  private threeMod: any = null;
+  private glowTexture: any = null;
+
+  private async ensureThreeAndTexture(): Promise<void> {
+    if (this.threeMod && this.glowTexture) return;
+    // @ts-expect-error — three sem types instalados, usado dinamicamente
+    this.threeMod = await import('three');
+    // Canvas 64x64 com radial gradient branco→transparente
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.2, 'rgba(255,255,255,0.85)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.35)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
+    this.glowTexture = new this.threeMod.CanvasTexture(canvas);
+  }
+
+  /**
+   * Cria THREE.Sprite com material additive blending. Resultado: ponto
+   * que parece luz/estrela. Quando sprites se sobrepõem, cores ADICIONAM
+   * (cluster denso = ponto mais brilhante naturalmente).
+   */
+  private createGlowSprite(intensity: number): any {
+    const THREE = this.threeMod;
+    const color = this.intensityToHex(intensity);
+    const size = 0.45 + intensity * 0.5;
+
+    const material = new THREE.SpriteMaterial({
+      map: this.glowTexture,
+      color,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(size, size, 1);
+    return sprite;
+  }
+
+  /** Cor da intensidade em hex (pro material do Three) */
+  private intensityToHex(intensity: number): number {
+    if (intensity < 0.3) return 0x00d4ff;   // cyan
+    if (intensity < 0.6) return 0x4ba2ff;   // blue
+    if (intensity < 0.85) return 0x7c82ff;  // blue-purple
+    return 0xa064f6;                         // purple
   }
 
   /**
