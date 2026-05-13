@@ -1211,47 +1211,63 @@ class AdminDashboard {
       return;
     }
 
-    // 1 ponto de luz POR USUÁRIO, distribuído em torno da capital com
-    // padrão GAUSSIANO (não disco uniforme — que ficava redondo demais).
+    // 1 ponto de luz POR USUÁRIO, distribuído em CONSTELAÇÃO DE CIDADES
+    // (não disco/gauss centrado). Por que:
+    // - Disco uniforme → bola redonda artificial
+    // - Box-Muller (gauss) → ainda fica simetria circular estatística
     //
-    // Gaussiana (Box-Muller): muitos pontos perto do centro, decai
-    // exponencialmente conforme afasta. Visual fica orgânico tipo
-    // aglomerado urbano real — centro denso + alguns satélites longe,
-    // sem borda circular.
+    // Approach novo: pra cada estado, geramos 4-6 "sub-cidades" virtuais
+    // com offsets pseudo-aleatórios estáveis. Cada usuário é atribuído a
+    // uma dessas sub-cidades via hash do phone, e ganha um jitter MUITO
+    // pequeno (~15km) ao redor. Visual: cluster do estado vira uma
+    // constelação de pequenos agrupamentos, igual mapa real do BR onde
+    // user está distribuído entre capital + cidades médias do entorno.
     //
-    // Hash determinístico (não Math.random) → mesmo user sempre cai no
-    // mesmo ponto, não pisca a cada refresh.
+    // Hash determinístico → mesmo user sempre cai no mesmo ponto.
+
+    // Helper: gera N sub-cidades virtuais ao redor de um centro
+    const subCitiesByState = new Map<string, Array<{ lat: number; lng: number }>>();
+    const getSubCities = (state: string, centerLat: number, centerLng: number) => {
+      if (subCitiesByState.has(state)) return subCitiesByState.get(state)!;
+      const subs: Array<{ lat: number; lng: number }> = [];
+      // 5 sub-cidades por estado, distribuídas em ângulos diferentes e raios variados
+      // Seed pelo nome do estado pra ser estável entre sessions
+      const stateSeed = state.split('').reduce((a, c) => (a * 131 + c.charCodeAt(0)) | 0, 7);
+      for (let i = 0; i < 5; i++) {
+        // Cada sub-cidade tem seu próprio offset, espalhado em raios 0.3-1.2°
+        const subSeed = stateSeed + i * 1009;
+        const angle = ((subSeed % 360) / 360) * Math.PI * 2;
+        const radius = 0.3 + (((subSeed >> 5) % 100) / 100) * 0.9; // 0.3 a 1.2°
+        subs.push({
+          lat: centerLat + Math.sin(angle) * radius,
+          lng: centerLng + Math.cos(angle) * radius,
+        });
+      }
+      subCitiesByState.set(state, subs);
+      return subs;
+    };
+
     const points = userLocations.map((u, idx) => {
       const coords = AdminDashboard.STATE_COORDS[u.state];
       if (!coords) return null;
 
-      // 2 hashes independentes pra ter 2 "randoms" estáveis (Box-Muller precisa)
+      const subs = getSubCities(u.state, coords.lat, coords.lng);
+
+      // Hash do user → qual sub-cidade ele pertence + jitter local pequeno
       const seedStr = u.phone + ':' + idx;
-      const h1 = seedStr.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
-      const h2 = seedStr.split('').reduce((a, c) => ((a << 7) + a + c.charCodeAt(0) * 31) | 0, 17);
-      // Normaliza pra (0, 1) — evita 0 exato que daria log(0) = -∞
-      const u1 = Math.max(0.0001, ((h1 >>> 0) % 10000) / 10000);
-      const u2 = ((h2 >>> 0) % 10000) / 10000;
+      const h = seedStr.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
+      const subIdx = Math.abs(h) % subs.length;
+      const sub = subs[subIdx];
 
-      // Box-Muller: 2 uniformes → 2 gaussianos (média 0, desvio 1)
-      const r = Math.sqrt(-2 * Math.log(u1));
-      const theta = 2 * Math.PI * u2;
-      const gauss1 = r * Math.cos(theta);
-      const gauss2 = r * Math.sin(theta);
-
-      // Escala: desvio ~0.55 grau (~60km) — concentra perto da capital,
-      // raros pontos longe. Clip em ±1.5° (~165km) evita outliers caírem
-      // em país vizinho ou oceano. Antes estava 0.8 + clip 2.4, alguns
-      // pontos boiavam fora do BR quando o user girava o globo.
-      const sigma = 0.55;
-      const jitterLat = Math.max(-1.5, Math.min(1.5, gauss1 * sigma));
-      const jitterLng = Math.max(-1.5, Math.min(1.5, gauss2 * sigma));
+      // Jitter LOCAL pequeno em torno da sub-cidade (~15-25km)
+      const jLat = (((h >>> 7) % 1000) / 1000 - 0.5) * 0.25;
+      const jLng = (((h >>> 17) % 1000) / 1000 - 0.5) * 0.25;
 
       return {
         state: u.state,
         city: coords.name,
-        lat: coords.lat + jitterLat,
-        lng: coords.lng + jitterLng,
+        lat: sub.lat + jLat,
+        lng: sub.lng + jLng,
         isActive: u.isActive,
       };
     }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; isActive: boolean }>;
