@@ -1135,6 +1135,202 @@ class AdminDashboard {
     '91':'PA','92':'AM','93':'PA','94':'PA','95':'RR','96':'AP','97':'AM','98':'MA','99':'MA',
   };
 
+  // Cidades reais por estado com lat/lng verdadeira (não inventada).
+  // Cada user é distribuído entre as cidades do seu estado via hash do
+  // phone — não é geração estatística, são cidades reais do BR onde
+  // pessoas moram. Visual no globo fica como mapa real, sem círculos.
+  //
+  // 6-10 cidades por estado, ordenadas por população (top primeiro pra
+  // hash favorecer capital mas com diversidade).
+  private static readonly CITIES_BY_STATE: Record<string, Array<{ name: string; lat: number; lng: number }>> = {
+    'SP': [
+      { name: 'São Paulo', lat: -23.5505, lng: -46.6333 },
+      { name: 'Guarulhos', lat: -23.4538, lng: -46.5333 },
+      { name: 'Campinas', lat: -22.9099, lng: -47.0626 },
+      { name: 'Santos', lat: -23.9608, lng: -46.3331 },
+      { name: 'Ribeirão Preto', lat: -21.1775, lng: -47.8103 },
+      { name: 'São José dos Campos', lat: -23.2237, lng: -45.9009 },
+      { name: 'Sorocaba', lat: -23.5015, lng: -47.4526 },
+      { name: 'Bauru', lat: -22.3147, lng: -49.0606 },
+      { name: 'Piracicaba', lat: -22.7253, lng: -47.6492 },
+    ],
+    'RJ': [
+      { name: 'Rio de Janeiro', lat: -22.9068, lng: -43.1729 },
+      { name: 'Niterói', lat: -22.8833, lng: -43.1036 },
+      { name: 'Nova Iguaçu', lat: -22.7556, lng: -43.4603 },
+      { name: 'Duque de Caxias', lat: -22.7858, lng: -43.3050 },
+      { name: 'Campos dos Goytacazes', lat: -21.7545, lng: -41.3244 },
+      { name: 'Petrópolis', lat: -22.5050, lng: -43.1786 },
+      { name: 'Volta Redonda', lat: -22.5202, lng: -44.0996 },
+    ],
+    'ES': [
+      { name: 'Vitória', lat: -20.3155, lng: -40.3128 },
+      { name: 'Vila Velha', lat: -20.3417, lng: -40.2925 },
+      { name: 'Serra', lat: -20.1289, lng: -40.3079 },
+      { name: 'Cariacica', lat: -20.2628, lng: -40.4194 },
+      { name: 'Cachoeiro de Itapemirim', lat: -20.8489, lng: -41.1128 },
+      { name: 'Linhares', lat: -19.3942, lng: -40.0717 },
+    ],
+    'MG': [
+      { name: 'Belo Horizonte', lat: -19.9167, lng: -43.9345 },
+      { name: 'Uberlândia', lat: -18.9128, lng: -48.2755 },
+      { name: 'Contagem', lat: -19.9317, lng: -44.0536 },
+      { name: 'Juiz de Fora', lat: -21.7642, lng: -43.3503 },
+      { name: 'Betim', lat: -19.9678, lng: -44.1986 },
+      { name: 'Montes Claros', lat: -16.7351, lng: -43.8617 },
+      { name: 'Uberaba', lat: -19.7472, lng: -47.9381 },
+      { name: 'Governador Valadares', lat: -18.8511, lng: -41.9494 },
+    ],
+    'PR': [
+      { name: 'Curitiba', lat: -25.4284, lng: -49.2733 },
+      { name: 'Londrina', lat: -23.3045, lng: -51.1696 },
+      { name: 'Maringá', lat: -23.4205, lng: -51.9331 },
+      { name: 'Ponta Grossa', lat: -25.0945, lng: -50.1633 },
+      { name: 'Cascavel', lat: -24.9555, lng: -53.4552 },
+      { name: 'Foz do Iguaçu', lat: -25.5478, lng: -54.5882 },
+      { name: 'São José dos Pinhais', lat: -25.5316, lng: -49.2065 },
+    ],
+    'SC': [
+      { name: 'Florianópolis', lat: -27.5949, lng: -48.5482 },
+      { name: 'Joinville', lat: -26.3045, lng: -48.8487 },
+      { name: 'Blumenau', lat: -26.9194, lng: -49.0661 },
+      { name: 'Chapecó', lat: -27.0964, lng: -52.6184 },
+      { name: 'Itajaí', lat: -26.9077, lng: -48.6618 },
+      { name: 'Criciúma', lat: -28.6772, lng: -49.3697 },
+      { name: 'Balneário Camboriú', lat: -26.9906, lng: -48.6354 },
+    ],
+    'RS': [
+      { name: 'Porto Alegre', lat: -30.0346, lng: -51.2177 },
+      { name: 'Caxias do Sul', lat: -29.1681, lng: -51.1794 },
+      { name: 'Pelotas', lat: -31.7654, lng: -52.3376 },
+      { name: 'Canoas', lat: -29.9176, lng: -51.1839 },
+      { name: 'Santa Maria', lat: -29.6868, lng: -53.8149 },
+      { name: 'Gravataí', lat: -29.9442, lng: -50.9919 },
+      { name: 'Novo Hamburgo', lat: -29.6783, lng: -51.1306 },
+      { name: 'Passo Fundo', lat: -28.2628, lng: -52.4067 },
+    ],
+    'DF': [
+      { name: 'Brasília', lat: -15.8267, lng: -47.9218 },
+      { name: 'Taguatinga', lat: -15.8332, lng: -48.0578 },
+      { name: 'Ceilândia', lat: -15.8158, lng: -48.1056 },
+    ],
+    'GO': [
+      { name: 'Goiânia', lat: -16.6869, lng: -49.2648 },
+      { name: 'Aparecida de Goiânia', lat: -16.8198, lng: -49.2466 },
+      { name: 'Anápolis', lat: -16.3267, lng: -48.9526 },
+      { name: 'Rio Verde', lat: -17.7975, lng: -50.9275 },
+      { name: 'Luziânia', lat: -16.2525, lng: -47.9500 },
+    ],
+    'TO': [
+      { name: 'Palmas', lat: -10.1844, lng: -48.3336 },
+      { name: 'Araguaína', lat: -7.1925, lng: -48.2042 },
+      { name: 'Gurupi', lat: -11.7286, lng: -49.0686 },
+    ],
+    'MT': [
+      { name: 'Cuiabá', lat: -15.6010, lng: -56.0974 },
+      { name: 'Várzea Grande', lat: -15.6464, lng: -56.1325 },
+      { name: 'Rondonópolis', lat: -16.4673, lng: -54.6372 },
+      { name: 'Sinop', lat: -11.8604, lng: -55.5060 },
+    ],
+    'MS': [
+      { name: 'Campo Grande', lat: -20.4697, lng: -54.6201 },
+      { name: 'Dourados', lat: -22.2231, lng: -54.8120 },
+      { name: 'Três Lagoas', lat: -20.7878, lng: -51.7039 },
+      { name: 'Corumbá', lat: -19.0089, lng: -57.6517 },
+    ],
+    'AC': [
+      { name: 'Rio Branco', lat: -9.9747, lng: -67.8243 },
+      { name: 'Cruzeiro do Sul', lat: -7.6306, lng: -72.6753 },
+    ],
+    'RO': [
+      { name: 'Porto Velho', lat: -8.7619, lng: -63.9039 },
+      { name: 'Ji-Paraná', lat: -10.8853, lng: -61.9517 },
+      { name: 'Ariquemes', lat: -9.9133, lng: -63.0408 },
+    ],
+    'BA': [
+      { name: 'Salvador', lat: -12.9777, lng: -38.5016 },
+      { name: 'Feira de Santana', lat: -12.2664, lng: -38.9663 },
+      { name: 'Vitória da Conquista', lat: -14.8619, lng: -40.8444 },
+      { name: 'Camaçari', lat: -12.6975, lng: -38.3242 },
+      { name: 'Itabuna', lat: -14.7858, lng: -39.2803 },
+      { name: 'Juazeiro', lat: -9.4111, lng: -40.4986 },
+      { name: 'Ilhéus', lat: -14.7889, lng: -39.0492 },
+    ],
+    'SE': [
+      { name: 'Aracaju', lat: -10.9472, lng: -37.0731 },
+      { name: 'Nossa Senhora do Socorro', lat: -10.8550, lng: -37.1264 },
+      { name: 'Lagarto', lat: -10.9183, lng: -37.6692 },
+      { name: 'Itabaiana', lat: -10.6856, lng: -37.4256 },
+    ],
+    'PE': [
+      { name: 'Recife', lat: -8.0476, lng: -34.8770 },
+      { name: 'Jaboatão dos Guararapes', lat: -8.1129, lng: -35.0148 },
+      { name: 'Olinda', lat: -8.0090, lng: -34.8553 },
+      { name: 'Caruaru', lat: -8.2849, lng: -35.9760 },
+      { name: 'Petrolina', lat: -9.3891, lng: -40.5030 },
+      { name: 'Paulista', lat: -7.9408, lng: -34.8728 },
+    ],
+    'AL': [
+      { name: 'Maceió', lat: -9.6498, lng: -35.7089 },
+      { name: 'Arapiraca', lat: -9.7522, lng: -36.6614 },
+      { name: 'Rio Largo', lat: -9.4781, lng: -35.8531 },
+      { name: 'Palmeira dos Índios', lat: -9.4061, lng: -36.6280 },
+    ],
+    'PB': [
+      { name: 'João Pessoa', lat: -7.1195, lng: -34.8450 },
+      { name: 'Campina Grande', lat: -7.2306, lng: -35.8811 },
+      { name: 'Santa Rita', lat: -7.1136, lng: -34.9783 },
+      { name: 'Patos', lat: -7.0247, lng: -37.2800 },
+    ],
+    'RN': [
+      { name: 'Natal', lat: -5.7945, lng: -35.2110 },
+      { name: 'Mossoró', lat: -5.1878, lng: -37.3441 },
+      { name: 'Parnamirim', lat: -5.9156, lng: -35.2628 },
+      { name: 'São Gonçalo do Amarante', lat: -5.7919, lng: -35.3289 },
+    ],
+    'CE': [
+      { name: 'Fortaleza', lat: -3.7172, lng: -38.5433 },
+      { name: 'Caucaia', lat: -3.7361, lng: -38.6536 },
+      { name: 'Juazeiro do Norte', lat: -7.2128, lng: -39.3153 },
+      { name: 'Maracanaú', lat: -3.8767, lng: -38.6256 },
+      { name: 'Sobral', lat: -3.6889, lng: -40.3489 },
+      { name: 'Crato', lat: -7.2342, lng: -39.4097 },
+    ],
+    'PI': [
+      { name: 'Teresina', lat: -5.0892, lng: -42.8019 },
+      { name: 'Parnaíba', lat: -2.9050, lng: -41.7769 },
+      { name: 'Picos', lat: -7.0772, lng: -41.4669 },
+      { name: 'Floriano', lat: -6.7672, lng: -43.0231 },
+    ],
+    'MA': [
+      { name: 'São Luís', lat: -2.5307, lng: -44.3068 },
+      { name: 'Imperatriz', lat: -5.5267, lng: -47.4925 },
+      { name: 'São José de Ribamar', lat: -2.5614, lng: -44.0539 },
+      { name: 'Caxias', lat: -4.8589, lng: -43.3556 },
+      { name: 'Timon', lat: -5.0944, lng: -42.8367 },
+    ],
+    'PA': [
+      { name: 'Belém', lat: -1.4558, lng: -48.4902 },
+      { name: 'Ananindeua', lat: -1.3656, lng: -48.3722 },
+      { name: 'Santarém', lat: -2.4406, lng: -54.7081 },
+      { name: 'Marabá', lat: -5.3689, lng: -49.1175 },
+      { name: 'Castanhal', lat: -1.2939, lng: -47.9258 },
+    ],
+    'AM': [
+      { name: 'Manaus', lat: -3.1190, lng: -60.0217 },
+      { name: 'Parintins', lat: -2.6286, lng: -56.7350 },
+      { name: 'Itacoatiara', lat: -3.1431, lng: -58.4444 },
+    ],
+    'RR': [
+      { name: 'Boa Vista', lat: 2.8235, lng: -60.6758 },
+      { name: 'Rorainópolis', lat: 0.9347, lng: -60.4358 },
+    ],
+    'AP': [
+      { name: 'Macapá', lat: 0.0349, lng: -51.0664 },
+      { name: 'Santana', lat: -0.0583, lng: -51.1719 },
+    ],
+  };
+
   // Capital de cada UF — usado pelo globo 3D pra plotar markers
   // (precisão por estado é suficiente; quando tivermos cidade no cadastro
   // melhora pra coordenadas exatas).
@@ -1211,40 +1407,44 @@ class AdminDashboard {
       return;
     }
 
-    // 1 ponto por ESTADO (agregação simples — clustering padrão de mapas
-    // de dados como Google/Airbnb). Cada ponto tem:
-    // - Tamanho proporcional ao count (raiz quadrada pra não disparar)
-    // - Cor mix cyan→purple por % de assinantes ativos
-    //
-    // Tentei várias distribuições (disco, gaussiana, sub-cidades) pra
-    // simular "user no mapa", mas qualquer distribuição radial em torno
-    // de 1 ponto SEMPRE forma círculo estatístico. Padrão da indústria
-    // pra mapas de dados é agregação com count, não dispersão fake.
-    type AggPoint = { state: string; city: string; lat: number; lng: number; total: number; active: number };
-    const byState = new Map<string, AggPoint>();
-    userLocations.forEach(u => {
-      const coords = AdminDashboard.STATE_COORDS[u.state];
-      if (!coords) return;
-      const existing = byState.get(u.state);
-      if (existing) {
-        existing.total++;
-        if (u.isActive) existing.active++;
-      } else {
-        byState.set(u.state, {
+    // 1 ponto POR USUÁRIO em CIDADES REAIS do BR. Cada user é atribuído
+    // a uma cidade do seu estado via hash do phone (determinístico — não
+    // pisca a cada refresh). Sem distribuição estatística fake, sem
+    // círculo: as cidades têm lat/lng verdadeira, cada user vai pra uma
+    // delas + jitter MUITO pequeno (~2km) pra não sobrepor exato.
+    const points = userLocations.map((u, idx) => {
+      const cities = AdminDashboard.CITIES_BY_STATE[u.state];
+      if (!cities || cities.length === 0) {
+        // Fallback: capital
+        const cap = AdminDashboard.STATE_COORDS[u.state];
+        if (!cap) return null;
+        return {
           state: u.state,
-          city: coords.name,
-          lat: coords.lat,
-          lng: coords.lng,
-          total: 1,
-          active: u.isActive ? 1 : 0,
-        });
+          city: cap.name,
+          lat: cap.lat,
+          lng: cap.lng,
+          isActive: u.isActive,
+        };
       }
-    });
 
-    const points = [...byState.values()].map(p => ({
-      ...p,
-      activeRatio: p.active / p.total,
-    }));
+      // Hash estável → escolhe uma cidade do estado
+      const seed = (u.phone + ':' + idx).split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
+      const cityIdx = Math.abs(seed) % cities.length;
+      const city = cities[cityIdx];
+
+      // Jitter MUITO pequeno (~2km) só pra não empilhar exato — ainda
+      // assim mantém o ponto na cidade certa, não inventa lugar
+      const jitterLat = (((seed >>> 8) % 1000) / 1000 - 0.5) * 0.04;
+      const jitterLng = (((seed >>> 18) % 1000) / 1000 - 0.5) * 0.04;
+
+      return {
+        state: u.state,
+        city: city.name,
+        lat: city.lat + jitterLat,
+        lng: city.lng + jitterLng,
+        isActive: u.isActive,
+      };
+    }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; isActive: boolean }>;
 
     // Se já tem globo criado, só atualiza dados
     if (this.globeInstance) {
@@ -1298,7 +1498,7 @@ class AdminDashboard {
       //   clusters se acumularem em brilho (densidade visual de verdade)
       // - Não sobrepõe feio (additive funde luzes em vez de tapar)
       .customLayerData(points)
-      .customThreeObject((d: any) => this.createGlowSprite(d.activeRatio, d.total))
+      .customThreeObject((d: any) => this.createGlowSprite(d.isActive))
       .customThreeObjectUpdate((obj: any, d: any) => {
         Object.assign(obj.position, this.globeInstance.getCoords(d.lat, d.lng, 0.005));
         // Auto-scale por distância da câmera (mantém visível em qualquer zoom)
@@ -1467,23 +1667,24 @@ class AdminDashboard {
   }
 
   /**
-   * Cria THREE.Sprite com glow desenhado por shader (vetorial).
-   * Um sprite por ESTADO (cluster agregado). Tamanho proporcional ao
-   * count (sqrt — diferencia visualmente sem disparate), cor cyan→purple
-   * por % de assinantes ativos.
+   * Cria THREE.Sprite com glow desenhado por shader (vetorial, nítido em
+   * qualquer zoom). 1 sprite por usuário. Quando vários sprites caem na
+   * mesma cidade real, o additive blending soma cores naturalmente →
+   * cluster real vira "brasa" brilhante sem agregação fake.
+   *
+   * Cor: roxo se assinante ativo (pagante), cyan caso contrário.
    */
-  private createGlowSprite(activeRatio: number, total: number): any {
+  private createGlowSprite(isActive: boolean): any {
     const THREE = this.threeMod;
-    // Cor interpolada cyan → purple por % de pagantes
-    const color = new THREE.Color(0x00d4ff).lerp(new THREE.Color(0xa064f6), activeRatio);
-    // Tamanho: sqrt(total) achata diferenças, base 0.6 garante mínimo visível
-    // SP com 200 users vira ~2.5, estado com 1 user vira 0.7
-    const size = 0.6 + Math.sqrt(total) * 0.14;
+    const color = new THREE.Color(isActive ? 0xa064f6 : 0x00d4ff);
+    // Tamanho pequeno — densidade vem do additive blending de sprites
+    // sobrepostos (mesma cidade real), não do tamanho individual.
+    const size = isActive ? 0.45 : 0.35;
 
     const material = new THREE.ShaderMaterial({
       uniforms: {
         uColor: { value: color },
-        uIntensity: { value: 0.7 + activeRatio * 0.3 },
+        uIntensity: { value: isActive ? 1.0 : 0.8 },
       },
       vertexShader: `
         varying vec2 vUv;
@@ -1506,7 +1707,7 @@ class AdminDashboard {
           float haloFactor = pow(1.0 - dist, 2.0);
 
           vec3 finalColor = mix(uColor, vec3(1.0), coreFactor * 0.6);
-          float alpha = (coreFactor + haloFactor * 0.55) * uIntensity;
+          float alpha = (coreFactor * 0.95 + haloFactor * 0.55) * uIntensity;
 
           gl_FragColor = vec4(finalColor, alpha);
         }
@@ -1543,16 +1744,24 @@ class AdminDashboard {
   }
 
   /**
-   * Pega top-5 estados com mais assinantes ativos pros rings (anel pulsante).
+   * Pega top-5 estados com mais assinantes ativos pros rings.
+   * Recebe lista de pontos individuais (1 por user) — agrega por estado.
    */
   private topRingsFromActives(
-    points: Array<{ state: string; lat: number; lng: number; active: number }>,
+    points: Array<{ state: string; lat: number; lng: number; isActive: boolean }>,
   ): Array<{ state: string; lat: number; lng: number }> {
-    return points
-      .filter(p => p.active > 0)
-      .sort((a, b) => b.active - a.active)
+    const activeByState = new Map<string, number>();
+    points.forEach(p => {
+      if (!p.isActive) return;
+      activeByState.set(p.state, (activeByState.get(p.state) || 0) + 1);
+    });
+    return [...activeByState.entries()]
+      .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
-      .map(p => ({ state: p.state, lat: p.lat, lng: p.lng }));
+      .map(([state]) => {
+        const c = AdminDashboard.STATE_COORDS[state];
+        return { state, lat: c.lat, lng: c.lng };
+      });
   }
 
   // ─── Dashboard ──────────────────────────────────────────────────────
