@@ -1036,3 +1036,62 @@ body {
 .adm-globe-body canvas {
   display: block;
 }
+
+/* Globo: header com botão fullscreen */
+.adm-globe-card { position: relative; }
+.adm-globe-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.5rem;
+}
+.adm-globe-header .adm-card-title {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.adm-globe-fs-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.2);
+  color: rgba(0,212,255,0.85);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.adm-globe-fs-btn:hover {
+  background: rgba(0,212,255,0.16);
+  border-color: rgba(0,212,255,0.4);
+  color: #fff;
+}
+
+/* Fullscreen real (Fullscreen API) — globe ocupa tela inteira */
+.adm-globe-body:fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  background: #030014 !important;
+  border-radius: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Fullscreen fallback (Safari iOS sem Fullscreen API pra elementos) */
+.adm-globe-body.adm-globe-fs-fallback {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+  background: #030014 !important;
+  border-radius: 0 !important;
+}
+
+/* Override do padding do title quando dentro do header do globo */
+.adm-globe-header .adm-card-title {
+  padding: 0 !important;
+}

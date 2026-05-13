@@ -1193,14 +1193,20 @@ class AdminDashboard {
       return;
     }
 
-    // Lazy import — só baixa globe.gl quando for usar
+    // Lazy import — só baixa globe.gl quando for usar.
+    // Mostra mensagem de loading enquanto baixa o chunk (~500KB gzipped).
+    container.innerHTML = '<div style="color:rgba(0,212,255,0.55);font-size:0.75rem;text-align:center;padding:2rem;display:flex;align-items:center;justify-content:center;height:100%;">Carregando globo…</div>';
+
     let Globe: any;
     try {
       const mod = await import('globe.gl');
       Globe = (mod as any).default || mod;
+      if (typeof Globe !== 'function') {
+        throw new Error('Globe is not a function (default export missing)');
+      }
     } catch (e) {
-      console.warn('[admin] globe.gl falhou:', e);
-      container.innerHTML = '<div style="color:var(--a-text3);font-size:0.75rem;">Erro ao carregar globo</div>';
+      console.error('[admin] globe.gl falhou ao carregar:', e);
+      container.innerHTML = `<div style="color:var(--a-red);font-size:0.75rem;text-align:center;padding:2rem;">Erro ao carregar globo:<br><code style="font-size:0.65rem;opacity:0.6;">${String(e).slice(0, 200)}</code></div>`;
       return;
     }
 
@@ -1231,16 +1237,28 @@ class AdminDashboard {
     // Limpa container (remove o "loading...")
     container.innerHTML = '';
 
+    // Detecta mobile pra ajustar tamanho/zoom
+    const isMobile = window.innerWidth < 768;
+    const height = isMobile ? 280 : 360;
+
     // Container precisa ter tamanho fixo pra globe medir
-    container.style.minHeight = '320px';
-    container.style.height = '320px';
+    container.style.minHeight = `${height}px`;
+    container.style.height = `${height}px`;
     container.style.background = 'radial-gradient(circle at center, rgba(0,30,60,0.4), rgba(3,0,20,0.95))';
     container.style.borderRadius = '12px';
     container.style.overflow = 'hidden';
     container.style.cursor = 'grab';
+    container.style.touchAction = 'none'; // bloqueia scroll do browser quando arrasta o globo
 
-    const width = container.offsetWidth || 400;
-    const height = 320;
+    // Aguarda 1 frame pra o layout calcular offsetWidth do container.
+    // No mobile, sem esse delay, offsetWidth pode vir 0 e o canvas fica
+    // com largura zero (invisível). Promise resolve com requestAnimationFrame.
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+
+    // Pega largura DEPOIS do layout. Fallback: largura da viewport menos
+    // padding da card (~64px) se ainda vier 0.
+    let width = container.offsetWidth;
+    if (width < 100) width = Math.max(300, window.innerWidth - 64);
 
     // Cria instância
     const globe = Globe()
@@ -1248,7 +1266,9 @@ class AdminDashboard {
       .height(height)
       .backgroundColor('rgba(0,0,0,0)') // transparente — gradient do container vaza
       // Globo escuro com grade sutil (estilo "neon city")
-      .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
+      // Textura local (em vez de unpkg.com — CSP do connect-src bloqueava
+      // e além disso evita roundtrip CDN externo, mais rápido).
+      .globeImageUrl('/img/earth-dark.jpg')
       .showAtmosphere(true)
       .atmosphereColor('#00D4FF')
       .atmosphereAltitude(0.18)
@@ -1263,8 +1283,8 @@ class AdminDashboard {
           <div style="color:rgba(0,212,255,0.85);">${d.count} usuário${d.count === 1 ? '' : 's'}</div>
         </div>
       `)
-      // Foco inicial em Brasil
-      .pointOfView({ lat: -15, lng: -55, altitude: 1.8 }, 0);
+      // Foco inicial em Brasil — altitude menor no mobile (zoom mais perto)
+      .pointOfView({ lat: -15, lng: -55, altitude: isMobile ? 2.2 : 1.8 }, 0);
 
     globe(container);
 
@@ -1284,14 +1304,78 @@ class AdminDashboard {
 
     this.globeInstance = globe;
 
+    // Botão fullscreen — toggle de fullscreen API + resize do globo
+    const fsBtn = document.getElementById('globeFullscreenBtn');
+    if (fsBtn && !fsBtn.dataset.bound) {
+      fsBtn.addEventListener('click', () => this.toggleGlobeFullscreen(container));
+      fsBtn.dataset.bound = '1';
+
+      // Quando entra/sai de fullscreen, redimensiona o globo
+      document.addEventListener('fullscreenchange', () => {
+        setTimeout(() => {
+          if (!this.globeInstance) return;
+          const isFs = !!document.fullscreenElement;
+          const w = isFs ? window.innerWidth : container.offsetWidth;
+          const h = isFs ? window.innerHeight : height;
+          this.globeInstance.width(w);
+          this.globeInstance.height(h);
+        }, 100);
+      });
+    }
+
     // Resize observer: se a card mudar de tamanho (sidebar fechou, etc), recalibra
     const ro = new ResizeObserver(() => {
       const w = container.offsetWidth;
-      if (w > 100 && this.globeInstance) {
+      if (w > 100 && this.globeInstance && !document.fullscreenElement) {
         this.globeInstance.width(w);
       }
     });
     ro.observe(container);
+
+    // Fallback extra mobile: se o canvas saiu com tamanho zerado (orientation
+    // change, viewport ainda calculando), força resize 200ms depois.
+    setTimeout(() => {
+      if (this.globeInstance) {
+        const w = container.offsetWidth;
+        if (w > 100) {
+          this.globeInstance.width(w);
+          this.globeInstance.height(height);
+        }
+      }
+    }, 200);
+  }
+
+  /**
+   * Toggle fullscreen no container do globo. Usa Fullscreen API.
+   * Safari iOS não suporta fullscreen elementInternals → faz fallback
+   * com position:fixed + z-index alto.
+   */
+  private toggleGlobeFullscreen(container: HTMLElement): void {
+    const isFs = !!document.fullscreenElement;
+
+    if (isFs) {
+      document.exitFullscreen().catch(() => {});
+      container.classList.remove('adm-globe-fs-fallback');
+    } else {
+      // Fullscreen API real (desktop + Android Chrome)
+      if (container.requestFullscreen) {
+        container.requestFullscreen().catch(() => {
+          // Fallback CSS pra Safari iOS
+          container.classList.add('adm-globe-fs-fallback');
+        });
+      } else {
+        // Sem Fullscreen API — fallback CSS
+        container.classList.add('adm-globe-fs-fallback');
+        // ESC pra sair
+        const escHandler = (e: KeyboardEvent) => {
+          if (e.key === 'Escape') {
+            container.classList.remove('adm-globe-fs-fallback');
+            document.removeEventListener('keydown', escHandler);
+          }
+        };
+        document.addEventListener('keydown', escHandler);
+      }
+    }
   }
 
   /**
