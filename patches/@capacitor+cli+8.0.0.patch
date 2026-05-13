@@ -1,0 +1,63 @@
+diff --git a/node_modules/@capacitor/cli/dist/ios/update.js b/node_modules/@capacitor/cli/dist/ios/update.js
+index cbd21ec..18616ea 100644
+--- a/node_modules/@capacitor/cli/dist/ios/update.js
++++ b/node_modules/@capacitor/cli/dist/ios/update.js
+@@ -67,6 +67,19 @@ async function generateCordovaPackageFile(p, config) {
+         headersText = `,
+             publicHeadersPath: "."`;
+     }
++    // PATCH GDrums: pluginos Cordova legacy declaram CocoaPods deps no
++    // plugin.xml. Como agora estamos em SPM, precisamos mapear esses pods
++    // pra Swift Packages equivalentes. Por enquanto só OneSignal — se
++    // adicionar outros plugins Cordova com deps, adicionar aqui.
++    let _extraDeps = '';
++    let _extraTargetDeps = '';
++    if (p.name === 'OnesignalCordovaPlugin') {
++        _extraDeps = `,
++        .package(url: "https://github.com/OneSignal/OneSignal-XCFramework.git", from: "5.5.1")`;
++        _extraTargetDeps = `,
++                .product(name: "OneSignalFramework", package: "OneSignal-XCFramework")`;
++    }
++
+     const content = `// swift-tools-version: 5.9
+ 
+ import PackageDescription
+@@ -81,19 +94,35 @@ let package = Package(
+         )
+     ],
+     dependencies: [
+-        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "${iosPlatformVersion}")
++        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "${iosPlatformVersion}")${_extraDeps}
+     ],
+     targets: [
+         .target(
+             name: "${p.name}",
+             dependencies: [
+-                .product(name: "Cordova", package: "capacitor-swift-pm")
++                .product(name: "Cordova", package: "capacitor-swift-pm")${_extraTargetDeps}
+             ],
+             path: "."${headersText}
+         )
+     ]
+ )`;
+-    await (0, fs_extra_1.writeFile)((0, path_1.join)(config.ios.cordovaPluginsDirAbs, 'sources', p.name, 'Package.swift'), content);
++    // PATCH GDrums: fs-extra.writeFile não cria diretórios parent. Quando o
++    // plugin Cordova não tem sources/{name}/ pré-existente, dava ENOENT
++    // fatal. Trocamos por outputFile que mkdir -p automaticamente.
++    const _targetPkgPath = (0, path_1.join)(config.ios.cordovaPluginsDirAbs, 'sources', p.name, 'Package.swift');
++    await (0, fs_extra_1.outputFile)(_targetPkgPath, content);
++
++    // PATCH GDrums: copiar arquivos .h e .m do plugin pra dentro de sources/{name}/
++    // pra o SPM compilar (Capacitor 8 esquece de fazer isso pra Cordova plugins).
++    const _sourceFiles = (0, plugin_1.getPlatformElement)(p, platform, 'source-file');
++    const _headerFiles2 = (0, plugin_1.getPlatformElement)(p, platform, 'header-file');
++    for (const _f of [..._sourceFiles, ..._headerFiles2]) {
++        const _src = _f.$ && _f.$.src;
++        if (!_src) continue;
++        const _from = (0, path_1.join)(p.rootPath, _src);
++        const _to = (0, path_1.join)(config.ios.cordovaPluginsDirAbs, 'sources', p.name, (0, path_1.basename)(_src));
++        try { await (0, fs_extra_1.copy)(_from, _to, { overwrite: true }); } catch (e) { /* ignore */ }
++    }
+ }
+ async function installCocoaPodsPlugins(config, plugins, deployment) {
+     await (0, common_1.runTask)(`Updating iOS native dependencies with ${colors_1.default.input(`${await config.ios.podPath} install`)}`, () => {

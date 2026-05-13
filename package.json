@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "build:mobile": "tsc && vite build && npm run copy:www",
-    "copy:www": "rm -rf www && mkdir -p www && cp -r dist/* www/"
+    "copy:www": "rm -rf www && mkdir -p www && cp -r dist/* www/",
+    "postinstall": "patch-package"
   },
   "keywords": [
     "midi",
@@ -19,6 +20,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "patch-package": "^8.0.1",
     "typescript": "^5.3.3",
     "vite": "^7.2.7"
   },
