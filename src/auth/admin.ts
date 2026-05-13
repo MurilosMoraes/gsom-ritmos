@@ -1314,6 +1314,17 @@ class AdminDashboard {
 
     globe(container);
 
+    // Pixel ratio do device (retina 2x/3x) — sem isso o canvas WebGL
+    // renderiza em 1x e fica blurry em telas modernas. Limite em 2 pra
+    // não comer GPU em telas 4K.
+    try {
+      const renderer = globe.renderer();
+      if (renderer && typeof renderer.setPixelRatio === 'function') {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        renderer.setPixelRatio(dpr);
+      }
+    } catch { /* noop */ }
+
     // Auto-rotação suave (para quando user interage)
     const controls = globe.controls();
     if (controls) {
@@ -1415,19 +1426,31 @@ class AdminDashboard {
     if (this.threeMod && this.glowTexture) return;
     // @ts-expect-error — three sem types instalados, usado dinamicamente
     this.threeMod = await import('three');
-    // Canvas 64x64 com radial gradient branco→transparente
+    // Canvas 256x256 (4x da resolução anterior) — sprite fica nítido até
+    // em zoom alto e em retina display. Antes era 64x64 que esticava feio.
+    const SIZE = 256;
     const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
+    canvas.width = SIZE;
+    canvas.height = SIZE;
     const ctx = canvas.getContext('2d')!;
-    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    const cx = SIZE / 2;
+    const grad = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
+    // Núcleo MUITO opaco no centro (ponto definido) e halo decai rápido —
+    // resultado: luz com "miolo" nítido e auréola sutil em vez de borrão.
     grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.2, 'rgba(255,255,255,0.85)');
-    grad.addColorStop(0.5, 'rgba(255,255,255,0.35)');
+    grad.addColorStop(0.08, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.18, 'rgba(255,255,255,0.85)');
+    grad.addColorStop(0.4, 'rgba(255,255,255,0.25)');
+    grad.addColorStop(0.7, 'rgba(255,255,255,0.05)');
     grad.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 64, 64);
+    ctx.fillRect(0, 0, SIZE, SIZE);
     this.glowTexture = new this.threeMod.CanvasTexture(canvas);
+    // Filtros pra impedir desfoque na amostragem
+    this.glowTexture.minFilter = this.threeMod.LinearMipmapLinearFilter;
+    this.glowTexture.magFilter = this.threeMod.LinearFilter;
+    this.glowTexture.anisotropy = 4;
+    this.glowTexture.generateMipmaps = true;
   }
 
   /**
