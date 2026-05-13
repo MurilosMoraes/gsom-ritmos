@@ -1095,3 +1095,15 @@ body {
 .adm-globe-header .adm-card-title {
   padding: 0 !important;
 }
+
+/* Pulse dos pontos de luz no globo — leve respiração de intensidade */
+@keyframes globePulse {
+  0%, 100% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
