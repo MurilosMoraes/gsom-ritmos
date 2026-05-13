@@ -1407,41 +1407,20 @@ class AdminDashboard {
       return;
     }
 
-    // 1 ponto POR USUÁRIO em CIDADES REAIS do BR. Cada user é atribuído
-    // a uma cidade do seu estado via hash do phone (determinístico — não
-    // pisca a cada refresh). Sem distribuição estatística fake, sem
-    // círculo: as cidades têm lat/lng verdadeira, cada user vai pra uma
-    // delas + jitter MUITO pequeno (~2km) pra não sobrepor exato.
-    const points = userLocations.map((u, idx) => {
-      const cities = AdminDashboard.CITIES_BY_STATE[u.state];
-      if (!cities || cities.length === 0) {
-        // Fallback: capital
-        const cap = AdminDashboard.STATE_COORDS[u.state];
-        if (!cap) return null;
-        return {
-          state: u.state,
-          city: cap.name,
-          lat: cap.lat,
-          lng: cap.lng,
-          isActive: u.isActive,
-        };
-      }
-
-      // Hash estável → escolhe uma cidade do estado
-      const seed = (u.phone + ':' + idx).split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
-      const cityIdx = Math.abs(seed) % cities.length;
-      const city = cities[cityIdx];
-
-      // Jitter MUITO pequeno (~2km) só pra não empilhar exato — ainda
-      // assim mantém o ponto na cidade certa, não inventa lugar
-      const jitterLat = (((seed >>> 8) % 1000) / 1000 - 0.5) * 0.04;
-      const jitterLng = (((seed >>> 18) % 1000) / 1000 - 0.5) * 0.04;
-
+    // 1 ponto POR USUÁRIO, cada um EXATAMENTE em cima da capital do
+    // estado dele. ZERO jitter, ZERO distribuição, ZERO cidade fake.
+    // Todos os users do mesmo estado caem no MESMO PIXEL — additive
+    // blending soma cores: estado com 200 users fica visualmente muito
+    // mais brilhante que estado com 1 user, sem precisar inventar
+    // posições.
+    const points = userLocations.map(u => {
+      const cap = AdminDashboard.STATE_COORDS[u.state];
+      if (!cap) return null;
       return {
         state: u.state,
-        city: city.name,
-        lat: city.lat + jitterLat,
-        lng: city.lng + jitterLng,
+        city: cap.name,
+        lat: cap.lat,
+        lng: cap.lng,
         isActive: u.isActive,
       };
     }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; isActive: boolean }>;
