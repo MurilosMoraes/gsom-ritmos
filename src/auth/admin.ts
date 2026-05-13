@@ -1211,21 +1211,41 @@ class AdminDashboard {
       return;
     }
 
-    // 1 ponto de luz POR USUÁRIO, espalhado num disco aleatório de ~220km
-    // ao redor da capital do estado. Distribuição em disco (não box) evita
-    // o "cluster quadrado" empilhado. Hash determinístico do phone garante
-    // que o mesmo user sempre cai no mesmo ponto (não pisca a cada refresh).
+    // 1 ponto de luz POR USUÁRIO, distribuído em torno da capital com
+    // padrão GAUSSIANO (não disco uniforme — que ficava redondo demais).
+    //
+    // Gaussiana (Box-Muller): muitos pontos perto do centro, decai
+    // exponencialmente conforme afasta. Visual fica orgânico tipo
+    // aglomerado urbano real — centro denso + alguns satélites longe,
+    // sem borda circular.
+    //
+    // Hash determinístico (não Math.random) → mesmo user sempre cai no
+    // mesmo ponto, não pisca a cada refresh.
     const points = userLocations.map((u, idx) => {
       const coords = AdminDashboard.STATE_COORDS[u.state];
       if (!coords) return null;
 
-      // Hash estável do phone+idx → ângulo + raio (coord. polares)
-      const seed = (u.phone + idx).split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
-      const angle = ((seed % 10000) / 10000) * Math.PI * 2;
-      // Sqrt pra distribuição uniforme no disco (sem random fica uniforme em ângulo + raio)
-      const radius = Math.sqrt(((seed >> 13) % 10000) / 10000) * 2.0; // até 2 graus = ~220km
-      const jitterLat = Math.sin(angle) * radius;
-      const jitterLng = Math.cos(angle) * radius;
+      // 2 hashes independentes pra ter 2 "randoms" estáveis (Box-Muller precisa)
+      const seedStr = u.phone + ':' + idx;
+      const h1 = seedStr.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
+      const h2 = seedStr.split('').reduce((a, c) => ((a << 7) + a + c.charCodeAt(0) * 31) | 0, 17);
+      // Normaliza pra (0, 1) — evita 0 exato que daria log(0) = -∞
+      const u1 = Math.max(0.0001, ((h1 >>> 0) % 10000) / 10000);
+      const u2 = ((h2 >>> 0) % 10000) / 10000;
+
+      // Box-Muller: 2 uniformes → 2 gaussianos (média 0, desvio 1)
+      const r = Math.sqrt(-2 * Math.log(u1));
+      const theta = 2 * Math.PI * u2;
+      const gauss1 = r * Math.cos(theta);
+      const gauss2 = r * Math.sin(theta);
+
+      // Escala: desvio ~0.55 grau (~60km) — concentra perto da capital,
+      // raros pontos longe. Clip em ±1.5° (~165km) evita outliers caírem
+      // em país vizinho ou oceano. Antes estava 0.8 + clip 2.4, alguns
+      // pontos boiavam fora do BR quando o user girava o globo.
+      const sigma = 0.55;
+      const jitterLat = Math.max(-1.5, Math.min(1.5, gauss1 * sigma));
+      const jitterLng = Math.max(-1.5, Math.min(1.5, gauss2 * sigma));
 
       return {
         state: u.state,
