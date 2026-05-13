@@ -24,7 +24,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // ═══════════════════════════════════════════════════════════════
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            // .playback exclusivo (sem options): bypassa o switch silencioso
+            // do iOS (Ring/Silent toggle no lateral) E permite NowPlaying no
+            // lock screen / control center.
+            //
+            // Histórico: tínhamos .mixWithOthers pra coexistir com Spotify,
+            // mas relatos de usuários (e doc Apple confirma) mostram que essa
+            // opção pode fazer a session ser tratada como secundária em iOS
+            // recentes, respeitando silent switch — sintoma: app instalado
+            // pedia pra desativar silencioso pra tocar.
+            try session.setCategory(.playback, mode: .default, options: [])
             try session.setActive(true, options: [])
         } catch {
             print("[GDrums] AVAudioSession setup failed: \(error)")
