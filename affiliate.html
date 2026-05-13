@@ -1181,6 +1181,37 @@
 </div>
 
 <script>
+// Olhinho 👁 nos input[type=password] (versão inline simples).
+// Mesma UX dos outros forms — clica e mostra/esconde a senha.
+(function() {
+  const style = document.createElement('style');
+  style.textContent = `.gd-pwd-wrap{position:relative;display:block}.gd-pwd-toggle{position:absolute;top:50%;right:10px;transform:translateY(-50%);width:32px;height:32px;border:none;background:transparent;color:rgba(255,255,255,0.4);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;border-radius:6px;z-index:2}.gd-pwd-toggle:hover{color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.05)}.gd-pwd-toggle svg{width:18px;height:18px}.gd-pwd-wrap>input{padding-right:44px!important}`;
+  document.head.appendChild(style);
+  const OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const CLOSED = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  function attach(input) {
+    if (input.dataset.gdPwd) return; input.dataset.gdPwd = '1';
+    const wrap = document.createElement('span'); wrap.className = 'gd-pwd-wrap';
+    input.parentNode.insertBefore(wrap, input); wrap.appendChild(input);
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'gd-pwd-toggle'; btn.setAttribute('tabindex','-1');
+    btn.innerHTML = OPEN; wrap.appendChild(btn);
+    btn.addEventListener('click', () => {
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      btn.innerHTML = showing ? OPEN : CLOSED;
+      input.focus();
+    });
+  }
+  document.querySelectorAll('input[type="password"]').forEach(attach);
+  new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
+    if (n.nodeType === 1) {
+      if (n.matches?.('input[type="password"]')) attach(n);
+      else n.querySelectorAll?.('input[type="password"]').forEach(attach);
+    }
+  }))).observe(document.body, { childList: true, subtree: true });
+})();
+
 const API = 'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/affiliate-api';
 const TOKEN_KEY = 'gdrums_aff_token';
 

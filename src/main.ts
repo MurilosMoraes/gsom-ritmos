@@ -1946,6 +1946,11 @@ class RhythmSequencer {
     // Keyboard shortcuts
     this.setupKeyboardShortcuts();
 
+    // Olhinho 👁 em todos os input[type=password] (modal de alterar senha em
+    // Minha Conta + qualquer outro futuro). Funciona via MutationObserver,
+    // pega campos criados depois também.
+    import('./utils/passwordToggle').then(m => m.setupPasswordToggle()).catch(() => {});
+
     // Pattern tabs
     document.querySelectorAll('.pattern-tab').forEach(tab => {
       tab.addEventListener('click', (e) => {

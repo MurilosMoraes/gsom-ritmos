@@ -7,6 +7,7 @@ import { AttributionService } from '../native/AttributionService';
 import { registerSchema, zodErrorsToFieldMap } from './schemas';
 import { updateRhythmCountInDom } from '../utils/rhythmCount';
 import { redirectIfRecoveryHash } from './recoveryGuard';
+import { setupPasswordToggle } from '../utils/passwordToggle';
 
 class RegisterPage {
   private form: HTMLFormElement;
@@ -422,5 +423,6 @@ window.addEventListener('DOMContentLoaded', () => {
   if (redirectIfRecoveryHash()) return;
   AttributionService.init();
   updateRhythmCountInDom();
+  setupPasswordToggle();
   new RegisterPage();
 });

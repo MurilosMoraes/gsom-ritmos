@@ -5,6 +5,7 @@ import { supabase } from './supabase';
 import { AttributionService } from '../native/AttributionService';
 import { loginSchema, zodErrorsToFieldMap } from './schemas';
 import { isNativeApp, openExternal } from '../native/Platform';
+import { setupPasswordToggle } from '../utils/passwordToggle';
 
 class LoginPage {
   private form: HTMLFormElement;
@@ -645,5 +646,6 @@ class LoginPage {
 
 window.addEventListener('DOMContentLoaded', () => {
   AttributionService.init();
+  setupPasswordToggle(); // olhinho em todos os input[type=password] da página
   new LoginPage();
 });
