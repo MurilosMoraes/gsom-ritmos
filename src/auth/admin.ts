@@ -1185,16 +1185,15 @@ class AdminDashboard {
    * pra não inflar o bundle inicial — só carrega quando admin abre o
    * Dashboard pela primeira vez.
    */
-  private async renderGlobe(container: HTMLElement, regionCounts: Record<string, number>): Promise<void> {
+  private async renderGlobe(container: HTMLElement, userLocations: Array<{ state: string; phone: string }>): Promise<void> {
     // Sem dados de telefone? Mostra empty state e sai.
-    if (Object.keys(regionCounts).length === 0) {
+    if (userLocations.length === 0) {
       container.innerHTML = '<div style="color:var(--a-text3);font-size:0.75rem;text-align:center;padding:2rem;">Sem dados de telefone pra mapear</div>';
       this.globeInstance = null;
       return;
     }
 
     // Lazy import — só baixa globe.gl quando for usar.
-    // Mostra mensagem de loading enquanto baixa o chunk (~500KB gzipped).
     container.innerHTML = '<div style="color:rgba(0,212,255,0.55);font-size:0.75rem;text-align:center;padding:2rem;display:flex;align-items:center;justify-content:center;height:100%;">Carregando globo…</div>';
 
     let Globe: any;
@@ -1210,26 +1209,41 @@ class AdminDashboard {
       return;
     }
 
-    // Monta pontos: { lat, lng, label, count, intensity }
-    const max = Math.max(...Object.values(regionCounts));
-    const points = Object.entries(regionCounts).map(([state, count]) => {
-      const coords = AdminDashboard.STATE_COORDS[state];
+    // Conta usuários por estado pra calcular densidade visual (intensidade
+    // de cor varia conforme cluster). Estados mais cheios = pontos mais
+    // brilhantes/purple, estados com 1 user = ponto cyan claro.
+    const stateCounts: Record<string, number> = {};
+    userLocations.forEach(u => { stateCounts[u.state] = (stateCounts[u.state] || 0) + 1; });
+    const maxStateCount = Math.max(...Object.values(stateCounts));
+
+    // 1 ponto por usuário, com jitter aleatório (~0.6 graus = ~65km).
+    // Hash determinístico do phone garante que o mesmo user sempre cai
+    // no mesmo lugar (evita "tremer" a cada re-render).
+    const points = userLocations.map((u, idx) => {
+      const coords = AdminDashboard.STATE_COORDS[u.state];
       if (!coords) return null;
-      const intensity = count / max; // 0-1
+      const intensity = stateCounts[u.state] / maxStateCount;
+
+      // Hash simples do phone+idx pra gerar jitter determinístico (-0.5, 0.5)
+      // Sem random — assim o ponto não pula a cada refresh.
+      const seed = (u.phone + idx).split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
+      const jitterLat = ((seed % 1000) / 1000 - 0.5) * 1.2;
+      const jitterLng = (((seed >> 10) % 1000) / 1000 - 0.5) * 1.2;
+
       return {
-        state,
+        state: u.state,
         city: coords.name,
-        lat: coords.lat,
-        lng: coords.lng,
-        count,
+        lat: coords.lat + jitterLat,
+        lng: coords.lng + jitterLng,
         intensity,
       };
-    }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; count: number; intensity: number }>;
+    }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; intensity: number }>;
 
     // Se já tem globo criado, só atualiza dados
     if (this.globeInstance) {
       this.globeInstance.pointsData(points);
-      this.globeInstance.ringsData(points);
+      // Rings só pros 5 estados mais cheios (não toda lista — fica bagunça)
+      this.globeInstance.ringsData(this.topRingsFromPoints(points));
       return;
     }
 
@@ -1271,29 +1285,29 @@ class AdminDashboard {
       .showAtmosphere(true)
       .atmosphereColor('#00D4FF')
       .atmosphereAltitude(0.18)
-      // Pontos: bolinhas 3D PEQUENAS e brilhantes (núcleo do "ponto de luz")
+      // Pontos achatados (não cilindros): altura quase zero + radius pequeno
+      // = visual de ponto de luz na superfície do globo, não barra projetada.
+      // 1 ponto por usuário; cor depende da densidade do estado dele.
       .pointsData(points)
-      .pointAltitude(0.01)
-      .pointRadius((d: any) => 0.15 + d.intensity * 0.25)
+      .pointAltitude(0)
+      .pointRadius(0.25)
       .pointColor((d: any) => this.intensityColor(d.intensity))
       .pointLabel((d: any) => `
         <div style="background:rgba(3,0,20,0.95);border:1px solid rgba(0,212,255,0.4);border-radius:8px;padding:0.5rem 0.75rem;font-family:-apple-system,sans-serif;color:#fff;font-size:0.85rem;">
           <div style="font-weight:700;">${d.city} (${d.state})</div>
-          <div style="color:rgba(0,212,255,0.85);">${d.count} usuário${d.count === 1 ? '' : 's'}</div>
         </div>
       `)
-      // Rings: anéis animados que se expandem ao redor de cada ponto
-      // (efeito de pulso/sonar — visual de "ponto de luz vivo")
-      .ringsData(points)
+      // Rings: anéis animados SÓ nos top 5 estados mais cheios (efeito de
+      // "hotspot" — chama atenção pras regiões mais densas).
+      .ringsData(this.topRingsFromPoints(points))
       .ringColor((d: any) => {
         const c = this.intensityColor(d.intensity);
-        // Função propagation: cor mais transparente conforme o anel expande
-        return (t: number) => c.replace(/[\d.]+\)$/, `${(1 - t) * 0.6})`);
+        return (t: number) => c.replace(/[\d.]+\)$/, `${(1 - t) * 0.5})`);
       })
-      .ringMaxRadius((d: any) => 2 + d.intensity * 4)
-      .ringPropagationSpeed((d: any) => 1.5 + d.intensity * 2)
-      .ringRepeatPeriod((d: any) => 1500 - d.intensity * 500)
-      .ringAltitude(0.01)
+      .ringMaxRadius(5)
+      .ringPropagationSpeed(2.5)
+      .ringRepeatPeriod(1800)
+      .ringAltitude(0.005)
       // Foco inicial em Brasil — altitude menor no mobile (zoom mais perto)
       .pointOfView({ lat: -15, lng: -55, altitude: isMobile ? 2.2 : 1.8 }, 0);
 
@@ -1391,13 +1405,44 @@ class AdminDashboard {
 
   /**
    * Retorna cor cyan→purple baseada na intensidade (0-1).
-   * Pontos com mais usuários = cor mais brilhante/saturada.
+   * Estados com mais usuários = todos os pontos viram purple.
    */
   private intensityColor(intensity: number): string {
-    // Interpolação simples cyan (00D4FF) → purple (8B5CF6) por intensidade
-    if (intensity < 0.3) return 'rgba(0, 212, 255, 0.85)';   // cyan claro
-    if (intensity < 0.6) return 'rgba(75, 162, 255, 0.95)';  // cyan-purple
-    return 'rgba(139, 92, 246, 1)';                          // purple forte
+    // Interpolação cyan (00D4FF) → blue → purple (8B5CF6) por densidade
+    if (intensity < 0.3) return 'rgba(0, 212, 255, 0.9)';    // cyan claro — poucos users
+    if (intensity < 0.6) return 'rgba(75, 162, 255, 1)';     // cyan-blue
+    if (intensity < 0.85) return 'rgba(120, 130, 255, 1)';   // blue-purple
+    return 'rgba(160, 100, 246, 1)';                          // purple — região quente
+  }
+
+  /**
+   * Pega 1 ponto por estado do top-5 mais cheio — pra usar como ring
+   * (hotspot). Não duplica anéis dentro do mesmo estado (com 50 users
+   * em SP, queremos 1 anel grande no centro de SP, não 50 anéis).
+   */
+  private topRingsFromPoints(
+    points: Array<{ state: string; city: string; lat: number; lng: number; intensity: number }>,
+  ): Array<{ state: string; lat: number; lng: number; intensity: number }> {
+    const byState = new Map<string, { state: string; lat: number; lng: number; intensity: number; count: number }>();
+    points.forEach(p => {
+      const coords = AdminDashboard.STATE_COORDS[p.state];
+      if (!coords) return;
+      const existing = byState.get(p.state);
+      if (existing) {
+        existing.count++;
+      } else {
+        byState.set(p.state, {
+          state: p.state,
+          lat: coords.lat, // centro do estado, não jitter
+          lng: coords.lng,
+          intensity: p.intensity,
+          count: 1,
+        });
+      }
+    });
+    return [...byState.values()]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
   }
 
   // ─── Dashboard ──────────────────────────────────────────────────────
@@ -1615,15 +1660,17 @@ class AdminDashboard {
         `).join('') || '<div style="color:var(--a-text3);font-size:0.75rem;">Nenhum ativo</div>';
     }
 
-    // Distribuição por região (DDD) — agora em globo 3D interativo
+    // Distribuição por região — 1 ponto de luz por usuário (com jitter
+    // ao redor da capital do estado pra evitar overlap exato e mostrar
+    // densidade visual real).
     const regionEl = el('regionChart');
     if (regionEl) {
-      const regionCounts: Record<string, number> = {};
+      const userLocations: Array<{ state: string; phone: string }> = [];
       withPhone.forEach(p => {
         const state = this.getStateFromPhone(p.phone);
-        if (state !== '??') regionCounts[state] = (regionCounts[state] || 0) + 1;
+        if (state !== '??') userLocations.push({ state, phone: p.phone! });
       });
-      this.renderGlobe(regionEl, regionCounts);
+      this.renderGlobe(regionEl, userLocations);
     }
 
     // Ultimas transações
