@@ -20,25 +20,36 @@
 const RECOVERY_FLAGS = ['type=recovery', 'type=magiclink', 'type=signup'];
 
 /**
- * Se a URL tem hash de recovery e a página atual NÃO é o login.html,
- * redireciona pra /login.html preservando o hash. Retorna true se
- * redirecionou — caller deve abortar inicialização nesse caso.
+ * Se a URL tem token de recovery (hash legacy OU query PKCE) e a página
+ * atual NÃO é o login.html, redireciona pra /login.html preservando
+ * search + hash. Retorna true se redirecionou — caller deve abortar
+ * inicialização nesse caso.
  */
 export function redirectIfRecoveryHash(): boolean {
   try {
     const hash = window.location.hash || '';
-    if (!hash) return false;
+    const search = window.location.search || '';
 
-    const isRecovery = RECOVERY_FLAGS.some(flag => hash.includes(flag));
-    if (!isRecovery) return false;
+    // Implicit flow (legacy): #type=recovery, #access_token=...
+    const hasHashRecovery = !!hash && (
+      RECOVERY_FLAGS.some(flag => hash.includes(flag)) ||
+      hash.includes('access_token=')
+    );
+
+    // PKCE flow (default supabase-js v2): ?code=... na query string.
+    // Não dá pra distinguir 100% se é recovery vs magic link só pelo code,
+    // mas em ambos casos o destino correto é o login.html (que sabe
+    // processar e mostrar form de nova senha se a sessão for recovery).
+    const hasPkceCode = /[?&]code=[A-Za-z0-9_-]+/.test(search);
+
+    if (!hasHashRecovery && !hasPkceCode) return false;
 
     const path = window.location.pathname || '/';
     const onLogin = /\/login(\.html)?$/i.test(path);
     if (onLogin) return false;
 
-    // Mantém o hash. Não usa internalNav porque internalNav pode
-    // adicionar .html dependendo do contexto e queremos URL exata.
-    const target = '/login.html' + window.location.search + hash;
+    // Mantém search (PKCE code) + hash (Implicit token).
+    const target = '/login.html' + search + hash;
     window.location.replace(target);
     return true;
   } catch {

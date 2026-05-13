@@ -1,18 +1,25 @@
 // Landing Page Animations and Interactions
 
 // Defesa: link de recovery do email pode cair aqui se Supabase Site URL
-// estiver na raiz. Detecta hash de recovery e redireciona pro /login.html
-// preservando o fragmento. Síncrono no topo pra rodar antes de qualquer
-// outra coisa.
+// estiver na raiz. Detecta:
+//   - hash legacy (Implicit flow): #type=recovery, #access_token=...
+//   - query PKCE (default v2): ?code=...
+// e redireciona pro /login.html preservando search + hash. Síncrono no topo.
 (function recoveryGuard() {
   try {
     var h = window.location.hash || '';
-    if (!h) return;
-    var isRecovery = h.indexOf('type=recovery') !== -1 || h.indexOf('type=magiclink') !== -1 || h.indexOf('type=signup') !== -1;
-    if (!isRecovery) return;
+    var s = window.location.search || '';
+    var hasHash = !!h && (
+      h.indexOf('type=recovery') !== -1 ||
+      h.indexOf('type=magiclink') !== -1 ||
+      h.indexOf('type=signup') !== -1 ||
+      h.indexOf('access_token=') !== -1
+    );
+    var hasCode = /[?&]code=[A-Za-z0-9_-]+/.test(s);
+    if (!hasHash && !hasCode) return;
     var path = window.location.pathname || '/';
     if (/\/login(\.html)?$/i.test(path)) return;
-    window.location.replace('/login.html' + window.location.search + h);
+    window.location.replace('/login.html' + s + h);
   } catch (e) { /* noop */ }
 })();
 

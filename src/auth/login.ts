@@ -27,18 +27,41 @@ class LoginPage {
 
   private async init(): Promise<void> {
     // Detectar recovery token na URL (reset de senha via email).
-    // Supabase coloca #access_token=...&type=recovery — pode chegar:
+    //
+    // Supabase pode mandar em 2 formatos dependendo do flow configurado:
+    //   1) Implicit flow (legacy): #access_token=...&type=recovery  no HASH
+    //   2) PKCE flow (default em supabase-js v2.x):  ?code=...      na QUERY
+    //
+    // Browsers diferentes lidam de jeitos diferentes — Safari iOS especialmente
+    // tem problemas com hash em redirects + PWA standalone. Por isso a gente
+    // checa AMBOS formatos.
+    //
+    // Tem ainda 3 estados:
     //   (a) já processado (sessão criada antes desse JS rodar)
     //   (b) processando (vai disparar PASSWORD_RECOVERY no onAuthStateChange)
     //   (c) inválido/expirado (nada acontece — timeout)
-    // Por isso: tenta detectar pelas 3 vias antes de seguir o fluxo normal.
-    const hash = window.location.hash;
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
     const looksLikeRecovery =
       hash.includes('type=recovery') ||
       hash.includes('type=magiclink') ||
-      hash.includes('access_token=');
+      hash.includes('access_token=') ||
+      // PKCE: code= na query string. Confirma que é recovery pelo type
+      // que o Supabase agora também passa como query param.
+      /[?&]code=/.test(search);
 
     if (looksLikeRecovery) {
+      // PKCE: precisa trocar code → session antes de continuar. Implicit já
+      // processa sozinho no detectSessionInUrl do supabase-js.
+      const codeMatch = search.match(/[?&]code=([^&]+)/);
+      if (codeMatch) {
+        try {
+          await supabase.auth.exchangeCodeForSession(codeMatch[1]);
+        } catch (e) {
+          console.warn('[recovery] exchangeCodeForSession falhou:', e);
+        }
+      }
+
       const ok = await this.waitForRecoverySession();
       if (ok) {
         await this.handlePasswordRecovery();
