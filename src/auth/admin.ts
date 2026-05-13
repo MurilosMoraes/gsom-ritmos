@@ -1135,12 +1135,174 @@ class AdminDashboard {
     '91':'PA','92':'AM','93':'PA','94':'PA','95':'RR','96':'AP','97':'AM','98':'MA','99':'MA',
   };
 
+  // Capital de cada UF — usado pelo globo 3D pra plotar markers
+  // (precisão por estado é suficiente; quando tivermos cidade no cadastro
+  // melhora pra coordenadas exatas).
+  private static readonly STATE_COORDS: Record<string, { name: string; lat: number; lng: number }> = {
+    'SP': { name: 'São Paulo', lat: -23.5505, lng: -46.6333 },
+    'RJ': { name: 'Rio de Janeiro', lat: -22.9068, lng: -43.1729 },
+    'ES': { name: 'Vitória', lat: -20.3155, lng: -40.3128 },
+    'MG': { name: 'Belo Horizonte', lat: -19.9167, lng: -43.9345 },
+    'PR': { name: 'Curitiba', lat: -25.4284, lng: -49.2733 },
+    'SC': { name: 'Florianópolis', lat: -27.5949, lng: -48.5482 },
+    'RS': { name: 'Porto Alegre', lat: -30.0346, lng: -51.2177 },
+    'DF': { name: 'Brasília', lat: -15.8267, lng: -47.9218 },
+    'GO': { name: 'Goiânia', lat: -16.6869, lng: -49.2648 },
+    'TO': { name: 'Palmas', lat: -10.1844, lng: -48.3336 },
+    'MT': { name: 'Cuiabá', lat: -15.6010, lng: -56.0974 },
+    'MS': { name: 'Campo Grande', lat: -20.4697, lng: -54.6201 },
+    'AC': { name: 'Rio Branco', lat: -9.9747, lng: -67.8243 },
+    'RO': { name: 'Porto Velho', lat: -8.7619, lng: -63.9039 },
+    'BA': { name: 'Salvador', lat: -12.9777, lng: -38.5016 },
+    'SE': { name: 'Aracaju', lat: -10.9472, lng: -37.0731 },
+    'PE': { name: 'Recife', lat: -8.0476, lng: -34.8770 },
+    'AL': { name: 'Maceió', lat: -9.6498, lng: -35.7089 },
+    'PB': { name: 'João Pessoa', lat: -7.1195, lng: -34.8450 },
+    'RN': { name: 'Natal', lat: -5.7945, lng: -35.2110 },
+    'CE': { name: 'Fortaleza', lat: -3.7172, lng: -38.5433 },
+    'PI': { name: 'Teresina', lat: -5.0892, lng: -42.8019 },
+    'MA': { name: 'São Luís', lat: -2.5307, lng: -44.3068 },
+    'PA': { name: 'Belém', lat: -1.4558, lng: -48.4902 },
+    'AM': { name: 'Manaus', lat: -3.1190, lng: -60.0217 },
+    'RR': { name: 'Boa Vista', lat: 2.8235, lng: -60.6758 },
+    'AP': { name: 'Macapá', lat: 0.0349, lng: -51.0664 },
+  };
+
   private getStateFromPhone(phone: string | null): string {
     if (!phone || phone.length < 4) return '??';
     // Remover código de país se tiver (55)
     const clean = phone.startsWith('55') && phone.length > 11 ? phone.slice(2) : phone;
     const ddd = clean.slice(0, 2);
     return AdminDashboard.DDD_STATE[ddd] || '??';
+  }
+
+  // Instância do globo (lazy) — armazenada pra não recriar a cada render
+  private globeInstance: any = null;
+
+  /**
+   * Renderiza globo 3D interativo no container, com markers proporcionais
+   * ao volume de usuários por estado. Usa lazy import do globe.gl (~500KB)
+   * pra não inflar o bundle inicial — só carrega quando admin abre o
+   * Dashboard pela primeira vez.
+   */
+  private async renderGlobe(container: HTMLElement, regionCounts: Record<string, number>): Promise<void> {
+    // Sem dados de telefone? Mostra empty state e sai.
+    if (Object.keys(regionCounts).length === 0) {
+      container.innerHTML = '<div style="color:var(--a-text3);font-size:0.75rem;text-align:center;padding:2rem;">Sem dados de telefone pra mapear</div>';
+      this.globeInstance = null;
+      return;
+    }
+
+    // Lazy import — só baixa globe.gl quando for usar
+    let Globe: any;
+    try {
+      const mod = await import('globe.gl');
+      Globe = (mod as any).default || mod;
+    } catch (e) {
+      console.warn('[admin] globe.gl falhou:', e);
+      container.innerHTML = '<div style="color:var(--a-text3);font-size:0.75rem;">Erro ao carregar globo</div>';
+      return;
+    }
+
+    // Monta pontos: { lat, lng, label, count, size }
+    const max = Math.max(...Object.values(regionCounts));
+    const points = Object.entries(regionCounts).map(([state, count]) => {
+      const coords = AdminDashboard.STATE_COORDS[state];
+      if (!coords) return null;
+      return {
+        state,
+        city: coords.name,
+        lat: coords.lat,
+        lng: coords.lng,
+        count,
+        // Tamanho proporcional: min 0.15, max 0.9 (em "graus" do globe.gl)
+        size: 0.15 + (count / max) * 0.75,
+        // Cor: cyan brilhante, mais intenso pros maiores
+        color: this.intensityColor(count / max),
+      };
+    }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; count: number; size: number; color: string }>;
+
+    // Se já tem globo criado, só atualiza dados
+    if (this.globeInstance) {
+      this.globeInstance.pointsData(points);
+      return;
+    }
+
+    // Limpa container (remove o "loading...")
+    container.innerHTML = '';
+
+    // Container precisa ter tamanho fixo pra globe medir
+    container.style.minHeight = '320px';
+    container.style.height = '320px';
+    container.style.background = 'radial-gradient(circle at center, rgba(0,30,60,0.4), rgba(3,0,20,0.95))';
+    container.style.borderRadius = '12px';
+    container.style.overflow = 'hidden';
+    container.style.cursor = 'grab';
+
+    const width = container.offsetWidth || 400;
+    const height = 320;
+
+    // Cria instância
+    const globe = Globe()
+      .width(width)
+      .height(height)
+      .backgroundColor('rgba(0,0,0,0)') // transparente — gradient do container vaza
+      // Globo escuro com grade sutil (estilo "neon city")
+      .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
+      .showAtmosphere(true)
+      .atmosphereColor('#00D4FF')
+      .atmosphereAltitude(0.18)
+      // Points (markers de usuários por estado)
+      .pointsData(points)
+      .pointAltitude((d: any) => 0.02 + (d.count / max) * 0.1)
+      .pointRadius((d: any) => d.size)
+      .pointColor((d: any) => d.color)
+      .pointLabel((d: any) => `
+        <div style="background:rgba(3,0,20,0.95);border:1px solid rgba(0,212,255,0.4);border-radius:8px;padding:0.5rem 0.75rem;font-family:-apple-system,sans-serif;color:#fff;font-size:0.85rem;">
+          <div style="font-weight:700;">${d.city} (${d.state})</div>
+          <div style="color:rgba(0,212,255,0.85);">${d.count} usuário${d.count === 1 ? '' : 's'}</div>
+        </div>
+      `)
+      // Foco inicial em Brasil
+      .pointOfView({ lat: -15, lng: -55, altitude: 1.8 }, 0);
+
+    globe(container);
+
+    // Auto-rotação suave (para quando user interage)
+    const controls = globe.controls();
+    if (controls) {
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.35;
+      controls.enableZoom = true;
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.1;
+
+      // Para a auto-rotação quando user clica/arrasta
+      container.addEventListener('mousedown', () => { controls.autoRotate = false; });
+      container.addEventListener('touchstart', () => { controls.autoRotate = false; }, { passive: true });
+    }
+
+    this.globeInstance = globe;
+
+    // Resize observer: se a card mudar de tamanho (sidebar fechou, etc), recalibra
+    const ro = new ResizeObserver(() => {
+      const w = container.offsetWidth;
+      if (w > 100 && this.globeInstance) {
+        this.globeInstance.width(w);
+      }
+    });
+    ro.observe(container);
+  }
+
+  /**
+   * Retorna cor cyan→purple baseada na intensidade (0-1).
+   * Pontos com mais usuários = cor mais brilhante/saturada.
+   */
+  private intensityColor(intensity: number): string {
+    // Interpolação simples cyan (00D4FF) → purple (8B5CF6) por intensidade
+    if (intensity < 0.3) return 'rgba(0, 212, 255, 0.85)';   // cyan claro
+    if (intensity < 0.6) return 'rgba(75, 162, 255, 0.95)';  // cyan-purple
+    return 'rgba(139, 92, 246, 1)';                          // purple forte
   }
 
   // ─── Dashboard ──────────────────────────────────────────────────────
@@ -1358,7 +1520,7 @@ class AdminDashboard {
         `).join('') || '<div style="color:var(--a-text3);font-size:0.75rem;">Nenhum ativo</div>';
     }
 
-    // Distribuição por região (DDD)
+    // Distribuição por região (DDD) — agora em globo 3D interativo
     const regionEl = el('regionChart');
     if (regionEl) {
       const regionCounts: Record<string, number> = {};
@@ -1366,18 +1528,7 @@ class AdminDashboard {
         const state = this.getStateFromPhone(p.phone);
         if (state !== '??') regionCounts[state] = (regionCounts[state] || 0) + 1;
       });
-      const sorted = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-      const maxRegion = sorted.length > 0 ? sorted[0][1] : 1;
-
-      regionEl.innerHTML = sorted.length > 0
-        ? sorted.map(([state, count]) => `
-          <div class="adm-bar-row">
-            <span class="adm-bar-label">${state}</span>
-            <div class="adm-bar-track"><div class="adm-bar-fill" style="width:${(count/maxRegion*100)}%;background:linear-gradient(90deg,var(--a-green),var(--a-cyan));"></div></div>
-            <span class="adm-bar-count">${count}</span>
-          </div>
-        `).join('')
-        : '<div style="color:var(--a-text3);font-size:0.75rem;">Sem dados de telefone</div>';
+      this.renderGlobe(regionEl, regionCounts);
     }
 
     // Ultimas transações

@@ -1026,3 +1026,13 @@ body {
   vertical-align: top;
   padding: 0.75rem 0.6rem;
 }
+
+/* Globo 3D no Dashboard */
+.adm-globe-body {
+  padding: 0 !important;
+  min-height: 320px;
+  position: relative;
+}
+.adm-globe-body canvas {
+  display: block;
+}
