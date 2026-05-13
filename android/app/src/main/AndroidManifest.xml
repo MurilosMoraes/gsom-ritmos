@@ -22,6 +22,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- App Links: intercepta https://gdrums.com.br/* e abre direto no app
+                 em vez de cair no navegador. Requer /.well-known/assetlinks.json
+                 no domínio com o fingerprint SHA-256 do keystore de release.
+                 autoVerify=true: Android valida o assetlinks no primeiro boot e
+                 marca como "verified" → abre direto sem perguntar. Sem isso
+                 mostraria "Abrir com..." toda vez. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="gdrums.com.br" />
+                <data android:pathPrefix="/login" />
+                <data android:pathPrefix="/plans" />
+                <data android:pathPrefix="/payment-success" />
+                <data android:pathPrefix="/admin" />
+            </intent-filter>
+
         </activity>
 
         <!-- ForegroundService de áudio: mantém WebView vivo + AudioContext rodando

@@ -312,6 +312,12 @@ class RhythmSequencer {
     // Inicializar serviços nativos (iOS/Android)
     StatusBarService.init();
 
+    // Deep links (Universal Links iOS / App Links Android): intercepta
+    // https://gdrums.com.br/* clicado em email/whatsapp e roteia pra
+    // página correspondente dentro do app. Crítico pro recovery de senha
+    // funcionar quando o user clica no link do email com o app instalado.
+    import('./native/DeepLinks').then(m => m.initDeepLinks()).catch(() => {});
+
     // Inicializar UI
     this.init();
   }

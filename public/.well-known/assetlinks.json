@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.gdrums.app",
+      "sha256_cert_fingerprints": [
+        "D5:13:42:93:CB:19:7B:20:CD:C4:8B:C3:E9:74:01:64:7B:81:D8:31:26:7C:DF:B1:E5:81:EF:B8:DF:71:33:1C"
+      ]
+    }
+  }
+]

@@ -1,0 +1,38 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["2MW7WMBCB3.com.gdrums.app"],
+        "components": [
+          {
+            "/": "/login",
+            "comment": "Recovery de senha + magic links"
+          },
+          {
+            "/": "/login.html",
+            "comment": "Recovery de senha (extensão .html)"
+          },
+          {
+            "/": "/plans",
+            "comment": "Tela de assinatura"
+          },
+          {
+            "/": "/plans.html",
+            "comment": "Tela de assinatura (.html)"
+          },
+          {
+            "/": "/payment-success*",
+            "comment": "Retorno do checkout InfinitePay"
+          },
+          {
+            "/": "/admin*",
+            "comment": "Painel admin"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["2MW7WMBCB3.com.gdrums.app"]
+  }
+}
