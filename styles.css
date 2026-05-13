@@ -1194,11 +1194,6 @@ input:checked + .slider:before {
   padding: 0.5rem 0.75rem;
   flex-shrink: 0;
   gap: 0.35rem 0;
-  /* Garantir que controles inferiores fiquem acima da performance grid
-     quando viewport é curta — antes o grid (flex:1, max-height:50vh)
-     comprimia menos que o min-height interno e empurrava/sobrepunha. */
-  position: relative;
-  z-index: 2;
 }
 
 .ctrl-group {
