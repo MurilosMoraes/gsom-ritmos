@@ -80,7 +80,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        // Re-ativa AVAudioSession sempre que o app voltar pro foreground.
+        // iOS pode invalidar a session em vários cenários (ligação, outro app
+        // tocando áudio, switch silencioso toggled). Forçar setActive(true)
+        // aqui garante que Web Audio sempre tem output válido.
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .default, options: [])
+            try session.setActive(true, options: [])
+            print("[GDrums] AVAudioSession reactivated on becomeActive")
+        } catch {
+            print("[GDrums] AVAudioSession reactivate failed: \(error)")
+        }
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

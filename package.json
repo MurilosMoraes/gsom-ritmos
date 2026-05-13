@@ -35,7 +35,6 @@
     "@capacitor/status-bar": "^8.0.1",
     "@capgo/native-purchases": "^8.3.6",
     "@supabase/supabase-js": "^2.99.3",
-    "onesignal-cordova-plugin": "^5.3.8",
     "vite-plugin-pwa": "^1.2.0",
     "zod": "^4.3.6"
   }

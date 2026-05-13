@@ -52,24 +52,9 @@ function isNative(): boolean {
   }
 }
 
-/**
- * Inicializa o SDK NATIVO do OneSignal via onesignal-cordova-plugin.
- * Só chamado quando rodando em Capacitor (iOS/Android APK).
- *
- * O plugin nativo registra automaticamente o device no FCM (Android)
- * ou APNs (iOS) e expõe a mesma noção de User/External ID que o SDK web —
- * por isso, do ponto de vista do admin, é o mesmo user em qualquer device.
- */
-async function initNativeOneSignal(): Promise<void> {
-  // Import dinâmico pra não quebrar o build web (módulo CommonJS).
-  // O plugin define `window.cordova.plugins.OneSignal` mas também exporta
-  // como default no índice — usamos o import dinâmico que funciona pros 2.
-  const mod = await import('onesignal-cordova-plugin');
-  const OneSignal: any = (mod as any).default || mod;
-
-  // initialize é sync — só registra o appId no SDK nativo.
-  OneSignal.initialize(ONESIGNAL_APP_ID);
-}
+// initNativeOneSignal removido: onesignal-cordova-plugin desinstalado por
+// causar regressão crítica no iOS (audio engine + WKWebView). Push nativo
+// volta quando tivermos plugin compatível com Capacitor 8 SPM.
 
 /**
  * Injeta SDK script tag + roda OneSignal.init.
@@ -185,22 +170,8 @@ export async function linkUserToPush(userId: string): Promise<void> {
     await initOneSignal();
     if (!sdkLoaded) return;
 
-    if (isNative()) {
-      // SDK nativo (Capacitor): mesma API conceitual, mas síncrono.
-      const mod = await import('onesignal-cordova-plugin');
-      const OneSignal: any = (mod as any).default || mod;
-      OneSignal.login(userId);
-      // optIn defensivo: se permissão concedida mas subscription opted-out
-      // por algum motivo, força entrar de novo. SDK nativo expõe isso
-      // em OneSignal.User.pushSubscription.optIn().
-      try {
-        const isOpted = OneSignal.User?.pushSubscription?.getOptedIn?.();
-        if (isOpted === false) {
-          OneSignal.User?.pushSubscription?.optIn?.();
-        }
-      } catch { /* noop */ }
-      return;
-    }
+    // Native (Capacitor): push nativo desativado até resolver plugin
+    if (isNative()) return;
 
     if (!window.OneSignal) return;
 
@@ -243,12 +214,7 @@ export async function linkUserToPush(userId: string): Promise<void> {
  */
 export async function unlinkUserFromPush(): Promise<void> {
   try {
-    if (isNative()) {
-      const mod = await import('onesignal-cordova-plugin');
-      const OneSignal: any = (mod as any).default || mod;
-      OneSignal.logout();
-      return;
-    }
+    if (isNative()) return; // push nativo desativado
     if (!window.OneSignal) return;
     await window.OneSignal.logout();
   } catch { /* noop */ }
@@ -271,27 +237,16 @@ export async function syncSubscriptionId(userId: string, supabase: any): Promise
   try {
     await initOneSignal();
 
-    let onesignalId: string | null = null;
+    if (isNative()) return; // push nativo desativado
+    if (!window.OneSignal?.User) return;
 
-    if (isNative()) {
-      // SDK nativo: User.onesignalId é um getter síncrono. Pode levar 1-2s
-      // após init pra ficar disponível, então faz polling igual à web.
-      const mod = await import('onesignal-cordova-plugin');
-      const OneSignal: any = (mod as any).default || mod;
-      for (let i = 0; i < 10; i++) {
-        onesignalId = OneSignal.User?.getOnesignalId?.() || null;
-        if (onesignalId) break;
-        await new Promise(r => setTimeout(r, 500));
-      }
-    } else {
-      if (!window.OneSignal?.User) return;
-      // Espera o user ID ficar disponível (pode levar 1-2s após init).
-      // V16 API: window.OneSignal.User.onesignalId
-      for (let i = 0; i < 10; i++) {
-        onesignalId = window.OneSignal.User.onesignalId || null;
-        if (onesignalId) break;
-        await new Promise(r => setTimeout(r, 500));
-      }
+    // Espera o user ID ficar disponível (pode levar 1-2s após init).
+    // V16 API: window.OneSignal.User.onesignalId
+    let onesignalId: string | null = null;
+    for (let i = 0; i < 10; i++) {
+      onesignalId = window.OneSignal.User.onesignalId || null;
+      if (onesignalId) break;
+      await new Promise(r => setTimeout(r, 500));
     }
 
     if (!onesignalId) return;
@@ -321,19 +276,7 @@ export async function requestPushPermission(): Promise<boolean> {
   try {
     await initOneSignal();
 
-    if (isNative()) {
-      const mod = await import('onesignal-cordova-plugin');
-      const OneSignal: any = (mod as any).default || mod;
-      // fallbackToSettings=true: se user já tinha negado uma vez, abre
-      // a tela de Settings do OS (no Android e iOS user precisa entrar
-      // nas configs do app pra liberar — não dá pra perguntar de novo).
-      try {
-        const granted = await OneSignal.Notifications.requestPermission(true);
-        return !!granted;
-      } catch {
-        return false;
-      }
-    }
+    if (isNative()) return false; // push nativo desativado
 
     if (!window.OneSignal) return false;
     // V16 API: usa Notifications namespace.
@@ -357,16 +300,7 @@ export async function requestPushPermission(): Promise<boolean> {
 export async function hasPushPermission(): Promise<boolean> {
   try {
     await initOneSignal();
-    if (isNative()) {
-      const mod = await import('onesignal-cordova-plugin');
-      const OneSignal: any = (mod as any).default || mod;
-      try {
-        return !!(await OneSignal.Notifications.getPermissionAsync?.()
-          ?? OneSignal.Notifications.hasPermission?.());
-      } catch {
-        return false;
-      }
-    }
+    if (isNative()) return false; // push nativo desativado
     if (!window.OneSignal) return false;
     return !!window.OneSignal.Notifications?.permission;
   } catch { return false; }
