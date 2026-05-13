@@ -17,15 +17,15 @@ GDrums
 ## Descrição curta (até 80 chars)
 
 ```
-Sua banda completa no palco. Ritmos profissionais com pedal Bluetooth.
+Sua banda completa no palco. Compatível com pedal Bluetooth.
 ```
 
-(70 chars — dentro do limite. Comunica valor + diferencial em uma frase.)
+(60 chars — dentro do limite. Comunica valor + diferencial em uma frase.)
 
 **Alternativa caso queira testar:**
 
 ```
-Acompanhamento profissional ao vivo. 72+ ritmos, pedal BT, offline.
+Acompanhamento profissional ao vivo. 72+ ritmos, suporte a pedal BT.
 ```
 
 (68 chars — mais técnica)
