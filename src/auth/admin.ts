@@ -1211,66 +1211,40 @@ class AdminDashboard {
       return;
     }
 
-    // 1 ponto de luz POR USUÁRIO, distribuído em CONSTELAÇÃO DE CIDADES
-    // (não disco/gauss centrado). Por que:
-    // - Disco uniforme → bola redonda artificial
-    // - Box-Muller (gauss) → ainda fica simetria circular estatística
+    // 1 ponto por ESTADO (agregação simples — clustering padrão de mapas
+    // de dados como Google/Airbnb). Cada ponto tem:
+    // - Tamanho proporcional ao count (raiz quadrada pra não disparar)
+    // - Cor mix cyan→purple por % de assinantes ativos
     //
-    // Approach novo: pra cada estado, geramos 4-6 "sub-cidades" virtuais
-    // com offsets pseudo-aleatórios estáveis. Cada usuário é atribuído a
-    // uma dessas sub-cidades via hash do phone, e ganha um jitter MUITO
-    // pequeno (~15km) ao redor. Visual: cluster do estado vira uma
-    // constelação de pequenos agrupamentos, igual mapa real do BR onde
-    // user está distribuído entre capital + cidades médias do entorno.
-    //
-    // Hash determinístico → mesmo user sempre cai no mesmo ponto.
-
-    // Helper: gera N sub-cidades virtuais ao redor de um centro
-    const subCitiesByState = new Map<string, Array<{ lat: number; lng: number }>>();
-    const getSubCities = (state: string, centerLat: number, centerLng: number) => {
-      if (subCitiesByState.has(state)) return subCitiesByState.get(state)!;
-      const subs: Array<{ lat: number; lng: number }> = [];
-      // 5 sub-cidades por estado, distribuídas em ângulos diferentes e raios variados
-      // Seed pelo nome do estado pra ser estável entre sessions
-      const stateSeed = state.split('').reduce((a, c) => (a * 131 + c.charCodeAt(0)) | 0, 7);
-      for (let i = 0; i < 5; i++) {
-        // Cada sub-cidade tem seu próprio offset, espalhado em raios 0.3-1.2°
-        const subSeed = stateSeed + i * 1009;
-        const angle = ((subSeed % 360) / 360) * Math.PI * 2;
-        const radius = 0.3 + (((subSeed >> 5) % 100) / 100) * 0.9; // 0.3 a 1.2°
-        subs.push({
-          lat: centerLat + Math.sin(angle) * radius,
-          lng: centerLng + Math.cos(angle) * radius,
+    // Tentei várias distribuições (disco, gaussiana, sub-cidades) pra
+    // simular "user no mapa", mas qualquer distribuição radial em torno
+    // de 1 ponto SEMPRE forma círculo estatístico. Padrão da indústria
+    // pra mapas de dados é agregação com count, não dispersão fake.
+    type AggPoint = { state: string; city: string; lat: number; lng: number; total: number; active: number };
+    const byState = new Map<string, AggPoint>();
+    userLocations.forEach(u => {
+      const coords = AdminDashboard.STATE_COORDS[u.state];
+      if (!coords) return;
+      const existing = byState.get(u.state);
+      if (existing) {
+        existing.total++;
+        if (u.isActive) existing.active++;
+      } else {
+        byState.set(u.state, {
+          state: u.state,
+          city: coords.name,
+          lat: coords.lat,
+          lng: coords.lng,
+          total: 1,
+          active: u.isActive ? 1 : 0,
         });
       }
-      subCitiesByState.set(state, subs);
-      return subs;
-    };
+    });
 
-    const points = userLocations.map((u, idx) => {
-      const coords = AdminDashboard.STATE_COORDS[u.state];
-      if (!coords) return null;
-
-      const subs = getSubCities(u.state, coords.lat, coords.lng);
-
-      // Hash do user → qual sub-cidade ele pertence + jitter local pequeno
-      const seedStr = u.phone + ':' + idx;
-      const h = seedStr.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
-      const subIdx = Math.abs(h) % subs.length;
-      const sub = subs[subIdx];
-
-      // Jitter LOCAL pequeno em torno da sub-cidade (~15-25km)
-      const jLat = (((h >>> 7) % 1000) / 1000 - 0.5) * 0.25;
-      const jLng = (((h >>> 17) % 1000) / 1000 - 0.5) * 0.25;
-
-      return {
-        state: u.state,
-        city: coords.name,
-        lat: sub.lat + jLat,
-        lng: sub.lng + jLng,
-        isActive: u.isActive,
-      };
-    }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; isActive: boolean }>;
+    const points = [...byState.values()].map(p => ({
+      ...p,
+      activeRatio: p.active / p.total,
+    }));
 
     // Se já tem globo criado, só atualiza dados
     if (this.globeInstance) {
@@ -1324,21 +1298,14 @@ class AdminDashboard {
       //   clusters se acumularem em brilho (densidade visual de verdade)
       // - Não sobrepõe feio (additive funde luzes em vez de tapar)
       .customLayerData(points)
-      .customThreeObject((d: any) => this.createGlowSprite(d.isActive))
+      .customThreeObject((d: any) => this.createGlowSprite(d.activeRatio, d.total))
       .customThreeObjectUpdate((obj: any, d: any) => {
-        // Posição na superfície do globo (lat/lng → 3D)
         Object.assign(obj.position, this.globeInstance.getCoords(d.lat, d.lng, 0.005));
-
-        // Auto-scaling: quanto mais longe a câmera, MAIOR o sprite na cena.
-        // Compensa o shrinking natural da perspectiva — luz mantém presença
-        // visual constante em qualquer zoom.
-        // Distance é em "unidades de globo" (1.0 = superfície, ~3.0 = zoom out típico)
+        // Auto-scale por distância da câmera (mantém visível em qualquer zoom)
         const camera = this.globeInstance.camera();
         if (camera) {
-          const dist = camera.position.length(); // distância do centro do globo
-          // Base scale (1.0 quando dist=1.5, cresce linear)
+          const dist = camera.position.length();
           const baseScale = obj.userData.baseScale || 0.5;
-          // Multiplicador: 0.7 quando perto, até 1.8 quando longe
           const scaleFactor = 0.7 + Math.min(dist / 4, 1.5);
           const finalScale = baseScale * scaleFactor;
           obj.scale.set(finalScale, finalScale, 1);
@@ -1500,29 +1467,23 @@ class AdminDashboard {
   }
 
   /**
-   * Cria THREE.Sprite com glow desenhado por shader (vetorial,
-   * resolução-independente — nítido em qualquer zoom).
-   *
-   * 1 sprite por usuário. Quando vários se sobrepõem (mesma cidade),
-   * additive blending soma cores naturalmente → cluster vira "brasa"
-   * brilhante. Visualmente revela densidade sem agregar.
-   *
-   * Cor: roxo se assinante ativo (pagante), cyan caso contrário.
-   * Tamanho fixo pequeno — densidade vem do additive blending dos
-   * sobrepostos, não do tamanho individual.
+   * Cria THREE.Sprite com glow desenhado por shader (vetorial).
+   * Um sprite por ESTADO (cluster agregado). Tamanho proporcional ao
+   * count (sqrt — diferencia visualmente sem disparate), cor cyan→purple
+   * por % de assinantes ativos.
    */
-  private createGlowSprite(isActive: boolean): any {
+  private createGlowSprite(activeRatio: number, total: number): any {
     const THREE = this.threeMod;
-    const color = new THREE.Color(isActive ? 0xa064f6 : 0x00d4ff);
-    // Tamanho menor (era 0.7/0.5 quando agregado). Com 800 sprites
-    // espalhados num disco maior, cada um pode ser menor — clusters
-    // densos somam via additive blending.
-    const size = isActive ? 0.5 : 0.4;
+    // Cor interpolada cyan → purple por % de pagantes
+    const color = new THREE.Color(0x00d4ff).lerp(new THREE.Color(0xa064f6), activeRatio);
+    // Tamanho: sqrt(total) achata diferenças, base 0.6 garante mínimo visível
+    // SP com 200 users vira ~2.5, estado com 1 user vira 0.7
+    const size = 0.6 + Math.sqrt(total) * 0.14;
 
     const material = new THREE.ShaderMaterial({
       uniforms: {
         uColor: { value: color },
-        uIntensity: { value: isActive ? 1.0 : 0.7 },
+        uIntensity: { value: 0.7 + activeRatio * 0.3 },
       },
       vertexShader: `
         varying vec2 vUv;
@@ -1542,10 +1503,10 @@ class AdminDashboard {
           if (dist > 1.0) discard;
 
           float coreFactor = 1.0 - smoothstep(0.0, 0.2, dist);
-          float haloFactor = pow(1.0 - dist, 2.2);
+          float haloFactor = pow(1.0 - dist, 2.0);
 
-          vec3 finalColor = mix(uColor, vec3(1.0), coreFactor * 0.5);
-          float alpha = (coreFactor * 0.9 + haloFactor * 0.6) * uIntensity;
+          vec3 finalColor = mix(uColor, vec3(1.0), coreFactor * 0.6);
+          float alpha = (coreFactor + haloFactor * 0.55) * uIntensity;
 
           gl_FragColor = vec4(finalColor, alpha);
         }
@@ -1557,7 +1518,7 @@ class AdminDashboard {
 
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(size, size, 1);
-    sprite.userData = { baseScale: size }; // usado pelo auto-scaling no update
+    sprite.userData = { baseScale: size };
     return sprite;
   }
 
@@ -1582,24 +1543,16 @@ class AdminDashboard {
   }
 
   /**
-   * Pega top-5 estados com mais assinantes ativos. Centra na capital
-   * (sem jitter) pro anel ficar redondo no centro do cluster.
+   * Pega top-5 estados com mais assinantes ativos pros rings (anel pulsante).
    */
   private topRingsFromActives(
-    points: Array<{ state: string; lat: number; lng: number; isActive: boolean }>,
+    points: Array<{ state: string; lat: number; lng: number; active: number }>,
   ): Array<{ state: string; lat: number; lng: number }> {
-    const activeByState = new Map<string, number>();
-    points.forEach(p => {
-      if (!p.isActive) return;
-      activeByState.set(p.state, (activeByState.get(p.state) || 0) + 1);
-    });
-    return [...activeByState.entries()]
-      .sort((a, b) => b[1] - a[1])
+    return points
+      .filter(p => p.active > 0)
+      .sort((a, b) => b.active - a.active)
       .slice(0, 5)
-      .map(([state]) => {
-        const c = AdminDashboard.STATE_COORDS[state];
-        return { state, lat: c.lat, lng: c.lng };
-      });
+      .map(p => ({ state: p.state, lat: p.lat, lng: p.lng }));
   }
 
   // ─── Dashboard ──────────────────────────────────────────────────────
