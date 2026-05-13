@@ -159,7 +159,12 @@ input:checked + .slider:before {
   gap: 1rem;
 }
 
-/* User layout — tudo em uma tela, centralizado */
+/* User layout — tudo em uma tela, centralizado.
+   Usa min-height em vez de height fixo: se o conteúdo couber, ocupa
+   a viewport inteira (justify-content:center centraliza); se NÃO couber
+   (viewport curta tipo celular landscape), permite scroll em vez de
+   sobrepor seções uma na outra — antes a .controls-bar ficava atrás
+   dos botões grandes quando o total não cabia. */
 .user-layout {
   display: flex;
   flex-direction: column;
@@ -168,8 +173,8 @@ input:checked + .slider:before {
   max-width: 600px;
   margin: 0 auto;
   width: 100%;
-  height: calc(100vh - 4rem);
-  height: calc(100dvh - 4rem);
+  min-height: calc(100vh - 4rem);
+  min-height: calc(100dvh - 4rem);
   padding-top: env(safe-area-inset-top, 0.5rem);
   padding-bottom: env(safe-area-inset-bottom, 0.5rem);
 }
@@ -1740,12 +1745,6 @@ input:checked + .slider:before {
   grid-template-rows: 1fr 1fr 0.6fr;
   gap: 0.5rem;
   height: 100%;
-  /* Permite o grid encolher quando o container parent (.user-grid-section)
-     está limitado em altura — sem isso, os min-height dos .grid-cell
-     forçam o grid a estourar a section e cobrir a .controls-bar abaixo
-     em viewport curta. */
-  min-height: 0;
-  overflow: hidden;
 }
 
 /* Intro Cell (Green/Cyan) */
