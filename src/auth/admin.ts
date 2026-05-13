@@ -1450,27 +1450,61 @@ class AdminDashboard {
   }
 
   /**
-   * Cria THREE.Sprite com material additive blending. Resultado: ponto
-   * que parece luz/estrela. Quando sprites se sobrepõem, cores ADICIONAM
-   * (cluster denso = ponto mais brilhante naturalmente).
+   * Cria THREE.Sprite com material que usa SHADER FRAGMENT custom em vez
+   * de textura raster. O glow é desenhado matematicamente pixel a pixel
+   * no fragment shader — sem amostragem de textura, sem desfoque em
+   * zoom. Resolução = pixel da tela, nítido em qualquer escala.
    *
    * Cor: roxo se assinante ativo (pagante), cyan caso contrário.
-   * Assinantes ativos também ganham um sprite ligeiramente MAIOR pra
-   * destacar receita visualmente.
+   * Assinantes ativos têm sprite ligeiramente MAIOR pra destacar receita.
    */
   private createGlowSprite(isActive: boolean): any {
     const THREE = this.threeMod;
-    const color = isActive ? 0xa064f6 : 0x00d4ff; // purple vs cyan
+    const colorHex = isActive ? 0xa064f6 : 0x00d4ff;
     const size = isActive ? 0.7 : 0.5;
 
-    const material = new THREE.SpriteMaterial({
-      map: this.glowTexture,
-      color,
+    // ShaderMaterial: glow desenhado por fragment shader (vetorial,
+    // resolução-independente). uv ∈ [0,1] do sprite → distância do
+    // centro → core opaco + halo decaindo.
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color(colorHex) },
+        uOpacity: { value: isActive ? 1.0 : 0.85 },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColor;
+        uniform float uOpacity;
+        varying vec2 vUv;
+
+        void main() {
+          vec2 center = vec2(0.5);
+          float dist = distance(vUv, center) * 2.0; // 0 no centro, 1 na borda
+          if (dist > 1.0) discard;
+
+          // Núcleo: branco até dist=0.1, depois vira a cor
+          float coreFactor = 1.0 - smoothstep(0.0, 0.15, dist);
+          // Halo: cor decaindo até 0 em dist=1
+          float haloFactor = pow(1.0 - dist, 2.5);
+
+          vec3 finalColor = mix(uColor, vec3(1.0), coreFactor * 0.6);
+          float alpha = (coreFactor * 0.9 + haloFactor * 0.7) * uOpacity;
+
+          gl_FragColor = vec4(finalColor, alpha);
+        }
+      `,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       transparent: true,
-      opacity: isActive ? 1 : 0.85,
     });
+
+    // Sprite ainda é o objeto, mas com nosso material custom
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(size, size, 1);
     return sprite;
