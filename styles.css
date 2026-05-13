@@ -1740,6 +1740,12 @@ input:checked + .slider:before {
   grid-template-rows: 1fr 1fr 0.6fr;
   gap: 0.5rem;
   height: 100%;
+  /* Permite o grid encolher quando o container parent (.user-grid-section)
+     está limitado em altura — sem isso, os min-height dos .grid-cell
+     forçam o grid a estourar a section e cobrir a .controls-bar abaixo
+     em viewport curta. */
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Intro Cell (Green/Cyan) */
