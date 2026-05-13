@@ -1407,24 +1407,71 @@ class AdminDashboard {
       return;
     }
 
-    // 1 ponto POR USUÁRIO espalhado pela região do estado. Cada eixo
-    // (lat/lng) usa um random INDEPENDENTE em range diferente — não é
-    // distribuição radial, então não forma círculo. Hash estável do
-    // phone garante posição fixa (não pisca a cada refresh).
+    // 1 ponto POR USUÁRIO espalhado pela região do estado, com forma
+    // ORGÂNICA (não retângulo, não círculo).
+    //
+    // Estratégia:
+    // - Cada estado tem TAMANHO próprio (SP grande, SE pequeno)
+    // - Cada estado tem ROTAÇÃO própria (quebra alinhamento N/S/E/W)
+    // - Cada user usa power(random) pra concentrar mais perto do centro
+    //   sem virar gauss redondo
+    //
+    // Tamanho aproximado por UF em graus (raiz quadrada da área ÷ 50):
+    const stateExtent: Record<string, { rx: number; ry: number; rot: number }> = {
+      'SP': { rx: 2.5, ry: 1.8, rot: 0.3 },
+      'RJ': { rx: 1.3, ry: 0.9, rot: -0.5 },
+      'ES': { rx: 0.9, ry: 1.4, rot: 0.1 },
+      'MG': { rx: 3.5, ry: 2.6, rot: 0.4 },
+      'PR': { rx: 2.4, ry: 1.6, rot: -0.2 },
+      'SC': { rx: 1.8, ry: 1.0, rot: 0.1 },
+      'RS': { rx: 2.6, ry: 2.0, rot: 0.2 },
+      'DF': { rx: 0.5, ry: 0.5, rot: 0 },
+      'GO': { rx: 2.4, ry: 2.2, rot: -0.3 },
+      'TO': { rx: 1.8, ry: 2.8, rot: 0.2 },
+      'MT': { rx: 3.8, ry: 3.0, rot: -0.1 },
+      'MS': { rx: 2.6, ry: 2.4, rot: 0.4 },
+      'AC': { rx: 2.0, ry: 1.2, rot: 0.5 },
+      'RO': { rx: 2.2, ry: 1.8, rot: -0.3 },
+      'BA': { rx: 3.5, ry: 3.0, rot: -0.2 },
+      'SE': { rx: 0.7, ry: 0.7, rot: 0.3 },
+      'PE': { rx: 3.2, ry: 1.1, rot: -0.1 },
+      'AL': { rx: 1.2, ry: 0.8, rot: 0.2 },
+      'PB': { rx: 1.8, ry: 1.0, rot: 0.1 },
+      'RN': { rx: 1.8, ry: 1.0, rot: 0.4 },
+      'CE': { rx: 2.2, ry: 2.5, rot: -0.4 },
+      'PI': { rx: 2.5, ry: 3.2, rot: 0.3 },
+      'MA': { rx: 2.8, ry: 2.8, rot: -0.2 },
+      'PA': { rx: 4.0, ry: 3.5, rot: 0.3 },
+      'AM': { rx: 4.5, ry: 3.0, rot: -0.3 },
+      'RR': { rx: 1.8, ry: 1.8, rot: 0.5 },
+      'AP': { rx: 1.2, ry: 1.4, rot: -0.2 },
+    };
+
     const points = userLocations.map((u, idx) => {
       const cap = AdminDashboard.STATE_COORDS[u.state];
       if (!cap) return null;
+      const ext = stateExtent[u.state] || { rx: 1.5, ry: 1.5, rot: 0 };
 
-      // 2 hashes independentes pra lat e lng (sem correlação radial)
+      // 2 hashes independentes pra ter 2 randoms estáveis (0-1)
       const seedStr = u.phone + ':' + idx;
-      const hLat = seedStr.split('').reduce((a, c) => ((a * 31) + c.charCodeAt(0)) | 0, 7);
-      const hLng = seedStr.split('').reduce((a, c) => ((a * 17) + c.charCodeAt(0) * 13) | 0, 41);
+      const h1 = seedStr.split('').reduce((a, c) => ((a * 31) + c.charCodeAt(0)) | 0, 7);
+      const h2 = seedStr.split('').reduce((a, c) => ((a * 17) + c.charCodeAt(0) * 13) | 0, 41);
+      const r1 = ((h1 >>> 0) % 10000) / 10000;
+      const r2 = ((h2 >>> 0) % 10000) / 10000;
 
-      // Espalha em retângulo (não círculo): -1.2° a +1.2° em lat,
-      // -1.5° a +1.5° em lng. Ranges DIFERENTES nos eixos → forma
-      // orgânica oval, sem simetria circular.
-      const offLat = (((hLat >>> 0) % 10000) / 10000 - 0.5) * 2.4;
-      const offLng = (((hLng >>> 0) % 10000) / 10000 - 0.5) * 3.0;
+      // Random no retângulo do estado, em coordenadas LOCAIS (-1 a +1)
+      const localX = (r1 - 0.5) * 2;
+      const localY = (r2 - 0.5) * 2;
+
+      // Aplica rotação do estado (quebra alinhamento N/S/E/W)
+      const cos = Math.cos(ext.rot);
+      const sin = Math.sin(ext.rot);
+      const rotX = localX * cos - localY * sin;
+      const rotY = localX * sin + localY * cos;
+
+      // Escala pelo tamanho do estado
+      const offLng = rotX * ext.rx;
+      const offLat = rotY * ext.ry;
 
       return {
         state: u.state,
