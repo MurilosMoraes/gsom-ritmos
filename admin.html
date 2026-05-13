@@ -36,6 +36,7 @@
       <a href="#subscriptions" class="adm-nav-item" data-section="subscriptions"><span>Transações</span></a>
       <a href="#coupons" class="adm-nav-item" data-section="coupons"><span>Cupons</span></a>
       <a href="#leads" class="adm-nav-item" data-section="leads"><span>Leads</span></a>
+      <a href="#intelligence" class="adm-nav-item" data-section="intelligence"><span>Inteligência</span></a>
       <a href="#affiliates" class="adm-nav-item" data-section="affiliates"><span>Afiliados</span></a>
       <a href="#payouts" class="adm-nav-item" data-section="payouts"><span>Saques</span></a>
       <a href="#links" class="adm-nav-item" data-section="links"><span>Links</span></a>
@@ -70,6 +71,10 @@
           <a href="#leads" class="adm-nav-item" data-section="leads">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
             <span>Leads</span>
+          </a>
+          <a href="#intelligence" class="adm-nav-item" data-section="intelligence">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2z"/><path d="M5 20l1.5-3 3-1.5-3-1.5L5 11l-1.5 3-3 1.5 3 1.5L5 20z" transform="translate(12 0) scale(0.6)"/></svg>
+            <span>Inteligência</span>
           </a>
           <a href="#affiliates" class="adm-nav-item" data-section="affiliates">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
@@ -343,6 +348,50 @@
             </table>
           </div>
           <div id="leadsPagination" style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1rem;"></div>
+        </section>
+
+        <!-- ═══ Inteligência (scoring de leads) ═══ -->
+        <section id="intelligenceSection" class="adm-section">
+          <div class="adm-section-top">
+            <div>
+              <h2 class="adm-title">Inteligência</h2>
+              <div class="adm-subtitle">Leads com alta probabilidade de comprar — ordenados por score</div>
+            </div>
+            <button class="adm-btn adm-btn-outline" id="intelRefreshBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+              Recalcular
+            </button>
+          </div>
+
+          <!-- KPIs do scoring -->
+          <div class="adm-kpi-grid" id="intelKpis"></div>
+
+          <!-- Filtros -->
+          <div class="adm-filters" id="intelFilters">
+            <button class="adm-filter active" data-tier="all">Todos</button>
+            <button class="adm-filter" data-tier="hot">🔥 Muito quente (70+)</button>
+            <button class="adm-filter" data-tier="warm">🟠 Quente (50-69)</button>
+            <button class="adm-filter" data-tier="lukewarm">🟡 Morno (30-49)</button>
+          </div>
+
+          <!-- Tabela de leads scored -->
+          <div class="adm-table-wrap">
+            <table class="adm-table adm-intel-table">
+              <thead>
+                <tr>
+                  <th style="width:60px;">Score</th>
+                  <th>Usuário</th>
+                  <th>Sinais</th>
+                  <th>Status</th>
+                  <th>Última atividade</th>
+                  <th style="width:180px;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="intelTableBody">
+                <tr><td colspan="6" style="text-align:center;padding:2rem;color:rgba(255,255,255,0.4);">Carregando inteligência…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <!-- ═══ Afiliados ═══ -->

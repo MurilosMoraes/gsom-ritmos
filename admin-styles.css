@@ -929,3 +929,100 @@ body {
   .adm-smartlink-grid { grid-template-columns: 1fr; }
   .adm-smartlink-destinations { grid-template-columns: repeat(3, 1fr); gap: 0.3rem; }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   Inteligência — scoring de leads quentes
+   ════════════════════════════════════════════════════════════════════ */
+
+.adm-score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: -0.3px;
+  min-width: 50px;
+  justify-content: center;
+}
+.adm-score-badge.tier-hot {
+  background: linear-gradient(135deg, rgba(240,68,102,0.18), rgba(255,140,0,0.15));
+  border: 1px solid rgba(240,68,102,0.35);
+  color: #ff8a9c;
+}
+.adm-score-badge.tier-warm {
+  background: linear-gradient(135deg, rgba(255,140,0,0.15), rgba(255,200,0,0.12));
+  border: 1px solid rgba(255,140,0,0.3);
+  color: #ffb066;
+}
+.adm-score-badge.tier-lukewarm {
+  background: rgba(255,200,0,0.08);
+  border: 1px solid rgba(255,200,0,0.22);
+  color: #ffe066;
+}
+
+.adm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-width: 360px;
+}
+.adm-chip {
+  display: inline-block;
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.7);
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.adm-badge {
+  display: inline-block;
+  padding: 0.22rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.adm-badge-red { background: rgba(240,68,102,0.12); color: #ff8899; border-color: rgba(240,68,102,0.25); }
+.adm-badge-orange { background: rgba(255,140,0,0.12); color: #ffb066; border-color: rgba(255,140,0,0.25); }
+.adm-badge-yellow { background: rgba(255,200,0,0.10); color: #ffe066; border-color: rgba(255,200,0,0.22); }
+.adm-badge-gray { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.45); }
+
+.adm-btn-sm {
+  padding: 0.38rem 0.7rem;
+  font-size: 0.72rem;
+  border-radius: 8px;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.85);
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+  text-align: center;
+}
+.adm-btn-sm:hover { background: rgba(255,255,255,0.08); }
+.adm-btn-whats { background: rgba(37,211,102,0.12); border-color: rgba(37,211,102,0.3); color: #4dd982; }
+.adm-btn-whats:hover { background: rgba(37,211,102,0.2); }
+.adm-btn-email { background: rgba(0,212,255,0.10); border-color: rgba(0,212,255,0.25); color: #4dd9ff; }
+.adm-btn-email:hover { background: rgba(0,212,255,0.18); }
+.adm-btn-email:disabled { opacity: 0.5; cursor: wait; }
+
+.adm-intel-table tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.adm-intel-table tbody tr:hover {
+  background: rgba(255,255,255,0.02);
+}
+.adm-intel-table td {
+  vertical-align: top;
+  padding: 0.75rem 0.6rem;
+}

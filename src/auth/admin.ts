@@ -40,6 +40,29 @@ interface Transaction {
   coupon_code: string | null;
 }
 
+interface ScoreSignal {
+  label: string;
+  points: number;
+  detail: string;
+}
+
+interface ScoredLead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  phoneDisplay: string;
+  phoneE164: string;
+  phoneValid: boolean;
+  subscriptionStatus: string;
+  subscriptionPlan: string;
+  subscriptionExpiresAt: string | null;
+  lastActiveAt: string | null;
+  lastContactedAt: string | null;
+  score: number;
+  signals: ScoreSignal[];
+}
+
 interface Coupon {
   id: string;
   code: string;
@@ -752,6 +775,7 @@ class AdminDashboard {
       case 'subscriptions': this.renderTransactions(); break;
       case 'coupons': this.renderCoupons(); break;
       case 'leads': this.renderLeads(); break;
+      case 'intelligence': this.renderIntelligence(); break;
       case 'affiliates': this.renderAffiliates(); break;
       case 'payouts': this.renderPayouts(); break;
       case 'links': this.renderLinks(); break;
@@ -1978,6 +2002,333 @@ class AdminDashboard {
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Erro ao enviar');
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // ─── Inteligência: scoring de leads quentes ────────────────────────
+  // ════════════════════════════════════════════════════════════════════
+  // Atribui um score de 0-100+ pra cada usuário baseado em sinais de
+  // intenção de compra. Roda 100% no frontend usando this.profiles +
+  // this.transactions já cacheados — sem queries adicionais.
+
+  private intelTier: 'all' | 'hot' | 'warm' | 'lukewarm' = 'all';
+
+  private async renderIntelligence(): Promise<void> {
+    const refreshBtn = document.getElementById('intelRefreshBtn');
+    if (refreshBtn && !refreshBtn.dataset.bound) {
+      refreshBtn.addEventListener('click', () => this.renderIntelligence());
+      refreshBtn.dataset.bound = '1';
+    }
+
+    // Filtros de tier
+    document.querySelectorAll<HTMLElement>('#intelFilters .adm-filter').forEach(btn => {
+      if (!btn.dataset.bound) {
+        btn.addEventListener('click', () => {
+          this.intelTier = (btn.dataset.tier as any) || 'all';
+          document.querySelectorAll('#intelFilters .adm-filter').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this.renderIntelligence();
+        });
+        btn.dataset.bound = '1';
+      }
+    });
+
+    // Calcula scores
+    const scored = this.scoreAllUsers();
+
+    // KPIs
+    const kpisEl = document.getElementById('intelKpis');
+    if (kpisEl) {
+      const hot = scored.filter(s => s.score >= 70).length;
+      const warm = scored.filter(s => s.score >= 50 && s.score < 70).length;
+      const lukewarm = scored.filter(s => s.score >= 30 && s.score < 50).length;
+      const totalContactable = scored.filter(s => s.score >= 30 && s.phoneValid).length;
+      kpisEl.innerHTML = `
+        <div class="adm-kpi"><div class="adm-kpi-label">🔥 Muito quente</div><div class="adm-kpi-value">${hot}</div></div>
+        <div class="adm-kpi"><div class="adm-kpi-label">🟠 Quente</div><div class="adm-kpi-value">${warm}</div></div>
+        <div class="adm-kpi"><div class="adm-kpi-label">🟡 Morno</div><div class="adm-kpi-value">${lukewarm}</div></div>
+        <div class="adm-kpi"><div class="adm-kpi-label">📱 Com WhatsApp</div><div class="adm-kpi-value">${totalContactable}</div></div>
+      `;
+    }
+
+    // Filtra por tier
+    let filtered = scored;
+    if (this.intelTier === 'hot') filtered = scored.filter(s => s.score >= 70);
+    else if (this.intelTier === 'warm') filtered = scored.filter(s => s.score >= 50 && s.score < 70);
+    else if (this.intelTier === 'lukewarm') filtered = scored.filter(s => s.score >= 30 && s.score < 50);
+    else filtered = scored.filter(s => s.score >= 30); // 'all' = mostra só score significativo
+
+    // Tabela
+    const tbody = document.getElementById('intelTableBody');
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:rgba(255,255,255,0.4);">Nenhum lead com esse filtro</td></tr>`;
+      return;
+    }
+
+    const esc = (s: string) => (s || '').replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' } as Record<string,string>)[ch] || ch);
+
+    tbody.innerHTML = filtered.map(item => {
+      const tierClass = item.score >= 70 ? 'tier-hot' : item.score >= 50 ? 'tier-warm' : 'tier-lukewarm';
+      const tierEmoji = item.score >= 70 ? '🔥' : item.score >= 50 ? '🟠' : '🟡';
+      const chips = item.signals.map(s => `<span class="adm-chip" title="${esc(s.detail)}">${esc(s.label)} ${s.points > 0 ? '+' : ''}${s.points}</span>`).join('');
+      const statusBadge = this.intelStatusBadge(item);
+      const lastActive = item.lastActiveAt
+        ? this.intelRelativeTime(item.lastActiveAt)
+        : '<span style="color:rgba(255,255,255,0.3);">—</span>';
+
+      // Ações: WhatsApp se phone válido, Email sempre
+      const actions: string[] = [];
+      if (item.phoneValid && item.phoneE164) {
+        const msg = encodeURIComponent(this.intelWhatsAppMessage(item));
+        actions.push(`<a href="https://wa.me/${item.phoneE164}?text=${msg}" target="_blank" class="adm-btn adm-btn-sm adm-btn-whats" data-userid="${item.id}" data-method="whatsapp">WhatsApp</a>`);
+      }
+      if (item.email) {
+        actions.push(`<button class="adm-btn adm-btn-sm adm-btn-email" data-email="${esc(item.email)}" data-name="${esc(item.name)}" data-userid="${item.id}">Email</button>`);
+      }
+
+      const contactedBadge = item.lastContactedAt
+        ? `<div style="font-size:0.65rem;color:rgba(0,212,255,0.55);margin-top:0.3rem;">contatado ${this.intelRelativeTime(item.lastContactedAt)}</div>`
+        : '';
+
+      return `
+        <tr>
+          <td><div class="adm-score-badge ${tierClass}">${tierEmoji} ${item.score}</div></td>
+          <td>
+            <div style="font-weight:700;color:#fff;">${esc(item.name || '(sem nome)')}</div>
+            <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);">${esc(item.email || '')}</div>
+            ${item.phoneDisplay ? `<div style="font-size:0.7rem;color:rgba(255,255,255,0.35);margin-top:0.2rem;">${esc(item.phoneDisplay)}</div>` : ''}
+          </td>
+          <td><div class="adm-chips">${chips}</div></td>
+          <td>${statusBadge}</td>
+          <td style="font-size:0.78rem;color:rgba(255,255,255,0.55);">${lastActive}</td>
+          <td>
+            <div style="display:flex;flex-direction:column;gap:0.35rem;">
+              ${actions.join('')}
+              ${contactedBadge}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Bind das ações
+    tbody.querySelectorAll<HTMLElement>('.adm-btn-whats').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const uid = btn.dataset.userid;
+        if (uid) this.markContacted(uid, 'whatsapp').then(() => this.renderIntelligence());
+      });
+    });
+    tbody.querySelectorAll<HTMLElement>('.adm-btn-email').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const email = btn.dataset.email;
+        const name = btn.dataset.name;
+        const uid = btn.dataset.userid;
+        if (!email || !name || !uid) return;
+        const orig = btn.innerHTML;
+        btn.innerHTML = 'Enviando…';
+        (btn as HTMLButtonElement).disabled = true;
+        try {
+          await this.sendRecoveryEmail(email, name);
+          await this.markContacted(uid, 'email');
+          btn.innerHTML = '✓ Enviado';
+          (btn as HTMLElement).style.color = 'var(--a-green)';
+          setTimeout(() => this.renderIntelligence(), 1200);
+        } catch {
+          btn.innerHTML = 'Erro';
+          (btn as HTMLElement).style.color = 'var(--a-red)';
+          setTimeout(() => { btn.innerHTML = orig; (btn as HTMLButtonElement).disabled = false; }, 2000);
+        }
+      });
+    });
+  }
+
+  /**
+   * Calcula score de intenção de compra pra todos os usuários (não-admin).
+   * Score 0-100+: pontos positivos por sinais de interesse, negativos por
+   * red flags (trial farming, conta velha cancelada).
+   */
+  private scoreAllUsers(): ScoredLead[] {
+    const now = Date.now();
+    const adminIds = new Set(this.profiles.filter(p => p.role === 'admin').map(p => p.id));
+
+    // Index de transações pendentes por user (últimas 72h)
+    const recentPendingByUser = new Map<string, Transaction[]>();
+    const allPendingByUser = new Map<string, Transaction[]>();
+    const confirmedByUser = new Map<string, Transaction[]>();
+    this.transactions.forEach(t => {
+      if (adminIds.has(t.user_id)) return;
+      if (t.status === 'pending') {
+        const list = allPendingByUser.get(t.user_id) || [];
+        list.push(t);
+        allPendingByUser.set(t.user_id, list);
+        const age = now - new Date(t.created_at).getTime();
+        if (age < 72 * 60 * 60 * 1000) {
+          const recent = recentPendingByUser.get(t.user_id) || [];
+          recent.push(t);
+          recentPendingByUser.set(t.user_id, recent);
+        }
+      } else if (t.status === 'confirmed') {
+        const list = confirmedByUser.get(t.user_id) || [];
+        list.push(t);
+        confirmedByUser.set(t.user_id, list);
+      }
+    });
+
+    const PLANS_HIGH = new Set(['anual', 'rei-dos-palcos', 'semestral']);
+
+    const results: ScoredLead[] = [];
+
+    for (const p of this.profiles) {
+      if (adminIds.has(p.id)) continue; // não scorea admins
+      if (confirmedByUser.has(p.id)) continue; // já comprou — sai do funil
+
+      const signals: ScoreSignal[] = [];
+
+      // ─── Trial expirando ──────────────────────────────────────────
+      if (p.subscription_status === 'trial' && p.subscription_expires_at) {
+        const expMs = new Date(p.subscription_expires_at).getTime();
+        const daysLeft = Math.floor((expMs - now) / (24 * 60 * 60 * 1000));
+        if (daysLeft >= 0 && daysLeft <= 1) {
+          signals.push({ label: 'Trial expira hoje/amanhã', points: 30, detail: `Trial expira em ${daysLeft === 0 ? 'menos de 1 dia' : '1 dia'}` });
+        } else if (daysLeft >= 0 && daysLeft <= 2) {
+          signals.push({ label: 'Trial expirando', points: 25, detail: `Trial expira em ${daysLeft} dias` });
+        } else if (daysLeft >= 3 && daysLeft <= 7) {
+          signals.push({ label: 'Trial 3-7d', points: 15, detail: `Trial expira em ${daysLeft} dias` });
+        }
+      }
+
+      // Expirado há pouco tempo (oportunidade de winback)
+      if (p.subscription_status === 'expired' && p.subscription_expires_at) {
+        const expMs = new Date(p.subscription_expires_at).getTime();
+        const daysExpired = Math.floor((now - expMs) / (24 * 60 * 60 * 1000));
+        if (daysExpired >= 0 && daysExpired <= 3) {
+          signals.push({ label: 'Expirou recente', points: 20, detail: `Expirou há ${daysExpired} dia(s)` });
+        } else if (daysExpired > 3 && daysExpired <= 14) {
+          signals.push({ label: 'Expirou ~semana', points: 10, detail: `Expirou há ${daysExpired} dias` });
+        }
+      }
+
+      // ─── Transações pending ───────────────────────────────────────
+      const recentPending = recentPendingByUser.get(p.id) || [];
+      const allPending = allPendingByUser.get(p.id) || [];
+
+      // Mais recente vence
+      const newestPending = recentPending.length > 0
+        ? recentPending.reduce((a, b) => new Date(a.created_at) > new Date(b.created_at) ? a : b)
+        : null;
+
+      if (newestPending) {
+        const age = now - new Date(newestPending.created_at).getTime();
+        if (age < 24 * 60 * 60 * 1000) {
+          signals.push({ label: 'Tentou pagar (24h)', points: 40, detail: `Gerou ${newestPending.plan} pending há ${Math.floor(age / 3600000)}h` });
+        } else {
+          signals.push({ label: 'Tentou pagar (72h)', points: 20, detail: `Gerou ${newestPending.plan} pending há ${Math.floor(age / 86400000)}d` });
+        }
+      }
+
+      if (allPending.length >= 2) {
+        signals.push({ label: `${allPending.length} tentativas`, points: 25, detail: `Múltiplos pending — indecisão entre planos` });
+      }
+
+      const triedHigh = allPending.some(t => PLANS_HIGH.has(t.plan));
+      if (triedHigh) {
+        signals.push({ label: 'Plano alto', points: 15, detail: 'Tentou anual/semestral/rei-dos-palcos' });
+      }
+
+      // ─── Engajamento ───────────────────────────────────────────────
+      if (p.updated_at) {
+        const lastActivityMs = new Date(p.updated_at).getTime();
+        const daysSince = Math.floor((now - lastActivityMs) / (24 * 60 * 60 * 1000));
+        if (daysSince <= 2) {
+          signals.push({ label: 'Ativo (2d)', points: 15, detail: `Última atividade há ${daysSince}d` });
+        } else if (daysSince <= 7) {
+          signals.push({ label: 'Ativo (7d)', points: 10, detail: `Última atividade há ${daysSince}d` });
+        }
+      }
+
+      // ─── Telefone (facilita contato) ──────────────────────────────
+      const phoneVal = validateBrPhone(p.phone);
+      if (phoneVal.ok) {
+        signals.push({ label: 'WhatsApp ok', points: 5, detail: 'Telefone válido pra contato' });
+      }
+
+      // ─── Red flags ────────────────────────────────────────────────
+      // Sem CPF + criado pós-2026-04-03 = trial farming bloqueado
+      if (!p.cpf_hash && new Date(p.created_at).getTime() > new Date('2026-04-03').getTime() && p.role !== 'admin') {
+        signals.push({ label: 'Sem CPF (bloqueado)', points: -100, detail: 'Trial farming — não convém abordar' });
+      }
+
+      // Já foi contatado recentemente — esfria
+      if (p.last_contacted_at) {
+        const contactedMs = new Date(p.last_contacted_at).getTime();
+        const hoursSince = (now - contactedMs) / (60 * 60 * 1000);
+        if (hoursSince < 48) {
+          signals.push({ label: 'Contatado <48h', points: -15, detail: `Contatado via ${p.contact_method || '?'} há ${Math.floor(hoursSince)}h` });
+        }
+      }
+
+      // Conta canceled = lead frio
+      if (p.subscription_status === 'canceled') {
+        signals.push({ label: 'Cancelou', points: -20, detail: 'Já cancelou — probabilidade menor' });
+      }
+
+      const score = signals.reduce((sum, s) => sum + s.points, 0);
+
+      results.push({
+        id: p.id,
+        name: p.name || '',
+        email: p.email || '',
+        phone: p.phone || '',
+        phoneDisplay: phoneVal.display || '',
+        phoneE164: phoneVal.e164 || '',
+        phoneValid: phoneVal.ok,
+        subscriptionStatus: p.subscription_status,
+        subscriptionPlan: p.subscription_plan,
+        subscriptionExpiresAt: p.subscription_expires_at,
+        lastActiveAt: p.updated_at,
+        lastContactedAt: p.last_contacted_at,
+        score,
+        signals,
+      });
+    }
+
+    return results.sort((a, b) => b.score - a.score);
+  }
+
+  private intelStatusBadge(item: ScoredLead): string {
+    const now = Date.now();
+    if (item.subscriptionStatus === 'trial' && item.subscriptionExpiresAt) {
+      const days = Math.floor((new Date(item.subscriptionExpiresAt).getTime() - now) / (86400000));
+      if (days < 0) return `<span class="adm-badge adm-badge-red">Trial venceu</span>`;
+      if (days === 0) return `<span class="adm-badge adm-badge-red">Trial expira hoje</span>`;
+      if (days === 1) return `<span class="adm-badge adm-badge-orange">Trial 1 dia</span>`;
+      return `<span class="adm-badge adm-badge-yellow">Trial ${days}d</span>`;
+    }
+    if (item.subscriptionStatus === 'expired') {
+      return `<span class="adm-badge adm-badge-red">Expirado</span>`;
+    }
+    if (item.subscriptionStatus === 'canceled') {
+      return `<span class="adm-badge adm-badge-gray">Cancelado</span>`;
+    }
+    return `<span class="adm-badge">${item.subscriptionStatus}</span>`;
+  }
+
+  private intelRelativeTime(iso: string): string {
+    const ms = Date.now() - new Date(iso).getTime();
+    const min = Math.floor(ms / 60000);
+    if (min < 60) return `${min}min atrás`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `${h}h atrás`;
+    const d = Math.floor(h / 24);
+    if (d < 30) return `${d}d atrás`;
+    return new Date(iso).toLocaleDateString('pt-BR');
+  }
+
+  private intelWhatsAppMessage(item: ScoredLead): string {
+    const first = (item.name || 'amigo').split(' ')[0];
+    return `Oi ${first}! Aqui é o Murilo do GDrums. Vi que você tá testando o app — quer ajuda pra escolher o plano certo ou ativar algum cupom?`;
   }
 
   // ─── Cupons ────────────────────────────────────────────────────────
