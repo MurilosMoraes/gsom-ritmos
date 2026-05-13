@@ -1228,7 +1228,8 @@ class AdminDashboard {
 
     // Se já tem globo criado, só atualiza dados
     if (this.globeInstance) {
-      this.globeInstance.htmlElementsData(points);
+      this.globeInstance.pointsData(points);
+      this.globeInstance.ringsData(points);
       return;
     }
 
@@ -1270,41 +1271,29 @@ class AdminDashboard {
       .showAtmosphere(true)
       .atmosphereColor('#00D4FF')
       .atmosphereAltitude(0.18)
-      // Pontos como elementos HTML — permite glow/box-shadow real (CSS),
-      // em vez de cilindros 3D. Visualmente fica como pontos de luz pulsando.
-      .htmlElementsData(points)
-      .htmlAltitude(0.01)
-      .htmlElement((d: any) => {
-        const el = document.createElement('div');
-        // Tamanho do ponto: 6-18px baseado em intensidade
-        const size = 6 + d.intensity * 12;
-        // Cor: cyan claro → purple forte por intensidade
-        const isHot = d.intensity > 0.6;
-        const isMid = d.intensity > 0.3;
-        const coreColor = isHot ? 'rgba(139, 92, 246, 1)' : isMid ? 'rgba(75, 162, 255, 1)' : 'rgba(0, 212, 255, 1)';
-        const glowColor = isHot ? 'rgba(139, 92, 246, 0.55)' : isMid ? 'rgba(75, 162, 255, 0.55)' : 'rgba(0, 212, 255, 0.55)';
-        // Glow proporcional: pontos pequenos têm halo menor, grandes têm halo grande
-        const glow1 = size * 1.5;
-        const glow2 = size * 3;
-        const glow3 = size * 5;
-        el.style.cssText = `
-          width: ${size}px;
-          height: ${size}px;
-          border-radius: 50%;
-          background: ${coreColor};
-          box-shadow:
-            0 0 ${glow1}px ${glowColor},
-            0 0 ${glow2}px ${glowColor},
-            0 0 ${glow3}px ${glowColor};
-          cursor: pointer;
-          pointer-events: auto;
-          animation: globePulse ${1.8 + (1 - d.intensity) * 2}s ease-in-out infinite;
-          transform: translate(-50%, -50%);
-        `;
-        // Tooltip via title (nativo do browser) + listener pra label custom
-        el.title = `${d.city} (${d.state}) — ${d.count} usuário${d.count === 1 ? '' : 's'}`;
-        return el;
+      // Pontos: bolinhas 3D PEQUENAS e brilhantes (núcleo do "ponto de luz")
+      .pointsData(points)
+      .pointAltitude(0.01)
+      .pointRadius((d: any) => 0.15 + d.intensity * 0.25)
+      .pointColor((d: any) => this.intensityColor(d.intensity))
+      .pointLabel((d: any) => `
+        <div style="background:rgba(3,0,20,0.95);border:1px solid rgba(0,212,255,0.4);border-radius:8px;padding:0.5rem 0.75rem;font-family:-apple-system,sans-serif;color:#fff;font-size:0.85rem;">
+          <div style="font-weight:700;">${d.city} (${d.state})</div>
+          <div style="color:rgba(0,212,255,0.85);">${d.count} usuário${d.count === 1 ? '' : 's'}</div>
+        </div>
+      `)
+      // Rings: anéis animados que se expandem ao redor de cada ponto
+      // (efeito de pulso/sonar — visual de "ponto de luz vivo")
+      .ringsData(points)
+      .ringColor((d: any) => {
+        const c = this.intensityColor(d.intensity);
+        // Função propagation: cor mais transparente conforme o anel expande
+        return (t: number) => c.replace(/[\d.]+\)$/, `${(1 - t) * 0.6})`);
       })
+      .ringMaxRadius((d: any) => 2 + d.intensity * 4)
+      .ringPropagationSpeed((d: any) => 1.5 + d.intensity * 2)
+      .ringRepeatPeriod((d: any) => 1500 - d.intensity * 500)
+      .ringAltitude(0.01)
       // Foco inicial em Brasil — altitude menor no mobile (zoom mais perto)
       .pointOfView({ lat: -15, lng: -55, altitude: isMobile ? 2.2 : 1.8 }, 0);
 
