@@ -608,6 +608,7 @@ input:checked + .slider:before {
   overflow: hidden;
   min-height: 64px;
   width: 100%;
+  flex-shrink: 0;
 }
 
 /* Laterais (anterior / proximo) */
@@ -1730,16 +1731,19 @@ input:checked + .slider:before {
   flex-shrink: 0;
 }
 
-/* --- 3. Performance Grid --- */
+/* --- 3. Performance Grid (Container 2) ---
+   Esse é o container do meio — botões grandes RITMO/VIRADA/PRATO etc.
+   Cresce pra ocupar TODO o espaço sobrante entre o container 1
+   (repertório, busca, cards) e o container 3 (BPM/Volume/Toggles),
+   mas respeita os outros 2 — eles têm flex-shrink: 0 e tamanho natural,
+   o grid só ocupa o resto.
 
+   min-height: garantia de que os botões nunca virem minúsculos mesmo
+   em viewport pequena (320px = 3 linhas × ~95px). */
 .user-grid-section {
   width: 100%;
-  flex: 1;
-  min-height: 0;
-  /* max-height removido: estava limitando o grid a 50vh mesmo quando
-     havia espaço sobrando na viewport (viewport alta com layout curto
-     ficava com espaço vazio entre o grid e a controls-bar). Agora o
-     grid cresce livremente até o limite real do .user-layout. */
+  flex: 1 1 auto;
+  min-height: 320px;
 }
 
 .user-performance-grid {
@@ -1748,6 +1752,7 @@ input:checked + .slider:before {
   grid-template-rows: 1fr 1fr 0.6fr;
   gap: 0.5rem;
   height: 100%;
+  min-height: inherit;
 }
 
 /* Intro Cell (Green/Cyan) */

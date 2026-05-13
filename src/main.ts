@@ -1546,98 +1546,189 @@ class RhythmSequencer {
 
   private showSubscriptionBanner(status: string, expires: Date, plan: string): void {
     const isPaidPlan = status === 'active' && plan !== 'trial';
+    const now = new Date();
 
     // ─── Plano pago próximo do vencimento ───────────────────────────────
-    // Antes ficava silencioso até quebrar. User reclamava de "vencer e
-    // não saber" — banner aparece a partir de 7 dias antes pra dar tempo
-    // de renovar com calma.
+    // Antes era banner fixed no bottom cobrindo BPM/Volume. Agora é
+    // modal de sugestão NÃO-BLOQUEANTE — aparece 1x por sessão, user
+    // fecha e usa o app normal. App não é interrompido.
     if (isPaidPlan) {
       this.conversionManager.setTrialActive(false);
 
-      const now = new Date();
       const daysLeft = Math.floor((expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const hoursLeftPaid = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60 * 60)));
-
-      // Só mostra banner com 7 dias ou menos pra renovar
       if (daysLeft > 7) return;
 
-      const banner = document.createElement('div');
-      banner.className = 'trial-banner trial-banner-renew';
-
-      // Urgente se for hoje/amanhã
-      if (daysLeft <= 1) banner.classList.add('trial-banner-urgent');
+      // 1x por sessão (sessionStorage) — não martela o user a cada navegação
+      if (sessionStorage.getItem('gdrums-renew-modal-shown')) return;
+      sessionStorage.setItem('gdrums-renew-modal-shown', '1');
 
       let renewMsg: string;
-      if (daysLeft <= 0 && hoursLeftPaid <= 24) {
-        renewMsg = `Sua assinatura vence <strong>hoje</strong>`;
-      } else if (daysLeft === 1) {
-        renewMsg = `Sua assinatura vence <strong>amanhã</strong>`;
-      } else {
-        renewMsg = `Sua assinatura vence em <strong>${daysLeft} dias</strong>`;
-      }
+      if (daysLeft <= 0) renewMsg = 'Sua assinatura vence <strong>hoje</strong>.';
+      else if (daysLeft === 1) renewMsg = 'Sua assinatura vence <strong>amanhã</strong>.';
+      else renewMsg = `Sua assinatura vence em <strong>${daysLeft} dias</strong>.`;
 
-      banner.innerHTML = `
-        <span class="trial-banner-text">${renewMsg}</span>
-        <a href="${isNativeApp() ? '#' : '/plans?renew=true'}" class="trial-banner-btn" id="trialBannerCta">Renovar agora</a>
-      `;
-      document.body.appendChild(banner);
-
-      if (isNativeApp()) {
-        banner.querySelector('#trialBannerCta')?.addEventListener('click', (e) => {
-          e.preventDefault();
-          openExternal(PLANS_URL_EXTERNAL + '?renew=true');
-        });
-      }
-
-      this.injectTrialBannerStyles();
+      this.showRenewalSuggestionModal({
+        title: 'Sua assinatura tá perto de acabar',
+        message: renewMsg + ' Renove sem pressa pra não perder acesso aos ritmos.',
+        ctaLabel: 'Renovar agora',
+        ctaUrl: isNativeApp() ? PLANS_URL_EXTERNAL + '?renew=true' : '/plans?renew=true',
+      });
       return;
     }
 
-    // ─── Trial — comportamento original ─────────────────────────────────
+    // ─── Trial — ainda em testes ────────────────────────────────────────
     this.conversionManager.setTrialActive(true);
 
-    const now = new Date();
     const hoursLeft = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60 * 60)));
     const minutesLeft = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / (1000 * 60)) % 60);
-
-    // Notifica ConversionManager sobre horas restantes — dispara
-    // gatilhos trialHalfway (24h), trialEndingSoon (12h) ou
-    // trialLastHour (1h) conforme a janela. Cada um tem cooldown
-    // próprio + cooldown global de 20min.
     this.conversionManager.tick(hoursLeft);
 
-    const banner = document.createElement('div');
-    banner.className = 'trial-banner';
-
-    if (hoursLeft <= 6) {
-      banner.classList.add('trial-banner-urgent');
-    }
+    // Trial também vira modal não-bloqueante 1x por sessão
+    if (sessionStorage.getItem('gdrums-trial-modal-shown')) return;
+    sessionStorage.setItem('gdrums-trial-modal-shown', '1');
 
     const timeText = hoursLeft > 0 ? `${hoursLeft}h` : `${minutesLeft}min`;
+    const trialMsg = hoursLeft <= 6
+      ? `Seu teste expira em <strong>${timeText}</strong>.`
+      : `Restam <strong>${timeText}</strong> do período de teste.`;
 
-    const urgentMsg = hoursLeft <= 6
-      ? `Teste expira em <strong>${timeText}</strong>`
-      : `Restam <strong>${timeText}</strong> do período de teste`;
+    this.showRenewalSuggestionModal({
+      title: hoursLeft <= 6 ? 'Teste expirando' : 'Você ainda tá no teste',
+      message: trialMsg + ' Assine agora pra continuar tocando depois que acabar.',
+      ctaLabel: 'Ver planos',
+      ctaUrl: isNativeApp() ? PLANS_URL_EXTERNAL : '/plans',
+    });
+  }
 
-    // App nativo: link com data-native pra abrir site no navegador externo
-    // (Play Store / App Store não permite fluxo de pagamento in-app).
-    const ctaLabel = 'Ver planos';
-    banner.innerHTML = `
-      <span class="trial-banner-text">${urgentMsg}</span>
-      <a href="${isNativeApp() ? '#' : '/plans'}" class="trial-banner-btn" id="trialBannerCta">${ctaLabel}</a>
+  /**
+   * Modal de sugestão de renovação/assinatura NÃO-BLOQUEANTE.
+   * - Aparece centralizado, com overlay translúcido (não escuro)
+   * - X grande pra fechar — user pode fechar e usar o app normal
+   * - 1x por sessão (caller cuida do sessionStorage)
+   * - SÓ o modal de expired (showSubscribeOnWebsiteNotice) bloqueia
+   */
+  private showRenewalSuggestionModal(opts: { title: string; message: string; ctaLabel: string; ctaUrl: string }): void {
+    // Se já tem um aberto, não duplica
+    if (document.getElementById('renewSuggestionModal')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'renewSuggestionModal';
+    overlay.className = 'renew-modal-overlay';
+    overlay.innerHTML = `
+      <div class="renew-modal">
+        <button class="renew-modal-close" aria-label="Fechar">×</button>
+        <h3 class="renew-modal-title">${opts.title}</h3>
+        <p class="renew-modal-message">${opts.message}</p>
+        <div class="renew-modal-actions">
+          <button class="renew-modal-skip">Depois</button>
+          <a href="${opts.ctaUrl}" class="renew-modal-cta" id="renewModalCta">${opts.ctaLabel}</a>
+        </div>
+      </div>
     `;
+    document.body.appendChild(overlay);
+    this.injectRenewModalStyles();
 
-    document.body.appendChild(banner);
+    const close = () => {
+      overlay.classList.remove('renew-modal-visible');
+      setTimeout(() => overlay.remove(), 200);
+    };
 
-    // Se nativo, interceptar clique e abrir no browser externo
+    overlay.querySelector('.renew-modal-close')?.addEventListener('click', close);
+    overlay.querySelector('.renew-modal-skip')?.addEventListener('click', close);
+    // Fechar clicando fora (no overlay translúcido)
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    // App nativo: CTA abre site externo (Play Store / App Store compliance)
     if (isNativeApp()) {
-      banner.querySelector('#trialBannerCta')?.addEventListener('click', (e) => {
+      overlay.querySelector('#renewModalCta')?.addEventListener('click', (e) => {
         e.preventDefault();
-        openExternal(PLANS_URL_EXTERNAL);
+        openExternal(opts.ctaUrl);
+        close();
       });
     }
 
-    this.injectTrialBannerStyles();
+    // Anima entrada
+    requestAnimationFrame(() => overlay.classList.add('renew-modal-visible'));
+  }
+
+  private injectRenewModalStyles(): void {
+    if (document.getElementById('renew-modal-css')) return;
+    const style = document.createElement('style');
+    style.id = 'renew-modal-css';
+    style.textContent = `
+      .renew-modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(2, 2, 12, 0.55);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        display: flex; align-items: center; justify-content: center;
+        padding: 1rem;
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      .renew-modal-overlay.renew-modal-visible { opacity: 1; }
+      .renew-modal {
+        background: rgba(10, 10, 30, 0.97);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 1.75rem 1.5rem 1.5rem;
+        max-width: 400px;
+        width: 100%;
+        position: relative;
+        transform: translateY(8px);
+        transition: transform 0.25s ease;
+      }
+      .renew-modal-overlay.renew-modal-visible .renew-modal { transform: translateY(0); }
+      .renew-modal-close {
+        position: absolute; top: 0.6rem; right: 0.75rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.55);
+        width: 32px; height: 32px;
+        border-radius: 10px;
+        font-size: 1.2rem; font-weight: 400;
+        cursor: pointer; font-family: inherit;
+        display: flex; align-items: center; justify-content: center;
+        line-height: 1;
+      }
+      .renew-modal-close:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+      .renew-modal-title {
+        font-size: 1.05rem; font-weight: 700; color: #fff;
+        margin: 0 0 0.5rem; letter-spacing: -0.2px;
+        padding-right: 2rem;
+      }
+      .renew-modal-message {
+        font-size: 0.85rem; color: rgba(255, 255, 255, 0.6);
+        margin: 0 0 1.25rem; line-height: 1.55;
+      }
+      .renew-modal-message strong { color: #fff; }
+      .renew-modal-actions {
+        display: flex; gap: 0.5rem;
+      }
+      .renew-modal-skip {
+        flex: 1; padding: 0.7rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.45);
+        border-radius: 12px;
+        font-size: 0.85rem; font-weight: 600;
+        font-family: inherit; cursor: pointer;
+      }
+      .renew-modal-skip:hover { color: rgba(255, 255, 255, 0.7); }
+      .renew-modal-cta {
+        flex: 1.4; padding: 0.7rem 1rem;
+        background: linear-gradient(135deg, #00D4FF, #8B5CF6);
+        color: #fff;
+        border-radius: 12px;
+        font-size: 0.85rem; font-weight: 700;
+        text-decoration: none;
+        text-align: center;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .renew-modal-cta:hover { opacity: 0.92; }
+    `;
+    document.head.appendChild(style);
   }
 
   private injectTrialBannerStyles(): void {
