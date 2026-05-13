@@ -1736,7 +1736,10 @@ input:checked + .slider:before {
   width: 100%;
   flex: 1;
   min-height: 0;
-  max-height: 50vh;
+  /* max-height removido: estava limitando o grid a 50vh mesmo quando
+     havia espaço sobrando na viewport (viewport alta com layout curto
+     ficava com espaço vazio entre o grid e a controls-bar). Agora o
+     grid cresce livremente até o limite real do .user-layout. */
 }
 
 .user-performance-grid {
