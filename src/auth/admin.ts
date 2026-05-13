@@ -1211,32 +1211,44 @@ class AdminDashboard {
       return;
     }
 
-    // Conta ATIVOS por estado pra usar nos rings de hotspot (regiões com
-    // mais assinantes pagantes ganham anel pulsante).
-    const activeByState: Record<string, number> = {};
+    // Agrega por estado: 1 ponto por estado em vez de 1 por user.
+    // Antes empilhava sprites no mesmo lat/lng com jitter pequeno e ficava
+    // visual de "pilha cilíndrica". Agora cada estado tem 1 luz cujo
+    // TAMANHO e BRILHO refletem o volume — mais user = ponto maior.
+    type AggState = { state: string; lat: number; lng: number; total: number; active: number };
+    const byState = new Map<string, AggState>();
     userLocations.forEach(u => {
-      if (u.isActive) activeByState[u.state] = (activeByState[u.state] || 0) + 1;
+      const coords = AdminDashboard.STATE_COORDS[u.state];
+      if (!coords) return;
+      const existing = byState.get(u.state);
+      if (existing) {
+        existing.total++;
+        if (u.isActive) existing.active++;
+      } else {
+        byState.set(u.state, {
+          state: u.state,
+          lat: coords.lat,
+          lng: coords.lng,
+          total: 1,
+          active: u.isActive ? 1 : 0,
+        });
+      }
     });
 
-    // 1 ponto por usuário, com jitter determinístico (~65km de raio).
-    // Cor: roxo se assinante ativo, azul cyan caso contrário.
-    const points = userLocations.map((u, idx) => {
-      const coords = AdminDashboard.STATE_COORDS[u.state];
-      if (!coords) return null;
+    const maxTotal = Math.max(...[...byState.values()].map(s => s.total), 1);
 
-      // Hash do phone+idx pra jitter estável (mesmo user sempre no mesmo lugar)
-      const seed = (u.phone + idx).split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
-      const jitterLat = ((seed % 1000) / 1000 - 0.5) * 1.2;
-      const jitterLng = (((seed >> 10) % 1000) / 1000 - 0.5) * 1.2;
-
-      return {
-        state: u.state,
-        city: coords.name,
-        lat: coords.lat + jitterLat,
-        lng: coords.lng + jitterLng,
-        isActive: u.isActive,
-      };
-    }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; isActive: boolean }>;
+    const points = [...byState.values()].map(s => ({
+      state: s.state,
+      city: AdminDashboard.STATE_COORDS[s.state].name,
+      lat: s.lat,
+      lng: s.lng,
+      total: s.total,
+      active: s.active,
+      // Razão de assinantes ativos sobre total (0-1) → controla mix de cor
+      activeRatio: s.active / s.total,
+      // Volume normalizado (0-1) → controla tamanho do sprite
+      volumeScale: s.total / maxTotal,
+    }));
 
     // Se já tem globo criado, só atualiza dados
     if (this.globeInstance) {
@@ -1290,7 +1302,7 @@ class AdminDashboard {
       //   clusters se acumularem em brilho (densidade visual de verdade)
       // - Não sobrepõe feio (additive funde luzes em vez de tapar)
       .customLayerData(points)
-      .customThreeObject((d: any) => this.createGlowSprite(d.isActive))
+      .customThreeObject((d: any) => this.createGlowSprite(d.activeRatio, d.volumeScale, d.total))
       .customThreeObjectUpdate((obj: any, d: any) => {
         Object.assign(obj.position, this.globeInstance.getCoords(d.lat, d.lng, 0.005));
       })
@@ -1450,26 +1462,33 @@ class AdminDashboard {
   }
 
   /**
-   * Cria THREE.Sprite com material que usa SHADER FRAGMENT custom em vez
-   * de textura raster. O glow é desenhado matematicamente pixel a pixel
-   * no fragment shader — sem amostragem de textura, sem desfoque em
-   * zoom. Resolução = pixel da tela, nítido em qualquer escala.
+   * Cria THREE.Sprite com glow desenhado por shader (vetorial,
+   * resolução-independente — nítido em qualquer zoom).
    *
-   * Cor: roxo se assinante ativo (pagante), cyan caso contrário.
-   * Assinantes ativos têm sprite ligeiramente MAIOR pra destacar receita.
+   * Parâmetros:
+   * - activeRatio: % de assinantes ativos sobre total (0-1) → cor mix
+   *   cyan→purple. 100% ativos = roxo puro, 100% inativos = cyan puro.
+   * - volumeScale: volume normalizado (0-1) → tamanho do sprite.
+   * - total: número absoluto de users (usado pra cap mínimo de tamanho).
+   *
+   * Tamanho mínimo: garante que estados com poucos users ainda fiquem
+   * visíveis quando câmera afasta (sem ficar sub-pixel).
    */
-  private createGlowSprite(isActive: boolean): any {
+  private createGlowSprite(activeRatio: number, volumeScale: number, total: number): any {
     const THREE = this.threeMod;
-    const colorHex = isActive ? 0xa064f6 : 0x00d4ff;
-    const size = isActive ? 0.7 : 0.5;
 
-    // ShaderMaterial: glow desenhado por fragment shader (vetorial,
-    // resolução-independente). uv ∈ [0,1] do sprite → distância do
-    // centro → core opaco + halo decaindo.
+    // Cor interpolada cyan (00D4FF) → purple (A064F6) por activeRatio
+    const color = new THREE.Color(0x00d4ff).lerp(new THREE.Color(0xa064f6), activeRatio);
+
+    // Tamanho: base 1.0 + bônus por volume. Mínimo 1.0 garante visibilidade
+    // de longe; estados grandes (SP) ficam ~2.5 = visivelmente maiores.
+    // Logaritmo achata diferenças extremas (1 vs 200 users não vira 1 vs 200x).
+    const size = 1.0 + Math.log2(total + 1) * 0.25;
+
     const material = new THREE.ShaderMaterial({
       uniforms: {
-        uColor: { value: new THREE.Color(colorHex) },
-        uOpacity: { value: isActive ? 1.0 : 0.85 },
+        uColor: { value: color },
+        uIntensity: { value: 0.6 + volumeScale * 0.4 }, // 0.6-1.0 — mais brilho pra estados maiores
       },
       vertexShader: `
         varying vec2 vUv;
@@ -1480,21 +1499,21 @@ class AdminDashboard {
       `,
       fragmentShader: `
         uniform vec3 uColor;
-        uniform float uOpacity;
+        uniform float uIntensity;
         varying vec2 vUv;
 
         void main() {
           vec2 center = vec2(0.5);
-          float dist = distance(vUv, center) * 2.0; // 0 no centro, 1 na borda
+          float dist = distance(vUv, center) * 2.0; // 0 centro → 1 borda
           if (dist > 1.0) discard;
 
-          // Núcleo: branco até dist=0.1, depois vira a cor
-          float coreFactor = 1.0 - smoothstep(0.0, 0.15, dist);
-          // Halo: cor decaindo até 0 em dist=1
-          float haloFactor = pow(1.0 - dist, 2.5);
+          // Núcleo: branco até 0.12, vira cor entre 0.12 e 0.25
+          float coreFactor = 1.0 - smoothstep(0.0, 0.18, dist);
+          // Halo: power decay (mais natural que linear)
+          float haloFactor = pow(1.0 - dist, 2.0);
 
-          vec3 finalColor = mix(uColor, vec3(1.0), coreFactor * 0.6);
-          float alpha = (coreFactor * 0.9 + haloFactor * 0.7) * uOpacity;
+          vec3 finalColor = mix(uColor, vec3(1.0), coreFactor * 0.7);
+          float alpha = (coreFactor + haloFactor * 0.5) * uIntensity;
 
           gl_FragColor = vec4(finalColor, alpha);
         }
@@ -1504,9 +1523,10 @@ class AdminDashboard {
       transparent: true,
     });
 
-    // Sprite ainda é o objeto, mas com nosso material custom
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(size, size, 1);
+    // Usuário ainda pode ver de quantos usuários é o ponto via console
+    sprite.userData = { total };
     return sprite;
   }
 
@@ -1531,24 +1551,17 @@ class AdminDashboard {
   }
 
   /**
-   * Pega 1 ring por estado dos top-5 com MAIS ASSINANTES ATIVOS.
-   * Centra no centro da capital (sem jitter) pra o anel ficar redondo.
+   * Pega top-5 estados com mais assinantes ATIVOS. Retorna lat/lng do
+   * centro da capital pro anel ficar redondo.
    */
   private topRingsFromActives(
-    points: Array<{ state: string; lat: number; lng: number; isActive: boolean }>,
+    points: Array<{ state: string; lat: number; lng: number; active: number }>,
   ): Array<{ state: string; lat: number; lng: number }> {
-    const activeByState = new Map<string, number>();
-    points.forEach(p => {
-      if (!p.isActive) return;
-      activeByState.set(p.state, (activeByState.get(p.state) || 0) + 1);
-    });
-    return [...activeByState.entries()]
-      .sort((a, b) => b[1] - a[1])
+    return points
+      .filter(p => p.active > 0)
+      .sort((a, b) => b.active - a.active)
       .slice(0, 5)
-      .map(([state]) => {
-        const c = AdminDashboard.STATE_COORDS[state];
-        return { state, lat: c.lat, lng: c.lng };
-      });
+      .map(p => ({ state: p.state, lat: p.lat, lng: p.lng }));
   }
 
   // ─── Dashboard ──────────────────────────────────────────────────────
