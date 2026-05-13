@@ -83,12 +83,21 @@ export function initOneSignal(): Promise<void> {
         resolve();
         return;
       }
-      // Capacitor nativo (iOS/Android APK): usa SDK nativo do OneSignal
-      // (onesignal-cordova-plugin). NÃO injeta SDK web.
+      // Capacitor nativo (iOS/Android APK): plugin OneSignal Cordova
+      // estava causando regressão grave no iOS (Issue OneSignal #1104 +
+      // conflito conhecido WKWebView + AudioContext fica suspenso após
+      // init do plugin). Sintoma: app não toca nada, ritmos ficam queued
+      // mas áudio nunca dispara.
+      //
+      // Solução temporária: PULAR init em Capacitor. Push iOS volta quando
+      // tivermos plugin que funciona bem (ou implementar via @capacitor/
+      // push-notifications nativo + servidor proxy pro OneSignal).
+      //
+      // Android: o plugin Cordova Android é separado (Java/Kotlin), não
+      // tem o mesmo bug. Mas por simplicidade, mantém o mesmo skip por
+      // enquanto. Push Android via OneSignal volta junto com iOS.
       if ((window as any).Capacitor?.isNativePlatform?.()) {
-        initNativeOneSignal()
-          .then(() => { sdkLoaded = true; resolve(); })
-          .catch((e) => { console.warn('[OneSignal] native init falhou:', e); resolve(); });
+        resolve();
         return;
       }
 

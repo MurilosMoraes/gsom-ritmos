@@ -21,7 +21,23 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'automatic',
     preferredContentMode: 'mobile',
-    scheme: 'GDrums'
+    scheme: 'GDrums',
+    // Exclui onesignal-cordova-plugin do build iOS. O plugin faz method
+    // swizzling do application:didFinishLaunchingWithOptions: que estava
+    // interferindo com WKWebView/AudioContext — sintoma: app não tocava
+    // áudio nenhum, ritmos ficavam queued (laranja) mas o som nunca
+    // disparava. Issue OneSignal #1104 + #1069 (SPM).
+    //
+    // Plugin continua ativo no Android (lá usa Java/Kotlin, não tem o bug).
+    // Push iOS volta quando tivermos plugin compatível ou implementação
+    // própria via @capacitor/push-notifications.
+    includePlugins: [
+      '@capacitor-community/keep-awake',
+      '@capacitor/app',
+      '@capacitor/haptics',
+      '@capacitor/status-bar',
+      '@capgo/native-purchases',
+    ],
   },
   plugins: {
     SplashScreen: {
