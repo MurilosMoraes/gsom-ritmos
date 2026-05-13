@@ -1185,7 +1185,7 @@ class AdminDashboard {
    * pra não inflar o bundle inicial — só carrega quando admin abre o
    * Dashboard pela primeira vez.
    */
-  private async renderGlobe(container: HTMLElement, userLocations: Array<{ state: string; phone: string }>): Promise<void> {
+  private async renderGlobe(container: HTMLElement, userLocations: Array<{ state: string; phone: string; isActive: boolean }>): Promise<void> {
     // Sem dados de telefone? Mostra empty state e sai.
     if (userLocations.length === 0) {
       container.innerHTML = '<div style="color:var(--a-text3);font-size:0.75rem;text-align:center;padding:2rem;">Sem dados de telefone pra mapear</div>';
@@ -1211,23 +1211,20 @@ class AdminDashboard {
       return;
     }
 
-    // Conta usuários por estado pra calcular densidade visual (intensidade
-    // de cor varia conforme cluster). Estados mais cheios = pontos mais
-    // brilhantes/purple, estados com 1 user = ponto cyan claro.
-    const stateCounts: Record<string, number> = {};
-    userLocations.forEach(u => { stateCounts[u.state] = (stateCounts[u.state] || 0) + 1; });
-    const maxStateCount = Math.max(...Object.values(stateCounts));
+    // Conta ATIVOS por estado pra usar nos rings de hotspot (regiões com
+    // mais assinantes pagantes ganham anel pulsante).
+    const activeByState: Record<string, number> = {};
+    userLocations.forEach(u => {
+      if (u.isActive) activeByState[u.state] = (activeByState[u.state] || 0) + 1;
+    });
 
-    // 1 ponto por usuário, com jitter aleatório (~0.6 graus = ~65km).
-    // Hash determinístico do phone garante que o mesmo user sempre cai
-    // no mesmo lugar (evita "tremer" a cada re-render).
+    // 1 ponto por usuário, com jitter determinístico (~65km de raio).
+    // Cor: roxo se assinante ativo, azul cyan caso contrário.
     const points = userLocations.map((u, idx) => {
       const coords = AdminDashboard.STATE_COORDS[u.state];
       if (!coords) return null;
-      const intensity = stateCounts[u.state] / maxStateCount;
 
-      // Hash simples do phone+idx pra gerar jitter determinístico (-0.5, 0.5)
-      // Sem random — assim o ponto não pula a cada refresh.
+      // Hash do phone+idx pra jitter estável (mesmo user sempre no mesmo lugar)
       const seed = (u.phone + idx).split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
       const jitterLat = ((seed % 1000) / 1000 - 0.5) * 1.2;
       const jitterLng = (((seed >> 10) % 1000) / 1000 - 0.5) * 1.2;
@@ -1237,14 +1234,14 @@ class AdminDashboard {
         city: coords.name,
         lat: coords.lat + jitterLat,
         lng: coords.lng + jitterLng,
-        intensity,
+        isActive: u.isActive,
       };
-    }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; intensity: number }>;
+    }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; isActive: boolean }>;
 
     // Se já tem globo criado, só atualiza dados
     if (this.globeInstance) {
       this.globeInstance.customLayerData(points);
-      this.globeInstance.ringsData(this.topRingsFromPoints(points));
+      this.globeInstance.ringsData(this.topRingsFromActives(points));
       return;
     }
 
@@ -1293,17 +1290,15 @@ class AdminDashboard {
       //   clusters se acumularem em brilho (densidade visual de verdade)
       // - Não sobrepõe feio (additive funde luzes em vez de tapar)
       .customLayerData(points)
-      .customThreeObject((d: any) => this.createGlowSprite(d.intensity))
+      .customThreeObject((d: any) => this.createGlowSprite(d.isActive))
       .customThreeObjectUpdate((obj: any, d: any) => {
-        // Posicionar o sprite na superfície do globo (lat/lng → 3D)
         Object.assign(obj.position, this.globeInstance.getCoords(d.lat, d.lng, 0.005));
       })
-      // Rings: anéis animados SÓ nos top 5 estados mais cheios (efeito de
-      // "hotspot" — chama atenção pras regiões mais densas).
-      .ringsData(this.topRingsFromPoints(points))
-      .ringColor((d: any) => {
-        const c = this.intensityColor(d.intensity);
-        return (t: number) => c.replace(/[\d.]+\)$/, `${(1 - t) * 0.5})`);
+      // Rings: anéis animados nos top 5 estados com MAIS ASSINANTES ATIVOS
+      // (chamam atenção pras regiões que estão pagando — saúde de receita).
+      .ringsData(this.topRingsFromActives(points))
+      .ringColor(() => {
+        return (t: number) => `rgba(160, 100, 246, ${(1 - t) * 0.55})`;
       })
       .ringMaxRadius(5)
       .ringPropagationSpeed(2.5)
@@ -1426,9 +1421,10 @@ class AdminDashboard {
     if (this.threeMod && this.glowTexture) return;
     // @ts-expect-error — three sem types instalados, usado dinamicamente
     this.threeMod = await import('three');
-    // Canvas 256x256 (4x da resolução anterior) — sprite fica nítido até
-    // em zoom alto e em retina display. Antes era 64x64 que esticava feio.
-    const SIZE = 256;
+    // Canvas 512x512 — alta resolução pra sprite ficar nítido em zoom max
+    // + retina. Texture só é gerada 1x e reusada por todos os sprites
+    // (cacheada em this.glowTexture), então 512² é trivial.
+    const SIZE = 512;
     const canvas = document.createElement('canvas');
     canvas.width = SIZE;
     canvas.height = SIZE;
@@ -1457,11 +1453,15 @@ class AdminDashboard {
    * Cria THREE.Sprite com material additive blending. Resultado: ponto
    * que parece luz/estrela. Quando sprites se sobrepõem, cores ADICIONAM
    * (cluster denso = ponto mais brilhante naturalmente).
+   *
+   * Cor: roxo se assinante ativo (pagante), cyan caso contrário.
+   * Assinantes ativos também ganham um sprite ligeiramente MAIOR pra
+   * destacar receita visualmente.
    */
-  private createGlowSprite(intensity: number): any {
+  private createGlowSprite(isActive: boolean): any {
     const THREE = this.threeMod;
-    const color = this.intensityToHex(intensity);
-    const size = 0.45 + intensity * 0.5;
+    const color = isActive ? 0xa064f6 : 0x00d4ff; // purple vs cyan
+    const size = isActive ? 0.7 : 0.5;
 
     const material = new THREE.SpriteMaterial({
       map: this.glowTexture,
@@ -1469,7 +1469,7 @@ class AdminDashboard {
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       transparent: true,
-      opacity: 0.9,
+      opacity: isActive ? 1 : 0.85,
     });
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(size, size, 1);
@@ -1497,33 +1497,24 @@ class AdminDashboard {
   }
 
   /**
-   * Pega 1 ponto por estado do top-5 mais cheio — pra usar como ring
-   * (hotspot). Não duplica anéis dentro do mesmo estado (com 50 users
-   * em SP, queremos 1 anel grande no centro de SP, não 50 anéis).
+   * Pega 1 ring por estado dos top-5 com MAIS ASSINANTES ATIVOS.
+   * Centra no centro da capital (sem jitter) pra o anel ficar redondo.
    */
-  private topRingsFromPoints(
-    points: Array<{ state: string; city: string; lat: number; lng: number; intensity: number }>,
-  ): Array<{ state: string; lat: number; lng: number; intensity: number }> {
-    const byState = new Map<string, { state: string; lat: number; lng: number; intensity: number; count: number }>();
+  private topRingsFromActives(
+    points: Array<{ state: string; lat: number; lng: number; isActive: boolean }>,
+  ): Array<{ state: string; lat: number; lng: number }> {
+    const activeByState = new Map<string, number>();
     points.forEach(p => {
-      const coords = AdminDashboard.STATE_COORDS[p.state];
-      if (!coords) return;
-      const existing = byState.get(p.state);
-      if (existing) {
-        existing.count++;
-      } else {
-        byState.set(p.state, {
-          state: p.state,
-          lat: coords.lat, // centro do estado, não jitter
-          lng: coords.lng,
-          intensity: p.intensity,
-          count: 1,
-        });
-      }
+      if (!p.isActive) return;
+      activeByState.set(p.state, (activeByState.get(p.state) || 0) + 1);
     });
-    return [...byState.values()]
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+    return [...activeByState.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([state]) => {
+        const c = AdminDashboard.STATE_COORDS[state];
+        return { state, lat: c.lat, lng: c.lng };
+      });
   }
 
   // ─── Dashboard ──────────────────────────────────────────────────────
@@ -1741,15 +1732,20 @@ class AdminDashboard {
         `).join('') || '<div style="color:var(--a-text3);font-size:0.75rem;">Nenhum ativo</div>';
     }
 
-    // Distribuição por região — 1 ponto de luz por usuário (com jitter
-    // ao redor da capital do estado pra evitar overlap exato e mostrar
-    // densidade visual real).
+    // Distribuição por região — 1 ponto de luz por usuário.
+    // Cor: roxo se assinante ativo, azul cyan caso contrário.
     const regionEl = el('regionChart');
     if (regionEl) {
-      const userLocations: Array<{ state: string; phone: string }> = [];
+      const userLocations: Array<{ state: string; phone: string; isActive: boolean }> = [];
       withPhone.forEach(p => {
         const state = this.getStateFromPhone(p.phone);
-        if (state !== '??') userLocations.push({ state, phone: p.phone! });
+        if (state !== '??') {
+          userLocations.push({
+            state,
+            phone: p.phone!,
+            isActive: p.subscription_status === 'active',
+          });
+        }
       });
       this.renderGlobe(regionEl, userLocations);
     }
