@@ -1729,13 +1729,9 @@ input:checked + .slider:before {
 
 .user-grid-section {
   width: 100%;
-  flex: 1 1 auto;
-  /* min-height: 0 deixa o grid encolher quando precisa, sem estourar pra
-     fora do container e sobrepor a .controls-bar abaixo. max-height: 50vh
-     era agressivo demais em viewport curta — removido pra que o flex layout
-     do .user-layout cuide do dimensionamento sozinho. */
+  flex: 1;
   min-height: 0;
-  overflow: hidden;
+  max-height: 50vh;
 }
 
 .user-performance-grid {
@@ -3015,10 +3011,7 @@ input[type="number"]:focus {
   }
 
   .grid-cell {
-    /* min-height reduzido pra permitir que o flex layout encolha o grid
-       quando a viewport é curta — antes 80px × 3 linhas + gaps estouravam
-       a section e a controls-bar ficava atrás. */
-    min-height: 60px;
+    min-height: 80px;
   }
 
   .cell-label {
