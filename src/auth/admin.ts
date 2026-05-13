@@ -1399,8 +1399,8 @@ class AdminDashboard {
       if (typeof Globe !== 'function') {
         throw new Error('Globe is not a function (default export missing)');
       }
-      // Carrega THREE + textura de glow pros sprites
-      await this.ensureThreeAndTexture();
+      // Hexbin não precisa de three/textura custom — usa o renderer
+      // nativo do globe.gl direto.
     } catch (e) {
       console.error('[admin] globe.gl falhou ao carregar:', e);
       container.innerHTML = `<div style="color:var(--a-red);font-size:0.75rem;text-align:center;padding:2rem;">Erro ao carregar globo:<br><code style="font-size:0.65rem;opacity:0.6;">${String(e).slice(0, 200)}</code></div>`;
@@ -1484,7 +1484,7 @@ class AdminDashboard {
 
     // Se já tem globo criado, só atualiza dados
     if (this.globeInstance) {
-      this.globeInstance.customLayerData(points);
+      this.globeInstance.hexBinPointsData(points);
       this.globeInstance.ringsData(this.topRingsFromActives(points));
       return;
     }
@@ -1527,28 +1527,27 @@ class AdminDashboard {
       .showAtmosphere(true)
       .atmosphereColor('#00D4FF')
       .atmosphereAltitude(0.18)
-      // Custom layer: cada user vira um sprite brilhante (THREE.Sprite com
-      // additive blending). Vantagens vs pointsData:
-      // - Sem cilindros (sprite é 2D, sempre voltado pra câmera)
-      // - Glow real: textura circular gradiente + additive blending faz
-      //   clusters se acumularem em brilho (densidade visual de verdade)
-      // - Não sobrepõe feio (additive funde luzes em vez de tapar)
-      .customLayerData(points)
-      .customThreeObject((d: any) => this.createGlowSprite(d.isActive))
-      .customThreeObjectUpdate((obj: any, d: any) => {
-        Object.assign(obj.position, this.globeInstance.getCoords(d.lat, d.lng, 0.005));
-        // Auto-scale por distância da câmera (mantém visível em qualquer zoom)
-        const camera = this.globeInstance.camera();
-        if (camera) {
-          const dist = camera.position.length();
-          const baseScale = obj.userData.baseScale || 0.5;
-          const scaleFactor = 0.7 + Math.min(dist / 4, 1.5);
-          const finalScale = baseScale * scaleFactor;
-          obj.scale.set(finalScale, finalScale, 1);
-        }
+      // Hexbin: divide o globo em hexágonos e agrega users dentro de cada
+      // um. Cor + altura proporcionais à densidade. Escalável pra 1M+ users
+      // sem performance hit. Mostra count exato no hover.
+      .hexBinPointsData(points)
+      .hexBinResolution(4) // resolução H3 (4 = hexágonos ~150km)
+      .hexBinMerge(false)
+      .hexAltitude((d: any) => 0.01 + Math.log2(d.points.length + 1) * 0.015)
+      .hexTopColor((d: any) => this.hexColor(d.points))
+      .hexSideColor((d: any) => this.hexColor(d.points))
+      .hexLabel((d: any) => {
+        const total = d.points.length;
+        const active = d.points.filter((p: any) => p.isActive).length;
+        return `
+          <div style="background:rgba(3,0,20,0.95);border:1px solid rgba(0,212,255,0.4);border-radius:8px;padding:0.5rem 0.75rem;font-family:-apple-system,sans-serif;color:#fff;font-size:0.85rem;">
+            <div style="font-weight:700;">${total} usuário${total === 1 ? '' : 's'}</div>
+            <div style="color:rgba(160,100,246,0.95);font-size:0.75rem;">${active} ativos · ${total - active} demais</div>
+          </div>
+        `;
       })
-      // Rings: anéis animados nos top 5 estados com MAIS ASSINANTES ATIVOS
-      // (chamam atenção pras regiões que estão pagando — saúde de receita).
+      .hexTransitionDuration(800)
+      // Rings: anéis pulsantes nos top 5 estados com mais assinantes ativos
       .ringsData(this.topRingsFromActives(points))
       .ringColor(() => {
         return (t: number) => `rgba(160, 100, 246, ${(1 - t) * 0.55})`;
@@ -1703,60 +1702,27 @@ class AdminDashboard {
   }
 
   /**
-   * Cria THREE.Sprite com glow desenhado por shader (vetorial, nítido em
-   * qualquer zoom). 1 sprite por usuário. Quando vários sprites caem na
-   * mesma cidade real, o additive blending soma cores naturalmente →
-   * cluster real vira "brasa" brilhante sem agregação fake.
-   *
-   * Cor: roxo se assinante ativo (pagante), cyan caso contrário.
+   * Calcula a cor de um hexágono no hexbin baseado nos users dentro.
+   * Mix cyan (todos trial/expired) → purple (todos ativos pagantes).
+   * Intensidade do brilho cresce com o volume (log scale).
    */
-  private createGlowSprite(isActive: boolean): any {
-    const THREE = this.threeMod;
-    const color = new THREE.Color(isActive ? 0xa064f6 : 0x00d4ff);
-    // Tamanho pequeno — densidade vem do additive blending de sprites
-    // sobrepostos (mesma cidade real), não do tamanho individual.
-    const size = isActive ? 0.45 : 0.35;
+  private hexColor(pts: Array<{ isActive: boolean }>): string {
+    const total = pts.length;
+    if (total === 0) return 'rgba(0, 212, 255, 0.3)';
+    const active = pts.filter(p => p.isActive).length;
+    const activeRatio = active / total;
 
-    const material = new THREE.ShaderMaterial({
-      uniforms: {
-        uColor: { value: color },
-        uIntensity: { value: isActive ? 1.0 : 0.8 },
-      },
-      vertexShader: `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 uColor;
-        uniform float uIntensity;
-        varying vec2 vUv;
+    // Cor: interpolação cyan → purple por % de ativos
+    // cyan:   0, 212, 255
+    // purple: 160, 100, 246
+    const r = Math.round(0 + (160 - 0) * activeRatio);
+    const g = Math.round(212 + (100 - 212) * activeRatio);
+    const b = Math.round(255 + (246 - 255) * activeRatio);
 
-        void main() {
-          vec2 center = vec2(0.5);
-          float dist = distance(vUv, center) * 2.0;
-          if (dist > 1.0) discard;
+    // Alpha: cresce com volume (log) — hexágonos cheios ficam mais opacos
+    const alpha = 0.45 + Math.min(0.5, Math.log2(total + 1) * 0.1);
 
-          float coreFactor = 1.0 - smoothstep(0.0, 0.2, dist);
-          float haloFactor = pow(1.0 - dist, 2.0);
-
-          vec3 finalColor = mix(uColor, vec3(1.0), coreFactor * 0.6);
-          float alpha = (coreFactor * 0.95 + haloFactor * 0.55) * uIntensity;
-
-          gl_FragColor = vec4(finalColor, alpha);
-        }
-      `,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      transparent: true,
-    });
-
-    const sprite = new THREE.Sprite(material);
-    sprite.scale.set(size, size, 1);
-    sprite.userData = { baseScale: size };
-    return sprite;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
   /** Cor da intensidade em hex (pro material do Three) */
