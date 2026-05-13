@@ -1407,20 +1407,30 @@ class AdminDashboard {
       return;
     }
 
-    // 1 ponto POR USUÁRIO, cada um EXATAMENTE em cima da capital do
-    // estado dele. ZERO jitter, ZERO distribuição, ZERO cidade fake.
-    // Todos os users do mesmo estado caem no MESMO PIXEL — additive
-    // blending soma cores: estado com 200 users fica visualmente muito
-    // mais brilhante que estado com 1 user, sem precisar inventar
-    // posições.
-    const points = userLocations.map(u => {
+    // 1 ponto POR USUÁRIO espalhado pela região do estado. Cada eixo
+    // (lat/lng) usa um random INDEPENDENTE em range diferente — não é
+    // distribuição radial, então não forma círculo. Hash estável do
+    // phone garante posição fixa (não pisca a cada refresh).
+    const points = userLocations.map((u, idx) => {
       const cap = AdminDashboard.STATE_COORDS[u.state];
       if (!cap) return null;
+
+      // 2 hashes independentes pra lat e lng (sem correlação radial)
+      const seedStr = u.phone + ':' + idx;
+      const hLat = seedStr.split('').reduce((a, c) => ((a * 31) + c.charCodeAt(0)) | 0, 7);
+      const hLng = seedStr.split('').reduce((a, c) => ((a * 17) + c.charCodeAt(0) * 13) | 0, 41);
+
+      // Espalha em retângulo (não círculo): -1.2° a +1.2° em lat,
+      // -1.5° a +1.5° em lng. Ranges DIFERENTES nos eixos → forma
+      // orgânica oval, sem simetria circular.
+      const offLat = (((hLat >>> 0) % 10000) / 10000 - 0.5) * 2.4;
+      const offLng = (((hLng >>> 0) % 10000) / 10000 - 0.5) * 3.0;
+
       return {
         state: u.state,
         city: cap.name,
-        lat: cap.lat,
-        lng: cap.lng,
+        lat: cap.lat + offLat,
+        lng: cap.lng + offLng,
         isActive: u.isActive,
       };
     }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; isActive: boolean }>;
