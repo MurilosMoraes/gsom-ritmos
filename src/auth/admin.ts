@@ -1527,13 +1527,15 @@ class AdminDashboard {
       .showAtmosphere(true)
       .atmosphereColor('#00D4FF')
       .atmosphereAltitude(0.18)
-      // Hexbin: divide o globo em hexágonos e agrega users dentro de cada
-      // um. Cor + altura proporcionais à densidade. Escalável pra 1M+ users
-      // sem performance hit. Mostra count exato no hover.
+      // Hexbin: divide globo em hexágonos H3, agrega users em cada um.
+      // Estilo "world-population" do globe.gl, mas com altura MUITO baixa
+      // pra não ficar "pau crescendo" — cor faz o trabalho pesado.
       .hexBinPointsData(points)
-      .hexBinResolution(4) // resolução H3 (4 = hexágonos ~150km)
+      .hexBinResolution(5) // H3 res 5 = hexágonos ~75km (mais granular)
       .hexBinMerge(false)
-      .hexAltitude((d: any) => 0.01 + Math.log2(d.points.length + 1) * 0.015)
+      // Altura quase plana: 0.003 base + log suave. Hexágono cheio sobe
+      // apenas ~0.025 (vs 0.15 antes). Visual de "mapa de calor 3D leve".
+      .hexAltitude((d: any) => 0.003 + Math.log2(d.points.length + 1) * 0.005)
       .hexTopColor((d: any) => this.hexColor(d.points))
       .hexSideColor((d: any) => this.hexColor(d.points))
       .hexLabel((d: any) => {
@@ -1702,9 +1704,15 @@ class AdminDashboard {
   }
 
   /**
-   * Calcula a cor de um hexágono no hexbin baseado nos users dentro.
-   * Mix cyan (todos trial/expired) → purple (todos ativos pagantes).
-   * Intensidade do brilho cresce com o volume (log scale).
+   * Cor do hexágono no hexbin. Como a altura ficou quase plana, a COR é
+   * quem comunica densidade — escala vibrante:
+   *   1-3 users:  cyan claro
+   *   4-10:       cyan vivo
+   *   11-30:      azul-roxo
+   *   31-80:      roxo forte
+   *   81+:        roxo brilhante quase branco (hotspot)
+   * Mantém a influência de "% ativos" como sutil shift hue (mais ativos
+   * = puxa pro roxo, mas escala principal é DENSIDADE).
    */
   private hexColor(pts: Array<{ isActive: boolean }>): string {
     const total = pts.length;
@@ -1712,15 +1720,46 @@ class AdminDashboard {
     const active = pts.filter(p => p.isActive).length;
     const activeRatio = active / total;
 
-    // Cor: interpolação cyan → purple por % de ativos
-    // cyan:   0, 212, 255
-    // purple: 160, 100, 246
-    const r = Math.round(0 + (160 - 0) * activeRatio);
-    const g = Math.round(212 + (100 - 212) * activeRatio);
-    const b = Math.round(255 + (246 - 255) * activeRatio);
+    // Densidade em escala logarítmica (0-1)
+    // 1 user = 0, 10 = 0.5, 100 = 1
+    const densityScale = Math.min(1, Math.log10(total + 1) / 2);
 
-    // Alpha: cresce com volume (log) — hexágonos cheios ficam mais opacos
-    const alpha = 0.45 + Math.min(0.5, Math.log2(total + 1) * 0.1);
+    // Escala de cor por densidade (5 stops)
+    let r: number, g: number, b: number;
+    if (densityScale < 0.25) {
+      // cyan claro → cyan vivo
+      const t = densityScale / 0.25;
+      r = Math.round(0 + (0 - 0) * t);
+      g = Math.round(180 + (212 - 180) * t);
+      b = Math.round(230 + (255 - 230) * t);
+    } else if (densityScale < 0.5) {
+      // cyan vivo → azul-roxo
+      const t = (densityScale - 0.25) / 0.25;
+      r = Math.round(0 + (90 - 0) * t);
+      g = Math.round(212 + (140 - 212) * t);
+      b = Math.round(255 + (250 - 255) * t);
+    } else if (densityScale < 0.75) {
+      // azul-roxo → roxo forte
+      const t = (densityScale - 0.5) / 0.25;
+      r = Math.round(90 + (160 - 90) * t);
+      g = Math.round(140 + (100 - 140) * t);
+      b = Math.round(250 + (246 - 250) * t);
+    } else {
+      // roxo forte → branco-roxo (hotspot)
+      const t = (densityScale - 0.75) / 0.25;
+      r = Math.round(160 + (230 - 160) * t);
+      g = Math.round(100 + (180 - 100) * t);
+      b = Math.round(246 + (255 - 246) * t);
+    }
+
+    // Sutil: se hexágono tem muitos ativos, puxa um pouco mais pro roxo
+    // (não muda escala, só dá um "boost" pra regiões com pagantes)
+    if (activeRatio > 0.5 && densityScale > 0.3) {
+      r = Math.min(255, r + 20);
+    }
+
+    // Alpha cresce com densidade pra dar mais "peso visual"
+    const alpha = 0.6 + Math.min(0.35, densityScale * 0.4);
 
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
