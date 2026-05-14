@@ -546,6 +546,13 @@ class RhythmSequencer {
             // poder mandar push pra user específico
             syncSubscriptionId(session.user.id, supabase).catch(() => {});
           }).catch(() => { /* SDK falhou — sem push, app continua */ });
+
+          // Push nativo (Capacitor Android/iOS): registra device no FCM/APNs
+          // e cria subscription no OneSignal via edge function. Sem isso,
+          // user com app instalado não recebe push (só via web/PWA).
+          import('./native/NativePushService').then(({ initNativePush }) => {
+            initNativePush(session.user.id).catch(() => {});
+          }).catch(() => { /* não-nativo, ignora */ });
         }
       } catch {
         // Offline — setlist usa cache local automaticamente

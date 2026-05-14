@@ -150,6 +150,10 @@ class AuthService {
     localStorage.removeItem('gdrums-session-id');
     localStorage.removeItem('gdrums-pending-order');
     localStorage.removeItem('gdrums-mode');
+    // Limpa flag de "device registrado pra push" — quando próximo user
+    // logar nesse device, o NativePushService refaz o registro com o
+    // external_id correto. Sem isso, o user novo herdaria push do anterior.
+    localStorage.removeItem('gdrums-native-push-registered');
     internalNav('/login');
   }
 
