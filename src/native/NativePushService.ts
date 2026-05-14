@@ -63,7 +63,27 @@ export async function initNativePush(userId: string): Promise<void> {
       return;
     }
 
-    // 3. Registra no FCM/APNs (token vem assíncrono via listener)
+    // 3. Android: cria notification channel explícito ANTES do register.
+    // Sem channel, Android 8+ silencia push automaticamente — sintoma
+    // "FCM aceita, device não mostra" (que estava acontecendo).
+    if (Capacitor.getPlatform() === 'android') {
+      try {
+        await PushNotifications.createChannel({
+          id: 'gdrums-default',
+          name: 'GDrums',
+          description: 'Notificações do GDrums (novidades, lembretes, ofertas)',
+          importance: 4, // IMPORTANCE_HIGH — pop-up + som
+          visibility: 1, // VISIBILITY_PUBLIC
+          sound: 'default',
+          vibration: true,
+          lights: true,
+        });
+      } catch (e) {
+        console.warn('[NativePush] createChannel falhou:', e);
+      }
+    }
+
+    // 4. Registra no FCM/APNs (token vem assíncrono via listener)
     await PushNotifications.register();
     setupListeners(userId);
   } catch (e) {

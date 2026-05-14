@@ -42,6 +42,15 @@
 
         </activity>
 
+        <!-- FCM default notification channel: quando um push chega sem
+             android_channel_id explícito, FCM usa este ID. Sem isso,
+             Android 8+ silencia o push automaticamente (problema antes:
+             "FCM accepted, device received nothing"). Channel é criado
+             pelo @capacitor/push-notifications no init do app. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="gdrums-default" />
+
         <!-- ForegroundService de áudio: mantém WebView vivo + AudioContext rodando
              em background. mediaPlayback é uma das categorias que SO permite rodar
              indefinidamente (Doze mode não mata). Notification persistente
