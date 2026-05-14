@@ -87,20 +87,33 @@ export async function downloadEverything(
   let done = 0;
 
   async function downloadOne(url: string): Promise<void> {
+    let lastError: string = '';
     try {
       // Cache-first se já tiver no SW; senão baixa.
       // Encode URL pra evitar problemas com espaços/acentos
       const encoded = url.split('/').map(p => p.includes('.json') || p.includes('.wav') || p.includes('.mp3') ? encodeURIComponent(p) : p).join('/');
       const res = await fetch(encoded, { signal, cache: 'default' });
       if (!res.ok) {
+        lastError = `HTTP ${res.status}`;
         failed.push(url);
+        console.warn(`[OfflineDownloader] ${url} → ${lastError}`);
       } else {
-        // Consome o body pra garantir que entrou no cache do SW
-        await res.blob();
+        // Consome o body pra garantir que entrou no cache do SW.
+        // Pode falhar se a conexão cair no meio (CDN timeout, NetworkError) —
+        // nesse caso o arquivo NÃO entra no cache do SW e fica em failed.
+        try {
+          await res.blob();
+        } catch (blobErr) {
+          lastError = `blob() falhou: ${blobErr}`;
+          failed.push(url);
+          console.warn(`[OfflineDownloader] ${url} → ${lastError}`);
+        }
       }
-    } catch {
+    } catch (e) {
       if (signal?.aborted) throw new Error('aborted');
+      lastError = String(e);
       failed.push(url);
+      console.warn(`[OfflineDownloader] ${url} → exception: ${lastError}`);
     } finally {
       done++;
       onProgress({
