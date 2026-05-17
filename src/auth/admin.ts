@@ -2236,12 +2236,26 @@ class AdminDashboard {
     const modal = document.getElementById('editUserModal')!;
     (document.getElementById('editUserId') as HTMLInputElement).value = profile.id;
     (document.getElementById('editUserName') as HTMLInputElement).value = profile.name || '';
-    (document.getElementById('editUserStatus') as HTMLSelectElement).value = profile.subscription_status;
-    (document.getElementById('editUserPlan') as HTMLSelectElement).value = profile.subscription_plan || 'trial';
+
+    // Status / Plano / Expira: SÓ LEITURA. Mudanças passam só pela
+    // ativação manual / +24h (que calculam tudo certo e registram tx).
+    const statusLabels: Record<string, string> = {
+      active: 'Ativo', trial: 'Trial', expired: 'Expirado',
+      canceled: 'Cancelado', blocked: 'Bloqueado',
+    };
+    (document.getElementById('editUserStatus') as HTMLInputElement).value =
+      statusLabels[profile.subscription_status] || profile.subscription_status || '—';
+    (document.getElementById('editUserPlan') as HTMLInputElement).value =
+      profile.subscription_plan || '—';
     const expiryInput = document.getElementById('editUserExpiry') as HTMLInputElement;
-    expiryInput.value = profile.subscription_expires_at
-      ? new Date(profile.subscription_expires_at).toISOString().split('T')[0]
-      : '';
+    if (profile.subscription_expires_at) {
+      const exp = new Date(profile.subscription_expires_at);
+      const venceu = exp < new Date();
+      expiryInput.value = exp.toLocaleDateString('pt-BR') +
+        (venceu ? ' (vencido)' : '');
+    } else {
+      expiryInput.value = '— sem data —';
+    }
 
     // Telefone + WhatsApp
     const phoneInput = document.getElementById('editUserPhone') as HTMLInputElement;
@@ -2360,34 +2374,11 @@ class AdminDashboard {
     const modal = document.getElementById('editUserModal');
     if (!form || !modal) return;
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!this.currentEditUserId) return;
-
-      const status = (document.getElementById('editUserStatus') as HTMLSelectElement).value;
-      const plan = (document.getElementById('editUserPlan') as HTMLSelectElement).value;
-      const expiry = (document.getElementById('editUserExpiry') as HTMLInputElement).value;
-
-      await adminUpdate('gdrums_profiles', this.currentEditUserId, {
-        subscription_status: status,
-        subscription_plan: plan,
-        subscription_expires_at: expiry ? new Date(expiry).toISOString() : null,
-        updated_at: new Date().toISOString(),
-      });
-
-      const idx = this.profiles.findIndex(p => p.id === this.currentEditUserId);
-      if (idx !== -1) {
-        this.profiles[idx].subscription_status = status;
-        this.profiles[idx].subscription_plan = plan;
-        this.profiles[idx].subscription_expires_at = expiry ? new Date(expiry).toISOString() : null;
-      }
-
-      modal.classList.remove('active');
-      this.renderUsers();
-      this.renderDashboard();
-      const profile = this.profiles.find(p => p.id === this.currentEditUserId);
-      modalManager.show('Admin', `Perfil de ${profile?.name} atualizado!`, 'success');
-    });
+    // Status/Plano/Expira agora são só leitura. Toda alteração passa
+    // pela Ativação manual / +24h (que calculam validade certa e
+    // registram transação). O <form> não tem mais submit de salvar —
+    // só impede submit acidental (Enter num campo).
+    form.addEventListener('submit', (e) => e.preventDefault());
 
     modal.querySelectorAll('.adm-modal-close, [data-modal]').forEach(btn => {
       btn.addEventListener('click', () => modal.classList.remove('active'));
