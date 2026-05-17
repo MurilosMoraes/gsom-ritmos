@@ -642,6 +642,17 @@
               <input type="text" id="editUserName" class="adm-input" disabled />
             </div>
             <div class="adm-field">
+              <label>Telefone</label>
+              <div style="display:flex;gap:0.5rem;align-items:center;">
+                <input type="text" id="editUserPhone" class="adm-input" disabled style="flex:1;" />
+                <a id="editUserWhatsapp" href="#" target="_blank" class="adm-btn adm-btn-ghost" style="text-decoration:none;white-space:nowrap;display:none;">WhatsApp</a>
+              </div>
+            </div>
+            <div class="adm-field">
+              <label>Email</label>
+              <input type="text" id="editUserEmail" class="adm-input" disabled />
+            </div>
+            <div class="adm-field">
               <label>Status</label>
               <select id="editUserStatus" class="adm-select">
                 <option value="active">Ativo</option>
@@ -667,10 +678,46 @@
               <label>Expira em</label>
               <input type="date" id="editUserExpiry" class="adm-input" />
             </div>
+
+            <!-- Ativação manual: pagou por fora, ativa o plano sem checkout -->
+            <div style="border-top:1px solid var(--a-border,rgba(255,255,255,0.1));margin:1rem 0 0.75rem;padding-top:0.75rem;">
+              <label style="font-size:0.8rem;color:var(--a-text2,#9aa);font-weight:600;display:block;margin-bottom:0.5rem;">
+                ⚡ Ativação manual (pagou por fora)
+              </label>
+              <div class="adm-field">
+                <label>Plano a ativar</label>
+                <select id="manualPlan" class="adm-select">
+                  <option value="">— selecione —</option>
+                  <option value="mensal">Mensal — R$ 29</option>
+                  <option value="trimestral">Trimestral — R$ 81</option>
+                  <option value="semestral">Semestral — R$ 144</option>
+                  <option value="anual">Anual — R$ 228</option>
+                  <option value="rei-dos-palcos">Rei dos Palcos — R$ 522</option>
+                </select>
+              </div>
+              <div class="adm-field">
+                <label>Cupom (opcional)</label>
+                <select id="manualCoupon" class="adm-select">
+                  <option value="">— sem cupom —</option>
+                </select>
+              </div>
+              <div id="manualPreview" style="font-size:0.78rem;color:var(--a-text2,#9aa);background:rgba(0,0,0,0.2);border-radius:6px;padding:0.5rem 0.7rem;margin-bottom:0.5rem;display:none;"></div>
+              <button type="button" id="manualActivateBtn" class="adm-btn adm-btn-primary" style="width:100%;">
+                Marcar como pago e ativar
+              </button>
+
+              <!-- Extensão de trial grátis (+24h), limite 1x por usuário -->
+              <div style="margin-top:0.6rem;">
+                <button type="button" id="freeTrialBtn" class="adm-btn adm-btn-ghost" style="width:100%;">
+                  🎁 Dar +24h de teste grátis
+                </button>
+                <div id="freeTrialHint" style="font-size:0.72rem;color:var(--a-text3,#778);text-align:center;margin-top:0.35rem;"></div>
+              </div>
+            </div>
           </div>
           <div class="adm-modal-foot">
             <button type="button" class="adm-btn adm-btn-ghost" data-modal="editUserModal">Cancelar</button>
-            <button type="submit" class="adm-btn adm-btn-primary">Salvar</button>
+            <button type="submit" class="adm-btn adm-btn-primary">Salvar alterações manuais</button>
           </div>
         </form>
       </div>

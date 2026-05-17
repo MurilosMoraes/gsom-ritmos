@@ -24,6 +24,7 @@ interface Profile {
   contact_method: string | null;
   email?: string;
   onesignal_id?: string | null;
+  free_trial_extensions?: number;
 }
 
 interface Transaction {
@@ -2242,7 +2243,116 @@ class AdminDashboard {
       ? new Date(profile.subscription_expires_at).toISOString().split('T')[0]
       : '';
 
+    // Telefone + WhatsApp
+    const phoneInput = document.getElementById('editUserPhone') as HTMLInputElement;
+    const waBtn = document.getElementById('editUserWhatsapp') as HTMLAnchorElement;
+    const ph = validateBrPhone(profile.phone);
+    if (ph.ok && ph.display && ph.e164) {
+      phoneInput.value = ph.display;
+      waBtn.href = `https://wa.me/${ph.e164}`;
+      waBtn.style.display = '';
+    } else {
+      phoneInput.value = profile.phone ? `${profile.phone} (${ph.reason})` : '— sem telefone —';
+      waBtn.style.display = 'none';
+    }
+
+    // Email
+    (document.getElementById('editUserEmail') as HTMLInputElement).value = profile.email || '— ?? —';
+
+    // Popular dropdown de cupons ativos pra ativação manual
+    const couponSel = document.getElementById('manualCoupon') as HTMLSelectElement;
+    const now = new Date();
+    const activeCoupons = this.coupons.filter(c =>
+      c.active &&
+      new Date(c.valid_from) <= now &&
+      new Date(c.valid_until) >= now &&
+      c.current_uses < c.max_uses
+    );
+    couponSel.innerHTML = '<option value="">— sem cupom —</option>' +
+      activeCoupons.map(c =>
+        `<option value="${c.code}" data-disc="${c.discount_percent}">${c.code} (-${c.discount_percent}%)</option>`
+      ).join('');
+
+    // Reset campos de ativação manual
+    (document.getElementById('manualPlan') as HTMLSelectElement).value = '';
+    couponSel.value = '';
+    const preview = document.getElementById('manualPreview') as HTMLElement;
+    preview.style.display = 'none';
+    this.updateManualPreview();
+
+    // Estado do botão de +24h trial grátis (limite 1x por usuário)
+    const ftBtn = document.getElementById('freeTrialBtn') as HTMLButtonElement;
+    const ftHint = document.getElementById('freeTrialHint') as HTMLElement;
+    const usedExt = profile.free_trial_extensions || 0;
+    if (usedExt >= 1) {
+      ftBtn.disabled = true;
+      ftBtn.textContent = '🎁 Teste grátis já concedido';
+      ftHint.textContent = `Já recebeu ${usedExt}x. Limite atingido (anti-abuso).`;
+    } else {
+      ftBtn.disabled = false;
+      ftBtn.textContent = '🎁 Dar +24h de teste grátis';
+      ftHint.textContent = 'Pode conceder 1x. Soma 24h ao prazo atual.';
+    }
+
     modal.classList.add('active');
+  }
+
+  // Preços de tabela em centavos (espelha PaymentService.PLANS / create-checkout)
+  private readonly MANUAL_PLAN_PRICES: Record<string, number> = {
+    mensal: 2900,
+    trimestral: 8100,
+    semestral: 14400,
+    anual: 22800,
+    'rei-dos-palcos': 52200,
+  };
+  private readonly MANUAL_PLAN_MONTHS: Record<string, number> = {
+    mensal: 1, trimestral: 3, semestral: 6, anual: 12, 'rei-dos-palcos': 36,
+  };
+
+  /** Calcula a validade nova pela regra de RENOVAÇÃO INTELIGENTE:
+   *  - ativo e ainda não venceu (mesmo plano OU qualquer ativação): soma o
+   *    período aos dias restantes (base = expiração atual).
+   *  - trial/expirado/vencido: base = agora.
+   *  NUNCA dá desconto por tempo restante — isso é só pra UPGRADE no checkout. */
+  private computeManualExpiry(profile: Profile, planId: string): Date {
+    const months = this.MANUAL_PLAN_MONTHS[planId] || 1;
+    const now = new Date();
+    const currentExp = profile.subscription_expires_at ? new Date(profile.subscription_expires_at) : null;
+    const isActiveNotExpired = profile.subscription_status === 'active'
+      && currentExp !== null && currentExp > now;
+    const base = isActiveNotExpired ? currentExp! : now;
+    const result = new Date(base);
+    result.setMonth(result.getMonth() + months);
+    return result;
+  }
+
+  private updateManualPreview(): void {
+    const preview = document.getElementById('manualPreview') as HTMLElement;
+    const planId = (document.getElementById('manualPlan') as HTMLSelectElement).value;
+    if (!planId || !this.currentEditUserId) { preview.style.display = 'none'; return; }
+    const profile = this.profiles.find(p => p.id === this.currentEditUserId);
+    if (!profile) { preview.style.display = 'none'; return; }
+
+    const couponSel = document.getElementById('manualCoupon') as HTMLSelectElement;
+    const couponCode = couponSel.value;
+    const disc = couponCode
+      ? Number(couponSel.selectedOptions[0]?.getAttribute('data-disc') || 0)
+      : 0;
+
+    const fullPrice = this.MANUAL_PLAN_PRICES[planId] || 0;
+    const finalPrice = Math.round(fullPrice * (1 - disc / 100));
+    const expiry = this.computeManualExpiry(profile, planId);
+
+    const now = new Date();
+    const currentExp = profile.subscription_expires_at ? new Date(profile.subscription_expires_at) : null;
+    const isRenewal = profile.subscription_status === 'active' && currentExp !== null && currentExp > now;
+
+    preview.innerHTML =
+      `Valor: <b>R$ ${(finalPrice / 100).toFixed(2)}</b>` +
+      (disc ? ` <span style="color:var(--a-green,#3c6)">(de R$ ${(fullPrice / 100).toFixed(2)}, cupom ${couponCode} -${disc}%)</span>` : '') +
+      `<br>${isRenewal ? '🔄 Renovação — soma ao prazo atual' : '🆕 Ativação nova — conta de hoje'}` +
+      `<br>Expira em: <b>${expiry.toLocaleDateString('pt-BR')}</b>`;
+    preview.style.display = '';
   }
 
   private setupEditForm(): void {
@@ -2281,6 +2391,150 @@ class AdminDashboard {
 
     modal.querySelectorAll('.adm-modal-close, [data-modal]').forEach(btn => {
       btn.addEventListener('click', () => modal.classList.remove('active'));
+    });
+
+    // Preview ao vivo da ativação manual
+    document.getElementById('manualPlan')?.addEventListener('change', () => this.updateManualPreview());
+    document.getElementById('manualCoupon')?.addEventListener('change', () => this.updateManualPreview());
+
+    // Botão: +24h de teste grátis (limite 1x por usuário, anti-abuso)
+    document.getElementById('freeTrialBtn')?.addEventListener('click', async () => {
+      if (!this.currentEditUserId) return;
+      const profile = this.profiles.find(p => p.id === this.currentEditUserId);
+      if (!profile) return;
+
+      const usedExt = profile.free_trial_extensions || 0;
+      if (usedExt >= 1) {
+        modalManager.show('Bloqueado', 'Esse usuário já recebeu teste grátis. Limite de 1x (anti-abuso).', 'error');
+        return;
+      }
+
+      // Base: soma 24h ao prazo atual se ainda não venceu; senão, de agora
+      const now = new Date();
+      const currentExp = profile.subscription_expires_at ? new Date(profile.subscription_expires_at) : null;
+      const base = (currentExp && currentExp > now) ? currentExp : now;
+      const newExpiry = new Date(base.getTime() + 24 * 60 * 60 * 1000);
+
+      const ok = await modalManager.confirm(
+        'Dar +24h de teste grátis?',
+        `${profile.name} → trial até ${newExpiry.toLocaleString('pt-BR')}. ` +
+        `Só pode 1x por usuário. Não dá pra desfazer.`
+      );
+      if (!ok) return;
+
+      const btn = document.getElementById('freeTrialBtn') as HTMLButtonElement;
+      btn.disabled = true;
+      btn.textContent = 'Concedendo...';
+
+      try {
+        await adminUpdate('gdrums_profiles', this.currentEditUserId, {
+          subscription_status: 'trial',
+          subscription_plan: 'trial',
+          subscription_expires_at: newExpiry.toISOString(),
+          free_trial_extensions: usedExt + 1,
+          updated_at: new Date().toISOString(),
+        });
+
+        const idx = this.profiles.findIndex(p => p.id === this.currentEditUserId);
+        if (idx !== -1) {
+          this.profiles[idx].subscription_status = 'trial';
+          this.profiles[idx].subscription_plan = 'trial';
+          this.profiles[idx].subscription_expires_at = newExpiry.toISOString();
+          this.profiles[idx].free_trial_extensions = usedExt + 1;
+        }
+
+        modal.classList.remove('active');
+        this.renderUsers();
+        this.renderDashboard();
+        modalManager.show('Pronto!', `${profile.name} ganhou +24h de teste (até ${newExpiry.toLocaleString('pt-BR')}).`, 'success');
+      } catch (e) {
+        modalManager.show('Erro', `Falha ao conceder: ${String(e)}`, 'error');
+        btn.disabled = false;
+        btn.textContent = '🎁 Dar +24h de teste grátis';
+      }
+    });
+
+    // Botão: marcar como pago e ativar
+    document.getElementById('manualActivateBtn')?.addEventListener('click', async () => {
+      if (!this.currentEditUserId) return;
+      const profile = this.profiles.find(p => p.id === this.currentEditUserId);
+      if (!profile) return;
+
+      const planId = (document.getElementById('manualPlan') as HTMLSelectElement).value;
+      if (!planId) {
+        modalManager.show('Atenção', 'Escolha o plano a ativar.', 'error');
+        return;
+      }
+
+      const couponSel = document.getElementById('manualCoupon') as HTMLSelectElement;
+      const couponCode = couponSel.value || null;
+      const disc = couponCode
+        ? Number(couponSel.selectedOptions[0]?.getAttribute('data-disc') || 0)
+        : 0;
+      const fullPrice = this.MANUAL_PLAN_PRICES[planId] || 0;
+      const finalPrice = Math.round(fullPrice * (1 - disc / 100));
+      const expiry = this.computeManualExpiry(profile, planId);
+
+      const ok = await modalManager.confirm(
+        'Confirmar ativação manual?',
+        `${profile.name} → plano ${planId}, R$ ${(finalPrice / 100).toFixed(2)}` +
+        `${couponCode ? ` (cupom ${couponCode})` : ''}, expira ${expiry.toLocaleDateString('pt-BR')}. ` +
+        `Registra transação confirmada como pagamento manual. Não dá pra desfazer.`
+      );
+      if (!ok) return;
+
+      const btn = document.getElementById('manualActivateBtn') as HTMLButtonElement;
+      btn.disabled = true;
+      btn.textContent = 'Ativando...';
+
+      try {
+        // 1. Atualiza o perfil
+        await adminUpdate('gdrums_profiles', this.currentEditUserId, {
+          subscription_status: 'active',
+          subscription_plan: planId,
+          subscription_expires_at: expiry.toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+        // 2. Registra a transação (payment_method=manual, rastreável e
+        //    blindado contra correções de bug futuras)
+        const orderNsu = `${this.currentEditUserId}_${planId}_${Date.now()}${couponCode ? '_' + couponCode : ''}`;
+        await adminInsert('gdrums_transactions', {
+          user_id: this.currentEditUserId,
+          order_nsu: orderNsu,
+          plan: planId,
+          amount_cents: finalPrice,
+          original_amount_cents: fullPrice,
+          status: 'confirmed',
+          payment_method: 'manual',
+          coupon_code: couponCode,
+          discount_percent: disc,
+          created_at: new Date().toISOString(),
+        });
+
+        // 3. Incrementa uso do cupom (RPC atômica), igual venda real
+        if (couponCode) {
+          await adminRpc('increment_coupon_uses', { coupon_code: couponCode }).catch(() => {});
+        }
+
+        // 4. Atualiza estado local
+        const idx = this.profiles.findIndex(p => p.id === this.currentEditUserId);
+        if (idx !== -1) {
+          this.profiles[idx].subscription_status = 'active';
+          this.profiles[idx].subscription_plan = planId;
+          this.profiles[idx].subscription_expires_at = expiry.toISOString();
+        }
+
+        modal.classList.remove('active');
+        this.renderUsers();
+        this.renderDashboard();
+        modalManager.show('Pronto!', `${profile.name} ativado no ${planId} até ${expiry.toLocaleDateString('pt-BR')}.`, 'success');
+      } catch (e) {
+        modalManager.show('Erro', `Falha ao ativar: ${String(e)}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Marcar como pago e ativar';
+      }
     });
   }
 

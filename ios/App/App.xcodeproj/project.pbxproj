@@ -19,6 +19,7 @@
 		F965C71E2FA7FFE200BD2F19 /* GDrumsAudioEnginePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F965C71B2FA7FFE100BD2F19 /* GDrumsAudioEnginePlugin.swift */; };
 		F965C71F2FA7FFE200BD2F19 /* GDrumsNowPlayingPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F965C71C2FA7FFE100BD2F19 /* GDrumsNowPlayingPlugin.swift */; };
 		F965C7232FA8062C00BD2F19 /* GDrumsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F965C7222FA8062C00BD2F19 /* GDrumsViewController.swift */; };
+		F976A7552FB5683D00419705 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F976A7542FB5683D00419705 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		F965C71B2FA7FFE100BD2F19 /* GDrumsAudioEnginePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDrumsAudioEnginePlugin.swift; sourceTree = "<group>"; };
 		F965C71C2FA7FFE100BD2F19 /* GDrumsNowPlayingPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDrumsNowPlayingPlugin.swift; sourceTree = "<group>"; };
 		F965C7222FA8062C00BD2F19 /* GDrumsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDrumsViewController.swift; sourceTree = "<group>"; };
+		F976A7542FB5683D00419705 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		F9A3B6772FB3FF480029C4F2 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -72,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				F9A3B6772FB3FF480029C4F2 /* App.entitlements */,
+				F976A7542FB5683D00419705 /* GoogleService-Info.plist */,
 				F965C7222FA8062C00BD2F19 /* GDrumsViewController.swift */,
 				F965C71A2FA7FFE100BD2F19 /* GDrumsAudioEngineCore.swift */,
 				F965C71B2FA7FFE100BD2F19 /* GDrumsAudioEnginePlugin.swift */,
@@ -159,6 +162,7 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				F976A7552FB5683D00419705 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -315,7 +319,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 41;
 				DEVELOPMENT_TEAM = 2MW7WMBCB3;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -323,7 +327,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.1.1;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.gdrums.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -339,7 +343,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 41;
 				DEVELOPMENT_TEAM = 2MW7WMBCB3;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -347,7 +351,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.gdrums.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";

@@ -650,6 +650,11 @@ class RhythmSequencer {
 
   private async maybeShowPushBanner(): Promise<void> {
     try {
+      // Em Capacitor nativo (iOS/Android), o prompt do sistema já é mostrado
+      // pelo NativePushService no login. Não duplicar com banner web.
+      const { Capacitor } = await import('@capacitor/core');
+      if (Capacitor.isNativePlatform()) return;
+
       const { isPushSupported, hasPushPermission, isBannerDismissedRecently } = await import('./native/OneSignalService');
 
       if (!isPushSupported()) return;

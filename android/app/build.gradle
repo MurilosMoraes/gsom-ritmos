@@ -7,13 +7,17 @@ android {
         applicationId "com.gdrums.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 14
-        versionName "1.0.7"
+        versionCode 18
+        versionName "1.1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+            // Bug do AGP: arquivos com Unicode multi-byte (Forró, Carimbó) quebram
+            // o compressDebugAssets — name field 0 bytes no Central Directory.
+            // Solução: não comprimir json (são pequenos, perda de tamanho desprezível).
+            noCompress 'json'
         }
     }
     buildTypes {

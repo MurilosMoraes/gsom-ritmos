@@ -1,19 +1,19 @@
-// NativePushService — push nativo Android/iOS via @capacitor/push-notifications.
+// NativePushService — push nativo Android/iOS.
 //
-// Por que NÃO usar onesignal-cordova-plugin: bug conhecido no Capacitor 8
-// SPM (Issue #1069) + method swizzling no iOS quebrava o áudio (AVAudioSession
-// + WKWebView). Foi removido em 2026-05.
+// Arquitetura HÍBRIDA (2026-05):
+// - iOS: @capacitor/push-notifications (oficial, sem swizzling de audio).
+//   Cordova-plugin do OneSignal quebrava AVAudioSession via swizzling.
+// - Android: @capacitor-firebase/messaging (Firebase SDK nativo). Plugin
+//   oficial não dava token "completo" pro OneSignal — chegava no FCM mas
+//   device silenciava (sintoma: successful=1, received=0). Com Firebase SDK
+//   nativo, a subscription registrada no OneSignal tem device_model/sdk/etc
+//   preenchidos e FCM entrega de verdade.
 //
-// Solução atual:
-// 1. Plugin oficial @capacitor/push-notifications pede permissão + registra
-//    o device no FCM (Android) ou APNs (iOS). Retorna um token nativo.
-// 2. Chamamos a edge function `register-device-token` que cadastra esse
-//    token como subscription do OneSignal sob external_id = supabase user.id.
-// 3. OneSignal envia push como antes (admin panel, cron, segmentação) —
-//    a subscription criada manualmente é alcançada pelos pushes.
+// Em ambos os casos, o token vai pra edge function `register-device-token`
+// que cria subscription no OneSignal sob external_id = supabase user.id.
+// Manda push pelo painel OneSignal como antes.
 //
 // Web push continua via OneSignalService.ts (web SDK + service worker).
-// Esse arquivo é SÓ pro app nativo (iOS/Android Capacitor).
 
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '../auth/supabase';
@@ -36,104 +36,192 @@ export async function initNativePush(userId: string): Promise<void> {
   if (initStarted) return;
   initStarted = true;
 
-  // Se já registramos esse user nesse device, não pede permissão de novo
+  const platform = Capacitor.getPlatform();
   const cachedKey = localStorage.getItem(REGISTERED_KEY);
-  if (cachedKey === userId) {
-    // Mesmo user: pula tudo. Token FCM/APNs pode ter mudado, mas o
-    // plugin reentrega via listener se renovar.
-    setupListeners(userId);
+  const sameUser = cachedKey === userId;
+
+  try {
+    if (platform === 'android') {
+      // Android: mesmo se cacheado, roda initAndroid (idempotente — só
+      // re-anexa listeners e re-pega token se mudou). FirebaseMessaging
+      // getToken() é cheap.
+      await initAndroid(userId);
+    } else if (platform === 'ios') {
+      if (sameUser) {
+        // iOS cacheado: só re-anexa listeners
+        await setupListeners(userId);
+      } else {
+        await initIos(userId);
+      }
+    }
+  } catch (e) {
+    console.warn('[NativePush] init falhou:', e);
+    initStarted = false;
+  }
+}
+
+// ─── Android: @capacitor-firebase/messaging ─────────────────────────
+async function initAndroid(userId: string): Promise<void> {
+  const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
+  const { PushNotifications } = await import('@capacitor/push-notifications');
+
+  // 1. Permissão (FCM usa o mesmo prompt que PushNotifications no Android)
+  const perm = await FirebaseMessaging.checkPermissions();
+  if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
+    const req = await FirebaseMessaging.requestPermissions();
+    if (req.receive !== 'granted') {
+      console.log('[NativePush] permissão negada (Android)');
+      return;
+    }
+  } else if (perm.receive !== 'granted') {
+    console.log('[NativePush] sem permissão (Android):', perm.receive);
     return;
   }
 
+  // 2. Cria channel explícito (importance HIGH pra pop-up + som)
   try {
-    const { PushNotifications } = await import('@capacitor/push-notifications');
+    await PushNotifications.createChannel({
+      id: 'gdrums-default',
+      name: 'GDrums',
+      description: 'Notificações do GDrums (novidades, lembretes, ofertas)',
+      importance: 4,
+      visibility: 1,
+      sound: 'default',
+      vibration: true,
+      lights: true,
+    });
+  } catch (e) {
+    console.warn('[NativePush] createChannel falhou:', e);
+  }
 
-    // 1. Verifica permissão atual
-    const perm = await PushNotifications.checkPermissions();
+  // 3. Pega o token FCM direto do Firebase SDK e salva em gdrums_profiles.
+  // Android NÃO usa OneSignal (que embrulha payload em formato proprietário
+  // que precisa do SDK deles pra renderizar). Usa FCM HTTPv1 direto via
+  // edge function send-push-fcm, com payload `notification` padrão.
+  try {
+    const { token } = await FirebaseMessaging.getToken();
+    if (token) {
+      await saveFcmToken(userId, token);
+    } else {
+      console.warn('[NativePush] FCM token vazio');
+    }
+  } catch (e) {
+    console.warn('[NativePush] getToken falhou:', e);
+  }
 
-    if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
-      // 2. Pede permissão (prompt nativo iOS/Android)
-      const req = await PushNotifications.requestPermissions();
-      if (req.receive !== 'granted') {
-        console.log('[NativePush] permissão negada');
-        return;
-      }
-    } else if (perm.receive !== 'granted') {
-      console.log('[NativePush] sem permissão:', perm.receive);
+  // 4. Listener pra renovação de token (Firebase pode trocar)
+  FirebaseMessaging.addListener('tokenReceived', (event) => {
+    if (event.token) {
+      saveFcmToken(userId, event.token).catch(() => {});
+    }
+  });
+
+  // 5. Notificação recebida com app aberto — deixa o system tray mostrar
+  FirebaseMessaging.addListener('notificationReceived', () => {
+    // No-op por enquanto
+  });
+
+  // 6. User tocou na notificação — navega pra URL se vier
+  FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
+    const data = event.notification?.data as { url?: string } | undefined;
+    if (data?.url && typeof data.url === 'string') {
+      try {
+        const u = new URL(data.url);
+        if (u.hostname === 'gdrums.com.br') {
+          window.location.href = u.pathname + u.search;
+        }
+      } catch { /* ignore */ }
+    }
+  });
+}
+
+// ─── iOS: @capacitor/push-notifications (NÃO MEXER — funciona) ──────
+async function initIos(userId: string): Promise<void> {
+  const { PushNotifications } = await import('@capacitor/push-notifications');
+
+  const perm = await PushNotifications.checkPermissions();
+  if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
+    const req = await PushNotifications.requestPermissions();
+    if (req.receive !== 'granted') {
+      console.log('[NativePush] permissão negada (iOS)');
+      return;
+    }
+  } else if (perm.receive !== 'granted') {
+    console.log('[NativePush] sem permissão (iOS):', perm.receive);
+    return;
+  }
+
+  await PushNotifications.register();
+  setupListeners(userId);
+}
+
+// Android: salva token FCM em gdrums_profiles.fcm_token (vai ser usado pela
+// edge function send-push-fcm pra mandar push via FCM HTTPv1 direto).
+async function saveFcmToken(userId: string, token: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('gdrums_profiles')
+      .update({ fcm_token: token })
+      .eq('id', userId);
+    if (error) {
+      console.warn('[NativePush] saveFcmToken erro:', error.message);
+    } else {
+      localStorage.setItem(REGISTERED_KEY, userId);
+      console.log('[NativePush] FCM token salvo (Android)');
+    }
+  } catch (e) {
+    console.warn('[NativePush] saveFcmToken exception:', e);
+  }
+}
+
+// iOS: manda token pro OneSignal via gateway (que funciona pra iOS)
+async function registerTokenWithBackend(
+  userId: string,
+  token: string,
+  platform: 'ios' | 'android',
+): Promise<void> {
+  try {
+    const session = await supabase.auth.getSession();
+    const accessToken = session.data.session?.access_token;
+    if (!accessToken) {
+      console.warn('[NativePush] sem session token, pulando registro');
       return;
     }
 
-    // 3. Android: cria notification channel explícito ANTES do register.
-    // Sem channel, Android 8+ silencia push automaticamente — sintoma
-    // "FCM aceita, device não mostra" (que estava acontecendo).
-    if (Capacitor.getPlatform() === 'android') {
-      try {
-        await PushNotifications.createChannel({
-          id: 'gdrums-default',
-          name: 'GDrums',
-          description: 'Notificações do GDrums (novidades, lembretes, ofertas)',
-          importance: 4, // IMPORTANCE_HIGH — pop-up + som
-          visibility: 1, // VISIBILITY_PUBLIC
-          sound: 'default',
-          vibration: true,
-          lights: true,
-        });
-      } catch (e) {
-        console.warn('[NativePush] createChannel falhou:', e);
-      }
-    }
+    const res = await fetch(REGISTER_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ token, platform }),
+    });
 
-    // 4. Registra no FCM/APNs (token vem assíncrono via listener)
-    await PushNotifications.register();
-    setupListeners(userId);
+    if (res.ok) {
+      localStorage.setItem(REGISTERED_KEY, userId);
+      console.log(`[NativePush] device registrado no OneSignal (${platform})`);
+    } else {
+      const err = await res.json().catch(() => ({}));
+      console.warn('[NativePush] registro falhou:', res.status, err);
+    }
   } catch (e) {
-    console.warn('[NativePush] init falhou:', e);
-    initStarted = false; // permite tentar de novo depois
+    console.warn('[NativePush] erro ao registrar token:', e);
   }
 }
 
 /**
- * Configura os listeners do plugin pra receber tokens e notificações.
+ * Configura os listeners do @capacitor/push-notifications (SÓ iOS).
+ * Android usa @capacitor-firebase/messaging — listeners ficam no initAndroid.
  */
 async function setupListeners(userId: string): Promise<void> {
   const { PushNotifications } = await import('@capacitor/push-notifications');
 
-  // Token registrado — manda pra nossa edge function que cria a
-  // subscription no OneSignal sob external_id = user.id
+  // Token registrado (iOS APNs) — manda pro backend
   PushNotifications.addListener('registration', async (token) => {
-    try {
-      const platform = Capacitor.getPlatform(); // 'ios' | 'android' | 'web'
-      if (platform !== 'ios' && platform !== 'android') return;
-
-      const session = await supabase.auth.getSession();
-      const accessToken = session.data.session?.access_token;
-      if (!accessToken) {
-        console.warn('[NativePush] sem session token, pulando registro');
-        return;
-      }
-
-      const res = await fetch(REGISTER_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ token: token.value, platform }),
-      });
-
-      if (res.ok) {
-        localStorage.setItem(REGISTERED_KEY, userId);
-        console.log('[NativePush] device registrado no OneSignal');
-      } else {
-        const err = await res.json().catch(() => ({}));
-        console.warn('[NativePush] registro falhou:', res.status, err);
-      }
-    } catch (e) {
-      console.warn('[NativePush] erro ao registrar token:', e);
-    }
+    await registerTokenWithBackend(userId, token.value, 'ios');
   });
 
-  // Erro de registro (sem internet, FCM offline, etc) — silencioso
+  // Erro de registro (sem internet, APNs offline, etc) — silencioso
   PushNotifications.addListener('registrationError', (err) => {
     console.warn('[NativePush] registrationError:', err);
   });
