@@ -3072,8 +3072,11 @@ class AdminDashboard {
 
   private renewalWired = false;
 
-  /** Dispara push pro segmento de renovação filtrado, 1 a 1 por user
-   *  (segment=user), com cupom embutido. Usa a edge function send-push. */
+  /** Dispara push pro segmento de renovação filtrado.
+   *  Fan-out HÍBRIDO (igual o app): iOS/web via send-push (OneSignal,
+   *  1 request com lista external_id, tolera registros fantasma) +
+   *  Android via send-push-fcm (FCM HTTPv1 direto). Cada canal 1
+   *  request só — rápido e robusto. Cupom embutido na URL. */
   private async sendRenewalPush(): Promise<void> {
     const now = new Date();
     const in7 = new Date(now.getTime() + 7 * 86400000);
@@ -3094,10 +3097,13 @@ class AdminDashboard {
         return st.count >= 3 || m >= 6 || st.totalCents >= 20000;
       });
     }
-    // só quem tem push ativo (onesignal web/ios OU fcm token android)
-    targets = targets.filter(p => !!p.onesignal_id || !!p.fcm_token);
 
-    if (targets.length === 0) {
+    // iOS/web = tem onesignal_id ; Android = tem fcm_token.
+    // (alguns podem ter os dois — manda nos dois canais, o device certo recebe)
+    const iosWebIds = targets.filter(p => !!p.onesignal_id).map(p => p.id);
+    const androidIds = targets.filter(p => !!p.fcm_token).map(p => p.id);
+
+    if (iosWebIds.length === 0 && androidIds.length === 0) {
       modalManager.show('Renovação', 'Ninguém com push ativo nesse filtro.', 'info');
       return;
     }
@@ -3113,29 +3119,53 @@ class AdminDashboard {
 
     const ok = await modalManager.confirm(
       'Disparar push de renovação?',
-      `Vai pra ${targets.length} pessoa(s) vencendo em ≤7 dias` +
-      `${coupon ? ` com cupom ${coupon}` : ''}. Não dá pra desfazer.`
+      `iOS/web: ${iosWebIds.length} · Android: ${androidIds.length}` +
+      `${coupon ? ` · cupom ${coupon}` : ''}. Não dá pra desfazer.`
     );
     if (!ok) return;
 
     const btn = document.getElementById('renewalPushBtn') as HTMLButtonElement;
     btn.disabled = true;
     btn.textContent = 'Enviando...';
-    let sent = 0, failed = 0;
+    const SB = 'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1';
     try {
       const token = await getAuthToken();
-      for (const p of targets) {
+      const auth = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+      let iosMsg = '—', andMsg = '—';
+
+      // iOS/web — OneSignal, 1 request com lista de external_id
+      if (iosWebIds.length > 0) {
         try {
-          const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/send-push', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ title, body, url, segment: 'user', target_user_id: p.id }),
+          const res = await fetch(`${SB}/send-push`, {
+            method: 'POST', headers: auth,
+            body: JSON.stringify({ title, body, url, segment: 'renewal', user_ids: iosWebIds }),
           });
           const d = await res.json();
-          if (res.ok && d.success) sent++; else failed++;
-        } catch { failed++; }
+          iosMsg = res.ok && d.success
+            ? `${d.recipients ?? '?'} entregues${d.skipped_invalid ? `, ${d.skipped_invalid} fantasmas` : ''}`
+            : `falhou: ${d.error || 'erro'}`;
+        } catch (e) { iosMsg = `erro: ${String(e)}`; }
       }
-      modalManager.show('Push de renovação', `${sent} enviados, ${failed} falharam.`, sent > 0 ? 'success' : 'error');
+
+      // Android — FCM direto, 1 request com lista de user_ids
+      if (androidIds.length > 0) {
+        try {
+          const res = await fetch(`${SB}/send-push-fcm`, {
+            method: 'POST', headers: auth,
+            body: JSON.stringify({ title, body, url, segment: 'renewal', user_ids: androidIds }),
+          });
+          const d = await res.json();
+          andMsg = res.ok && d.success
+            ? `${d.sent ?? 0} enviados${d.failed ? `, ${d.failed} falharam` : ''}`
+            : `falhou: ${d.error || 'erro'}`;
+        } catch (e) { andMsg = `erro: ${String(e)}`; }
+      }
+
+      modalManager.show(
+        'Push de renovação',
+        `iOS/web: ${iosMsg}\nAndroid: ${andMsg}`,
+        'success',
+      );
     } finally {
       btn.disabled = false;
       btn.textContent = '📲 Disparar push pro segmento';
