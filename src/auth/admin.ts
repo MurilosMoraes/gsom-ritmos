@@ -24,6 +24,7 @@ interface Profile {
   contact_method: string | null;
   email?: string;
   onesignal_id?: string | null;
+  fcm_token?: string | null;
   free_trial_extensions?: number;
 }
 
@@ -367,6 +368,8 @@ class AdminDashboard {
   private leadsPage = 0;
   private leadsSearch = '';
   private leadsFilter = 'all';
+  private renewalFilter = 'all';
+  private renewalPage = 0;
   private readonly PAGE_SIZE = 20;
 
   /**
@@ -776,6 +779,7 @@ class AdminDashboard {
       case 'subscriptions': this.renderTransactions(); break;
       case 'coupons': this.renderCoupons(); break;
       case 'leads': this.renderLeads(); break;
+      case 'renewal': this.renderRenewal(); break;
       case 'intelligence': this.renderIntelligence(); break;
       case 'affiliates': this.renderAffiliates(); break;
       case 'payouts': this.renderPayouts(); break;
@@ -2889,6 +2893,253 @@ class AdminDashboard {
         contact_method: method,
       },
     });
+  }
+
+  // ─── Renovação (pagantes ativos vencendo em ≤7 dias) ──────────────
+  //
+  // Foco preventivo: só quem AINDA tem acesso mas vence em ≤7 dias.
+  // Mostra fidelidade (tempo como cliente, nº de pagamentos, total R$)
+  // pra priorizar os melhores. WhatsApp 1-a-1 + push em massa, com
+  // cupom escolhido embutido na mensagem.
+
+  /** Métricas de fidelidade a partir das transações confirmadas. */
+  private renewalStats(userId: string): { since: Date | null; count: number; totalCents: number } {
+    const txs = this.transactions.filter(t => t.user_id === userId && t.status === 'confirmed');
+    if (txs.length === 0) return { since: null, count: 0, totalCents: 0 };
+    const dates = txs.map(t => new Date(t.created_at).getTime());
+    return {
+      since: new Date(Math.min(...dates)),
+      count: txs.length,
+      totalCents: txs.reduce((s, t) => s + (t.amount_cents || 0), 0),
+    };
+  }
+
+  private renderRenewal(): void {
+    const tbody = document.getElementById('renewalTableBody');
+    if (!tbody) return;
+
+    const now = new Date();
+    const in7 = new Date(now.getTime() + 7 * 86400000);
+
+    // Base: ativo, plano pago, vence ENTRE agora e +7 dias (ainda não venceu)
+    let list = this.profiles.filter(p => {
+      if (p.role === 'admin') return false;
+      if (p.subscription_status !== 'active') return false;
+      if (p.subscription_plan === 'trial' || p.subscription_plan === 'free' || !p.subscription_plan) return false;
+      if (!p.subscription_expires_at) return false;
+      const exp = new Date(p.subscription_expires_at);
+      return exp > now && exp <= in7;
+    });
+
+    // anexa stats + dias restantes
+    const rows = list.map(p => {
+      const exp = new Date(p.subscription_expires_at!);
+      const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / 86400000);
+      const st = this.renewalStats(p.id);
+      const monthsClient = st.since
+        ? Math.max(0, Math.floor((now.getTime() - st.since.getTime()) / (30 * 86400000)))
+        : 0;
+      // "Melhor cliente": ≥3 pagamentos OU ≥6 meses OU ≥R$200 pagos
+      const isVip = st.count >= 3 || monthsClient >= 6 || st.totalCents >= 20000;
+      return { p, exp, daysLeft, st, monthsClient, isVip };
+    });
+
+    // Filtro
+    let filtered = rows;
+    if (this.renewalFilter === 'd1') filtered = rows.filter(r => r.daysLeft <= 1);
+    else if (this.renewalFilter === 'd3') filtered = rows.filter(r => r.daysLeft <= 3);
+    else if (this.renewalFilter === 'vip') filtered = rows.filter(r => r.isVip);
+
+    // Ordena por urgência (menos dias primeiro), VIP empata pra cima
+    filtered.sort((a, b) => a.daysLeft - b.daysLeft || (b.isVip ? 1 : 0) - (a.isVip ? 1 : 0));
+
+    const countEl = document.getElementById('renewalCount');
+    if (countEl) countEl.textContent = `${filtered.length} vencendo`;
+
+    // Summary
+    const vipCount = filtered.filter(r => r.isVip).length;
+    const withPhone = filtered.filter(r => validateBrPhone(r.p.phone).ok).length;
+    const potentialCents = filtered.reduce((s, r) => {
+      const prices: Record<string, number> = { mensal: 2900, trimestral: 8100, semestral: 14400, anual: 22800, 'rei-dos-palcos': 52200 };
+      return s + (prices[r.p.subscription_plan] || 0);
+    }, 0);
+    const summaryEl = document.getElementById('renewalSummary');
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <span style="color:var(--a-gold);font-weight:600;">${filtered.length} vencendo ≤7d</span>
+        <span style="color:var(--a-cyan);font-weight:600;">${vipCount} melhores clientes</span>
+        <span style="color:var(--a-green);font-weight:600;">${withPhone} com WhatsApp</span>
+        <span style="color:var(--a-text3);">Receita potencial: R$ ${(potentialCents / 100).toFixed(0)}</span>
+      `;
+    }
+
+    // Popula cupons ativos (uma vez)
+    const couponSel = document.getElementById('renewalCoupon') as HTMLSelectElement;
+    if (couponSel && couponSel.options.length <= 1) {
+      const activeCoupons = this.coupons.filter(c =>
+        c.active && new Date(c.valid_from) <= now && new Date(c.valid_until) >= now && c.current_uses < c.max_uses
+      );
+      couponSel.innerHTML = '<option value="">— sem cupom —</option>' +
+        activeCoupons.map(c => `<option value="${c.code}">${c.code} (-${c.discount_percent}%)</option>`).join('');
+    }
+
+    const selectedCoupon = couponSel?.value || '';
+    const previewEl = document.getElementById('renewalPushPreview');
+    if (previewEl) {
+      previewEl.innerHTML = filtered.length === 0
+        ? 'Ninguém vencendo nesse filtro.'
+        : `Push vai pra <b>${filtered.length}</b> pessoa(s) com push ativo no filtro atual` +
+          (selectedCoupon ? ` · cupom <b>${selectedCoupon}</b> embutido` : ' · sem cupom') + '.';
+    }
+
+    // Template WhatsApp por pessoa (com dias + cupom)
+    const waMsg = (name: string, plano: string, dias: number) => {
+      const first = (name || '').split(' ')[0] || '';
+      const quando = dias <= 1 ? 'vence amanhã' : `vence em ${dias} dias`;
+      const cupomTxt = selectedCoupon
+        ? `\n\nE pra renovar agora, usa o cupom *${selectedCoupon}* que tem desconto. 😉`
+        : '';
+      return encodeURIComponent(
+        `Oi${first ? ' ' + first : ''}! Tudo certo? 🥁\n\n` +
+        `Aqui é do GDrums. Teu plano ${plano} ${quando} — não quero que tu fique sem a tua banda no palco!${cupomTxt}\n\n` +
+        `Quer que eu te ajude a renovar?`
+      );
+    };
+
+    // Paginação
+    const totalPages = Math.ceil(filtered.length / this.PAGE_SIZE);
+    if (this.renewalPage >= totalPages) this.renewalPage = Math.max(0, totalPages - 1);
+    const start = this.renewalPage * this.PAGE_SIZE;
+    const paged = filtered.slice(start, start + this.PAGE_SIZE);
+
+    if (paged.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="padding:0;">${emptyState({
+        title: 'Ninguém vencendo',
+        desc: 'Nenhum pagante ativo vence nos próximos 7 dias nesse filtro.',
+        inline: true,
+      })}</td></tr>`;
+      const pagEl = document.getElementById('renewalPagination');
+      if (pagEl) pagEl.innerHTML = '';
+      return;
+    }
+
+    tbody.innerHTML = paged.map(r => {
+      const v = validateBrPhone(r.p.phone);
+      const waLink = v.ok
+        ? `<a href="https://wa.me/${v.e164}?text=${waMsg(r.p.name, r.p.subscription_plan, r.daysLeft)}" target="_blank" style="color:var(--a-green);text-decoration:none;font-size:0.72rem;" title="WhatsApp: ${v.display}">WhatsApp</a>`
+        : `<span style="color:var(--a-text3);font-size:0.7rem;" title="${v.reason || 'sem telefone'}">sem zap</span>`;
+      const urg = r.daysLeft <= 1 ? 'var(--a-red)' : r.daysLeft <= 3 ? 'var(--a-gold)' : 'var(--a-text2)';
+      const venceTxt = r.daysLeft <= 1 ? (r.daysLeft <= 0 ? 'hoje' : 'amanhã') : `${r.daysLeft} dias`;
+      const sinceTxt = r.st.since
+        ? (r.monthsClient >= 1 ? `${r.monthsClient} ${r.monthsClient === 1 ? 'mês' : 'meses'}` : '< 1 mês')
+        : '—';
+      return `
+        <tr>
+          <td>${r.p.name || '—'} ${r.isVip ? '<span title="Melhor cliente" style="color:var(--a-gold);">★</span>' : ''}</td>
+          <td><span class="badge badge-primary">${r.p.subscription_plan}</span></td>
+          <td><span style="color:${urg};font-weight:600;">${venceTxt}</span></td>
+          <td>${sinceTxt}</td>
+          <td style="text-align:center;">${r.st.count}×</td>
+          <td>R$ ${(r.st.totalCents / 100).toFixed(0)}</td>
+          <td>${waLink}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const pagEl = document.getElementById('renewalPagination');
+    if (pagEl) {
+      pagEl.innerHTML = totalPages > 1
+        ? `<button class="adm-btn adm-btn-sm adm-btn-outline" id="renPrev" ${this.renewalPage === 0 ? 'disabled' : ''}>← Anterior</button>
+           <span style="font-size:0.78rem;color:var(--a-text3);">${this.renewalPage + 1} / ${totalPages}</span>
+           <button class="adm-btn adm-btn-sm adm-btn-outline" id="renNext" ${this.renewalPage >= totalPages - 1 ? 'disabled' : ''}>Próxima →</button>`
+        : '';
+      pagEl.querySelector('#renPrev')?.addEventListener('click', () => { this.renewalPage--; this.renderRenewal(); });
+      pagEl.querySelector('#renNext')?.addEventListener('click', () => { this.renewalPage++; this.renderRenewal(); });
+    }
+
+    // Listeners (idempotente — só liga 1x via flag)
+    if (!this.renewalWired) {
+      this.renewalWired = true;
+      document.getElementById('renewalFilter')?.addEventListener('change', (e) => {
+        this.renewalFilter = (e.target as HTMLSelectElement).value;
+        this.renewalPage = 0;
+        this.renderRenewal();
+      });
+      document.getElementById('renewalCoupon')?.addEventListener('change', () => this.renderRenewal());
+      document.getElementById('renewalPushBtn')?.addEventListener('click', () => this.sendRenewalPush());
+    }
+  }
+
+  private renewalWired = false;
+
+  /** Dispara push pro segmento de renovação filtrado, 1 a 1 por user
+   *  (segment=user), com cupom embutido. Usa a edge function send-push. */
+  private async sendRenewalPush(): Promise<void> {
+    const now = new Date();
+    const in7 = new Date(now.getTime() + 7 * 86400000);
+    let targets = this.profiles.filter(p => {
+      if (p.role === 'admin' || p.subscription_status !== 'active') return false;
+      if (p.subscription_plan === 'trial' || p.subscription_plan === 'free' || !p.subscription_plan) return false;
+      if (!p.subscription_expires_at) return false;
+      const exp = new Date(p.subscription_expires_at);
+      return exp > now && exp <= in7;
+    });
+    if (this.renewalFilter === 'd1' || this.renewalFilter === 'd3') {
+      const lim = this.renewalFilter === 'd1' ? 1 : 3;
+      targets = targets.filter(p => Math.ceil((new Date(p.subscription_expires_at!).getTime() - now.getTime()) / 86400000) <= lim);
+    } else if (this.renewalFilter === 'vip') {
+      targets = targets.filter(p => {
+        const st = this.renewalStats(p.id);
+        const m = st.since ? Math.floor((now.getTime() - st.since.getTime()) / (30 * 86400000)) : 0;
+        return st.count >= 3 || m >= 6 || st.totalCents >= 20000;
+      });
+    }
+    // só quem tem push ativo (onesignal web/ios OU fcm token android)
+    targets = targets.filter(p => !!p.onesignal_id || !!p.fcm_token);
+
+    if (targets.length === 0) {
+      modalManager.show('Renovação', 'Ninguém com push ativo nesse filtro.', 'info');
+      return;
+    }
+
+    const coupon = (document.getElementById('renewalCoupon') as HTMLSelectElement)?.value || '';
+    const url = coupon
+      ? `https://gdrums.com.br/plans?cupom=${encodeURIComponent(coupon)}&utm_source=push&utm_campaign=renovacao`
+      : 'https://gdrums.com.br/plans?utm_source=push&utm_campaign=renovacao';
+    const title = '🥁 Teu plano tá vencendo';
+    const body = coupon
+      ? `Renova agora com o cupom ${coupon} e não perde tua banda no palco!`
+      : 'Renova agora e não perde tua banda no palco!';
+
+    const ok = await modalManager.confirm(
+      'Disparar push de renovação?',
+      `Vai pra ${targets.length} pessoa(s) vencendo em ≤7 dias` +
+      `${coupon ? ` com cupom ${coupon}` : ''}. Não dá pra desfazer.`
+    );
+    if (!ok) return;
+
+    const btn = document.getElementById('renewalPushBtn') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    let sent = 0, failed = 0;
+    try {
+      const token = await getAuthToken();
+      for (const p of targets) {
+        try {
+          const res = await fetch('https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/send-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ title, body, url, segment: 'user', target_user_id: p.id }),
+          });
+          const d = await res.json();
+          if (res.ok && d.success) sent++; else failed++;
+        } catch { failed++; }
+      }
+      modalManager.show('Push de renovação', `${sent} enviados, ${failed} falharam.`, sent > 0 ? 'success' : 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📲 Disparar push pro segmento';
+    }
   }
 
   // ─── Envio de email ───────────────────────────────────────────────
