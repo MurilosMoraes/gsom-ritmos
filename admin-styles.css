@@ -690,6 +690,13 @@ body {
   border-radius: 6px; transition: all 0.12s;
 }
 .adm-modal-close:hover { background: var(--a-surface); color: var(--a-text); }
+/* editUserModal envolve body+foot num <form>. O form precisa herdar o
+   flex column pra o scroll do body funcionar (senão estoura sem rolar). */
+.adm-modal > form {
+  display: flex; flex-direction: column;
+  min-height: 0; flex: 1 1 auto;
+  overflow: hidden;
+}
 .adm-modal-body {
   padding: 1rem 1.25rem;
   overflow-y: auto; -webkit-overflow-scrolling: touch;
