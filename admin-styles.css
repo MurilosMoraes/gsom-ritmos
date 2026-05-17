@@ -376,12 +376,38 @@ body {
 .adm-input:focus { border-color: rgba(0,212,255,0.3); }
 .adm-input:disabled { opacity: 0.35; cursor: not-allowed; }
 .adm-select {
-  padding: 0.45rem 0.75rem;
-  background: var(--a-surface); border: 1px solid var(--a-border);
+  /* appearance:none força o navegador a usar nosso estilo em vez do
+     widget nativo do SO (Windows renderizava fundo branco do sistema,
+     texto branco sumia). Setinha custom via SVG inline. */
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  padding: 0.45rem 2rem 0.45rem 0.75rem;
+  background-color: var(--a-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  border: 1px solid var(--a-border);
   border-radius: var(--a-radius);
   color: var(--a-text); font-size: 0.78rem; font-family: inherit;
   outline: none; cursor: pointer; min-width: 140px;
 }
+/* Alguns selects no HTML usam .adm-input em vez de .adm-select.
+   Aplicar o mesmo tratamento de appearance + setinha neles. */
+select.adm-input {
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  padding-right: 2rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  cursor: pointer;
+}
+/* As <option> abrem num popup do SO; no Windows herdam fundo branco.
+   Forçar cor explícita aqui mantém legível em Chrome/Edge/Firefox Win. */
+.adm-select option,
+select.adm-input option {
+  background-color: #15161f;
+  color: var(--a-text, #e8e8ef);
+}
+.adm-select:focus { border-color: rgba(0,212,255,0.3); }
 
 /* ─── Summary strip ──────────────────────────────────────────── */
 .adm-summary {
