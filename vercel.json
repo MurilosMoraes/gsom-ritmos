@@ -131,7 +131,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.onesignal.com https://*.onesignal.com https://onesignal.com https://*.os.tc; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: https://*.onesignal.com https://*.os.tc; media-src 'self' blob: data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.infinitepay.io https://*.onesignal.com https://api.onesignal.com https://onesignal.com https://*.os.tc wss://*.onesignal.com wss://*.os.tc; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.onesignal.com https://*.onesignal.com https://onesignal.com https://*.os.tc https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: https://*.onesignal.com https://*.os.tc https://www.facebook.com; media-src 'self' blob: data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.infinitepay.io https://*.onesignal.com https://api.onesignal.com https://onesignal.com https://*.os.tc wss://*.onesignal.com wss://*.os.tc https://www.facebook.com https://graph.facebook.com; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none'"
         }
       ]
     }
