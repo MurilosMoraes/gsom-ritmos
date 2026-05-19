@@ -8,6 +8,7 @@ import { registerSchema, zodErrorsToFieldMap } from './schemas';
 import { updateRhythmCountInDom } from '../utils/rhythmCount';
 import { redirectIfRecoveryHash } from './recoveryGuard';
 import { setupPasswordToggle } from '../utils/passwordToggle';
+import { trackLead } from '../utils/metaTracking';
 
 class RegisterPage {
   private form: HTMLFormElement;
@@ -279,6 +280,15 @@ class RegisterPage {
         this.setLoading(false);
         return;
       }
+
+      // Conta criada de fato → conversão real. Dispara Lead (Pixel +
+      // CAPI, dedup por eventID). email/phone vão hasheados no server.
+      // Antes do signIn/redirect pra garantir que roda mesmo com o
+      // keepalive sobrevivendo à navegação.
+      trackLead({
+        email: this.emailInput.value.trim(),
+        phone: this.phoneInput.value.replace(/\D/g, ''),
+      });
 
       // Sucesso: servidor garantiu que conta tá completa. Agora faz signIn
       // pelo cliente pra gerar a sessão JWT local.
