@@ -6544,16 +6544,43 @@ class RhythmSequencer {
   }
 
   private async loadSetlistItem(item: { name: string; path: string; userRhythmId?: string }): Promise<void> {
+    let loaded = false;
     if (item.userRhythmId) {
       const rhythm = this.userRhythmService.getById(item.userRhythmId);
       if (rhythm) {
         await this.loadUserRhythm(rhythm.name, rhythm.bpm, rhythm.rhythm_data);
+        loaded = true;
       } else {
-        this.uiManager.showAlert(`Ritmo "${item.name}" não encontrado`);
+        // Ritmo personalizado FANTASMA — o usuário apagou o ritmo mas o
+        // item ficou no setlist. Antes isso deixava o app aberto sem nada
+        // carregado (grid esmaecido) e o user achava que travou.
+        // Fix: remove o item do setlist e tenta o próximo (ou default).
+        this.uiManager.showAlert(`Ritmo "${item.name}" foi removido (não existe mais)`);
+        const idx = this.setlistManager.getCurrentIndex();
+        this.setlistManager.removeItem(idx);
+        const next = this.setlistManager.getCurrentItem();
+        if (next && next !== item) {
+          await this.loadSetlistItem(next);
+          return;
+        }
+        // Sem próximo: cai pro default pra app não ficar sem ritmo
+        await this.loadDefaultRhythmIfNoSetlist();
+        loaded = true;
       }
     } else {
-      await this.loadRhythm(item.name, item.path);
+      try {
+        await this.loadRhythm(item.name, item.path);
+        loaded = true;
+      } catch (e) {
+        // Ritmo do catálogo não carregou (arquivo deletado, manifest novo,
+        // versão antiga do APK). Mesmo tratamento: avisa e não trava.
+        console.warn('[setlist] falhou ao carregar', item.path, e);
+        this.uiManager.showAlert(`Ritmo "${item.name}" não pôde ser carregado`);
+        await this.loadDefaultRhythmIfNoSetlist();
+        loaded = true;
+      }
     }
+    void loaded;
     // Atualizar UI do setlist (posição, nomes dos vizinhos, strip)
     this.updateSetlistUI();
     this.uiManager.updatePerformanceGrid();
