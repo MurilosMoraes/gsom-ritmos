@@ -9,5 +9,7 @@
 		<string>applinks:gdrums.com.br</string>
 		<string>webcredentials:gdrums.com.br</string>
 	</array>
+	<key>com.apple.developer.in-app-payments</key>
+	<array/>
 </dict>
 </plist>
