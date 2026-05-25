@@ -20,6 +20,7 @@
 		F965C71F2FA7FFE200BD2F19 /* GDrumsNowPlayingPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F965C71C2FA7FFE100BD2F19 /* GDrumsNowPlayingPlugin.swift */; };
 		F965C7232FA8062C00BD2F19 /* GDrumsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F965C7222FA8062C00BD2F19 /* GDrumsViewController.swift */; };
 		F976A7552FB5683D00419705 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F976A7542FB5683D00419705 /* GoogleService-Info.plist */; };
+		F9BC20772FC510EC00D41A26 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9BC20762FC510EC00D41A26 /* StoreKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +40,7 @@
 		F965C7222FA8062C00BD2F19 /* GDrumsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDrumsViewController.swift; sourceTree = "<group>"; };
 		F976A7542FB5683D00419705 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		F9A3B6772FB3FF480029C4F2 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		F9BC20762FC510EC00D41A26 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +49,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */,
+				F9BC20772FC510EC00D41A26 /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -58,6 +61,7 @@
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
+				F9BC20752FC510EC00D41A26 /* Frameworks */,
 				504EC3051FED79650016851F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -89,6 +93,14 @@
 				50B271D01FEDC1A000F3C39B /* public */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		F9BC20752FC510EC00D41A26 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F9BC20762FC510EC00D41A26 /* StoreKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -319,7 +331,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 42;
+				CURRENT_PROJECT_VERSION = 43;
 				DEVELOPMENT_TEAM = 2MW7WMBCB3;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -343,7 +355,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 42;
+				CURRENT_PROJECT_VERSION = 43;
 				DEVELOPMENT_TEAM = 2MW7WMBCB3;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
