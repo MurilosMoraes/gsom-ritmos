@@ -372,7 +372,15 @@ class PlansPage {
     if (!grid) return;
     grid.innerHTML = '';
 
-    PLANS.forEach(plan => {
+    // No iOS, esconder o plano "Rei dos Palcos" (36 meses).
+    // Apple exige que TODOS os planos exibidos tenham IAP correspondente,
+    // e este ainda não foi criado no ASC — então some no iOS pra evitar
+    // rejeição 2.1 ("referência a plano sem IAP submetido").
+    const visiblePlans = isIOSNative()
+      ? PLANS.filter(p => p.id !== 'rei-dos-palcos')
+      : PLANS;
+
+    visiblePlans.forEach(plan => {
       const isHighlighted = plan.popular || highlight === plan.id;
       const card = document.createElement('div');
       card.className = 'plan-card' + (isHighlighted ? ' popular' : '');

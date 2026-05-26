@@ -30,27 +30,31 @@ const cpfSchema = z
     error: 'CPF inválido — verifique os dígitos',
   });
 
+// Telefone OPCIONAL (Apple 5.1.1 — sequenciador de bateria não precisa
+// exigir dados pessoais não essenciais). Se preenchido, valida formato.
 const phoneSchema = z
-  .string({ error: 'Informe seu WhatsApp' })
+  .string()
   .trim()
+  .optional()
   .refine(v => {
+    if (!v) return true; // vazio = ok (opcional)
     const digits = v.replace(/\D/g, '');
     return digits.length === 10 || digits.length === 11;
   }, {
     error: 'WhatsApp precisa ter 10 ou 11 dígitos',
   })
   .refine(v => {
+    if (!v) return true;
     const digits = v.replace(/\D/g, '');
-    // Se tem 11 dígitos, o 3º (após DDD) deve ser 9 (celular)
     if (digits.length === 11) return digits[2] === '9';
     return true;
   }, {
     error: 'Celular precisa começar com 9 após o DDD',
   })
   .refine(v => {
+    if (!v) return true;
     const digits = v.replace(/\D/g, '');
     const ddd = parseInt(digits.slice(0, 2));
-    // DDDs válidos no Brasil: 11-99 (excluindo alguns raros)
     return ddd >= 11 && ddd <= 99;
   }, {
     error: 'DDD inválido',
