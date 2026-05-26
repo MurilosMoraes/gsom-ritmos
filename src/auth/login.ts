@@ -4,7 +4,7 @@ import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { AttributionService } from '../native/AttributionService';
 import { loginSchema, zodErrorsToFieldMap } from './schemas';
-import { isNativeApp, openExternal } from '../native/Platform';
+import { isNativeApp, openExternal, internalNav } from '../native/Platform';
 import { setupPasswordToggle } from '../utils/passwordToggle';
 
 class LoginPage {
@@ -138,7 +138,8 @@ class LoginPage {
     document.querySelectorAll<HTMLAnchorElement>(selectors).forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
-        openExternal('https://gdrums.com.br/register');
+        // Navega interno (Apple não gosta de cadastro fora do app).
+        internalNav('/register');
       });
     });
   }
@@ -420,11 +421,11 @@ class LoginPage {
       const status = (data as { status?: string } | null)?.status;
 
       if (status === 'not_found') {
-        // Conta não existe — leva pro cadastro pré-preenchido
+        // Conta não existe — leva pro cadastro pré-preenchido (interno).
         this.setLoading(false);
         const dest = `/register?email=${encodeURIComponent(email)}`;
         if (isNativeApp()) {
-          openExternal('https://gdrums.com.br' + dest);
+          internalNav(dest);
         } else {
           window.location.href = dest;
         }

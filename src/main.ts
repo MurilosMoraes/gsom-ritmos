@@ -21,18 +21,33 @@ import { StatusBarService } from './native/StatusBarService';
 import { AttributionService } from './native/AttributionService';
 // PushService removido — push agora é gerenciado pelo OneSignalService
 // (tanto web quanto Capacitor nativo via onesignal-cordova-plugin).
-import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore } from './native/Platform';
+import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore, isIOSNative } from './native/Platform';
 import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
-// Pra Google Play / App Store: app nativo não pode ter fluxo de pagamento
-// de produto digital (teria que usar Play Billing / IAP com taxa 30%).
-// Assinaturas do GDrums são feitas no SITE (https://gdrums.com.br/plans),
-// o app é "reader" — só mostra conteúdo pago fora dele.
+// Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
+// Play Store: Android continua usando checkout externo no Chrome
+// (Google Play permite link pra site fora do app pra assinaturas).
 const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/plans';
+
+/** Roteia ação de "ir pros planos" respeitando compliance:
+ *  - iOS nativo → /plans interno (StoreKit/IAP)
+ *  - Android nativo → site externo no Chrome (InfinitePay)
+ *  - Web → /plans interno */
+function gotoPlans(path: string = '/plans'): void {
+  if (isIOSNative()) {
+    internalNav(path);
+  } else if (isNativeApp()) {
+    // Android: query string vira parte da URL externa
+    const q = path.includes('?') ? path.substring(path.indexOf('?')) : '';
+    openExternal(PLANS_URL_EXTERNAL + q);
+  } else {
+    internalNav(path);
+  }
+}
 
 class RhythmSequencer {
   private audioContext: AudioContext;
@@ -1548,7 +1563,7 @@ class RhythmSequencer {
       </div>
     `;
     document.getElementById('goToSiteBtn')?.addEventListener('click', () => {
-      openExternal(PLANS_URL_EXTERNAL);
+      gotoPlans();
     });
     document.getElementById('logoutFromNoticeBtn')?.addEventListener('click', async () => {
       const { authService } = await import('./auth/AuthService');
@@ -1583,7 +1598,9 @@ class RhythmSequencer {
         title: 'Sua assinatura tá perto de acabar',
         message: renewMsg + ' Renove sem pressa pra não perder acesso aos ritmos.',
         ctaLabel: 'Renovar agora',
-        ctaUrl: isNativeApp() ? PLANS_URL_EXTERNAL + '?renew=true' : '/plans?renew=true',
+        // IAP compliance (Apple 3.1.1): nativo NUNCA abre site externo de
+// pagamento; usa /plans interno que aciona StoreKit no iOS.
+ctaUrl: '/plans?renew=true',
       });
       return;
     }
@@ -1608,7 +1625,8 @@ class RhythmSequencer {
       title: hoursLeft <= 6 ? 'Teste expirando' : 'Você ainda tá no teste',
       message: trialMsg + ' Assine agora pra continuar tocando depois que acabar.',
       ctaLabel: 'Ver planos',
-      ctaUrl: isNativeApp() ? PLANS_URL_EXTERNAL : '/plans',
+      // IAP compliance: nativo usa /plans interno (StoreKit).
+      ctaUrl: '/plans',
     });
   }
 
@@ -1650,11 +1668,11 @@ class RhythmSequencer {
     // Fechar clicando fora (no overlay translúcido)
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
-    // App nativo: CTA abre site externo (Play Store / App Store compliance)
+    // Nativo: iOS interno (StoreKit), Android externo (Chrome), web interno.
     if (isNativeApp()) {
       overlay.querySelector('#renewModalCta')?.addEventListener('click', (e) => {
         e.preventDefault();
-        openExternal(opts.ctaUrl);
+        gotoPlans(opts.ctaUrl);
         close();
       });
     }
@@ -5738,7 +5756,8 @@ class RhythmSequencer {
     if (actionBtnEl) {
       actionBtnEl.addEventListener('click', () => {
         if (isNativeApp()) {
-          openExternal(PLANS_URL_EXTERNAL);
+          // iOS: interno (IAP). Android: site externo (Chrome).
+          gotoPlans();
           close();
         } else if (status === 'active' && upgradeAvailable) {
           close();
@@ -5760,10 +5779,10 @@ class RhythmSequencer {
     supabase: any,
     user: any
   ): Promise<void> {
-    // Defesa: app nativo NUNCA mostra modal de upgrade (compliance Apple/
-    // Google — cobrança direta in-app sem IAP é proibida). Sempre site.
+    // App nativo NUNCA mostra modal de upgrade in-app (compliance Apple/
+    // Google). iOS: /plans interno (StoreKit). Android: site externo.
     if (isNativeApp()) {
-      openExternal(PLANS_URL_EXTERNAL + '?upgrade=true');
+      gotoPlans('/plans?upgrade=true');
       return;
     }
 

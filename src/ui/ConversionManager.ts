@@ -27,7 +27,7 @@
 // REGRA DE OURO: nunca aparece enquanto a música está tocando.
 // Sempre espera o user parar OU trocar de ritmo OU ficar idle.
 
-import { isNativeApp, openExternal } from '../native/Platform';
+import { isNativeApp, openExternal, internalNav, isIOSNative } from '../native/Platform';
 
 const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/plans';
 const PLANS_URL_WEB = '/plans';
@@ -435,7 +435,12 @@ export class ConversionManager {
 
     overlay.querySelector('.cv-primary')?.addEventListener('click', () => {
       const q = coupon ? `?coupon=${encodeURIComponent(coupon)}` : '';
-      if (isNativeApp()) {
+      // iOS: interno (StoreKit/IAP, Apple 3.1.1).
+      // Android: site externo no Chrome (Play permite; cupom funciona).
+      // Web: interno.
+      if (isIOSNative()) {
+        internalNav('/plans' + q);
+      } else if (isNativeApp()) {
         openExternal(PLANS_URL_EXTERNAL + q);
       } else {
         window.location.href = PLANS_URL_WEB + q;
