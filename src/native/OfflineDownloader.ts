@@ -58,6 +58,23 @@ async function markReady(version: number): Promise<void> {
 }
 
 /**
+ * No app nativo (Capacitor iOS/Android), os ritmos+samples já vêm bundleados
+ * em www/. Marca como ready usando a versão do manifest local (não precisa
+ * baixar nada). Idempotente: pode chamar sempre.
+ */
+export async function markNativeReady(): Promise<void> {
+  try {
+    const manifestRes = await fetch('/rhythm/manifest.json');
+    const manifest = await manifestRes.json();
+    const version = manifest.version || 0;
+    await markReady(version);
+  } catch {
+    // Sem manifest? marca com 0 só pra suprimir popup
+    await markReady(0);
+  }
+}
+
+/**
  * Baixa todos os ritmos + samples. Chama callback de progresso a cada
  * arquivo. Tolera falhas individuais (lista em failed[]).
  *

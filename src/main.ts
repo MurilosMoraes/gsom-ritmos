@@ -813,6 +813,14 @@ class RhythmSequencer {
       // Só dispara quando online (offline não faz sentido baixar)
       if (!navigator.onLine) return;
 
+      // No app nativo (iOS/Android via Capacitor), os ritmos+samples já vêm
+      // bundleados em www/ — não precisa baixar nada. Marca como ready e sai.
+      if (isNativeApp()) {
+        const { markNativeReady } = await import('./native/OfflineDownloader');
+        await markNativeReady();
+        return;
+      }
+
       const { getOfflineStatus } = await import('./native/OfflineDownloader');
       const status = await getOfflineStatus();
 
@@ -2895,6 +2903,13 @@ ctaUrl: '/plans?renew=true',
     if (offlineBtn) {
       offlineBtn.addEventListener('click', async () => {
         if (fabDropdown) fabDropdown.style.display = 'none';
+        // No app nativo, ritmos+samples já estão bundleados — não há nada pra baixar.
+        if (isNativeApp()) {
+          const { markNativeReady } = await import('./native/OfflineDownloader');
+          await markNativeReady();
+          Toast.show('Tudo offline! Os ritmos e sons já vêm dentro do app.', { type: 'success' });
+          return;
+        }
         // Limpa o "pulado" pra modal mostrar de novo
         localStorage.removeItem('gdrums-offline-skipped');
         try {
