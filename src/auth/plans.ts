@@ -194,6 +194,31 @@ class PlansPage {
         this.showAlert(result.error || 'Nenhuma assinatura encontrada para restaurar.');
       }
     });
+
+    // Apple Guideline 3.1.2: apps com assinatura auto-renovável DEVEM
+    // mostrar dentro do app os termos + links funcionais de EULA e
+    // Política de Privacidade. EULA padrão Apple (não link externo de
+    // compra → não viola 3.1.1).
+    if (!document.getElementById('iapSubTerms')) {
+      const terms = document.createElement('div');
+      terms.id = 'iapSubTerms';
+      terms.style.cssText = 'max-width:420px;margin:1.25rem auto 0;padding:0 1rem;text-align:center;font-size:0.72rem;line-height:1.5;color:rgba(255,255,255,0.45);';
+      terms.innerHTML = `
+        <p style="margin:0 0 0.6rem;">
+          A assinatura é cobrada na sua conta Apple ID na confirmação da
+          compra e renova automaticamente, salvo cancelamento com pelo
+          menos 24h de antecedência. Gerencie em Ajustes da App Store.
+        </p>
+        <p style="margin:0;">
+          <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+             style="color:rgba(255,255,255,0.6);text-decoration:underline;">Termos de Uso (EULA)</a>
+          &nbsp;·&nbsp;
+          <a href="/privacy.html"
+             style="color:rgba(255,255,255,0.6);text-decoration:underline;">Política de Privacidade</a>
+        </p>
+      `;
+      restoreEl.parentElement?.insertBefore(terms, restoreEl.nextSibling);
+    }
   }
 
   // ─── Cupom ──────────────────────────────────────────────────────────

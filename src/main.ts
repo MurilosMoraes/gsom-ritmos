@@ -1529,8 +1529,14 @@ class RhythmSequencer {
     }
 
     // Trial expirou e não há pagamento confirmado.
-    // App nativo: mostra aviso pro user assinar no site (compliance Play/App Store).
+    // iOS: vai pro /plans interno (StoreKit) — Apple 3.1.1 proíbe direcionar
+    //   pra compra externa. NUNCA mostrar tela "assine no site" no iOS.
+    // Android: mostra aviso pro user assinar no site (Play permite checkout web).
     // Web: redireciona pra plans.html normal.
+    if (isIOSNative()) {
+      internalNav('/plans');
+      return false;
+    }
     if (isNativeApp()) {
       this.showSubscribeOnWebsiteNotice();
       return false;
@@ -5513,28 +5519,35 @@ ctaUrl: '/plans?renew=true',
 
     let upgradeCredit = 0;
     let upgradeAvailable = false;
-    const planOrder = ['mensal', 'trimestral', 'semestral', 'anual', 'rei-dos-palcos'];
+    // No iOS, "Rei dos Palcos" não existe (sem IAP submetido), então o Anual
+    // é o teto — quem está no Anual não tem upgrade possível no app.
+    const planOrder = isIOSNative()
+      ? ['mensal', 'trimestral', 'semestral', 'anual']
+      : ['mensal', 'trimestral', 'semestral', 'anual', 'rei-dos-palcos'];
 
     if (status === 'active' && currentPlan && daysLeft > 0) {
       const totalDays = currentPlan.durationMonths * 30;
       upgradeCredit = Math.round(currentPlan.priceCents * (daysLeft / totalDays));
       const currentIdx = planOrder.indexOf(planId);
-      upgradeAvailable = currentIdx < planOrder.length - 1;
+      upgradeAvailable = currentIdx >= 0 && currentIdx < planOrder.length - 1;
     }
 
     // Botão de ação inteligente.
-    // App nativo: rótulos mudam pra indicar abertura no site (Google Play / App
-    // Store exige que pagamento aconteça fora do WebView).
+    // iOS: SEMPRE leva ao /plans interno (StoreKit) — Apple 3.1.1 proíbe
+    //   qualquer call-to-action ou link que aponte pra compra externa.
+    //   Rótulos NÃO podem mencionar "site".
+    // Android: pagamento acontece no site externo (Play permite checkout web).
     const native = isNativeApp();
+    const ios = isIOSNative();
     let actionBtn = '';
     if (status === 'expired' || status === 'canceled') {
-      const label = native ? 'Renovar no site' : 'Renovar Assinatura';
+      const label = ios ? 'Renovar Assinatura' : (native ? 'Renovar no site' : 'Renovar Assinatura');
       actionBtn = `<button class="account-action-btn" id="accountActionBtn">${label}</button>`;
     } else if (status === 'trial') {
-      const label = native ? 'Assinar no site' : 'Assinar Agora';
+      const label = ios ? 'Assinar Agora' : (native ? 'Assinar no site' : 'Assinar Agora');
       actionBtn = `<button class="account-action-btn" id="accountActionBtn">${label}</button>`;
     } else if (upgradeAvailable) {
-      const label = native ? 'Fazer upgrade no site' : 'Fazer upgrade de plano';
+      const label = ios ? 'Fazer upgrade de plano' : (native ? 'Fazer upgrade no site' : 'Fazer upgrade de plano');
       actionBtn = `<button class="account-action-btn account-action-upgrade" id="accountActionBtn">${label}</button>`;
     }
 
@@ -6867,6 +6880,26 @@ ctaUrl: '/plans?renew=true',
     `;
     container.appendChild(searchBar);
     const searchInput = searchBar.querySelector('.rhythm-strip-search-input') as HTMLInputElement;
+
+    // ⚠️ NÃO TOCAR NO PEDAL — esse bloco protege o search input do refocus
+    // automático do pedalInput (`focusPedalInput` em touchend/click bubbling
+    // pro document). Sem isso, no iOS o pedalInput rouba o foco antes do
+    // browser conseguir focar no search → input não digita.
+    //
+    // Estratégia: parar a propagação dos eventos de toque SOMENTE neste
+    // input e no botão de limpar. Os listeners do document (`touchend`,
+    // `click`) que disparam focusPedalInput nunca recebem esses eventos.
+    // O `keydown` continua subindo pra window (digita normal) — mas o guard
+    // dentro de focusPedalInput detecta input focado e não rouba foco.
+    const stopBubble = (e: Event) => e.stopPropagation();
+    searchInput.addEventListener('touchend', stopBubble);
+    searchInput.addEventListener('click', stopBubble);
+    // Garante foco síncrono dentro do user gesture do iOS — se o pedalInput
+    // estiver focado quando o user tocar aqui, força foco no search.
+    searchInput.addEventListener('touchstart', () => {
+      searchInput.focus();
+    }, { passive: true });
+
     searchInput.addEventListener('input', () => {
       this.rhythmStripQuery = searchInput.value;
       // Re-render só os cards + chips (mantém foco)
@@ -6878,10 +6911,15 @@ ctaUrl: '/plans?renew=true',
         if (caret !== null) newInput.setSelectionRange(caret, caret);
       }
     });
-    searchBar.querySelector('.rhythm-strip-search-clear')?.addEventListener('click', () => {
-      this.rhythmStripQuery = '';
-      this.renderRhythmStrip();
-    });
+    const clearBtn = searchBar.querySelector('.rhythm-strip-search-clear');
+    if (clearBtn) {
+      clearBtn.addEventListener('touchend', stopBubble);
+      clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.rhythmStripQuery = '';
+        this.renderRhythmStrip();
+      });
+    }
 
     // ── Filtros de categoria ──
     const categories = Object.keys(this.rhythmCategories).sort();

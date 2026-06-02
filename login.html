@@ -157,22 +157,27 @@
 
     .login-btn {
       width: 100%;
-      padding: 0.9rem;
+      padding: 1rem;
       border: none;
-      border-radius: 10px;
-      background: #fff;
-      color: #0a0a0f;
-      font-size: 0.95rem;
-      font-weight: 600;
-      letter-spacing: -0.005em;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #00E68C 0%, #00C470 100%);
+      color: #051a10;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
       font-family: inherit;
       cursor: pointer;
-      transition: opacity 0.15s;
+      transition: all 0.15s;
       position: relative;
+      box-shadow: 0 4px 18px rgba(0, 230, 140, 0.28);
     }
-    .login-btn:hover { opacity: 0.9; }
+    .login-btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 22px rgba(0, 230, 140, 0.4);
+    }
     .login-btn:active { transform: scale(0.99); }
-    .login-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+    .login-btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
 
     /* Botão "trocar e-mail" — aparece no step 2 do login inteligente */
     .login-back-btn {
@@ -238,35 +243,36 @@
     }
     .login-footer a:hover { color: #fff; }
 
-    /* CTA "Criar conta grátis" — destaque verde claro com gradient laranja
-       sutil, deixa CLARO o trial 48h sem cartão. */
+    /* CTA "Criar conta grátis" — SECUNDÁRIO ao botão de login.
+       O botão Entrar é o protagonista (verde sólido). Esse aqui é uma opção
+       discreta pra quem ainda não tem conta. Layout em linha pra ocupar
+       menos espaço visual e não competir com o Entrar. */
     .login-trial-cta {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.2rem;
-      padding: 0.95rem 1rem;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(0, 230, 140, 0.14) 0%, rgba(249, 115, 22, 0.10) 100%);
-      border: 1px solid rgba(0, 230, 140, 0.35);
+      gap: 0.1rem;
+      padding: 0.7rem 0.9rem;
+      border-radius: 10px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       text-decoration: none;
       transition: all 0.18s ease;
     }
     .login-trial-cta:hover, .login-trial-cta:active {
-      background: linear-gradient(135deg, rgba(0, 230, 140, 0.22) 0%, rgba(249, 115, 22, 0.15) 100%);
-      border-color: rgba(0, 230, 140, 0.55);
-      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.18);
     }
     .login-trial-cta-title {
-      font-size: 1rem;
-      font-weight: 700;
-      color: rgba(0, 240, 160, 0.95);
-      letter-spacing: -0.01em;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.78);
+      letter-spacing: -0.005em;
     }
     .login-trial-cta-sub {
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 500;
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(255, 255, 255, 0.4);
       letter-spacing: 0.01em;
     }
 

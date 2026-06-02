@@ -401,7 +401,9 @@ class LoginPage {
    * Step 1 — Verifica o estado do email antes de pedir senha.
    * - complete: avança pra step 2 (campo senha)
    * - incomplete: faz login E redireciona pra /completar-cadastro
-   * - not_found: vai pro /register com email pré-preenchido
+   * - not_found: mostra aviso inline com 2 opções (trocar email / criar conta).
+   *   NÃO redireciona automático — usuários menos atentos digitavam errado e
+   *   eram jogados pro cadastro, criando contas duplicadas / abandonando.
    */
   private async handleEmailStep(): Promise<void> {
     const email = this.emailInput.value.trim().toLowerCase();
@@ -421,14 +423,9 @@ class LoginPage {
       const status = (data as { status?: string } | null)?.status;
 
       if (status === 'not_found') {
-        // Conta não existe — leva pro cadastro pré-preenchido (interno).
+        // Conta não existe — mostra aviso inline com 2 botões. Não redireciona.
         this.setLoading(false);
-        const dest = `/register?email=${encodeURIComponent(email)}`;
-        if (isNativeApp()) {
-          internalNav(dest);
-        } else {
-          window.location.href = dest;
-        }
+        this.showEmailNotFoundChoice(email);
         return;
       }
 
@@ -440,6 +437,86 @@ class LoginPage {
       this.showAlert('Não foi possível verificar o e-mail. Tente novamente.', 'error');
       this.setLoading(false);
     }
+  }
+
+  /**
+   * Mostra inline (sem redirect) que o email não tem cadastro, com 2 opções:
+   * - Tentar outro email (volta foco pro input)
+   * - Criar conta com esse email (vai pro /register pré-preenchido)
+   *
+   * Pensado pra usuário burro: ele digitou errado e SEMPRE caía no cadastro
+   * antes, gerando confusão / contas duplicadas.
+   */
+  private showEmailNotFoundChoice(email: string): void {
+    // Esconde o submit normal e mostra um bloco de escolha no lugar
+    const choiceId = 'loginEmailNotFoundBox';
+    document.getElementById(choiceId)?.remove();
+
+    const box = document.createElement('div');
+    box.id = choiceId;
+    box.className = 'login-alert active error';
+    box.style.cssText = `
+      display:block;
+      margin-top:0.85rem;
+      padding:0.95rem 0.9rem;
+      border-radius:10px;
+      background:rgba(255,170,60,0.08);
+      border:1px solid rgba(255,170,60,0.28);
+      color:rgba(255,255,255,0.92);
+      text-align:left;
+      font-size:0.85rem;
+      line-height:1.45;
+    `;
+    box.innerHTML = `
+      <div style="font-weight:700;color:#FFB85C;margin-bottom:0.35rem;font-size:0.9rem;">
+        Esse e-mail ainda não tem cadastro
+      </div>
+      <div style="color:rgba(255,255,255,0.7);font-size:0.8rem;margin-bottom:0.85rem;">
+        Confere se digitou certo. Se for novo por aqui, dá pra criar conta agora.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.5rem;">
+        <button type="button" id="loginNotFoundRetry" style="
+          width:100%;padding:0.7rem;border:1px solid rgba(255,255,255,0.18);
+          border-radius:10px;background:transparent;color:rgba(255,255,255,0.92);
+          font-family:inherit;font-size:0.88rem;font-weight:600;cursor:pointer;
+          transition:background 0.15s;
+        ">Tentar com outro e-mail</button>
+        <button type="button" id="loginNotFoundCreate" style="
+          width:100%;padding:0.75rem;border:none;
+          border-radius:10px;background:linear-gradient(135deg,#00E68C,#00C470);
+          color:#051a10;font-family:inherit;font-size:0.9rem;font-weight:700;
+          cursor:pointer;letter-spacing:-0.005em;
+          box-shadow:0 3px 14px rgba(0,230,140,0.22);
+        ">Criar conta com esse e-mail</button>
+      </div>
+    `;
+
+    // Insere logo após o alertMessage (que é irmão do form, dentro do mesmo
+    // container .login-card). Assim o aviso fica no lugar habitual de alerts.
+    this.alertMessage.parentNode?.insertBefore(box, this.alertMessage.nextSibling);
+
+    document.getElementById('loginNotFoundRetry')?.addEventListener('click', () => {
+      box.remove();
+      this.emailInput.focus();
+      this.emailInput.select();
+    });
+    document.getElementById('loginNotFoundCreate')?.addEventListener('click', () => {
+      box.remove();
+      const dest = `/register?email=${encodeURIComponent(email)}`;
+      if (isNativeApp()) {
+        internalNav(dest);
+      } else {
+        window.location.href = dest;
+      }
+    });
+
+    // Se o usuário voltar a digitar no campo de email, remove o aviso
+    // (faz parecer que tá editando o input depois do feedback).
+    const cleanupOnType = () => {
+      box.remove();
+      this.emailInput.removeEventListener('input', cleanupOnType);
+    };
+    this.emailInput.addEventListener('input', cleanupOnType);
   }
 
   /** Avança a UI do step 1 → step 2 (mostra senha, esconde campo email). */
