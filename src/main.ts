@@ -6868,62 +6868,42 @@ ctaUrl: '/plans?renew=true',
     const norm = (s: string): string =>
       s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-    // ── Search input + chips de categoria ──
+    // ── Botão lupa (abre modal de busca) + indicador de query ativo ──
+    //
+    // ⚠️ ANTES: tinha um <input> inline aqui. No iPhone, o pedalInput
+    // (sagrado) roubava o keyboard mapping porque esse input não estava
+    // em modal (hasModalOpen()=false → pedal segue legalmente focado).
+    // Não foi possível abrir teclado nesse input mesmo com blur/focus
+    // sync no touchstart.
+    //
+    // AGORA: botão lupa abre um modal x-overlay. Modais em .x-overlay
+    // são detectados por hasModalOpen() → o pedal libera o foco sozinho
+    // → teclado abre normal. Mesmo padrão usado em "Meus Ritmos" e
+    // "Repertório" (que já funcionam no iPhone).
     const searchBar = document.createElement('div');
     searchBar.className = 'rhythm-strip-search';
+    const hasQuery = !!this.rhythmStripQuery;
     searchBar.innerHTML = `
-      <div class="rhythm-strip-search-wrap">
-        <svg class="rhythm-strip-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="rhythm-strip-search-input" placeholder="Buscar ritmo..." value="${this.rhythmStripQuery.replace(/"/g, '&quot;')}" autocomplete="off" />
-        ${this.rhythmStripQuery ? '<button class="rhythm-strip-search-clear" aria-label="Limpar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' : ''}
-      </div>
+      <button class="rhythm-strip-search-trigger ${hasQuery ? 'has-query' : ''}" id="rhythmStripSearchBtn" aria-label="Buscar ritmo">
+        <svg class="rhythm-strip-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span class="rhythm-strip-search-label">${hasQuery ? this.rhythmStripQuery : 'Buscar ritmo'}</span>
+        ${hasQuery ? '<span class="rhythm-strip-search-clear-inline" id="rhythmStripSearchClearBtn" aria-label="Limpar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>' : ''}
+      </button>
     `;
     container.appendChild(searchBar);
-    const searchInput = searchBar.querySelector('.rhythm-strip-search-input') as HTMLInputElement;
 
-    // ⚠️ NÃO TOCAR NO PEDAL — esse bloco protege o search input do refocus
-    // automático do pedalInput (`focusPedalInput` em touchend/click bubbling
-    // pro document). Sem isso, no iOS o pedalInput rouba o foco antes do
-    // browser conseguir focar no search → input não digita.
-    //
-    // Estratégia:
-    // 1. stopPropagation em touchend/click → listeners do document não
-    //    disparam focusPedalInput pra esses eventos.
-    // 2. touchstart: DESFOCA o pedalInput PRIMEIRO (sync, dentro do user
-    //    gesture do iOS) e SÓ DEPOIS foca o search. Sem o blur do pedal,
-    //    o iOS não transfere o teclado pro search porque o pedalInput
-    //    continua "dono" do keyboard mapping (esse input é inline na tela,
-    //    fora de modal — hasModalOpen=false, pedal segue legalmente focado,
-    //    o .focus() do search não consegue tirar o foco dele só sozinho).
-    const stopBubble = (e: Event) => e.stopPropagation();
-    searchInput.addEventListener('touchend', stopBubble);
-    searchInput.addEventListener('click', stopBubble);
-    searchInput.addEventListener('touchstart', () => {
-      const pedalEl = document.getElementById('pedalBtInput') as HTMLInputElement | null;
-      if (pedalEl) pedalEl.blur();
-      searchInput.focus();
-    }, { passive: true });
-
-    searchInput.addEventListener('input', () => {
-      this.rhythmStripQuery = searchInput.value;
-      // Re-render só os cards + chips (mantém foco)
-      const caret = searchInput.selectionStart;
-      this.renderRhythmStrip();
-      const newInput = document.querySelector('.rhythm-strip-search-input') as HTMLInputElement | null;
-      if (newInput) {
-        newInput.focus();
-        if (caret !== null) newInput.setSelectionRange(caret, caret);
-      }
-    });
-    const clearBtn = searchBar.querySelector('.rhythm-strip-search-clear');
-    if (clearBtn) {
-      clearBtn.addEventListener('touchend', stopBubble);
-      clearBtn.addEventListener('click', (e) => {
+    const triggerBtn = searchBar.querySelector('#rhythmStripSearchBtn');
+    triggerBtn?.addEventListener('click', (e) => {
+      // Se o user tocou no X de limpar (botão dentro do botão), só limpa
+      const target = e.target as HTMLElement;
+      if (target.closest('#rhythmStripSearchClearBtn')) {
         e.stopPropagation();
         this.rhythmStripQuery = '';
         this.renderRhythmStrip();
-      });
-    }
+        return;
+      }
+      this.showRhythmStripSearchModal();
+    });
 
     // ── Filtros de categoria ──
     const categories = Object.keys(this.rhythmCategories).sort();
@@ -6990,6 +6970,136 @@ ctaUrl: '/plans?renew=true',
     }
 
     container.appendChild(cardsWrap);
+  }
+
+  /**
+   * Modal de busca de ritmos — substitui o input inline que não funcionava
+   * no iPhone (pedalInput roubava keyboard mapping fora de modal).
+   *
+   * Padrão idêntico ao Meus Ritmos: classe x-overlay (hasModalOpen() pega),
+   * __refocusPedal no close (devolve foco pro pedal dentro do user gesture).
+   */
+  private showRhythmStripSearchModal(): void {
+    const overlay = document.createElement('div');
+    overlay.className = 'x-overlay';
+
+    let query = this.rhythmStripQuery;
+
+    const norm = (s: string): string =>
+      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+    const escapeHtml = (s: string): string =>
+      s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+    const close = (): void => {
+      overlay.classList.remove('active');
+      overlay.classList.add('x-exit');
+      (window as any).__refocusPedal?.();
+      setTimeout(() => overlay.remove(), 220);
+    };
+
+    const filterRhythms = () => {
+      const q = norm(query.trim());
+      // Mesma fonte usada pelo strip: respeita categoria ativa
+      let list = this.activeCategory
+        ? (this.rhythmCategories[this.activeCategory] || []).map(name => ({
+            name: name.replace(/\.json$/, ''),
+            path: `/rhythm/${name}`,
+          }))
+        : this.availableRhythms;
+      if (q) {
+        list = list.filter(r => norm(r.name).includes(q));
+      }
+      return list;
+    };
+
+    const renderList = (): void => {
+      const list = filterRhythms();
+      const listEl = overlay.querySelector('.rss-results') as HTMLElement | null;
+      if (!listEl) return;
+      if (list.length === 0) {
+        listEl.innerHTML = `<div class="rss-empty">${query ? `Nada achado pra "${escapeHtml(query)}"` : 'Nenhum ritmo'}</div>`;
+        return;
+      }
+      listEl.innerHTML = list.map(r => `
+        <button class="rss-item ${r.name === this.currentRhythmName ? 'active' : ''}" data-name="${escapeHtml(r.name)}" data-path="${escapeHtml(r.path)}">
+          ${escapeHtml(r.name)}
+        </button>
+      `).join('');
+      // Bind dos cliques nos resultados
+      listEl.querySelectorAll<HTMLButtonElement>('.rss-item').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const name = btn.dataset.name!;
+          const path = btn.dataset.path!;
+          // Salva query no estado pro strip refletir
+          this.rhythmStripQuery = query;
+          close();
+          await this.loadRhythm(name, path);
+          this.renderRhythmStrip();
+        });
+      });
+    };
+
+    overlay.innerHTML = `
+      <div class="x-sheet rss-sheet" role="dialog" aria-label="Buscar ritmo">
+        <div class="x-grip"></div>
+        <div class="x-head">
+          <div>
+            <h2 class="x-head-title">Buscar ritmo</h2>
+            <div class="x-head-sub">Digita pra filtrar</div>
+          </div>
+          <button class="x-close" id="rssClose" aria-label="Fechar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="x-body">
+          <div class="x-search-wrap">
+            <div class="x-search-input-wrap">
+              <svg class="x-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" class="x-search-input" id="rssInput" placeholder="Buscar ritmo..." value="${escapeHtml(query)}" autocomplete="off" />
+              <button class="x-search-clear ${query ? 'visible' : ''}" id="rssClear" aria-label="Limpar busca">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="rss-results"></div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    // Fechar (botão X)
+    overlay.querySelector('#rssClose')?.addEventListener('click', close);
+    // Fechar clicando no backdrop
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    const input = overlay.querySelector('#rssInput') as HTMLInputElement | null;
+    const clearBtn = overlay.querySelector('#rssClear') as HTMLElement | null;
+
+    input?.addEventListener('input', () => {
+      query = input.value;
+      this.rhythmStripQuery = query; // atualiza estado pro strip refletir ao fechar
+      clearBtn?.classList.toggle('visible', !!query);
+      renderList();
+    });
+
+    clearBtn?.addEventListener('click', () => {
+      query = '';
+      if (input) input.value = '';
+      this.rhythmStripQuery = '';
+      clearBtn.classList.remove('visible');
+      renderList();
+      input?.focus();
+    });
+
+    // Primeira renderização
+    renderList();
+
+    // Foca o input automaticamente — o modal x-overlay é detectado pelo
+    // hasModalOpen() do pedal, então o focusPedalInput não vai roubar.
+    setTimeout(() => input?.focus(), 50);
   }
 
   private updateRhythmStripActive(): void {

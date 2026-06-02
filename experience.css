@@ -774,51 +774,118 @@
 .rhythm-strip-search {
   padding: 0.4rem 0.5rem 0.25rem;
 }
-.rhythm-strip-search-wrap {
-  position: relative;
+/* Botão lupa — abre modal de busca (substituiu o input inline que não
+   funcionava no iPhone por causa do pedalInput segurar keyboard mapping
+   fora de modal). */
+.rhythm-strip-search-trigger {
+  width: 100%;
   display: flex;
   align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.9rem;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  text-align: left;
 }
-.rhythm-strip-search-input {
+.rhythm-strip-search-trigger:hover,
+.rhythm-strip-search-trigger:active {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+}
+.rhythm-strip-search-trigger.has-query {
+  color: #fff;
+  background: rgba(0, 230, 140, 0.08);
+  border-color: rgba(0, 230, 140, 0.35);
+}
+.rhythm-strip-search-icon {
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+.rhythm-strip-search-trigger.has-query .rhythm-strip-search-icon {
+  color: #00E68C;
+}
+.rhythm-strip-search-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rhythm-strip-search-clear-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.06);
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.rhythm-strip-search-clear-inline:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* ── Modal de resultados (Buscar ritmo) ────────────────────────── */
+.rss-sheet { max-width: 480px; }
+.rss-sheet .x-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 70vh;
+  overflow: hidden;
+}
+.rss-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.1rem 0;
+  -webkit-overflow-scrolling: touch;
+}
+.rss-item {
+  display: block;
   width: 100%;
-  padding: 0.5rem 1.9rem 0.5rem 2rem;
+  padding: 0.85rem 1rem;
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
   color: #fff;
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   font-family: inherit;
-  outline: none;
-  transition: border-color 0.15s, background 0.15s;
-  -webkit-appearance: none;
-}
-.rhythm-strip-search-input::placeholder { color: rgba(255, 255, 255, 0.22); }
-.rhythm-strip-search-input:focus {
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.05);
-}
-.rhythm-strip-search-icon {
-  position: absolute;
-  left: 0.65rem;
-  color: rgba(255, 255, 255, 0.3);
-  pointer-events: none;
-}
-.rhythm-strip-search-clear {
-  position: absolute;
-  right: 0.4rem;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.35);
-  width: 24px; height: 24px;
-  border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
+  text-align: left;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition: border-color 0.12s, background 0.12s, transform 0.08s;
   -webkit-tap-highlight-color: transparent;
 }
-.rhythm-strip-search-clear:hover {
+.rss-item:hover,
+.rss-item:active {
+  border-color: rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.06);
+}
+.rss-item:active { transform: scale(0.995); }
+.rss-item.active {
+  border-color: rgba(0, 230, 140, 0.45);
+  background: rgba(0, 230, 140, 0.08);
   color: #fff;
+  font-weight: 600;
+}
+.rss-empty {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.88rem;
 }
 
 /* ══════════════════════════════════════════════════════
