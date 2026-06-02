@@ -6886,17 +6886,21 @@ ctaUrl: '/plans?renew=true',
     // pro document). Sem isso, no iOS o pedalInput rouba o foco antes do
     // browser conseguir focar no search → input não digita.
     //
-    // Estratégia: parar a propagação dos eventos de toque SOMENTE neste
-    // input e no botão de limpar. Os listeners do document (`touchend`,
-    // `click`) que disparam focusPedalInput nunca recebem esses eventos.
-    // O `keydown` continua subindo pra window (digita normal) — mas o guard
-    // dentro de focusPedalInput detecta input focado e não rouba foco.
+    // Estratégia:
+    // 1. stopPropagation em touchend/click → listeners do document não
+    //    disparam focusPedalInput pra esses eventos.
+    // 2. touchstart: DESFOCA o pedalInput PRIMEIRO (sync, dentro do user
+    //    gesture do iOS) e SÓ DEPOIS foca o search. Sem o blur do pedal,
+    //    o iOS não transfere o teclado pro search porque o pedalInput
+    //    continua "dono" do keyboard mapping (esse input é inline na tela,
+    //    fora de modal — hasModalOpen=false, pedal segue legalmente focado,
+    //    o .focus() do search não consegue tirar o foco dele só sozinho).
     const stopBubble = (e: Event) => e.stopPropagation();
     searchInput.addEventListener('touchend', stopBubble);
     searchInput.addEventListener('click', stopBubble);
-    // Garante foco síncrono dentro do user gesture do iOS — se o pedalInput
-    // estiver focado quando o user tocar aqui, força foco no search.
     searchInput.addEventListener('touchstart', () => {
+      const pedalEl = document.getElementById('pedalBtInput') as HTMLInputElement | null;
+      if (pedalEl) pedalEl.blur();
       searchInput.focus();
     }, { passive: true });
 
