@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "build:mobile": "tsc && vite build && npm run copy:www",
     "copy:www": "rm -rf www && mkdir -p www && cp -r dist/* www/",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package || true"
   },
   "keywords": [
     "midi",
