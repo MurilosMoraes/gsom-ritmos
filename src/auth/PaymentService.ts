@@ -2,7 +2,9 @@
 
 const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
 const INFINITEPAY_HANDLE = 'checkout-gdrums';
-const INFINITEPAY_API = 'https://api.infinitepay.io/invoices/public/checkout';
+// Migrado em 2026-06-02: URL antiga (api.infinitepay.io/invoices/public/
+// checkout) foi desativada em 01/06. Payload e webhooks continuam iguais.
+const INFINITEPAY_API = 'https://api.checkout.infinitepay.io';
 
 export interface Plan {
   id: string;
