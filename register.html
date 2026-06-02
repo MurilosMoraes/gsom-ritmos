@@ -42,138 +42,280 @@
   <meta name="twitter:image" content="https://gdrums.com.br/img/icon-512.png">
   <link rel="stylesheet" href="auth-styles.css" />
   <style>
-    /* Reset local — alinhamento fino de tipografia */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --brand: #00E68C;
+      --brand-dark: #00C470;
+      --violet: #8B5CF6;
+      --bg: #030014;
+      --card: rgba(15, 12, 30, 0.62);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #fff;
+      --text-2: rgba(255, 255, 255, 0.62);
+      --text-3: rgba(255, 255, 255, 0.42);
+    }
+
+    html, body { height: 100%; }
+
     body {
-      background: #030014;
       font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: #010006;
+      color: var(--text);
+      min-height: 100vh;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+      position: relative;
     }
 
-    .register-page {
+    /* ─── Aurora bem sutil nos cantos (igual login) ───────────────── */
+    .bg-aurora {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aurora-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.16;
+      will-change: transform;
+    }
+    .blob-1 {
+      width: 380px; height: 380px;
+      background: radial-gradient(circle, rgba(0, 230, 140, 0.55), transparent 60%);
+      top: -260px; left: -220px;
+      animation: float-1 18s ease-in-out infinite;
+    }
+    .blob-2 {
+      width: 360px; height: 360px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.6), transparent 60%);
+      bottom: -260px; right: -220px;
+      animation: float-2 22s ease-in-out infinite;
+    }
+    .bg-aurora::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(80% 65% at 50% 40%, rgba(1, 0, 6, 0.95) 0%, transparent 88%);
+      pointer-events: none;
+    }
+    @keyframes float-1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50%      { transform: translate(60px, 40px) scale(1.08); }
+    }
+    @keyframes float-2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50%      { transform: translate(-60px, -30px) scale(0.95); }
+    }
+
+    /* ─── Shell mobile (default) ─────────────────────────────────── */
+    .register-shell {
+      position: relative;
+      z-index: 1;
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 2rem 1rem;
+      justify-content: flex-start;
+      padding: 1.2rem 0 0;
+      gap: 1.1rem;
+    }
+    @media (min-height: 760px) {
+      .register-shell { padding-top: 1.8rem; }
+    }
+    /* Desktop split — esquerda branding (FIXA, sem scroll),
+       direita form (rola só ela). */
+    @media (min-width: 768px) {
+      .register-shell {
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        padding: 0;
+        gap: 0;
+        align-items: stretch;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+      }
     }
 
-    .register-card {
-      background: #0a0a0f;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      padding: 2.5rem 2rem 1.75rem;
-      max-width: 440px;
+    /* ─── HERO — logo discreto (igual login, sem texto GDrums) ──── */
+    .register-hero {
       width: 100%;
-      color: #fff;
-    }
-
-    .register-brand {
+      max-width: 520px;
+      padding: 0 1.25rem;
       display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+      position: relative;
+      text-align: center;
+    }
+    @media (min-width: 768px) {
+      .register-hero {
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        padding: 3rem 2rem;
+        justify-content: center;
+        gap: 2.5rem;
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
+        background:
+          radial-gradient(80% 60% at 30% 40%, rgba(0, 230, 140, 0.06), transparent 70%),
+          radial-gradient(70% 50% at 80% 70%, rgba(139, 92, 246, 0.06), transparent 70%);
+        overflow: hidden;
+      }
+    }
+    .register-logo-wrap {
+      position: relative;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
+      width: 92px;
+      height: 92px;
+      animation: logo-breath 5s ease-in-out infinite;
     }
     .register-logo {
-      height: 32px;
-      width: auto;
       display: block;
+      height: 80px;
+      width: 80px;
+      object-fit: contain;
+      position: relative;
+      z-index: 1;
+      filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.55));
     }
-    .register-brand-text {
-      font-size: 1.35rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: #fff;
+    .logo-halo {
+      position: absolute;
+      inset: -12px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 50%,
+          rgba(0, 230, 140, 0.10) 0%,
+          rgba(139, 92, 246, 0.05) 40%,
+          transparent 72%);
+      filter: blur(12px);
+      animation: halo-pulse 5s ease-in-out infinite;
+      z-index: 0;
+    }
+    @keyframes logo-breath {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.025); }
+    }
+    @keyframes halo-pulse {
+      0%, 100% { opacity: 0.55; transform: scale(1); }
+      50%      { opacity: 0.75; transform: scale(1.04); }
+    }
+    @media (min-width: 768px) and (min-height: 700px) {
+      .register-logo-wrap { width: 240px; height: 240px; }
+      .register-logo { height: 216px; width: 216px; }
+      .logo-halo { inset: -36px; filter: blur(24px); }
     }
 
-    /* Hero — overline + título + corpo */
-    .register-hero {
-      text-align: center;
-      margin-bottom: 1.75rem;
+    /* Pitch curto (só desktop split) — substitui a lista de benefícios */
+    .register-pitch {
+      max-width: 360px;
+      color: var(--text-2);
     }
-    .register-overline {
-      font-size: 0.68rem;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.42);
-      font-weight: 500;
-      margin-bottom: 0.65rem;
-    }
-    .register-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      letter-spacing: -0.015em;
-      line-height: 1.2;
+    .register-pitch-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
       color: #fff;
-      margin: 0 0 0.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(180deg, #fff, rgba(255, 255, 255, 0.78));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-    .register-sub {
+    .register-pitch-sub {
       font-size: 0.9rem;
       line-height: 1.5;
-      color: rgba(255, 255, 255, 0.55);
-      margin: 0;
+      color: var(--text-2);
+    }
+    @media (max-width: 767px) {
+      .register-pitch { display: none; }
     }
 
-    /* Social proof — números reais vindos do banco, apareceu depois do carregamento */
-    .social-proof {
-      display: none;
-      align-items: center;
-      justify-content: center;
-      gap: 0.65rem;
-      flex-wrap: wrap;
-      padding: 0.75rem 0.9rem;
-      margin: 0 0 1.5rem;
-      background: rgba(255, 255, 255, 0.035);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      font-size: 0.78rem;
-      color: rgba(255, 255, 255, 0.6);
-      letter-spacing: -0.003em;
-      animation: spFadeIn 0.4s ease;
+    /* ─── CARD com form ───────────────────────────────────────────── */
+    .register-card {
+      width: 100%;
+      background: var(--card);
+      border-top: 1px solid var(--card-border);
+      border-radius: 28px 28px 0 0;
+      padding: 2rem 1.4rem 1.6rem;
+      backdrop-filter: blur(24px) saturate(150%);
+      -webkit-backdrop-filter: blur(24px) saturate(150%);
+      box-shadow:
+        0 -16px 50px rgba(0, 0, 0, 0.55),
+        0 1px 0 rgba(255, 255, 255, 0.04) inset;
+      position: relative;
+      flex: 1 0 auto;
     }
-    .social-proof.sp-ready { display: flex; }
-    .social-proof strong { color: #fff; font-weight: 600; }
-    .social-proof .sp-sep {
-      display: inline-block; width: 3px; height: 3px;
-      background: rgba(255, 255, 255, 0.25);
-      border-radius: 50%;
+    @media (min-width: 560px) and (max-width: 767px) {
+      .register-card {
+        flex: 0 0 auto;
+        max-width: 480px;
+        margin: 0 auto 2rem;
+        border: 1px solid var(--card-border);
+        border-radius: 24px;
+        padding: 2rem 1.8rem 1.6rem;
+        box-shadow:
+          0 30px 80px rgba(0, 0, 0, 0.55),
+          0 1px 0 rgba(255, 255, 255, 0.04) inset;
+      }
     }
-    @keyframes spFadeIn {
-      from { opacity: 0; transform: translateY(-4px); }
-      to { opacity: 1; transform: translateY(0); }
+    @media (min-width: 768px) {
+      .register-card {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        border: none;
+        border-radius: 0;
+        background: rgba(255, 255, 255, 0.015);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        box-shadow: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding: 3rem 4rem;
+        /* Só a coluna direita rola. Esquerda fica fixa. */
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
+      .register-card > * { width: 100%; max-width: 400px; margin-left: auto; margin-right: auto; }
+    }
+    @media (min-width: 1100px) {
+      .register-card { padding: 3rem 6rem; }
     }
 
-    /* Benefícios — lista sóbria, tipo jornal */
-    .register-benefits {
-      list-style: none;
-      padding: 0;
-      margin: 0 0 1.75rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    .register-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.028em;
+      line-height: 1.05;
+      text-align: center;
+      margin-bottom: 0.45rem;
+      background: linear-gradient(180deg, #fff, rgba(255, 255, 255, 0.78));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-    .register-benefits li {
-      display: flex;
-      align-items: baseline;
-      gap: 0.75rem;
-      padding: 0.75rem 0;
-      font-size: 0.88rem;
+    .register-sub {
+      font-size: 0.92rem;
       line-height: 1.45;
-      color: rgba(255, 255, 255, 0.72);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    }
-    .register-benefits li:last-child { border-bottom: none; }
-    .register-benefits li strong {
-      color: #fff;
-      font-weight: 600;
-    }
-    .register-benefits-mark {
-      color: rgba(255, 255, 255, 0.45);
-      font-variant-numeric: tabular-nums;
-      font-size: 0.78rem;
-      letter-spacing: 0.02em;
-      flex-shrink: 0;
-      width: 1.2rem;
+      color: var(--text-2);
+      text-align: center;
+      margin-bottom: 1.4rem;
     }
 
     /* Form */
@@ -181,45 +323,47 @@
     .reg-field label {
       display: block;
       font-size: 0.68rem;
-      font-weight: 500;
-      color: rgba(255, 255, 255, 0.5);
+      font-weight: 600;
+      color: var(--text-3);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.4rem;
+      padding-left: 0.15rem;
     }
     .reg-field input[type="tel"],
     .reg-field input[type="text"],
     .reg-field input[type="email"],
     .reg-field input[type="password"] {
       width: 100%;
-      padding: 0.75rem 0.9rem;
-      background: rgba(255, 255, 255, 0.035);
+      padding: 0.95rem 1rem;
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
+      border-radius: 14px;
       color: #fff;
-      font-size: 0.92rem;
+      font-size: 0.98rem;
       font-family: inherit;
       outline: none;
-      transition: border-color 0.15s, background 0.15s;
+      transition: all 0.18s;
     }
     .reg-field input:focus {
-      border-color: rgba(255, 255, 255, 0.25);
-      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(0, 230, 140, 0.6);
+      background: rgba(0, 230, 140, 0.04);
+      box-shadow: 0 0 0 4px rgba(0, 230, 140, 0.12);
     }
-    .reg-field input::placeholder { color: rgba(255, 255, 255, 0.22); }
+    .reg-field input::placeholder { color: rgba(255, 255, 255, 0.25); }
 
-    /* Estado de erro: borda vermelha + mensagem abaixo */
     .reg-field input.reg-input-error {
-      border-color: rgba(255, 68, 102, 0.5);
-      background: rgba(255, 68, 102, 0.03);
+      border-color: rgba(255, 68, 102, 0.55);
+      background: rgba(255, 68, 102, 0.04);
     }
     .reg-field input.reg-input-error:focus {
-      border-color: rgba(255, 68, 102, 0.75);
+      border-color: rgba(255, 68, 102, 0.8);
+      box-shadow: 0 0 0 4px rgba(255, 68, 102, 0.12);
     }
     .reg-field-error {
-      font-size: 0.72rem;
-      color: rgba(255, 107, 131, 0.95);
-      margin-top: 0.35rem;
+      font-size: 0.74rem;
+      color: rgba(255, 131, 152, 0.95);
+      margin-top: 0.4rem;
       line-height: 1.35;
       min-height: 0;
       max-height: 0;
@@ -227,36 +371,30 @@
       opacity: 0;
       transition: max-height 0.18s ease, opacity 0.18s ease, margin 0.18s ease;
     }
-    .reg-field-error.active {
-      max-height: 3em;
-      opacity: 1;
-    }
+    .reg-field-error.active { max-height: 3em; opacity: 1; }
 
     .strength-bar-wrap {
-      height: 2px;
+      height: 3px;
       background: rgba(255, 255, 255, 0.06);
-      border-radius: 1px;
-      margin-top: 0.45rem;
+      border-radius: 2px;
+      margin-top: 0.55rem;
       overflow: hidden;
     }
     .strength-bar {
       height: 100%;
       width: 0%;
-      border-radius: 1px;
+      border-radius: 2px;
       transition: width 0.25s, background 0.25s;
     }
 
-    /* Container \u00e9 um <label> — clique em qualquer parte marca o checkbox.
-       Padding generoso pra dar \u00e1rea de toque decente (min 44px de altura). */
+    /* Checkbox de termos */
     .reg-check {
       display: flex;
       align-items: flex-start;
-      gap: 0.65rem;
-      margin-top: 0.25rem;
-      padding: 0.55rem 0.6rem;
-      margin-left: -0.6rem;
-      margin-right: -0.6rem;
-      border-radius: 8px;
+      gap: 0.7rem;
+      margin: 0.3rem -0.5rem 0;
+      padding: 0.6rem 0.6rem;
+      border-radius: 10px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
@@ -265,15 +403,13 @@
     }
     .reg-check:hover { background: rgba(255, 255, 255, 0.025); }
     .reg-check:active { background: rgba(255, 255, 255, 0.05); }
-    /* Checkbox custom — nativo com accent-color:#fff fica branco no branco
-       quando marcado no mobile. Reimplementa com aparência clara. */
     .reg-check input[type="checkbox"] {
       -webkit-appearance: none;
       appearance: none;
       width: 22px;
       height: 22px;
       margin-top: 1px;
-      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      border: 1.5px solid rgba(255, 255, 255, 0.32);
       border-radius: 6px;
       background: rgba(255, 255, 255, 0.04);
       flex-shrink: 0;
@@ -282,8 +418,8 @@
       transition: background 0.12s, border-color 0.12s;
     }
     .reg-check input[type="checkbox"]:checked {
-      background: #3ee8a7;
-      border-color: #3ee8a7;
+      background: var(--brand);
+      border-color: var(--brand);
     }
     .reg-check input[type="checkbox"]:checked::after {
       content: "";
@@ -292,106 +428,97 @@
       top: 2px;
       width: 6px;
       height: 11px;
-      border: solid #062b1d;
+      border: solid #051a10;
       border-width: 0 2.5px 2.5px 0;
       transform: rotate(45deg);
     }
     .reg-check input[type="checkbox"]:focus-visible {
-      outline: 2px solid rgba(62, 232, 167, 0.6);
+      outline: 2px solid rgba(0, 230, 140, 0.6);
       outline-offset: 2px;
     }
     .reg-check span {
       font-size: 0.82rem;
-      color: rgba(255, 255, 255, 0.6);
+      color: var(--text-2);
       line-height: 1.45;
     }
     .reg-check a {
-      color: rgba(255, 255, 255, 0.9);
+      color: #fff;
       text-decoration: none;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.22);
       padding-bottom: 1px;
     }
-    .reg-check a:hover { color: #fff; }
+    .reg-check a:hover { color: var(--brand); border-bottom-color: var(--brand); }
 
-    /* CTA primário — branco sólido, peso visual máximo */
+    /* CTA primário — verde GDrums com glow */
     .reg-btn {
       width: 100%;
-      padding: 0.9rem;
+      padding: 1.05rem;
       border: none;
-      border-radius: 10px;
-      background: #fff;
-      color: #0a0a0f;
-      font-size: 0.95rem;
-      font-weight: 600;
-      letter-spacing: -0.005em;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #00F098 0%, var(--brand) 55%, var(--brand-dark) 100%);
+      color: #051a10;
+      font-size: 1.02rem;
+      font-weight: 800;
+      letter-spacing: -0.015em;
       font-family: inherit;
       cursor: pointer;
-      transition: opacity 0.15s;
-      margin-top: 0.5rem;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.15s;
+      margin-top: 0.6rem;
+      box-shadow:
+        0 10px 28px rgba(0, 230, 140, 0.42),
+        0 0 0 1px rgba(255, 255, 255, 0.06) inset;
     }
-    .reg-btn:hover { opacity: 0.9; }
+    .reg-btn:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+      box-shadow:
+        0 14px 36px rgba(0, 230, 140, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    }
     .reg-btn:active { transform: scale(0.99); }
-    .reg-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
-
+    .reg-btn:disabled {
+      opacity: 0.5; cursor: default; transform: none; box-shadow: none;
+      filter: grayscale(0.3);
+    }
     .reg-btn .btn-loader { display: none; }
     .reg-btn .btn-loader.active { display: block; }
     .reg-btn .btn-text.hidden { display: none; }
 
-    .reg-trial-note {
-      text-align: center;
-      margin-top: 0.85rem;
-      font-size: 0.76rem;
-      color: rgba(255, 255, 255, 0.45);
-      letter-spacing: 0.005em;
-      line-height: 1.5;
-    }
-    .reg-trial-note strong {
-      color: #fff;
-      font-weight: 600;
-    }
-
+    /* Footer "já tem conta? entrar" */
     .reg-footer {
       text-align: center;
       margin-top: 1.5rem;
-      padding-top: 1.25rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.5);
+      padding-top: 1.2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.86rem;
+      color: var(--text-3);
     }
     .reg-footer a {
-      color: rgba(255, 255, 255, 0.85);
+      color: var(--brand);
       text-decoration: none;
-      font-weight: 500;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-      padding-bottom: 1px;
+      font-weight: 700;
     }
-    .reg-footer a:hover { color: #fff; }
+    .reg-footer a:hover { filter: brightness(1.1); }
 
-    .reg-glory {
-      text-align: center;
-      margin-top: 1rem;
-      font-size: 0.72rem;
-      color: rgba(255, 255, 255, 0.3);
-      font-style: italic;
-    }
-
+    /* Alerta global */
     .reg-alert {
-      margin-top: 0.85rem;
-      padding: 0.65rem 0.9rem;
-      border-radius: 8px;
-      font-size: 0.8rem;
+      margin-top: 0.95rem;
+      padding: 0.75rem 0.95rem;
+      border-radius: 12px;
+      font-size: 0.82rem;
       display: none;
       text-align: center;
+      font-weight: 500;
     }
     .reg-alert.error {
       background: rgba(255, 68, 102, 0.08);
-      color: #ff6b83;
-      border: 1px solid rgba(255, 68, 102, 0.2);
+      color: #ff8398;
+      border: 1px solid rgba(255, 68, 102, 0.22);
     }
     .reg-alert.success {
       background: rgba(0, 230, 140, 0.08);
       color: #3ee8a7;
-      border: 1px solid rgba(0, 230, 140, 0.2);
+      border: 1px solid rgba(0, 230, 140, 0.22);
     }
 
     .spinner-sm {
@@ -403,44 +530,47 @@
       margin: 0 auto;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .aurora-blob, .register-logo-wrap, .logo-halo { animation: none; }
+    }
+
+    /* Mantém os IDs/classes que o register.ts espera mas esconde
+       visualmente — limpeza solicitada. Sem remover o nó pra não
+       quebrar lógica de animação/fadeIn do TS. */
+    .social-proof, .register-benefits, .reg-trial-note, .reg-glory,
+    .register-brand, .register-overline { display: none !important; }
   </style>
 </head>
 <body>
-  <div class="register-page">
-    <div class="register-card">
-      <div class="register-brand">
-        <img src="/img/logo.png" alt="GDrums" class="register-logo" />
-        <span class="register-brand-text">GDrums</span>
-      </div>
+  <!-- Aurora fundo -->
+  <div class="bg-aurora" aria-hidden="true">
+    <span class="aurora-blob blob-1"></span>
+    <span class="aurora-blob blob-2"></span>
+  </div>
 
-      <div class="register-hero">
-        <div class="register-overline">Teste grátis de 48h</div>
-        <h1 class="register-title">Crie sua conta.</h1>
-        <p class="register-sub">
-          Acesso completo à biblioteca, sem cartão de crédito.
-          Cancelar depois é um clique.
+  <main class="register-shell">
+    <!-- HERO: logo gigante + (no desktop) pitch curto -->
+    <header class="register-hero">
+      <div class="register-logo-wrap" aria-hidden="true">
+        <span class="logo-halo"></span>
+        <img src="/img/new-icon-bg.png" alt="GDrums" class="register-logo" />
+      </div>
+      <div class="register-pitch">
+        <div class="register-pitch-title">Sua banda no celular.</div>
+        <p class="register-pitch-sub">
+          Mais de 120 ritmos brasileiros pra tocar ao vivo com qualidade de banda completa.
+          48h grátis pra testar, sem cartão.
         </p>
       </div>
+    </header>
 
-      <!-- Social proof dinâmico (preenchido via RPC social_proof_stats) -->
-      <div id="socialProof" class="social-proof" aria-live="polite"></div>
+    <!-- CARD com form -->
+    <section class="register-card">
+      <h1 class="register-title">Crie sua conta.</h1>
+      <p class="register-sub">48h grátis pra testar tudo. Sem cartão.</p>
 
-      <ul class="register-benefits">
-        <li>
-          <span class="register-benefits-mark">01</span>
-          <span><strong class="js-rhythm-count">100</strong> ritmos com viradas, intros e finais</span>
-        </li>
-        <li>
-          <span class="register-benefits-mark">02</span>
-          <span><strong>Pedal Bluetooth</strong> mapeável pra tocar com as mãos livres</span>
-        </li>
-        <li>
-          <span class="register-benefits-mark">03</span>
-          <span><strong>Setlist de palco</strong> e modo offline</span>
-        </li>
-      </ul>
-
-      <form id="registerForm" class="reg-form">
+      <form id="registerForm" class="reg-form" novalidate>
         <div class="reg-field">
           <label for="name">Nome</label>
           <input type="text" id="name" name="name" required placeholder="Seu nome" autocomplete="name" />
@@ -450,7 +580,7 @@
           <input type="text" id="cpf" name="cpf" required placeholder="000.000.000-00" autocomplete="off" inputmode="numeric" maxlength="14" />
         </div>
         <div class="reg-field">
-          <label for="phone">WhatsApp <span style="opacity:0.6;font-weight:400;">(opcional)</span></label>
+          <label for="phone">WhatsApp <span style="opacity:0.55;font-weight:500;text-transform:none;letter-spacing:0;">(opcional)</span></label>
           <input type="tel" id="phone" name="phone" placeholder="(00) 00000-0000" autocomplete="tel" inputmode="tel" maxlength="15" />
         </div>
         <div class="reg-field">
@@ -474,21 +604,18 @@
           <span class="btn-text">Começar grátis</span>
           <span class="btn-loader"><div class="spinner-sm"></div></span>
         </button>
-        <div class="reg-trial-note">
-          <strong>48 horas de acesso total, sem cartão.</strong>
-          <br>Cancele antes de acabar e não pagamos nada.
-        </div>
       </form>
+
+      <!-- Nós mantidos pra compatibilidade com register.ts mas escondidos via CSS -->
+      <div id="socialProof" class="social-proof" aria-live="polite"></div>
 
       <div class="reg-alert" id="alertMessage"></div>
 
       <p class="reg-footer">
         Já tem conta? <a href="login.html">Entrar</a>
       </p>
-
-      <p class="reg-glory">Pra honra e glória de Deus</p>
-    </div>
-  </div>
+    </section>
+  </main>
 
   <script>
     // Fallback manual pro checkbox de termos — alguns browsers mobile
@@ -500,11 +627,8 @@
       if (!container || !checkbox) return;
       container.addEventListener('click', function(e) {
         var t = e.target;
-        // Se clicou num link interno (termos/política), deixa passar.
         if (t && (t.tagName === 'A' || (t.closest && t.closest('a')))) return;
-        // Se clicou direto no checkbox, o browser já cuida.
         if (t === checkbox) return;
-        // Caso contrário, toggle manual.
         e.preventDefault();
         checkbox.checked = !checkbox.checked;
         checkbox.dispatchEvent(new Event('change', { bubbles: true }));

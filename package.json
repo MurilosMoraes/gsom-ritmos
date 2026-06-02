@@ -1,6 +1,6 @@
 {
   "name": "rhythm-sequencer",
-  "version": "1.0.0",
+  "version": "1.2.4",
   "description": "Sequenciador de ritmos MIDI para web",
   "main": "app.js",
   "scripts": {

@@ -42,172 +42,481 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    :root {
+      --brand: #00E68C;
+      --brand-dark: #00C470;
+      --violet: #8B5CF6;
+      --bg: #030014;
+      --bg-2: #07041A;
+      --card: rgba(15, 12, 30, 0.62);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #fff;
+      --text-2: rgba(255, 255, 255, 0.62);
+      --text-3: rgba(255, 255, 255, 0.42);
+    }
+
+    html, body { height: 100%; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-      background: #030014;
-      color: #fff;
+      /* Preto/quase-preto sólido. O logo do GDrums precisa de fundo
+         bem escuro pra cor dele (verde/violeta/laranja) brilhar. */
+      background: #010006;
+      color: var(--text);
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+      position: relative;
     }
 
-    .login-card {
-      width: 100%;
-      max-width: 420px;
-      background: #0a0a0f;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      padding: 2.5rem 2rem 1.75rem;
+    /* ─── Aurora bem sutil só nos cantos extremos ─────────────────── */
+    .bg-aurora {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aurora-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.16;
+      will-change: transform;
+    }
+    .blob-1 {
+      width: 380px; height: 380px;
+      background: radial-gradient(circle, rgba(0, 230, 140, 0.55), transparent 60%);
+      top: -260px; left: -220px;
+      animation: float-1 18s ease-in-out infinite;
+    }
+    .blob-2 {
+      width: 360px; height: 360px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.6), transparent 60%);
+      bottom: -260px; right: -220px;
+      animation: float-2 22s ease-in-out infinite;
+    }
+    /* blob central desligado — escureceu o meio */
+    .blob-3 { display: none; }
+    /* Vinheta dark cobre tudo exceto bordas pra garantir centro preto */
+    .bg-aurora::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(80% 65% at 50% 40%, rgba(1, 0, 6, 0.95) 0%, transparent 88%);
+      pointer-events: none;
+    }
+    @keyframes float-1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50%      { transform: translate(80px, 60px) scale(1.1); }
+    }
+    @keyframes float-2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50%      { transform: translate(-90px, -40px) scale(0.95); }
+    }
+    @keyframes float-3 {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50%      { transform: translate(-45%, -55%) scale(1.15); }
+    }
+    .bg-grain {
+      position: absolute;
+      inset: 0;
+      opacity: 0.06;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
-    .login-brand {
+    /* ─── Shell mobile (default) ─────────────────────────────────── */
+    .login-shell {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 2rem 0 0;
+      gap: 1.75rem;
+    }
+
+    /* ─── Shell desktop ≥768px ───────────────────────────────────── */
+    /* Layout split: esquerda = branding visual, direita = form sóbrio.
+       Estilo SaaS premium (Linear/Stripe/Vercel). */
+    @media (min-width: 768px) {
+      .login-shell {
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        padding: 0;
+        gap: 0;
+        align-items: stretch;
+      }
+    }
+
+    /* ─── HERO (logo gigante + ticker premium) ───────────────────── */
+    .login-hero {
+      width: 100%;
+      max-width: 520px;
+      padding: 0.25rem 1.25rem 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.4rem;
+      position: relative;
+    }
+    /* Desktop split: hero ocupa a coluna esquerda inteira, centralizado */
+    @media (min-width: 768px) {
+      .login-hero {
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        padding: 3rem 2rem;
+        justify-content: center;
+        gap: 2.5rem;
+        /* Borda sutil separando da coluna do form */
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
+        /* Painel ganha um leve gradient verde→violeta de respiração */
+        background:
+          radial-gradient(80% 60% at 30% 40%, rgba(0, 230, 140, 0.06), transparent 70%),
+          radial-gradient(70% 50% at 80% 70%, rgba(139, 92, 246, 0.06), transparent 70%);
+      }
+    }
+    .login-logo-wrap {
+      position: relative;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
-      margin-bottom: 1.75rem;
+      width: 220px;
+      height: 220px;
+      animation: logo-breath 5s ease-in-out infinite;
     }
     .login-logo {
       display: block;
-      height: 32px;
-      width: auto;
+      height: 200px;
+      width: 200px;
+      object-fit: contain;
+      position: relative;
+      z-index: 1;
+      /* Só uma sombra de chão bem suave pra dar profundidade,
+         sem glow neon ao redor. */
+      filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.55));
     }
-    .login-brand-text {
-      font-size: 1.35rem;
+    /* Halo ao redor do logo — quase invisível, só "respira" um toque
+       de cor pra não ficar totalmente flat. */
+    .logo-halo {
+      position: absolute;
+      inset: -24px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 50%,
+          rgba(0, 230, 140, 0.10) 0%,
+          rgba(139, 92, 246, 0.05) 40%,
+          transparent 72%);
+      filter: blur(18px);
+      animation: halo-pulse 5s ease-in-out infinite;
+      z-index: 0;
+    }
+    @keyframes halo-pulse {
+      0%, 100% { opacity: 0.55; transform: scale(1); }
+      50%      { opacity: 0.75; transform: scale(1.04); }
+    }
+    @keyframes logo-breath {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.025); }
+    }
+    @media (max-height: 760px) {
+      .login-logo-wrap { width: 160px; height: 160px; }
+      .login-logo { height: 142px; width: 142px; }
+      .logo-halo { inset: -30px; filter: blur(20px); }
+    }
+    @media (max-height: 620px) {
+      .login-logo-wrap { width: 110px; height: 110px; }
+      .login-logo { height: 96px; width: 96px; }
+      .logo-halo { inset: -20px; filter: blur(16px); }
+      .login-hero { gap: 0.85rem; }
+    }
+    /* Desktop: logo um pouco maior pra preencher o painel */
+    @media (min-width: 768px) and (min-height: 700px) {
+      .login-logo-wrap { width: 280px; height: 280px; }
+      .login-logo { height: 250px; width: 250px; }
+      .logo-halo { inset: -42px; filter: blur(28px); }
+    }
+
+    /* ─── Ticker de ritmos (estilo concert marquee, sem emoji) ───── */
+    .rhythm-ticker {
+      width: 100%;
+      max-width: 520px;
+      overflow: hidden;
+      position: relative;
+      /* Fade nas pontas pra entrar/sair suave */
+      -webkit-mask-image: linear-gradient(
+        to right,
+        transparent 0%,
+        #000 12%,
+        #000 88%,
+        transparent 100%
+      );
+      mask-image: linear-gradient(
+        to right,
+        transparent 0%,
+        #000 12%,
+        #000 88%,
+        transparent 100%
+      );
+      padding: 0.4rem 0;
+    }
+    .ticker-track {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.85rem;
+      white-space: nowrap;
+      animation: ticker-scroll 55s linear infinite;
+      will-change: transform;
+    }
+    .ticker-item {
+      font-size: 0.78rem;
       font-weight: 700;
-      letter-spacing: -0.02em;
-      color: #fff;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.78);
+      /* Sutil glow pra "soar" como neon de palco sem berrar */
+      text-shadow: 0 0 14px rgba(0, 230, 140, 0.18);
+    }
+    .ticker-dot {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: rgba(0, 230, 140, 0.55);
+      line-height: 1;
+    }
+    @keyframes ticker-scroll {
+      from { transform: translateX(0); }
+      /* -50% porque a lista é duplicada — loop seamless */
+      to   { transform: translateX(-50%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ticker-track { animation: none; }
+      .logo-halo, .login-logo-wrap { animation: none; }
+    }
+
+    /* ─── CARD ────────────────────────────────────────────────────── */
+    .login-card {
+      width: 100%;
+      background: var(--card);
+      border-top: 1px solid var(--card-border);
+      /* Mobile: colado nas beiras + grudado no rodapé da tela (sheet
+         iOS-style). flex:1 faz o card preencher o resto da altura
+         quando o conteúdo é menor que a viewport, evitando "card
+         flutuante" com preto sobrando embaixo. Quando o conteúdo
+         cresce (step 2 com senha + opções), o card cresce junto
+         naturalmente. */
+      flex: 1 0 auto;
+      border-radius: 28px 28px 0 0;
+      padding: 2rem 1.4rem 2rem;
+      backdrop-filter: blur(24px) saturate(150%);
+      -webkit-backdrop-filter: blur(24px) saturate(150%);
+      box-shadow:
+        0 -16px 50px rgba(0, 0, 0, 0.55),
+        0 1px 0 rgba(255, 255, 255, 0.04) inset;
+      position: relative;
+    }
+    /* Tablet 560–767: card centralizado solto no preto */
+    @media (min-width: 560px) and (max-width: 767px) {
+      .login-card {
+        flex: 0 0 auto;
+        max-width: 440px;
+        border: 1px solid var(--card-border);
+        border-radius: 28px;
+        padding: 2rem 1.8rem 1.6rem;
+        box-shadow:
+          0 30px 80px rgba(0, 0, 0, 0.55),
+          0 1px 0 rgba(255, 255, 255, 0.04) inset;
+        margin-bottom: 2rem;
+      }
+    }
+    /* Desktop ≥768: card ocupa a segunda coluna do grid inteiro,
+       form sóbrio sem glass exagerado (visual SaaS Linear/Vercel) */
+    @media (min-width: 768px) {
+      .login-card {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        border: none;
+        border-radius: 0;
+        background: rgba(255, 255, 255, 0.015);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        box-shadow: none;
+        /* Form centralizado vertical com largura limitada legível */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 3rem 4rem;
+      }
+      .login-card > * { width: 100%; max-width: 380px; margin-left: auto; margin-right: auto; }
+      .login-card::before { display: none; }
+    }
+    /* Desktop largo: mais respiro lateral */
+    @media (min-width: 1100px) {
+      .login-card { padding: 3rem 6rem; }
+    }
+    /* Borda iluminada sutil no topo do card */
+    .login-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 30%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
     }
 
     .login-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      letter-spacing: -0.015em;
-      line-height: 1.2;
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.028em;
+      line-height: 1.05;
       text-align: center;
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.45rem;
+      background: linear-gradient(180deg, #fff, rgba(255, 255, 255, 0.78));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .login-sub {
-      font-size: 0.88rem;
+      font-size: 0.92rem;
       line-height: 1.45;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--text-2);
       text-align: center;
-      margin-bottom: 1.75rem;
+      margin-bottom: 1.6rem;
     }
 
-    .login-field { margin-bottom: 0.9rem; }
+    .login-field { margin-bottom: 0.85rem; }
     .login-field label {
       display: block;
       font-size: 0.68rem;
-      font-weight: 500;
-      color: rgba(255, 255, 255, 0.5);
+      font-weight: 600;
+      color: var(--text-3);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.4rem;
+      padding-left: 0.15rem;
     }
     .login-field input {
       width: 100%;
-      padding: 0.75rem 0.9rem;
-      background: rgba(255, 255, 255, 0.035);
+      padding: 0.95rem 1rem;
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
+      border-radius: 14px;
       color: #fff;
-      font-size: 0.92rem;
+      font-size: 0.98rem;
       font-family: inherit;
       outline: none;
-      transition: border-color 0.15s, background 0.15s;
+      transition: all 0.18s;
     }
     .login-field input:focus {
-      border-color: rgba(255, 255, 255, 0.25);
-      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(0, 230, 140, 0.6);
+      background: rgba(0, 230, 140, 0.04);
+      box-shadow: 0 0 0 4px rgba(0, 230, 140, 0.12);
     }
-    .login-field input::placeholder { color: rgba(255, 255, 255, 0.22); }
+    .login-field input::placeholder { color: rgba(255, 255, 255, 0.25); }
 
     .login-options {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1.25rem;
-      font-size: 0.78rem;
+      margin-bottom: 1.1rem;
+      font-size: 0.8rem;
     }
     .login-options label {
       display: flex;
       align-items: center;
-      gap: 0.45rem;
-      color: rgba(255, 255, 255, 0.5);
+      gap: 0.5rem;
+      color: var(--text-2);
       cursor: pointer;
     }
     .login-options input[type="checkbox"] {
-      width: 14px;
-      height: 14px;
-      accent-color: #fff;
+      width: 15px;
+      height: 15px;
+      accent-color: var(--brand);
     }
     .login-options a {
-      color: rgba(255, 255, 255, 0.72);
+      color: rgba(0, 230, 140, 0.85);
       text-decoration: none;
-      font-weight: 500;
+      font-weight: 600;
       transition: color 0.15s;
     }
-    .login-options a:hover { color: #fff; }
+    .login-options a:hover { color: var(--brand); }
 
+    /* Botão Entrar — protagonista, grande, verde com glow */
     .login-btn {
       width: 100%;
-      padding: 1rem;
+      padding: 1.05rem;
       border: none;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #00E68C 0%, #00C470 100%);
+      border-radius: 999px;
+      background: linear-gradient(135deg, #00F098 0%, var(--brand) 55%, var(--brand-dark) 100%);
       color: #051a10;
-      font-size: 1rem;
-      font-weight: 700;
-      letter-spacing: -0.01em;
+      font-size: 1.02rem;
+      font-weight: 800;
+      letter-spacing: -0.015em;
       font-family: inherit;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.15s;
       position: relative;
-      box-shadow: 0 4px 18px rgba(0, 230, 140, 0.28);
+      box-shadow:
+        0 10px 28px rgba(0, 230, 140, 0.42),
+        0 0 0 1px rgba(255, 255, 255, 0.06) inset;
     }
     .login-btn:hover {
-      filter: brightness(1.08);
+      filter: brightness(1.06);
       transform: translateY(-1px);
-      box-shadow: 0 6px 22px rgba(0, 230, 140, 0.4);
+      box-shadow:
+        0 14px 36px rgba(0, 230, 140, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
     }
     .login-btn:active { transform: scale(0.99); }
-    .login-btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
+    .login-btn:disabled {
+      opacity: 0.5; cursor: default; transform: none; box-shadow: none;
+      filter: grayscale(0.3);
+    }
 
     /* Botão "trocar e-mail" — aparece no step 2 do login inteligente */
     .login-back-btn {
       width: 100%;
-      margin-top: 0.65rem;
-      padding: 0.55rem;
+      margin-top: 0.7rem;
+      padding: 0.7rem;
       background: transparent;
       border: none;
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 0.82rem;
+      color: var(--text-3);
+      font-size: 0.84rem;
+      font-weight: 500;
       font-family: inherit;
       cursor: pointer;
       transition: color 0.15s;
     }
-    .login-back-btn:hover { color: rgba(255, 255, 255, 0.85); }
+    .login-back-btn:hover { color: #fff; }
 
     /* Pill exibindo o email travado no step 2 */
     .login-email-pill {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.65rem 0.85rem;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
+      gap: 0.55rem;
+      padding: 0.75rem 0.95rem;
+      background: rgba(0, 230, 140, 0.06);
+      border: 1px solid rgba(0, 230, 140, 0.18);
+      border-radius: 14px;
       font-size: 0.88rem;
-      margin-bottom: 0.9rem;
-      color: rgba(255, 255, 255, 0.75);
+      margin-bottom: 1rem;
+      color: rgba(255, 255, 255, 0.92);
     }
-    .login-email-pill svg { flex-shrink: 0; opacity: 0.5; }
+    .login-email-pill svg { flex-shrink: 0; color: var(--brand); opacity: 0.9; }
     .login-btn .btn-loader { display: none; }
     .login-btn .btn-loader.active { display: block; }
     .login-btn .btn-text.hidden { display: none; }
@@ -215,108 +524,96 @@
     .login-divider {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      margin: 1.5rem 0;
-      color: rgba(255, 255, 255, 0.25);
-      font-size: 0.72rem;
+      gap: 0.85rem;
+      margin: 1.5rem 0 1rem;
+      color: var(--text-3);
+      font-size: 0.73rem;
       letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-weight: 600;
     }
     .login-divider::before,
     .login-divider::after {
       content: '';
       flex: 1;
       height: 1px;
-      background: rgba(255, 255, 255, 0.06);
+      background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
     }
 
-    .login-footer {
-      text-align: center;
-      font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.5);
-    }
-    .login-footer a {
-      color: rgba(255, 255, 255, 0.85);
-      text-decoration: none;
-      font-weight: 500;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-      padding-bottom: 1px;
-    }
-    .login-footer a:hover { color: #fff; }
-
-    /* CTA "Criar conta grátis" — SECUNDÁRIO ao botão de login.
-       O botão Entrar é o protagonista (verde sólido). Esse aqui é uma opção
-       discreta pra quem ainda não tem conta. Layout em linha pra ocupar
-       menos espaço visual e não competir com o Entrar. */
+    /* CTA "Criar conta grátis" — secundário, pill outline */
     .login-trial-cta {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.1rem;
-      padding: 0.7rem 0.9rem;
-      border-radius: 10px;
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      gap: 0.18rem;
+      padding: 0.95rem 1rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       text-decoration: none;
       transition: all 0.18s ease;
     }
     .login-trial-cta:hover, .login-trial-cta:active {
-      background: rgba(255, 255, 255, 0.03);
-      border-color: rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.22);
+      transform: translateY(-1px);
     }
     .login-trial-cta-title {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.78);
-      letter-spacing: -0.005em;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.01em;
     }
     .login-trial-cta-sub {
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       font-weight: 500;
-      color: rgba(255, 255, 255, 0.4);
-      letter-spacing: 0.01em;
+      color: var(--text-3);
+      letter-spacing: 0.005em;
     }
 
     .login-alert {
-      margin-top: 0.85rem;
-      padding: 0.65rem 0.9rem;
-      border-radius: 8px;
-      font-size: 0.8rem;
+      margin-top: 0.95rem;
+      padding: 0.75rem 0.95rem;
+      border-radius: 12px;
+      font-size: 0.82rem;
       display: none;
       text-align: center;
+      font-weight: 500;
     }
     .login-alert.error {
       background: rgba(255, 68, 102, 0.08);
-      color: #ff6b83;
-      border: 1px solid rgba(255, 68, 102, 0.2);
+      color: #ff8398;
+      border: 1px solid rgba(255, 68, 102, 0.22);
     }
     .login-alert.success {
       background: rgba(0, 230, 140, 0.08);
       color: #3ee8a7;
-      border: 1px solid rgba(0, 230, 140, 0.2);
+      border: 1px solid rgba(0, 230, 140, 0.22);
     }
 
     .login-support {
       text-align: center;
-      margin-top: 1.25rem;
+      margin-top: 1.4rem;
       padding-top: 1rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
     }
     .login-support a {
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
-      color: rgba(255, 255, 255, 0.4);
-      font-size: 0.76rem;
+      color: var(--text-3);
+      font-size: 0.78rem;
       text-decoration: none;
       transition: color 0.15s;
+      font-weight: 500;
     }
-    .login-support a:hover { color: rgba(255, 255, 255, 0.75); }
+    .login-support a:hover { color: rgba(255, 255, 255, 0.85); }
 
     .login-glory {
       text-align: center;
-      margin-top: 1rem;
-      font-size: 0.72rem;
-      color: rgba(255, 255, 255, 0.3);
+      margin-top: 0.9rem;
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.25);
       font-style: italic;
     }
 
@@ -458,60 +755,118 @@
   </style>
 </head>
 <body>
-  <div class="login-card">
-    <div class="login-brand">
-      <img src="/img/logo.png" alt="GDrums" class="login-logo" />
-      <span class="login-brand-text">GDrums</span>
-    </div>
-    <h1 class="login-title">Entrar na sua conta.</h1>
-    <p class="login-sub">Continue de onde parou.</p>
-
-    <form id="loginForm" novalidate>
-      <div class="login-field" id="emailField">
-        <label for="email">E-mail</label>
-        <input type="email" id="email" name="email" required placeholder="seu@email.com" autocomplete="email" />
-      </div>
-
-      <div class="login-field" id="passwordField" style="display:none;">
-        <label for="password">Senha</label>
-        <input type="password" id="password" name="password" placeholder="Sua senha" autocomplete="current-password" />
-      </div>
-
-      <div class="login-options" id="loginOptions" style="display:none;">
-        <label>
-          <input type="checkbox" id="rememberMe" />
-          <span>Lembrar de mim</span>
-        </label>
-        <a href="#" id="forgotPasswordBtn">Esqueci a senha</a>
-      </div>
-
-      <button type="submit" class="login-btn" id="loginBtn">
-        <span class="btn-text" id="loginBtnText">Continuar</span>
-        <span class="btn-loader"><div class="spinner-sm"></div></span>
-      </button>
-
-      <button type="button" class="login-back-btn" id="loginBackBtn" style="display:none;">
-        ← Trocar e-mail
-      </button>
-    </form>
-
-    <div class="login-alert" id="alertMessage"></div>
-
-    <div class="login-divider"><span>ou</span></div>
-
-    <a href="/register" class="login-trial-cta" id="loginTrialCta">
-      <span class="login-trial-cta-title">Criar conta grátis</span>
-      <span class="login-trial-cta-sub">48h pra testar todos os ritmos · sem cartão</span>
-    </a>
-
-    <div class="login-support">
-      <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank">
-        Precisa de ajuda? Falar com o suporte
-      </a>
-    </div>
-
-    <p class="login-glory">Pra honra e glória de Deus</p>
+  <!-- Aurora animada de fundo — cores GDrums (verde/violeta) sem distrair -->
+  <div class="bg-aurora" aria-hidden="true">
+    <span class="aurora-blob blob-1"></span>
+    <span class="aurora-blob blob-2"></span>
+    <span class="aurora-blob blob-3"></span>
+    <span class="bg-grain"></span>
   </div>
+
+  <main class="login-shell">
+    <!-- TOPO VISUAL — logo GDrums gigante + ticker de ritmos -->
+    <header class="login-hero">
+      <div class="login-logo-wrap" aria-hidden="true">
+        <span class="logo-halo"></span>
+        <img src="/img/new-icon-bg.png" alt="GDrums" class="login-logo" />
+      </div>
+
+      <!-- Ticker contínuo de ritmos (estilo radio FM / concert marquee) -->
+      <div class="rhythm-ticker" aria-hidden="true">
+        <div class="ticker-track">
+          <span class="ticker-item">Sertanejo</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Forró</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Gospel</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Pagode</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Vaneira</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Rock</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Samba</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Bossa Nova</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Reggae</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Piseiro</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Xote</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">MPB</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Arrocha</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Bachata</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Worship</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Frevo</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Carimbó</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Funk</span><span class="ticker-dot">·</span>
+          <!-- Duplicado pra loop seamless -->
+          <span class="ticker-item">Sertanejo</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Forró</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Gospel</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Pagode</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Vaneira</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Rock</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Samba</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Bossa Nova</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Reggae</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Piseiro</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Xote</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">MPB</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Arrocha</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Bachata</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Worship</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Frevo</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Carimbó</span><span class="ticker-dot">·</span>
+          <span class="ticker-item">Funk</span><span class="ticker-dot">·</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- CARD — form de login -->
+    <section class="login-card">
+      <h1 class="login-title">Bora tocar.</h1>
+      <p class="login-sub">Entra na tua conta e continua de onde parou.</p>
+
+      <form id="loginForm" novalidate>
+        <div class="login-field" id="emailField">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" required placeholder="seu@email.com" autocomplete="email" />
+        </div>
+
+        <div class="login-field" id="passwordField" style="display:none;">
+          <label for="password">Senha</label>
+          <input type="password" id="password" name="password" placeholder="Sua senha" autocomplete="current-password" />
+        </div>
+
+        <div class="login-options" id="loginOptions" style="display:none;">
+          <label>
+            <input type="checkbox" id="rememberMe" />
+            <span>Lembrar de mim</span>
+          </label>
+          <a href="#" id="forgotPasswordBtn">Esqueci a senha</a>
+        </div>
+
+        <button type="submit" class="login-btn" id="loginBtn">
+          <span class="btn-text" id="loginBtnText">Continuar</span>
+          <span class="btn-loader"><div class="spinner-sm"></div></span>
+        </button>
+
+        <button type="button" class="login-back-btn" id="loginBackBtn" style="display:none;">
+          Entrar com outro e-mail
+        </button>
+      </form>
+
+      <div class="login-alert" id="alertMessage"></div>
+
+      <div class="login-divider"><span>Primeira vez?</span></div>
+
+      <a href="/register" class="login-trial-cta" id="loginTrialCta">
+        <span class="login-trial-cta-title">Criar conta grátis</span>
+        <span class="login-trial-cta-sub">48h pra testar tudo · sem cartão</span>
+      </a>
+
+      <div class="login-support">
+        <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank">
+          Precisa de ajuda? Falar com o suporte
+        </a>
+      </div>
+
+      <p class="login-glory">Pra honra e glória de Deus</p>
+    </section>
+  </main>
 
   <script type="module" src="/src/auth/login.ts"></script>
 </body>

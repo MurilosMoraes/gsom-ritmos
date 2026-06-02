@@ -7369,5 +7369,11 @@ window.addEventListener('DOMContentLoaded', () => {
   // Se ele já é user logado, o ref sobrescreve atribuição antiga (intenção comercial clara).
   AttributionService.init();
   new RhythmSequencer();
+
+  // Versão visível no menu — ajuda suporte a saber qual build o user tá.
+  // Injetada em build time via Vite `define` (lê do package.json).
+  const verLabel = document.getElementById('appVersionLabel');
+  if (verLabel) verLabel.textContent = `v${__APP_VERSION__}`;
+
   void 0; // initialized
 });
