@@ -5,6 +5,7 @@ import { supabase } from './supabase';
 import { parseOrderNsu, getPlan } from './PaymentService';
 import { internalNav } from '../native/Platform';
 import { redirectIfRecoveryHash } from './recoveryGuard';
+import { trackPurchase } from '../utils/metaTracking';
 
 const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
 
@@ -169,6 +170,96 @@ class PaymentSuccessPage {
 
     // Incrementar uso do cupom (se teve)
     await this.incrementCouponUse();
+
+    // Meta Pixel Purchase (browser) — server (payment-webhook ou
+    // apple-iap-verify) já disparou CAPI; aqui mandamos o Pixel com o
+    // MESMO event_id pra dedup no Meta. Se o event_id não tiver no
+    // banco (caso raro), mandamos null e o trackPurchase também
+    // dispara CAPI como fallback (Meta deduplica em 7 dias).
+    await this.firePixelPurchase();
+  }
+
+  /**
+   * Lê event_id + amount + plan + user info do banco e dispara o
+   * Pixel browser. Best-effort: qualquer falha aqui não afeta o UX
+   * de sucesso (já mostramos a tela ativada).
+   */
+  private async firePixelPurchase(): Promise<void> {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const orderNsu = params.get('order_nsu');
+      const pending = localStorage.getItem('gdrums-pending-order');
+      const pendingOrder = pending ? JSON.parse(pending) : null;
+      const finalOrderNsu = orderNsu || pendingOrder?.orderNsu;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      let eventId: string | null = null;
+      let amountCents = 0;
+      let planId = '';
+
+      // Fluxo Web (InfinitePay): event_id veio do payment-webhook ao
+      // claimar a transação. Pega do banco.
+      if (finalOrderNsu) {
+        const { data: tx } = await supabase
+          .from('gdrums_transactions')
+          .select('event_id, amount_cents, plan')
+          .eq('order_nsu', finalOrderNsu)
+          .eq('status', 'confirmed')
+          .maybeSingle();
+        if (tx) {
+          eventId = tx.event_id || null;
+          amountCents = tx.amount_cents || 0;
+          planId = tx.plan || '';
+        }
+      }
+
+      // Fluxo iOS IAP: order_nsu é apple_iap_<userId>_<plan>_<txid>.
+      // Já passou pelo apple-iap-verify (server dispara CAPI). Aqui
+      // ainda assim queremos disparar Pixel browser caso o user esteja
+      // numa WebView que renderiza essa página (raro). Tentamos pegar
+      // a última tx confirmada do user.
+      if (!planId) {
+        const { data: lastTx } = await supabase
+          .from('gdrums_transactions')
+          .select('event_id, amount_cents, plan')
+          .eq('user_id', user.id)
+          .eq('status', 'confirmed')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (lastTx) {
+          eventId = lastTx.event_id || null;
+          amountCents = lastTx.amount_cents || 0;
+          planId = lastTx.plan || '';
+        }
+      }
+
+      if (!planId || !amountCents) return;
+
+      // Profile pra pegar phone (email vem do auth.users)
+      let phone = '';
+      try {
+        const { data: profile } = await supabase
+          .from('gdrums_profiles')
+          .select('phone')
+          .eq('id', user.id)
+          .maybeSingle();
+        phone = profile?.phone || '';
+      } catch { /* ok */ }
+
+      const plan = getPlan(planId);
+      trackPurchase({
+        eventId,
+        value: amountCents / 100,
+        currency: 'BRL',
+        contentIds: [planId],
+        contentName: plan?.displayName || planId,
+        email: user.email || '',
+        phone,
+      });
+    } catch { /* tracking nunca quebra a UI */ }
   }
 
   private async incrementCouponUse(): Promise<void> {
