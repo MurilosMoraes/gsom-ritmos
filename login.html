@@ -144,7 +144,7 @@
     /* ─── Shell desktop ≥768px ───────────────────────────────────── */
     /* Layout split: esquerda = branding visual, direita = form sóbrio.
        Estilo SaaS premium (Linear/Stripe/Vercel). */
-    @media (min-width: 768px) {
+    @media (min-width: 1024px) {
       .login-shell {
         display: grid;
         grid-template-columns: 1.05fr 1fr;
@@ -166,7 +166,7 @@
       position: relative;
     }
     /* Desktop split: hero ocupa a coluna esquerda inteira, centralizado */
-    @media (min-width: 768px) {
+    @media (min-width: 1024px) {
       .login-hero {
         max-width: none;
         height: 100vh;
@@ -237,7 +237,7 @@
       .login-hero { gap: 0.85rem; }
     }
     /* Desktop: logo um pouco maior pra preencher o painel */
-    @media (min-width: 768px) and (min-height: 700px) {
+    @media (min-width: 1024px) and (min-height: 700px) {
       .login-logo-wrap { width: 280px; height: 280px; }
       .login-logo { height: 250px; width: 250px; }
       .logo-halo { inset: -42px; filter: blur(28px); }
@@ -321,7 +321,7 @@
       position: relative;
     }
     /* Tablet 560–767: card centralizado solto no preto */
-    @media (min-width: 560px) and (max-width: 767px) {
+    @media (min-width: 560px) and (max-width: 1023px) {
       .login-card {
         flex: 0 0 auto;
         max-width: 440px;
@@ -336,7 +336,7 @@
     }
     /* Desktop ≥768: card ocupa a segunda coluna do grid inteiro,
        form sóbrio sem glass exagerado (visual SaaS Linear/Vercel) */
-    @media (min-width: 768px) {
+    @media (min-width: 1024px) {
       .login-card {
         flex: 1 1 auto;
         width: 100%;
