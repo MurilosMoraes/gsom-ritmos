@@ -13,6 +13,10 @@ export class PatternEngine {
   private onPatternChange?: (pattern: PatternType) => void;
   private onStop?: () => void;
   private onEndCymbal?: (time: number) => void;
+  /** Step do main pra onde a fill ativa deve retornar (0 = downbeat).
+   *  Setado pelo checkPendingPatterns ao ativar a fill; consumido e
+   *  zerado pelo handleFillCompletion. */
+  private fillReturnStep = 0;
 
   constructor(stateManager: StateManager) {
     this.stateManager = stateManager;
@@ -49,6 +53,10 @@ export class PatternEngine {
       if (currentStep === state.pendingFill.entryPoint) {
         this.transitionInProgress = true;
         try {
+          // Guardar o step de retorno ANTES de limpar o pending — o
+          // handleFillCompletion usa pra voltar pro main em fase quando
+          // a fill imediata termina antes do fim do ciclo.
+          this.fillReturnStep = state.pendingFill.returnStep ?? 0;
           this.stateManager.setActivePattern('fill');
           this.stateManager.setCurrentStep(state.pendingFill.startStep);
           this.stateManager.setPendingFill(null);
@@ -111,6 +119,15 @@ export class PatternEngine {
   private handleFillCompletion(): void {
     this.stateManager.setShouldPlayReturnSound(true);
     this.stateManager.setShouldPlayStartSound(false);
+
+    // Retorno em fase: fill IMEDIATA que terminou antes do fim do ciclo
+    // volta pro main no step onde o groove ESTARIA (returnStep), não no 0
+    // — o compasso da música não quebra. Fill clássica (termina no fim do
+    // ciclo) tem returnStep 0 = comportamento de sempre.
+    // Troca de ritmo ignora returnStep: ritmo novo SEMPRE entra no
+    // downbeat (activateRhythmFromStart reseta pro 0).
+    const returnStep = this.fillReturnStep;
+    this.fillReturnStep = 0;
     this.stateManager.resetStep();
 
     if (this.shouldChangeRhythmAfterFill) {
@@ -123,6 +140,9 @@ export class PatternEngine {
         this.onPatternChange?.(nextPattern);
       }
     } else {
+      if (returnStep > 0) {
+        this.stateManager.setCurrentStep(returnStep);
+      }
       this.stateManager.setActivePattern('main');
       this.onPatternChange?.('main');
     }
@@ -207,10 +227,12 @@ export class PatternEngine {
 
     this.pendingMainVariation = nextMainVariation;
     this.shouldChangeRhythmAfterFill = true;
-    this.playRotatingFill();
+    // Troca de ritmo: timing clássico (fill termina no fim do ciclo,
+    // ritmo novo entra no downbeat)
+    this.playRotatingFill('cycle-end');
   }
 
-  playRotatingFill(): void {
+  playRotatingFill(mode: 'immediate' | 'cycle-end' = 'immediate'): void {
     const state = this.stateManager.getState();
 
     const availableFills = state.variations.fill
@@ -230,7 +252,7 @@ export class PatternEngine {
       const hasContent = variation?.pattern.some(row => row.some(step => step === true));
 
       if (hasContent) {
-        this.activateFillWithTiming(fillIndex);
+        this.activateFillWithTiming(fillIndex, mode);
         this.currentFillRotation = (fillIndex + 1) % 3;
         found = true;
         break;
@@ -238,7 +260,7 @@ export class PatternEngine {
     }
 
     if (!found && availableFills.length > 0) {
-      this.activateFillWithTiming(availableFills[0].index);
+      this.activateFillWithTiming(availableFills[0].index, mode);
       this.currentFillRotation = (availableFills[0].index + 1) % 3;
     }
   }
@@ -305,7 +327,29 @@ export class PatternEngine {
 
   // ─── Fill com timing corrigido ──────────────────────────────────────
 
-  activateFillWithTiming(variationIndex: number): void {
+  /**
+   * @param mode Estratégia de entrada da virada:
+   *
+   * 'immediate' (default — virada avulsa do pedal/células):
+   *   A virada entra no PRÓXIMO step agendável, sempre. Antes, quando o
+   *   "ponto ideal" (fill completa terminando no fim do ciclo) estava no
+   *   futuro, o app ESPERAVA até ele — até quase 1 compasso de delay
+   *   entre a pisada e a virada soar. Reclamação nº 1 dos músicos.
+   *   - Se a fill completa CABE no que resta do ciclo: toca inteira JÁ
+   *     e volta pro main EM FASE (returnStep) — o compasso não quebra;
+   *     como fills têm duração redonda (4/8/16 steps), o retorno cai
+   *     num tempo forte.
+   *   - Se NÃO cabe: parcial clássica (pedaço final, termina no downbeat).
+   *   - Se sobra quase nada (< 2 steps de fill): joga pro início do
+   *     próximo ciclo, completa, com retorno em fase ("virada no
+   *     próximo tempo", como pediu o dono).
+   *
+   * 'cycle-end' (troca de ritmo — playFillToNextRhythm):
+   *   Comportamento clássico: espera o ponto ideal pra fill terminar
+   *   exatamente no fim do ciclo. O ritmo NOVO precisa começar do step 0
+   *   no downbeat, senão a troca soa quebrada.
+   */
+  activateFillWithTiming(variationIndex: number, mode: 'immediate' | 'cycle-end' = 'immediate'): void {
     if (!this.stateManager.isPlaying()) return;
 
     const state = this.stateManager.getState();
@@ -332,12 +376,6 @@ export class PatternEngine {
     const fillSteps = variation.steps || 16;
     const fillSpeed = variation.speed || 1;
 
-    // ═══ CÁLCULO DE ENTRY POINT E START STEP ═══
-    //
-    // Regra: a fill deve TERMINAR exatamente no fim do ciclo do main.
-    // Isso garante que ao voltar pro main, o step 0 cai no tempo certo.
-
-    const currentStep = this.stateManager.getCurrentStep();
     const nextStep = this.getNextEntryPoint();
 
     // Quantos main steps a fill inteira ocupa em tempo musical
@@ -346,26 +384,47 @@ export class PatternEngine {
     // Entry point ideal: fill começa aqui e termina exatamente no fim do ciclo
     const idealEntry = mainSteps - fillDurationInMainSteps;
 
+    const fillStepsPerMainStep = mainSpeed > 0 ? fillSpeed / mainSpeed : 1;
+
     let entryPoint: number;
     let fillStartStep: number;
+    let returnStep = 0;
 
-    if (idealEntry >= nextStep) {
-      // O ponto ideal está no futuro — agendar fill completa nesse ponto
+    if (mode === 'cycle-end' && idealEntry >= nextStep) {
+      // TROCA DE RITMO com ponto ideal no futuro: espera o ideal —
+      // fill completa terminando no fim do ciclo, ritmo novo no downbeat.
       entryPoint = idealEntry;
       fillStartStep = 0;
+    } else if (idealEntry >= nextStep) {
+      // VIRADA AVULSA com a fill cabendo inteira no que resta do ciclo:
+      // entra JÁ, toca completa, retorna pro main EM FASE.
+      entryPoint = nextStep;
+      fillStartStep = 0;
+      returnStep = (nextStep + fillDurationInMainSteps) % mainSteps;
     } else {
-      // Já passou do ponto ideal — entrar agora e tocar apenas o que cabe
+      // Fill NÃO cabe inteira até o fim do ciclo: parcial clássica —
+      // entra já tocando o pedaço final, termina no downbeat.
       entryPoint = nextStep;
       const remainingMainSteps = mainSteps - entryPoint;
-      const fillStepsPerMainStep = mainSpeed > 0 ? fillSpeed / mainSpeed : 1;
       const actualToPlay = Math.min(Math.round(remainingMainSteps * fillStepsPerMainStep), fillSteps);
-      fillStartStep = Math.max(0, fillSteps - actualToPlay);
+
+      if (mode === 'immediate' && actualToPlay < 2) {
+        // Pisou QUASE no fim do ciclo: 1 step de virada é inútil/feio.
+        // Joga a virada completa pro início do próximo ciclo, com
+        // retorno em fase quando ela terminar.
+        entryPoint = 0;
+        fillStartStep = 0;
+        returnStep = fillDurationInMainSteps % mainSteps;
+      } else {
+        fillStartStep = Math.max(0, fillSteps - actualToPlay);
+      }
     }
 
     this.stateManager.setPendingFill({
       variationIndex,
       entryPoint,
-      startStep: fillStartStep
+      startStep: fillStartStep,
+      returnStep
     });
   }
 
