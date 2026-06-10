@@ -15,11 +15,12 @@ export interface PendingPattern {
   variationIndex: number;
   entryPoint: number;
   startStep: number;
-  /** Step do MAIN pra onde voltar quando a fill terminar. 0/undefined =
-   *  downbeat (comportamento clássico). >0 = retorno em fase (fill
-   *  imediata que termina antes do fim do ciclo — o groove continua
-   *  de onde estaria, sem quebrar o compasso). */
-  returnStep?: number;
+  /** Voltas COMPLETAS adicionais da fill após o trecho inicial.
+   *  Virada imediata que não preenche sozinha o espaço até o fim do
+   *  ciclo REPETE (loop) até desembocar no downbeat — assim ela é
+   *  instantânea E sempre termina no beat 1 com o prato de retorno.
+   *  0/undefined = sem repetição (clássico). */
+  loops?: number;
 }
 
 export interface PatternSteps {
