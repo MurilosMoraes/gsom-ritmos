@@ -1160,3 +1160,249 @@ body.stage-mode .ctrl-btn-bpm {
   min-width: 40px;
   min-height: 40px;
 }
+
+/* ══════════════════════════════════════════════════════
+   REDESIGN 2026-06 — pills, bottom sheet TODOS, desktop
+   3 colunas, header refinado, saída do Modo Show
+   ══════════════════════════════════════════════════════ */
+
+/* ── Linha de pills (REPERTÓRIO | TODOS | MEUS RITMOS + ícones) ──
+   flex-wrap: com fonte gigante (acessibilidade) os botões quebram de
+   linha em vez de estourar a tela ou cortar texto. */
+.pills-row {
+  display: flex;
+  gap: 0.35rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+.pills-row .fav-edit-btn {
+  flex: 1 1 auto;
+  width: auto;
+  min-height: 40px; /* touch target acessível */
+}
+.fav-edit-btn-purple { color: rgba(139, 92, 246, 0.75) !important; }
+.fav-edit-btn-purple:hover { color: rgba(139, 92, 246, 1) !important; }
+
+/* Botões de ícone (lupa, salvar) — quadrados compactos */
+.fav-icon-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.fav-icon-btn:active { transform: scale(0.96); }
+.fav-icon-btn-green {
+  color: rgba(0, 230, 140, 0.75);
+  border-color: rgba(0, 230, 140, 0.25);
+}
+.fav-icon-btn-green:hover {
+  color: #00E68C;
+  background: rgba(0, 230, 140, 0.06);
+}
+
+/* ── Bottom sheet TODOS (até o teto) ───────────────────────────── */
+.catg-sheet {
+  max-width: 640px;
+  height: calc(100dvh - max(env(safe-area-inset-top), 12px));
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+}
+.catg-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+.catg-section { flex-shrink: 0; }
+.catg-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 0.45rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.catg-count {
+  font-size: 0.62rem;
+  color: rgba(0, 212, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+/* Scroll LATERAL por categoria — como o user pediu */
+.catg-row {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 0.3rem;
+}
+.catg-row::-webkit-scrollbar { display: none; }
+.catg-card {
+  flex: 0 0 auto;
+  padding: 0.75rem 1rem;
+  min-height: 44px; /* touch target */
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.12s, background 0.12s, transform 0.08s;
+}
+.catg-card:active { transform: scale(0.97); }
+.catg-card.active {
+  border-color: rgba(0, 212, 255, 0.55);
+  background: rgba(0, 212, 255, 0.08);
+  color: #fff;
+}
+
+/* ── Desktop ≥1024px: 3 colunas (ritmos | app | repertório) ─────── */
+.desk-panel { display: none; }
+
+@media (min-width: 1024px) {
+  #userMode.active {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr) 280px;
+    gap: 1rem;
+    align-items: start;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  .desk-panel {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0.5rem;
+    max-height: calc(100vh - 4.5rem);
+    background: rgba(10, 10, 28, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    padding: 0.85rem;
+    overflow: hidden;
+  }
+  .desk-panel-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.6rem;
+    flex-shrink: 0;
+  }
+  .desk-panel-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  /* No painel esquerdo as categorias empilham em COLUNA (sem scroll
+     lateral — desktop tem altura) */
+  .desk-panel-left .catg-row {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+  .desk-panel-left .catg-card {
+    font-size: 0.78rem;
+    padding: 0.5rem 0.7rem;
+    min-height: 36px;
+  }
+  /* Itens do repertório (painel direito) */
+  .desk-setlist-item {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    padding: 0.55rem 0.65rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.12s, background 0.12s;
+    margin-bottom: 0.3rem;
+  }
+  .desk-setlist-item.active {
+    border-color: rgba(0, 212, 255, 0.5);
+    background: rgba(0, 212, 255, 0.07);
+    color: #fff;
+  }
+  .desk-setlist-num {
+    font-size: 0.68rem;
+    color: rgba(0, 212, 255, 0.6);
+    font-variant-numeric: tabular-nums;
+    min-width: 1.2rem;
+  }
+  .desk-setlist-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .desk-empty {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.35);
+    text-align: center;
+    padding: 1.5rem 0.5rem;
+    line-height: 1.6;
+  }
+}
+/* Modo Show esconde os painéis desktop também */
+body.stage-mode .desk-panel { display: none !important; }
+@media (min-width: 1024px) {
+  body.stage-mode #userMode.active {
+    display: block;
+    max-width: 900px;
+  }
+}
+
+/* ── Header refinado ───────────────────────────────────────────── */
+.global-topbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.45rem 1rem;
+}
+
+/* ── Saída do Modo Show — SEMPRE visível no modo show ──────────────
+   Tinha gente entrando no Modo Show e não achando como sair (o switch
+   ficava discreto demais). Botão fixo, alto contraste. */
+body.stage-mode .stage-switch {
+  position: relative;
+}
+body.stage-mode .stage-switch .stage-switch-track {
+  background: rgba(249, 115, 22, 0.18) !important;
+  border-color: rgba(249, 115, 22, 0.6) !important;
+  color: #FFB020 !important;
+  box-shadow: 0 0 14px rgba(249, 115, 22, 0.25);
+}
+body.stage-mode .stage-switch .stage-switch-text::after {
+  content: " · SAIR";
+  font-weight: 800;
+}

@@ -294,6 +294,13 @@
     <main class="app-main">
       <!-- ============= MODO USUÁRIO ============= -->
       <div id="userMode" class="mode-container active">
+        <!-- Painel esquerdo DESKTOP (≥1024px): catálogo categorizado sempre
+             aberto. Escondido em mobile/tablet via CSS. -->
+        <aside class="desk-panel desk-panel-left" aria-label="Todos os ritmos">
+          <div class="desk-panel-title">Ritmos</div>
+          <div class="desk-panel-body" id="deskRhythmsBody"></div>
+        </aside>
+
         <div class="user-layout">
 
           <!-- 1. Favoritos -->
@@ -314,16 +321,26 @@
                 <span class="fav-side-name" id="favNextName">--</span>
               </button>
             </div>
-            <div style="display:flex;gap:0.35rem;width:100%;">
-              <button class="fav-edit-btn" id="setlistEditBtn" style="flex:1;">
+            <!-- Pills de navegação — REPERTÓRIO | TODOS | MEUS RITMOS + lupa + save.
+                 flex-wrap garante que com fonte gigante (acessibilidade) os
+                 botões quebram de linha em vez de estourar/cortar. -->
+            <div class="pills-row">
+              <button class="fav-edit-btn" id="setlistEditBtn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" opacity="0.7"/></svg>
                 REPERTÓRIO
               </button>
-              <button class="fav-edit-btn" id="myRhythmsBtn" style="flex:1;color:rgba(139,92,246,0.7);">
+              <button class="fav-edit-btn" id="allRhythmsBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+                TODOS
+              </button>
+              <button class="fav-edit-btn fav-edit-btn-purple" id="myRhythmsBtn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/></svg>
                 MEUS RITMOS
               </button>
-              <button class="fav-edit-btn" id="saveAsMyRhythmBtn" style="flex:0;padding:0 0.6rem;color:rgba(0,230,140,0.7);display:none;" title="Salvar como meu ritmo">
+              <button class="fav-icon-btn fav-icon-btn-green" id="rhythmSearchBtn" aria-label="Buscar ritmo">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </button>
+              <button class="fav-icon-btn fav-icon-btn-green" id="saveAsMyRhythmBtn" style="display:none;" title="Salvar como meu ritmo" aria-label="Salvar como meu ritmo">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2"/></svg>
               </button>
             </div>
@@ -434,6 +451,13 @@
           </div>
 
         </div>
+
+        <!-- Painel direito DESKTOP (≥1024px): repertório ativo sempre
+             visível. Escondido em mobile/tablet via CSS. -->
+        <aside class="desk-panel desk-panel-right" aria-label="Repertório">
+          <div class="desk-panel-title" id="deskSetlistTitle">Repertório</div>
+          <div class="desk-panel-body" id="deskSetlistBody"></div>
+        </aside>
       </div>
 
       <!-- ============= MODO ADMIN ============= -->

@@ -4392,10 +4392,18 @@ ctaUrl: '/plans?renew=true',
   private resumeFromPause(fromPedal: boolean = false): void {
     if (!this.isPaused) return;
     this.isPaused = false;
-    // Toca prato como "deixa" de retomada — facilita pro músico engatar
-    // de volta no tempo. Tocado imediatamente, ANTES do play() agendar
-    // o downbeat (que vai cair ~50ms depois pelo lookahead do scheduler).
-    this.playCymbal();
+    // Toca o PRATO DE RETORNO do ritmo como "deixa" de retomada — o mesmo
+    // som que o app usa quando a virada volta pro ritmo (consistência
+    // sonora). Antes tocava o prato avulso da interface (cymbalBuffer),
+    // que não tem nada a ver com o ritmo carregado. Fallback pro prato
+    // da interface só se o ritmo não tiver som de retorno.
+    this.audioManager.resume();
+    const returnBuf = this.stateManager.getState().fillReturnSound?.buffer;
+    if (returnBuf) {
+      this.audioManager.playSound(returnBuf, this.audioManager.getCurrentTime(), this.stateManager.getState().masterVolume);
+    } else {
+      this.playCymbal();
+    }
     // Não chama playIntroAndStart — resume direto, sem countdown
     this.stateManager.setShouldPlayStartSound(false);
 
@@ -6515,6 +6523,14 @@ ctaUrl: '/plans?renew=true',
     const myRhythmsBtn = document.getElementById('myRhythmsBtn');
     myRhythmsBtn?.addEventListener('click', () => this.showMyRhythmsModal());
 
+    // TODOS — bottom sheet fullheight com ritmos categorizados
+    const allRhythmsBtn = document.getElementById('allRhythmsBtn');
+    allRhythmsBtn?.addEventListener('click', () => this.showAllRhythmsSheet());
+
+    // Lupa na linha de pills — abre o modal de busca (mesmo do strip)
+    const rhythmSearchBtn = document.getElementById('rhythmSearchBtn');
+    rhythmSearchBtn?.addEventListener('click', () => this.showRhythmStripSearchModal());
+
     // Salvar como meu ritmo
     const saveAsBtn = document.getElementById('saveAsMyRhythmBtn');
     saveAsBtn?.addEventListener('click', () => this.showSaveRhythmModal());
@@ -6790,6 +6806,7 @@ ctaUrl: '/plans?renew=true',
       if (prevBtn) { prevBtn.disabled = true; prevBtn.style.opacity = '0.25'; }
       if (nextBtn) { nextBtn.disabled = true; nextBtn.style.opacity = '0.25'; }
       if (favBar) favBar.style.display = 'none';
+      this.renderDesktopPanels();
       return;
     }
 
@@ -6821,6 +6838,9 @@ ctaUrl: '/plans?renew=true',
       nextBtn.disabled = !hasNext;
       nextBtn.style.opacity = hasNext ? '1' : '0.25';
     }
+
+    // Painel direito do desktop (repertório) acompanha toda mudança
+    this.renderDesktopPanels();
   }
 
   // ─── Rhythm loading ─────────────────────────────────────────────────
@@ -6992,30 +7012,34 @@ ctaUrl: '/plans?renew=true',
     // são detectados por hasModalOpen() → o pedal libera o foco sozinho
     // → teclado abre normal. Mesmo padrão usado em "Meus Ritmos" e
     // "Repertório" (que já funcionam no iPhone).
-    const searchBar = document.createElement('div');
-    searchBar.className = 'rhythm-strip-search';
+    // Busca: o trigger principal virou a LUPA na pills-row (redesign).
+    // Aqui só renderiza o INDICADOR de filtro ativo (com X pra limpar)
+    // quando há query — senão nada (estado limpo, tela enxuta).
     const hasQuery = !!this.rhythmStripQuery;
-    searchBar.innerHTML = `
-      <button class="rhythm-strip-search-trigger ${hasQuery ? 'has-query' : ''}" id="rhythmStripSearchBtn" aria-label="Buscar ritmo">
-        <svg class="rhythm-strip-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <span class="rhythm-strip-search-label">${hasQuery ? this.rhythmStripQuery : 'Buscar ritmo'}</span>
-        ${hasQuery ? '<span class="rhythm-strip-search-clear-inline" id="rhythmStripSearchClearBtn" aria-label="Limpar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>' : ''}
-      </button>
-    `;
-    container.appendChild(searchBar);
+    if (hasQuery) {
+      const searchBar = document.createElement('div');
+      searchBar.className = 'rhythm-strip-search';
+      searchBar.innerHTML = `
+        <button class="rhythm-strip-search-trigger has-query" id="rhythmStripSearchBtn" aria-label="Filtro ativo">
+          <svg class="rhythm-strip-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span class="rhythm-strip-search-label">${this.rhythmStripQuery.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)}</span>
+          <span class="rhythm-strip-search-clear-inline" id="rhythmStripSearchClearBtn" aria-label="Limpar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+        </button>
+      `;
+      container.appendChild(searchBar);
 
-    const triggerBtn = searchBar.querySelector('#rhythmStripSearchBtn');
-    triggerBtn?.addEventListener('click', (e) => {
-      // Se o user tocou no X de limpar (botão dentro do botão), só limpa
-      const target = e.target as HTMLElement;
-      if (target.closest('#rhythmStripSearchClearBtn')) {
-        e.stopPropagation();
-        this.rhythmStripQuery = '';
-        this.renderRhythmStrip();
-        return;
-      }
-      this.showRhythmStripSearchModal();
-    });
+      const triggerBtn = searchBar.querySelector('#rhythmStripSearchBtn');
+      triggerBtn?.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('#rhythmStripSearchClearBtn')) {
+          e.stopPropagation();
+          this.rhythmStripQuery = '';
+          this.renderRhythmStrip();
+          return;
+        }
+        this.showRhythmStripSearchModal();
+      });
+    }
 
     // ── Filtros de categoria ──
     const categories = Object.keys(this.rhythmCategories).sort();
@@ -7082,6 +7106,9 @@ ctaUrl: '/plans?renew=true',
     }
 
     container.appendChild(cardsWrap);
+
+    // Painel esquerdo do desktop (catálogo) acompanha ritmos carregados/ativo
+    this.renderDesktopPanels();
   }
 
   /**
@@ -7212,6 +7239,146 @@ ctaUrl: '/plans?renew=true',
     // Foca o input automaticamente — o modal x-overlay é detectado pelo
     // hasModalOpen() do pedal, então o focusPedalInput não vai roubar.
     setTimeout(() => input?.focus(), 50);
+  }
+
+  // ─── TODOS os ritmos — bottom sheet fullheight categorizado ─────────
+  //
+  // Render reutilizável: o mesmo conteúdo (seções por categoria com scroll
+  // lateral de cards) alimenta o bottom sheet (mobile) e o painel lateral
+  // esquerdo do desktop (≥1024px).
+
+  private buildCategorizedRhythmList(
+    container: HTMLElement,
+    onPick: (name: string, path: string) => void,
+  ): void {
+    const esc = (s: string): string =>
+      s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+    const cats = Object.keys(this.rhythmCategories).sort();
+    const sections: Array<{ title: string; rhythms: Array<{ name: string; path: string }> }> = [];
+
+    for (const cat of cats) {
+      const names = this.rhythmCategories[cat] || [];
+      const rhythms = names.map(n => ({
+        name: n.replace(/\.json$/, ''),
+        path: `/rhythm/${n}`,
+      }));
+      if (rhythms.length) sections.push({ title: cat, rhythms });
+    }
+    // Ritmos sem categoria (se houver)
+    const categorized = new Set(cats.flatMap(c => this.rhythmCategories[c] || []));
+    const uncategorized = this.availableRhythms.filter(r => !categorized.has(`${r.name}.json`));
+    if (uncategorized.length) sections.push({ title: 'Outros', rhythms: uncategorized });
+
+    container.innerHTML = sections.map(sec => `
+      <div class="catg-section">
+        <div class="catg-title">${esc(sec.title)} <span class="catg-count">${sec.rhythms.length}</span></div>
+        <div class="catg-row">
+          ${sec.rhythms.map(r => `
+            <button class="catg-card ${r.name === this.currentRhythmName ? 'active' : ''}"
+                    data-name="${esc(r.name)}" data-path="${esc(r.path)}">
+              ${esc(r.name)}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll<HTMLButtonElement>('.catg-card').forEach(btn => {
+      btn.addEventListener('click', () => onPick(btn.dataset.name!, btn.dataset.path!));
+    });
+  }
+
+  private showAllRhythmsSheet(): void {
+    const overlay = document.createElement('div');
+    // x-overlay: hasModalOpen() do pedal detecta → foco liberado dentro
+    // do sheet. __refocusPedal no close devolve o foco (regra sagrada).
+    overlay.className = 'x-overlay';
+
+    const close = (): void => {
+      overlay.classList.remove('active');
+      overlay.classList.add('x-exit');
+      (window as any).__refocusPedal?.();
+      setTimeout(() => overlay.remove(), 220);
+    };
+
+    overlay.innerHTML = `
+      <div class="x-sheet catg-sheet" role="dialog" aria-label="Todos os ritmos">
+        <div class="x-grip"></div>
+        <div class="x-head">
+          <div>
+            <h2 class="x-head-title">Todos os ritmos</h2>
+            <div class="x-head-sub">${this.availableRhythms.length} ritmos por categoria</div>
+          </div>
+          <button class="x-close" id="catgClose" aria-label="Fechar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="x-body catg-body"></div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    overlay.querySelector('#catgClose')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    this.buildCategorizedRhythmList(
+      overlay.querySelector('.catg-body') as HTMLElement,
+      async (name, path) => {
+        close();
+        await this.loadRhythm(name, path);
+        this.renderRhythmStrip();
+      },
+    );
+  }
+
+  // ─── Painéis laterais DESKTOP (≥1024px) ─────────────────────────────
+  //
+  // Web/PC tem espaço sobrando: esquerda = catálogo categorizado sempre
+  // aberto; direita = repertório ativo. Centro continua o app (igual
+  // mobile). Tablets (<1024px) não veem os painéis (CSS esconde).
+
+  private renderDesktopPanels(): void {
+    const left = document.getElementById('deskRhythmsBody');
+    if (left) {
+      this.buildCategorizedRhythmList(left, async (name, path) => {
+        await this.loadRhythm(name, path);
+        this.renderRhythmStrip();
+      });
+    }
+
+    const right = document.getElementById('deskSetlistBody');
+    if (right) {
+      const items = this.setlistManager.getItems();
+      const cur = this.setlistManager.getCurrentIndex();
+      const esc = (s: string): string =>
+        s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+      if (items.length === 0) {
+        right.innerHTML = '<div class="desk-empty">Repertório vazio.<br>Monte no botão REPERTÓRIO.</div>';
+      } else {
+        right.innerHTML = items.map((item, i) => `
+          <button class="desk-setlist-item ${i === cur ? 'active' : ''}" data-idx="${i}">
+            <span class="desk-setlist-num">${i + 1}</span>
+            <span class="desk-setlist-name">${esc(item.name)}</span>
+          </button>
+        `).join('');
+        right.querySelectorAll<HTMLButtonElement>('.desk-setlist-item').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const idx = parseInt(btn.dataset.idx!, 10);
+            const item = this.setlistManager.goTo(idx);
+            if (item) {
+              if (this.stateManager.isPlaying()) this.stop();
+              await this.loadSetlistItem(item);
+            }
+          });
+        });
+      }
+      // Nome do repertório ativo no título do painel
+      const title = document.getElementById('deskSetlistTitle');
+      if (title) title.textContent = this.setlistManager.getName();
+    }
   }
 
   private updateRhythmStripActive(): void {
