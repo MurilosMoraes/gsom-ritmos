@@ -402,22 +402,26 @@ export class PatternEngine {
       entryPoint = Math.max(0, idealEntry);
       fillStartStep = 0;
     } else {
-      // VIRADA IMEDIATA: entra no próximo step, SEMPRE termina no
-      // downbeat. needed = quantos fill-steps cobrem o que resta do
-      // ciclo; se precisa de mais que uma volta, a fill LOOPA:
-      // [pedaço parcial][voltas completas] → acaba exata no beat 1.
+      // VIRADA IMEDIATA: entra no próximo step e SEMPRE termina no
+      // downbeat — quando o material da fill cobre o que resta do ciclo.
       entryPoint = nextStep;
       const remainingMainSteps = mainSteps - entryPoint;
       const needed = Math.max(1, Math.round(remainingMainSteps * fillStepsPerMainStep));
-      const fullLoops = Math.floor(needed / fillSteps);
-      const partial = needed % fillSteps;
 
-      if (partial > 0) {
-        fillStartStep = fillSteps - partial; // toca o pedaço final primeiro
-        loops = fullLoops;                   // depois as voltas completas
+      if (needed > fillSteps) {
+        // Pisou CEDO (resta mais ciclo que a fill tem de material):
+        // groove continua e a virada COMPLETA (única) entra no ponto
+        // exato pra desembocar no beat 1 — como baterista real.
+        //
+        // v2 preenchia esse caso LOOPANDO a fill ([parcial][completa]).
+        // REJEITADO em teste: pisando no tempo 1, o parcial saía quase
+        // do tamanho da fill inteira e soava como VIRADA DUPLA
+        // ("termina a primeira e faz mais uma"). Não reintroduzir.
+        entryPoint = idealEntry; // garantido > nextStep neste ramo
+        fillStartStep = 0;
       } else {
-        fillStartStep = 0;                   // alinhou exato em voltas inteiras
-        loops = Math.max(0, fullLoops - 1);
+        // Cabe em uma volta: imediata, do pedaço final, acaba no 1.
+        fillStartStep = fillSteps - needed;
       }
     }
 
