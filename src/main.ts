@@ -77,6 +77,9 @@ class RhythmSequencer {
   private pedalEnd = '';        // tecla pra botão 4 (finalização)
   private pedalMapperOpen = false;
   private installPrompt: any = null;
+  // Unlock do AudioContext (iOS) — re-armável quando o contexto cai
+  private unlockListenersArmed = false;
+  private rearmUnlockListeners: () => void = () => {};
 
   constructor() {
     // DebugOverlay desativado em produção — botão 🐛 fixo competia com
@@ -84,8 +87,22 @@ class RhythmSequencer {
     // descomenta a linha abaixo + rebuilda.
     // DebugOverlay.init();
 
-    // Inicializar contexto de áudio
-    this.audioContext = new AudioContext();
+    // Inicializar contexto de áudio.
+    //
+    // latencyHint 'playback' no MOBILE: o default ('interactive') pede o
+    // menor buffer de áudio possível — em aparelhos com chip de áudio
+    // fraco o audio thread vive no limite do deadline e qualquer competição
+    // momentânea (GC, render, notificação, bluetooth) estoura o prazo →
+    // buffer underrun → ESTRALO aleatório. Por isso uns celulares estralavam
+    // e outros não. 'playback' = buffer ~4x maior = folga pro audio thread.
+    // Custo: ~50-150ms de latência de saída — invisível pra playback
+    // contínuo agendado via audio clock (sequenciador), só perceptível em
+    // estímulo-resposta direto (célula PRATO soa ~0,1s após o toque).
+    // Desktop mantém 'interactive' (hardware dá conta, latência menor).
+    const isMobileCtx = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    this.audioContext = new AudioContext(
+      isMobileCtx ? { latencyHint: 'playback' } : undefined
+    );
 
     // ═══════════════════════════════════════════════════════════════════════
     // BACKGROUND AUDIO — defesa em profundidade pro WebKit.
@@ -177,6 +194,7 @@ class RhythmSequencer {
       unlockAudio();
       if ((this.audioContext.state as string) === 'running') {
         unlockEvents.forEach(ev => document.removeEventListener(ev, onUnlock));
+        this.unlockListenersArmed = false;
         // ═══════════════════════════════════════════════════════════════════
         // SILENT OSCILLATOR — só iOS — mantém AudioContext "warm"
         // ═══════════════════════════════════════════════════════════════════
@@ -209,6 +227,22 @@ class RhythmSequencer {
       }
     };
     unlockEvents.forEach(ev => document.addEventListener(ev, onUnlock));
+    this.unlockListenersArmed = true;
+
+    // Re-armar os unlock listeners quando o contexto cair de novo.
+    // Sem isso, após o 1º unlock os listeners morrem ({ removeEventListener })
+    // e se o iOS derrubar o contexto pra 'interrupted' (sair/voltar do app,
+    // ligação, Siri) e o resume() programático falhar, NÃO sobra nenhum
+    // caminho de user gesture pra destravar — app fica mudo até o user
+    // sair e voltar de novo na sorte. Bug reportado: "iOS nem sempre toca".
+    //
+    // ⚠️ PEDAL: re-arma os MESMOS listeners de sempre (bubbling, sem
+    // capture) — não mexe em foco, não interage com o pedalInput.
+    this.rearmUnlockListeners = () => {
+      if (this.unlockListenersArmed) return;
+      unlockEvents.forEach(ev => document.addEventListener(ev, onUnlock));
+      this.unlockListenersArmed = true;
+    };
 
     // ═══════════════════════════════════════════════════════════════════════
     // MODAL DE INICIALIZAÇÃO iOS — garante unlock com botão explícito.
@@ -290,6 +324,14 @@ class RhythmSequencer {
         // Tenta resume silencioso. Se falhar (iOS exige user gesture),
         // o silent unlock no próximo touch vai pegar.
         this.audioContext.resume().catch(() => {});
+        // Se o resume programático não pegou em 600ms, re-arma os unlock
+        // listeners — assim QUALQUER toque na tela destrava de novo.
+        // (Eles se auto-removem de novo quando o contexto voltar a rodar.)
+        setTimeout(() => {
+          if ((this.audioContext.state as string) !== 'running') {
+            this.rearmUnlockListeners();
+          }
+        }, 600);
       }
     });
 
@@ -400,6 +442,23 @@ class RhythmSequencer {
           // teste pra ver se iOS se recupera sozinho como web/Android.
           // Se iOS ficar mudo ou fora de fase, voltamos o tratamento.
           this.audioManager.resume();
+        }
+        // iOS: sair de 'interrupted' às vezes rejeita o 1º resume() e só
+        // aceita re-tentativas espaçadas (timing interno do AVAudioSession).
+        // Retry leve por até 3s. Se mesmo assim não pegar, os unlock
+        // listeners (re-armados via statechange) destravam no próximo toque.
+        // Retry roda MESMO sem isPlaying — o user pode dar play logo após
+        // voltar e o contexto precisa estar são.
+        if (isIOSVis && (this.audioContext.state as string) !== 'running') {
+          const retryStart = performance.now();
+          const retryTimer = window.setInterval(() => {
+            const st = this.audioContext.state as string;
+            if (st === 'running' || performance.now() - retryStart > 3000) {
+              clearInterval(retryTimer);
+              return;
+            }
+            this.audioContext.resume().catch(() => {});
+          }, 250);
         }
         backgroundStartedAt = 0;
       }
@@ -2292,26 +2351,35 @@ ctaUrl: '/plans?renew=true',
       'ArrowLeft': 37, 'ArrowUp': 38, 'ArrowRight': 39, 'ArrowDown': 40,
       'Space': 32, ' ': 32, 'Enter': 13, 'PageUp': 33, 'PageDown': 34,
     };
-    const pedalLeftCode = KEY_CODES[this.pedalLeft] || 0;
-    const pedalRightCode = KEY_CODES[this.pedalRight] || 0;
-    const pedalPlayPauseCode = this.pedalPlayPause ? (KEY_CODES[this.pedalPlayPause] || 0) : 0;
-    const pedalEndCode = this.pedalEnd ? (KEY_CODES[this.pedalEnd] || 0) : 0;
 
     // capture:true + passive:false — essencial no iOS pra capturar antes do scroll do browser
     window.addEventListener('keydown', (e) => {
       // Se o mapper de pedal está aberto, deixar ele capturar
       if (this.pedalMapperOpen) return;
 
+      // Codes calculados POR EVENTO (4 lookups, custo zero) — antes eram
+      // capturados 1x no boot e o mapeamento novo do "Mapear pedal" só
+      // valia após recarregar a página (daí o aviso "Recarregue se não
+      // funcionar"). Agora o save do mapper vale na hora.
+      const pedalLeftCode = KEY_CODES[this.pedalLeft] || 0;
+      const pedalRightCode = KEY_CODES[this.pedalRight] || 0;
+      const pedalPlayPauseCode = this.pedalPlayPause ? (KEY_CODES[this.pedalPlayPause] || 0) : 0;
+      const pedalEndCode = this.pedalEnd ? (KEY_CODES[this.pedalEnd] || 0) : 0;
+
       // Identificar via keyCode (funciona em TUDO, inclusive pedais BT)
       // Fallback pra e.code/e.key só se keyCode não veio
       const kc = e.keyCode || e.which || 0;
       const keyId = e.code || e.key || '';
 
-      // Se um input/select está focado, só processar se for tecla de pedal/seta
+      // Se um input/select está focado, só processar se for tecla de pedal/seta.
+      // Up/Down (38/40) só contam como pedal se estiverem MAPEADOS (3º/4º
+      // botão ou esquerdo/direito custom) — sem fallback fixo.
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
         const isPedal = kc === pedalLeftCode || kc === pedalRightCode ||
-                        kc === 37 || kc === 38 || kc === 39 || kc === 40 ||
+                        (pedalPlayPauseCode > 0 && kc === pedalPlayPauseCode) ||
+                        (pedalEndCode > 0 && kc === pedalEndCode) ||
+                        kc === 37 || kc === 39 ||
                         keyId === this.pedalLeft || keyId === this.pedalRight;
         if (isPedal) {
           target.blur();
@@ -2338,7 +2406,9 @@ ctaUrl: '/plans?renew=true',
       // Pedal expandido: 3º botão (play/pause) e 4º botão (end)
       if (this.pedalCount >= 3 && this.pedalPlayPause &&
           (kc === pedalPlayPauseCode || keyId === this.pedalPlayPause)) {
-        this.togglePauseInstant();
+        // fromPedal=true → o CONTINUAR compensa a latência BT do pedal
+        // além da latência de saída (ver resumeFromPause)
+        this.togglePauseInstant(true);
         return;
       }
       if (this.pedalCount >= 4 && this.pedalEnd &&
@@ -2348,10 +2418,16 @@ ctaUrl: '/plans?renew=true',
         return;
       }
 
-      // Todas as setas ativam pedal (pedais BT enviam Up/Down ou Left/Right)
-      // Down/Left = pedal esquerdo, Up/Right = pedal direito
-      if (kc === 40 || kc === 37) { this.handlePedalLeft(); return; }  // ArrowDown(40) ArrowLeft(37)
-      if (kc === 38 || kc === 39) { this.handlePedalRight(); return; } // ArrowUp(38) ArrowRight(39)
+      // Fallback: SÓ esquerda/direita ativam o pedal por padrão.
+      //
+      // ⚠️ Up/Down REMOVIDOS do fallback (2026-06): pedais de 4 botões
+      // enviam as 4 setas — Up/Down caíam aqui e DUPLICAVAM os comandos
+      // de esquerda/direita em vez de ficarem livres pro mapeamento do
+      // 3º/4º botão (play-pause / finalização). Quem tem pedal de 2 botões
+      // que só envia Up/Down mapeia em "Mapear pedal" (vira pedalLeft/
+      // pedalRight custom e é tratado na checagem de prioridade acima).
+      if (kc === 37) { this.handlePedalLeft(); return; }  // ArrowLeft(37)
+      if (kc === 39) { this.handlePedalRight(); return; } // ArrowRight(39)
 
       // Space = Play/Pause (só se NÃO é pedal mapeado)
       if (kc === 32 || keyId === 'Space' || keyId === ' ') {
@@ -4313,7 +4389,7 @@ ctaUrl: '/plans?renew=true',
     this.updatePauseButtonUI();
   }
 
-  private resumeFromPause(): void {
+  private resumeFromPause(fromPedal: boolean = false): void {
     if (!this.isPaused) return;
     this.isPaused = false;
     // Toca prato como "deixa" de retomada — facilita pro músico engatar
@@ -4322,7 +4398,27 @@ ctaUrl: '/plans?renew=true',
     this.playCymbal();
     // Não chama playIntroAndStart — resume direto, sem countdown
     this.stateManager.setShouldPlayStartSound(false);
-    this.play();
+
+    // ─── Compensação de latência no CONTINUAR ───────────────────────
+    // O músico tá cantando no tempo; o atraso entre a pisada e o som
+    // sair (BT do pedal + buffer de saída de áudio) deixava o ritmo
+    // atrasado em relação à voz. Compensa deslocando a grade pra trás:
+    //
+    // 1. Saída de áudio (DINÂMICO): outputLatency é reportado pelo
+    //    browser (Chrome/Android); baseLatency é o fallback (Safari).
+    //    Com latencyHint 'playback' esse valor é significativo (~0.1s+).
+    // 2. Pedal BT (estimativa): keydown chega ~30-60ms após a pisada
+    //    física. Não-mensurável via JS — constante calibrável em
+    //    localStorage 'gdrums_pedal_latency_ms' (default 60). Só soma
+    //    quando o resume veio do pedal (botão de tela não tem BT).
+    const ctx = this.audioContext as AudioContext & { outputLatency?: number };
+    const outputLatency = ctx.outputLatency || ctx.baseLatency || 0;
+    let pedalLatency = 0;
+    if (fromPedal) {
+      const stored = parseInt(localStorage.getItem('gdrums_pedal_latency_ms') || '60', 10);
+      pedalLatency = (isNaN(stored) ? 60 : Math.max(0, Math.min(300, stored))) / 1000;
+    }
+    this.play(outputLatency + pedalLatency);
     this.updatePauseButtonUI();
   }
 
@@ -4335,9 +4431,9 @@ ctaUrl: '/plans?renew=true',
   }
 
   /** Toggle exclusivo de pause/resume — botão e pedal usam esse. */
-  private togglePauseInstant(): void {
+  private togglePauseInstant(fromPedal: boolean = false): void {
     if (this.isPaused) {
-      this.resumeFromPause();
+      this.resumeFromPause(fromPedal);
     } else if (this.stateManager.isPlaying()) {
       this.pauseInstant();
     } else if (this.hasRhythmLoaded()) {
@@ -4398,6 +4494,17 @@ ctaUrl: '/plans?renew=true',
     // No modo silencioso do iOS, o AudioContext roda mas sem output real
     try {
       const ctx = this.audioContext;
+
+      // ⚠️ Só faz sentido medir com o contexto REALMENTE rodando.
+      // 'suspended'/'interrupted' (ex: app acabou de voltar do background,
+      // resume ainda em andamento) também produz sum=0 e gerava AVISO
+      // FALSO de "tá no silencioso" com a chave desligada. Nesse caso,
+      // libera pra re-checar num play futuro com o contexto são.
+      if ((ctx.state as string) !== 'running') {
+        this.silentModeChecked = false;
+        return;
+      }
+
       const oscillator = ctx.createOscillator();
       const analyser = ctx.createAnalyser();
       const gain = ctx.createGain();
@@ -4423,7 +4530,14 @@ ctaUrl: '/plans?renew=true',
         gain.disconnect();
         analyser.disconnect();
 
-        // Se sum é 0, o iOS está em modo silencioso
+        // Mesma guarda na hora da MEDIÇÃO: se o contexto caiu nesses
+        // 200ms (minimizou, ligação), sum=0 não significa silencioso.
+        if ((ctx.state as string) !== 'running') {
+          this.silentModeChecked = false;
+          return;
+        }
+
+        // Se sum é 0 com contexto rodando, o iOS está em modo silencioso
         if (sum === 0 && !this.silentModeWarningShown) {
           this.silentModeWarningShown = true;
           this.showSilentModeWarning();
@@ -4462,7 +4576,7 @@ ctaUrl: '/plans?renew=true',
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   }
 
-  private play(): void {
+  private play(latencyCompensation: number = 0): void {
     // IMPORTANTE: resume() DEVE ser chamado sincronamente dentro do gesto do usuário.
     // No iOS, qualquer await antes do resume() quebra a cadeia de gesto
     // e o AudioContext fica permanentemente suspenso (mudo).
@@ -4481,7 +4595,7 @@ ctaUrl: '/plans?renew=true',
     this.uiManager.updateStatusUI(activePattern);
     this.uiManager.updatePerformanceGrid();
 
-    this.scheduler.start();
+    this.scheduler.start(latencyCompensation);
 
     // Detectar modo silencioso no iOS (chave lateral)
     if (!this.silentModeChecked && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
@@ -4671,10 +4785,20 @@ ctaUrl: '/plans?renew=true',
     this.countdownOverlay.style.display = 'flex';
     if (this.countdownNumEl) {
       this.countdownNumEl.textContent = String(beatNum);
-      // Reiniciar animação: remover + reflow + readicionar classe
-      this.countdownNumEl.classList.remove('countdown-animate');
-      void this.countdownNumEl.offsetHeight;
-      this.countdownNumEl.classList.add('countdown-animate');
+      // Web Animations API: reinicia a animação SEM o truque de
+      // remove-classe + offsetHeight + add-classe. O offsetHeight forçava
+      // um reflow síncrono do documento INTEIRO a cada beat — somava com a
+      // rasterização do número gigante e travava iPhone/iPad mais fracos.
+      // el.animate() cancela/reinicia direto no compositor, zero reflow.
+      this.countdownNumEl.animate(
+        [
+          { opacity: 0, transform: 'scale(0.4)' },
+          { opacity: 1, transform: 'scale(1.1)', offset: 0.3 },
+          { opacity: 1, transform: 'scale(1)', offset: 0.6 },
+          { opacity: 0.15, transform: 'scale(0.95)' },
+        ],
+        { duration: 450, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' }
+      );
     }
   }
 
@@ -4702,37 +4826,25 @@ ctaUrl: '/plans?renew=true',
         background: rgba(2, 0, 15, 0.4);
       }
 
-      /* iOS Safari crashava com filter:drop-shadow + background-clip:text +
-         animação simultânea — rendering em GPU surface estourava limite de
-         textura no WebKit (mesmo em iPhone 16). Solução: text-shadow (CPU,
-         sem inflar surface) + animar só transform/opacity (cheap, GPU compose). */
+      /* HISTÓRICO DE CRASH — iOS Safari crashava/travava com efeitos pesados
+         neste número. Tentativa 1: filter:drop-shadow + background-clip:text
+         → crash (GPU surface estourava). Tentativa 2: text-shadow 30/60px +
+         background-clip:text → ainda travava iPhone/iPad (re-rasterização da
+         textura gigante a cada beat).
+         REGRA ATUAL (não regredir): cor SÓLIDA (sem background-clip:text),
+         UM text-shadow leve no máximo, glifo ≤ 12rem, animação via WAAPI
+         (transform/opacity só — compositor puro, sem reflow). */
       .countdown-num {
-        font-size: clamp(8rem, 30vw, 16rem);
+        font-size: clamp(7rem, 24vw, 12rem);
         font-weight: 900;
-        color: transparent;
-        background: linear-gradient(135deg, #F97316 0%, #FF6B35 40%, #FFB020 100%);
-        -webkit-background-clip: text;
-        background-clip: text;
+        color: #FF8C35;
         line-height: 1;
         opacity: 0;
         transform: scale(0.5);
-        text-shadow:
-          0 0 30px rgba(249, 115, 22, 0.55),
-          0 0 60px rgba(249, 115, 22, 0.25);
+        text-shadow: 0 0 24px rgba(249, 115, 22, 0.45);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
         letter-spacing: -0.05em;
         will-change: transform, opacity;
-      }
-
-      .countdown-num.countdown-animate {
-        animation: countdownPop 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      }
-
-      @keyframes countdownPop {
-        0%   { opacity: 0;    transform: scale(0.4); }
-        30%  { opacity: 1;    transform: scale(1.1); }
-        60%  { opacity: 1;    transform: scale(1);   }
-        100% { opacity: 0.15; transform: scale(0.95); }
       }
     `;
     document.head.appendChild(style);

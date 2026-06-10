@@ -42,6 +42,14 @@
   --transition: all 0.3s ease;
 }
 
+html {
+  /* Mata o double-tap-to-zoom em TODA a superfície (iOS Safari + WKWebView).
+     Antes só botões/células tinham touch-action:manipulation — tocar rápido
+     perto deles (gaps, labels, fundo) dava zoom acidental no palco.
+     'manipulation' mantém scroll/pan normais, só remove double-tap zoom. */
+  touch-action: manipulation;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif;
   background: var(--bg-dark);
@@ -53,6 +61,7 @@ body {
   -webkit-font-smoothing: antialiased;
   position: relative;
   overflow-x: hidden;
+  touch-action: manipulation;
 }
 
 /* Background com orbs animados */

@@ -16,7 +16,12 @@
     src="https://www.facebook.com/tr?id=796553853446469&ev=PageView&noscript=1"/></noscript>
   <!-- End Meta Pixel -->
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- maximum-scale=1 + user-scalable=no: trava pinch/double-tap zoom no
+       WKWebView (Capacitor). Em app de performance ao vivo, zoom acidental
+       tocando células rápido é desastre de palco. Safari web ignora
+       user-scalable por acessibilidade — lá quem cobre é o
+       touch-action:manipulation global no CSS. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>GDrums — Baterista Virtual Compatível com Pedal Bluetooth | 100 Ritmos</title>
   <meta name="description" content="GDrums é um sequenciador de ritmos e baterista virtual para músicos tocarem ao vivo. 100 ritmos brasileiros (vaneira, sertanejo, gospel, forró, rock), suporte a pedal Bluetooth, iOS e Android. Teste 48h grátis.">
   <meta name="author" content="Murilo Moraes, Staner Goulart">

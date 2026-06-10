@@ -204,10 +204,12 @@ export class SetlistEditorUI {
       });
     });
 
-    // Painel: Setlist atual
+    // Painel: Setlist atual — com seletor de MÚLTIPLOS repertórios.
+    // User toca na igreja, no pagode, no sertanejo — cada um tem o seu.
     const setlistPanel = document.createElement('div');
     setlistPanel.className = 'sle-panel sle-setlist';
     setlistPanel.innerHTML = `
+      <div class="sle-setlists-bar"></div>
       <div class="sle-panel-header">
         <span class="sle-panel-title">Seu repertório</span>
         <button class="sle-clear-btn">Limpar</button>
@@ -220,6 +222,19 @@ export class SetlistEditorUI {
       this.renderSetlist(setlistPanel.querySelector('.sle-setlist-list')!);
       this.renderCatalog(catalogPanel.querySelector('.sle-catalog-list')!, searchInput.value);
     });
+
+    // Render dos chips de repertórios (troca/cria/renomeia/exclui)
+    this.renderSetlistsBar(
+      setlistPanel.querySelector('.sle-setlists-bar') as HTMLElement,
+      () => {
+        // Após trocar/criar/excluir repertório: re-render das duas listas
+        this.renderSetlist(setlistPanel.querySelector('.sle-setlist-list')!);
+        this.renderCatalog(catalogPanel.querySelector('.sle-catalog-list')!, searchInput.value);
+        // E atualiza os tabs mobile (contagem)
+        const countEl = header.querySelector('.sle-tab-count');
+        if (countEl) countEl.textContent = String(this.setlistManager?.getItems().length || 0);
+      }
+    );
 
     body.append(catalogPanel, setlistPanel);
     container.append(header, body);
@@ -245,6 +260,128 @@ export class SetlistEditorUI {
     // Animate in
     void this.overlay.offsetHeight;
     this.overlay.classList.add('sle-visible');
+  }
+
+  // ─── Barra de múltiplos repertórios ─────────────────────────────────
+  //
+  // Chips: tap no inativo troca; tap no ativo abre edição inline
+  // (renomear/excluir); "+" cria novo (até MAX). Inputs aqui funcionam
+  // no iPhone porque o sle-overlay é detectado pelo hasModalOpen() do
+  // pedal (o pedal libera o foco enquanto o editor está aberto).
+
+  private renderSetlistsBar(container: HTMLElement, onSwitched: () => void): void {
+    const mgr = this.setlistManager;
+    if (!mgr || typeof (mgr as any).getSetlists !== 'function') {
+      container.style.display = 'none';
+      return;
+    }
+
+    const lists = mgr.getSetlists();
+    const max = mgr.getMaxSetlists();
+
+    container.innerHTML = `
+      <div class="sle-setlists-chips">
+        ${lists.map(l => `
+          <button class="sle-setlist-chip ${l.active ? 'active' : ''}" data-setlist-id="${l.id}">
+            <span class="sle-setlist-chip-name">${this.escapeHtml(l.name)}</span>
+            <span class="sle-setlist-chip-count">${l.count}</span>
+            ${l.active ? '<svg class="sle-setlist-chip-edit" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>' : ''}
+          </button>
+        `).join('')}
+        ${lists.length < max
+          ? '<button class="sle-setlist-chip sle-setlist-new" aria-label="Novo repertório"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Novo</button>'
+          : ''}
+      </div>
+    `;
+
+    // Tap nos chips
+    container.querySelectorAll<HTMLElement>('[data-setlist-id]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const id = chip.dataset.setlistId!;
+        const isActive = chip.classList.contains('active');
+        if (!isActive) {
+          mgr.switchSetlist(id);
+          this.renderSetlistsBar(container, onSwitched);
+          onSwitched();
+        } else {
+          // Chip ativo: abre edição inline (renomear/excluir)
+          this.openSetlistEditInline(container, id, onSwitched);
+        }
+      });
+    });
+
+    // Criar novo
+    container.querySelector('.sle-setlist-new')?.addEventListener('click', () => {
+      const id = mgr.createSetlist(`Repertório ${lists.length + 1}`);
+      if (!id) return;
+      this.renderSetlistsBar(container, onSwitched);
+      onSwitched();
+      // Abre rename na hora — user já dá o nome certo ("Igreja", "Pagode"...)
+      this.openSetlistEditInline(container, id, onSwitched);
+    });
+  }
+
+  /** Edição inline do repertório: input pra renomear + excluir + cancelar. */
+  private openSetlistEditInline(container: HTMLElement, id: string, onSwitched: () => void): void {
+    const mgr = this.setlistManager!;
+    const lists = mgr.getSetlists();
+    const current = lists.find(l => l.id === id);
+    if (!current) return;
+    const canDelete = lists.length > 1;
+
+    container.innerHTML = `
+      <div class="sle-setlist-edit">
+        <input type="text" class="sle-setlist-edit-input" value="${this.escapeHtml(current.name)}" maxlength="40" autocomplete="off" />
+        <button class="sle-setlist-edit-save" aria-label="Salvar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+        ${canDelete ? `<button class="sle-setlist-edit-delete" aria-label="Excluir repertório">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>` : ''}
+        <button class="sle-setlist-edit-cancel" aria-label="Cancelar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    `;
+
+    const input = container.querySelector('.sle-setlist-edit-input') as HTMLInputElement;
+    const save = () => {
+      const name = input.value.trim();
+      if (name) mgr.renameSetlist(id, name);
+      this.renderSetlistsBar(container, onSwitched);
+      onSwitched();
+    };
+
+    container.querySelector('.sle-setlist-edit-save')?.addEventListener('click', save);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); save(); }
+      if (e.key === 'Escape') { this.renderSetlistsBar(container, onSwitched); }
+    });
+    container.querySelector('.sle-setlist-edit-cancel')?.addEventListener('click', () => {
+      this.renderSetlistsBar(container, onSwitched);
+    });
+    container.querySelector('.sle-setlist-edit-delete')?.addEventListener('click', () => {
+      // Dupla confirmação leve: troca o botão por "confirmar?" no 1º tap
+      const btn = container.querySelector('.sle-setlist-edit-delete') as HTMLElement;
+      if (!btn.dataset.confirming) {
+        btn.dataset.confirming = '1';
+        btn.innerHTML = '<span style="font-size:0.7rem;font-weight:700;">Excluir?</span>';
+        btn.classList.add('sle-setlist-edit-delete-confirm');
+        return;
+      }
+      mgr.deleteSetlist(id);
+      this.renderSetlistsBar(container, onSwitched);
+      onSwitched();
+    });
+
+    // Foco no input com seleção do texto (renomeia rápido).
+    // Funciona no iPhone: sle-overlay tá no hasModalOpen() → pedal não rouba.
+    input.focus();
+    input.select();
+  }
+
+  private escapeHtml(s: string): string {
+    return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
   }
 
   private renderCatalog(container: HTMLElement, filter: string): void {
@@ -543,6 +680,100 @@ export class SetlistEditorUI {
     const css = document.createElement('style');
     css.id = 'sle-styles';
     css.textContent = `
+      /* ── Barra de múltiplos repertórios ──────────────────────────── */
+      .sle-setlists-bar {
+        padding: 0.6rem 0.85rem 0;
+        flex-shrink: 0;
+      }
+      .sle-setlists-chips {
+        display: flex;
+        gap: 0.4rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 0.25rem;
+      }
+      .sle-setlists-chips::-webkit-scrollbar { display: none; }
+      .sle-setlist-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.45rem 0.7rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 0.76rem;
+        font-weight: 600;
+        font-family: inherit;
+        white-space: nowrap;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: all 0.15s;
+        flex-shrink: 0;
+      }
+      .sle-setlist-chip.active {
+        background: rgba(0, 212, 255, 0.1);
+        border-color: rgba(0, 212, 255, 0.45);
+        color: #fff;
+      }
+      .sle-setlist-chip-count {
+        font-size: 0.65rem;
+        opacity: 0.55;
+        font-variant-numeric: tabular-nums;
+      }
+      .sle-setlist-chip-edit { opacity: 0.55; margin-left: 0.1rem; }
+      .sle-setlist-new {
+        border-style: dashed;
+        color: rgba(0, 230, 140, 0.8);
+        border-color: rgba(0, 230, 140, 0.3);
+      }
+      .sle-setlist-edit {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+      }
+      .sle-setlist-edit-input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.5rem 0.7rem;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 212, 255, 0.4);
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        font-size: 0.85rem;
+        font-family: inherit;
+        outline: none;
+      }
+      .sle-setlist-edit button {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.7);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        flex-shrink: 0;
+        font-family: inherit;
+      }
+      .sle-setlist-edit-save {
+        border-color: rgba(0, 230, 140, 0.4) !important;
+        color: #00E68C !important;
+      }
+      .sle-setlist-edit-delete {
+        border-color: rgba(255, 68, 102, 0.35) !important;
+        color: #ff6b83 !important;
+      }
+      .sle-setlist-edit-delete-confirm {
+        width: auto !important;
+        padding: 0 0.6rem;
+        background: rgba(255, 68, 102, 0.15) !important;
+      }
+
       .sle-overlay {
         position: fixed;
         inset: 0;

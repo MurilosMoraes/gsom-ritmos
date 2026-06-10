@@ -107,7 +107,12 @@ class DemoPlayer {
       return;
     }
 
-    this.audioContext = new AudioContext();
+    // latencyHint 'playback' no mobile — mesmo fix do app principal:
+    // buffer maior elimina estralos (underrun) em aparelhos com áudio fraco.
+    const isMobileCtx = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    this.audioContext = new AudioContext(
+      isMobileCtx ? { latencyHint: 'playback' } : undefined
+    );
     this.stateManager = new StateManager();
     // Demo é web-only: força WebAudioEngine direto (sem flag, sem nativo).
     this.audioManager = new WebAudioEngine(this.audioContext);

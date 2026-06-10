@@ -63,9 +63,27 @@ export class Scheduler {
     this.updateStepCallback = callback;
   }
 
-  start(): void {
+  /**
+   * @param latencyCompensation segundos a "voltar no tempo" na grade.
+   *
+   * Compensação de latência do pedal BT no CONTINUAR (pause/resume):
+   * quem pisa no pedal cantando percebe o atraso (BT ~30-60ms + saída de
+   * áudio ~50-150ms com latencyHint playback) e o ritmo volta FORA do
+   * tempo da voz. A ideia (analogia do dono): "se o áudio tem 1000s e o
+   * delay é 50, começa do segundo 50" — deslocamos o nextStepTime inicial
+   * pra TRÁS pela latência estimada. O 1º step cai "no passado", o
+   * safeTime() do AudioManager clampa pro presente (toca já, sem clique),
+   * e os steps seguintes ficam adiantados exatamente pela compensação →
+   * a grade alinha com o instante REAL da pisada, não com o instante em
+   * que o evento chegou processado.
+   *
+   * Clamp em 0.4s: acima disso pularia steps demais e o guard de atraso
+   * do tick (0.5s) interferiria.
+   */
+  start(latencyCompensation: number = 0): void {
+    const comp = Math.max(0, Math.min(0.4, latencyCompensation));
     // Pequeno delay inicial para evitar clique no primeiro sample
-    this.nextStepTime = this.audioManager.getCurrentTime() + 0.05;
+    this.nextStepTime = this.audioManager.getCurrentTime() + 0.05 - comp;
     this.pendingUISteps = [];
     this.tick();
     this.startUISync();
