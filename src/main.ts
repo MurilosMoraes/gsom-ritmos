@@ -7314,7 +7314,13 @@ ctaUrl: '/plans?renew=true',
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-        <div class="x-body catg-body"></div>
+        <div class="x-body catg-body-wrap">
+          <div class="catg-search-wrap">
+            <svg class="catg-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="catg-search-input" id="catgSearch" placeholder="Buscar em todos os ritmos..." autocomplete="off" />
+          </div>
+          <div class="catg-body"></div>
+        </div>
       </div>
     `;
 
@@ -7324,14 +7330,33 @@ ctaUrl: '/plans?renew=true',
     overlay.querySelector('#catgClose')?.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
-    this.buildCategorizedRhythmList(
-      overlay.querySelector('.catg-body') as HTMLElement,
-      async (name, path) => {
-        close();
-        await this.loadRhythm(name, path);
-        this.renderRhythmStrip();
-      },
-    );
+    const body = overlay.querySelector('.catg-body') as HTMLElement;
+    const onPick = async (name: string, path: string) => {
+      close();
+      await this.loadRhythm(name, path);
+      this.renderRhythmStrip();
+    };
+
+    this.buildCategorizedRhythmList(body, onPick);
+
+    // Busca: filtra os CARDS em tempo real (esconde os que não batem;
+    // esconde seções que ficaram vazias). Fuzzy pt-BR (ignora acento).
+    // Input funciona no iPhone: x-overlay tá no hasModalOpen() do pedal.
+    const searchInput = overlay.querySelector('#catgSearch') as HTMLInputElement | null;
+    const norm = (s: string): string =>
+      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    searchInput?.addEventListener('input', () => {
+      const q = norm(searchInput.value.trim());
+      body.querySelectorAll<HTMLElement>('.catg-section').forEach(section => {
+        let visible = 0;
+        section.querySelectorAll<HTMLElement>('.catg-card').forEach(card => {
+          const match = !q || norm(card.dataset.name || '').includes(q);
+          card.style.display = match ? '' : 'none';
+          if (match) visible++;
+        });
+        section.style.display = visible > 0 ? '' : 'none';
+      });
+    });
   }
 
   // ─── Painéis laterais DESKTOP (≥1024px) ─────────────────────────────

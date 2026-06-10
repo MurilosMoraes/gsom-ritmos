@@ -680,53 +680,61 @@ export class SetlistEditorUI {
     const css = document.createElement('style');
     css.id = 'sle-styles';
     css.textContent = `
-      /* ── Barra de múltiplos repertórios ──────────────────────────── */
+      /* ── Barra de múltiplos repertórios ────────────────────────────
+         Cards GRANDES com wrap (sem scroll horizontal — web friendly),
+         bordas neon vivas, "+ Novo" verde destacado. */
       .sle-setlists-bar {
-        padding: 0.6rem 0.85rem 0;
+        padding: 0.7rem 0.85rem 0.2rem;
         flex-shrink: 0;
       }
       .sle-setlists-chips {
         display: flex;
-        gap: 0.4rem;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        padding-bottom: 0.25rem;
+        flex-wrap: wrap;
+        gap: 0.45rem;
       }
-      .sle-setlists-chips::-webkit-scrollbar { display: none; }
       .sle-setlist-chip {
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
-        padding: 0.45rem 0.7rem;
-        border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.04);
-        color: rgba(255, 255, 255, 0.65);
-        font-size: 0.76rem;
-        font-weight: 600;
+        gap: 0.45rem;
+        padding: 0.65rem 0.9rem;
+        min-height: 44px;
+        border-radius: 12px;
+        border: 1.5px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.035);
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.85rem;
+        font-weight: 700;
         font-family: inherit;
         white-space: nowrap;
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
         transition: all 0.15s;
-        flex-shrink: 0;
       }
       .sle-setlist-chip.active {
         background: rgba(0, 212, 255, 0.1);
-        border-color: rgba(0, 212, 255, 0.45);
+        border-color: rgba(0, 212, 255, 0.8);
         color: #fff;
+        box-shadow: 0 0 14px rgba(0, 212, 255, 0.22);
       }
       .sle-setlist-chip-count {
-        font-size: 0.65rem;
-        opacity: 0.55;
+        font-size: 0.7rem;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        background: rgba(0, 212, 255, 0.15);
+        color: rgba(0, 212, 255, 0.95);
         font-variant-numeric: tabular-nums;
       }
-      .sle-setlist-chip-edit { opacity: 0.55; margin-left: 0.1rem; }
+      .sle-setlist-chip:not(.active) .sle-setlist-chip-count {
+        background: rgba(255, 255, 255, 0.07);
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .sle-setlist-chip-edit { opacity: 0.7; margin-left: 0.15rem; }
       .sle-setlist-new {
         border-style: dashed;
-        color: rgba(0, 230, 140, 0.8);
-        border-color: rgba(0, 230, 140, 0.3);
+        color: #00E68C;
+        border-color: rgba(0, 230, 140, 0.55);
+        background: rgba(0, 230, 140, 0.05);
+        box-shadow: 0 0 10px rgba(0, 230, 140, 0.12);
       }
       .sle-setlist-edit {
         display: flex;
