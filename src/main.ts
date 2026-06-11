@@ -684,31 +684,35 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '2.9',
+    version: '3.0',
     overline: 'Atualização',
-    title: 'Toggle de viradas, biblioteca em 109 ritmos e Modo Show na mão.',
-    subtitle: 'Tu pediu e tá no app: liga/desliga a virada na troca de ritmo, Modo Show com 1 toque na topbar, e 9 ritmos novos. Os 100 ritmos antigos foram refinados.',
+    title: 'Viradas na hora, até 10 repertórios e web repaginada.',
+    subtitle: 'A maior atualização do GDrums: pisou, virou. Repertórios separados pra cada show, web nova de respeito, volume mais alto e 130 ritmos.',
     sections: [
       {
-        label: 'Toggle VIRADAS',
+        label: 'Viradas instantâneas',
         featured: true,
-        body: 'Terceiro botão no painel, ao lado de INTRO e FINAL. Ligado, troca de ritmo com virada normal. Desligado, troca direto sem virada. Pra quem prefere que cada parte da música decida o momento.',
+        body: 'Pisou no pedal, a virada entra já e termina sempre certinha no tempo 1, com o prato de retorno. A finalização ganhou a mesma inteligência: emenda até no meio de uma virada.',
       },
       {
-        label: 'Modo Show no botão',
-        body: 'Agora tem um switch SHOW direto na topbar — 1 toque liga/desliga, sem abrir menu. Tela fica acesa, layout limpo pro palco, sem distração de categoria/busca.',
+        label: 'Web totalmente nova',
+        body: 'Ritmos com busca e categorias na lateral esquerda, repertórios na direita, controles no lugar certo. Tocar no computador ficou animal.',
       },
       {
-        label: '+9 ritmos novos',
-        body: 'Carimbó, Forró (Aviões), Forró (Cajon), Gospel (Crescente), Pop (Cajon), Rockabilly, Samba Reggae, Swingueira e Vaquejada. Biblioteca agora tem 109 ritmos.',
+        label: 'Até 10 repertórios',
+        body: 'Igreja, barzinho, sertanejo: cada show com o seu. Toca no nome pra trocar, e ao salvar um ritmo tu já escolhe pra qual repertório ele vai.',
       },
       {
-        label: '100 ritmos refinados',
-        body: 'Toda a biblioteca antiga foi substituída pela versão nova — padrões mais limpos, viradas mais musicais, samples ajustados. Seu repertório continua intacto.',
+        label: 'Volume mais alto no celular',
+        body: 'Boost de saída com proteção contra distorção. A diferença é audível na hora.',
       },
       {
-        label: 'Categorias com setlist',
-        body: 'Antes, ao montar repertório, as categorias sumiam. Agora ficam visíveis embaixo — dá pra trocar de ritmo na hora sem desfazer nada.',
+        label: 'Salvar ficou esperto',
+        body: 'Mexeu num ritmo teu? O app oferece Atualizar em vez de criar cópia. E nos Meus Ritmos dá pra editar o BPM direto no card.',
+      },
+      {
+        label: '+10 ritmos novos',
+        body: 'Choro, Frevo 2, Reggaeton, Funk das Antigas, Pop Alternativo, Pop-Pagode, Xote Tropical, Arrocha (intro), Worship (pregação) e Worship 3. Biblioteca com 130 ritmos.',
       },
     ],
   };
