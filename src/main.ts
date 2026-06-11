@@ -442,6 +442,15 @@ class RhythmSequencer {
           // teste pra ver se iOS se recupera sozinho como web/Android.
           // Se iOS ficar mudo ou fora de fase, voltamos o tratamento.
           this.audioManager.resume();
+          // Resync da cabeça: em background o lookahead vira 5s e o
+          // currentStep interno roda na frente do áudio audível — comandos
+          // pisados logo após voltar entravam "lá na frente" (virada
+          // piscando como agendada por segundos). Volta a cabeça pro ponto
+          // audível cancelando SÓ o áudio futuro; os mesmos steps são
+          // re-agendados nos mesmos tempos (sem buraco, sem duplo áudio).
+          // Cheio de guardas internas — se houver fill/end/intro na janela,
+          // não faz nada (comportamento antigo).
+          this.scheduler.resyncHeadToAudible();
         }
         // iOS: sair de 'interrupted' às vezes rejeita o 1º resume() e só
         // aceita re-tentativas espaçadas (timing interno do AVAudioSession).

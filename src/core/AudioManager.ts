@@ -21,6 +21,13 @@ interface ActiveSource {
   source: AudioBufferSourceNode;
   gain: GainNode;
   endTime: number; // quando o sample termina naturalmente
+  startTime: number; // quando o sample começa (audio clock)
+}
+
+interface TrackedNode {
+  source: AudioBufferSourceNode;
+  gain: GainNode;
+  startTime: number; // audio clock — permite cancelar só os ainda não audíveis
 }
 
 export class AudioManager {
@@ -47,7 +54,7 @@ export class AudioManager {
   //   encerrados via stop() manual — GainNodes ficam pendurados com tail-time
   //   reference e acumulam memória. Timeout de segurança garante disconnect.
   //   Ref: https://issues.chromium.org/issues/41042431
-  private allNodes = new Set<{ source: AudioBufferSourceNode; gain: GainNode }>();
+  private allNodes = new Set<TrackedNode>();
 
   constructor(audioContext: AudioContext) {
     this.audioContext = audioContext;
@@ -112,7 +119,7 @@ export class AudioManager {
    * Cleanup forçado de nodes que não dispararam onended.
    * Chamado em timeout após endTime estimado. Safety net pro bug do Chromium.
    */
-  private forceCleanup(entry: { source: AudioBufferSourceNode; gain: GainNode }): void {
+  private forceCleanup(entry: TrackedNode): void {
     if (!this.allNodes.has(entry)) return; // onended já limpou
     try { entry.source.disconnect(); } catch {}
     try { entry.gain.disconnect(); } catch {}
@@ -174,7 +181,7 @@ export class AudioManager {
     source.start(safeStart);
 
     // Rastrear + safety cleanup (Chromium Android às vezes não dispara onended)
-    const entry = { source, gain: gainNode };
+    const entry: TrackedNode = { source, gain: gainNode, startTime: safeStart };
     this.allNodes.add(entry);
     const nowMs = performance.now();
     const endMs = (safeStart - this.audioContext.currentTime) * 1000 + duration * 1000 + 200;
@@ -238,10 +245,10 @@ export class AudioManager {
     const endTime = safeStart + duration;
 
     // Rastrear como source ativo deste canal
-    this.activeSources.set(channel, { source, gain: gainNode, endTime });
+    this.activeSources.set(channel, { source, gain: gainNode, endTime, startTime: safeStart });
 
     // Rastrear + safety cleanup (idem playSound)
-    const entry = { source, gain: gainNode };
+    const entry: TrackedNode = { source, gain: gainNode, startTime: safeStart };
     this.allNodes.add(entry);
     const endMs = (safeStart - this.audioContext.currentTime) * 1000 + duration * 1000 + 200;
     setTimeout(() => this.forceCleanup(entry), Math.max(100, endMs));
@@ -388,6 +395,33 @@ export class AudioManager {
     });
     this.activeSources.clear();
     // allNodes vai ser limpo via onended/forceCleanup naturalmente
+  }
+
+  /**
+   * Cancela SÓ os sources agendados pra começar a partir de `time` (ainda
+   * não audíveis) — os que já estão soando seguem intactos. Usado pelo
+   * resync de cabeça pós-background do Scheduler: cancela o trecho futuro
+   * da fila e o Scheduler re-agenda os MESMOS steps nos MESMOS tempos —
+   * sem buraco audível, sem duplo áudio.
+   */
+  cancelScheduledAfter(time: number): void {
+    this.allNodes.forEach((entry) => {
+      if (entry.startTime < time) return;
+      try {
+        // stop() em source agendado-mas-não-iniciado cancela a reprodução
+        entry.source.stop();
+      } catch {}
+      try { entry.source.disconnect(); } catch {}
+      try { entry.gain.disconnect(); } catch {}
+      this.allNodes.delete(entry);
+    });
+    // Limpar do registro por canal os sources cancelados — senão o corte
+    // de "sample anterior" do próximo agendamento mexeria em node morto
+    this.activeSources.forEach((entry, channel) => {
+      if (entry.startTime >= time) {
+        this.activeSources.delete(channel);
+      }
+    });
   }
 
   /**

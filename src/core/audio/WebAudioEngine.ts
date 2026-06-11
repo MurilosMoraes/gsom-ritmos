@@ -70,4 +70,8 @@ export class WebAudioEngine implements IAudioEngine {
   cancelAllScheduled(): void {
     this.inner.cancelAllScheduled();
   }
+
+  cancelScheduledAfter(time: number): void {
+    this.inner.cancelScheduledAfter(time);
+  }
 }

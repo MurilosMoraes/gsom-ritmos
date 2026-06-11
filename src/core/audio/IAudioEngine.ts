@@ -56,6 +56,12 @@ export interface IAudioEngine {
    *  ao voltar do background no iOS pra evitar "música sobre música". */
   cancelAllScheduled(): void;
 
+  /** Cancela SÓ sources agendados pra começar a partir de `time` (ainda
+   *  não audíveis). Usado pelo resync de cabeça pós-background do
+   *  Scheduler. OPCIONAL: engines sem suporte fazem o Scheduler pular o
+   *  resync (comportamento antigo, sem risco). */
+  cancelScheduledAfter?(time: number): void;
+
   // ─── Identificação ─────────────────────────────────────────────────────
   /** 'web' | 'native-ios' | 'native-android' — pra debug/telemetria. */
   readonly kind: AudioEngineKind;

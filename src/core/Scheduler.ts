@@ -123,6 +123,60 @@ export class Scheduler {
     this.isScheduling = false;
   }
 
+  /**
+   * RESYNC DE CABEÇA PÓS-BACKGROUND.
+   *
+   * Em background o lookahead vira 5s (backgroundScheduleAheadTime) pra
+   * sobreviver ao throttle do setTimeout. Efeito colateral: o currentStep
+   * interno (a "cabeça") roda até 5s NA FRENTE do áudio audível. Ao voltar
+   * pro foreground, qualquer comando (virada/finalização/troca) calcula a
+   * entrada em cima da cabeça → o user vê "agendado" piscando e o áudio só
+   * entra segundos depois ("joga a virada lá pra frente").
+   *
+   * Correção: volta a cabeça pro primeiro step ainda NÃO audível.
+   * A fila pendingUISteps tem exatamente (step, time, pattern) de tudo que
+   * foi agendado — cancelamos o áudio futuro desse ponto em diante
+   * (cancelScheduledAfter) e rebobinamos currentStep/nextStepTime pra lá.
+   * O tick re-agenda os MESMOS steps nos MESMOS tempos: sem buraco audível,
+   * sem duplo áudio. Comandos voltam a responder de imediato.
+   *
+   * GUARDAS (qualquer dúvida → não faz nada, comportamento antigo):
+   * - engine precisa suportar cancelScheduledAfter (nativa ainda não tem);
+   * - só com gap real (> lookahead normal + folga);
+   * - só com a janela 100% groove main: sem fill/end/intro agendado ou
+   *   tocando no trecho, sem pendências, sem patternQueue — rebobinar por
+   *   cima de transição perderia prato/troca consumidos no snapshot.
+   */
+  resyncHeadToAudible(): void {
+    if (!this.stateManager.isPlaying()) return;
+    if (typeof this.audioManager.cancelScheduledAfter !== 'function') return;
+
+    const now = this.audioManager.getCurrentTime();
+
+    // Gap normal de foreground? nada a fazer
+    if (this.nextStepTime - now <= this.scheduleAheadTime + 0.1) return;
+
+    // Margem pro tick re-agendar com folga (tick 25ms + SAFE_MARGIN 20ms)
+    const margin = 0.15;
+    const idx = this.pendingUISteps.findIndex(e => e.time > now + margin);
+    if (idx < 0) return;
+
+    // Janela precisa ser groove puro
+    const state = this.stateManager.getState();
+    if (this.stateManager.getActivePattern() !== 'main') return;
+    if (state.pendingFill || state.pendingEnd) return;
+    if (state.patternQueue.length > 0) return;
+    for (let i = idx; i < this.pendingUISteps.length; i++) {
+      if (this.pendingUISteps[i].pattern !== 'main') return;
+    }
+
+    const candidate = this.pendingUISteps[idx];
+    this.audioManager.cancelScheduledAfter(candidate.time - 0.005);
+    this.stateManager.setCurrentStep(candidate.step);
+    this.nextStepTime = candidate.time;
+    this.pendingUISteps = this.pendingUISteps.slice(0, idx);
+  }
+
   // ─── Core scheduling loop ───────────────────────────────────────────
 
   private tick(): void {
