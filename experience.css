@@ -1682,6 +1682,36 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   pointer-events: none;
 }
 
+/* ── Layout: controles desgrudados do bottom + respiro nas pills ── */
+
+/* Mais espaço entre as pills (REPERTÓRIO | TODOS | MEUS RITMOS) e os
+   bullets de tempo logo abaixo */
+.pills-row { margin-bottom: 0.9rem; }
+
+/* Painel de controles (BPM/VOL/toggles): fundo mais presente */
+.controls-bar {
+  background: rgba(16, 18, 44, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.11) !important;
+}
+
+/* Desktop: o conteúdo flui natural do topo. Antes o .user-layout tinha
+   min-height de viewport inteira e o .user-grid-section esticava
+   (flex 1 1 auto) — o painel de controles ficava COLADO no fundo da
+   tela e, com zoom-out, o grid crescia e os controles sumiam lá
+   embaixo minúsculos. Isso também somava (viewport + header) > 100dvh
+   = scroll fantasma na raiz da página.
+   Agora: grid com altura própria e os controles logo abaixo dele. */
+@media (min-width: 1024px) {
+  .user-layout {
+    min-height: 0;
+    justify-content: flex-start;
+  }
+  .user-grid-section {
+    flex: 0 0 auto;
+    min-height: 380px;
+  }
+}
+
 /* ── Salvar ritmo: chips de repertório de destino ──────────────── */
 .x-save-dest {
   display: flex;
