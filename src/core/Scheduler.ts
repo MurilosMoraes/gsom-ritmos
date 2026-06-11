@@ -25,8 +25,12 @@ export class Scheduler {
   private readonly backgroundScheduleAheadTime: number = 5.0;
 
   // Detectar mobile pra ajustar performance
-  private static readonly isMobile = /Android|iPhone|iPad|iPod/i.test(
-    typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  // iPadOS 13+ se apresenta como "Macintosh" no UA — detectar via
+  // Mac + touch, senão iPads recebem timings de DESKTOP (tick 12ms,
+  // lookahead 0.25s) e engasgam (relatos de iPad 5ª e 9ª geração).
+  private static readonly isMobile = typeof navigator !== 'undefined' && (
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (/Mac/i.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) > 1)
   );
 
   // UI sync — usa rAF vinculado ao audio clock

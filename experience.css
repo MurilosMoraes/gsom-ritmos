@@ -1729,6 +1729,24 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   }
 }
 
+/* ── perf-lite (iPads): corta o custo de GPU decorativo ──────────
+   Relatos de engasgo em iPad 5ª/9ª geração. Os vilões: orbs de fundo
+   ANIMADOS em tela retina grande (composição contínua) e backdrop
+   blur nos overlays. Feedback de toque/step não é tocado. */
+body.perf-lite::before {
+  animation: none !important; /* orbs ficam estáticos */
+}
+body.perf-lite .x-overlay,
+body.perf-lite .sle-overlay,
+body.perf-lite .x-stage-banner,
+body.perf-lite #rhythmLoader {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* Sem blur, escurece um tico mais pra manter contraste */
+body.perf-lite .x-overlay { background: rgba(2, 2, 10, 0.92); }
+body.perf-lite .sle-overlay { background: rgba(2, 2, 12, 0.93); }
+
 /* ── iOS: respiro pra faixa do pedal BT ────────────────────────────
    O input do pedal (bloco SAGRADO — nunca tocar nele) é fixo no bottom
    com 24px. Sem este respiro, os toggles INTRO/VIRADAS/FINAL ficavam

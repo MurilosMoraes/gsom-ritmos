@@ -99,7 +99,15 @@ class RhythmSequencer {
     // contínuo agendado via audio clock (sequenciador), só perceptível em
     // estímulo-resposta direto (célula PRATO soa ~0,1s após o toque).
     // Desktop mantém 'interactive' (hardware dá conta, latência menor).
-    const isMobileCtx = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // iPadOS 13+ reporta "Macintosh" — Mac + touch também é mobile
+    const isMobileCtx = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (/Mac/i.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) > 1);
+    // iPad: GPU sofre com efeitos ambientes full-screen em retina grande
+    // (orbs animados de fundo + backdrop blur). perf-lite desliga só o
+    // decorativo — feedback visual de toque/step fica intacto.
+    const isIPadPerf = /iPad/i.test(navigator.userAgent) ||
+      (/Mac/i.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) > 1);
+    if (isIPadPerf) document.body.classList.add('perf-lite');
     this.audioContext = new AudioContext(
       isMobileCtx ? { latencyHint: 'playback' } : undefined
     );

@@ -59,7 +59,9 @@ export class AudioManager {
   constructor(audioContext: AudioContext) {
     this.audioContext = audioContext;
     // Mobile (PWA ou Capacitor) precisa de fade maior pra evitar estralos nas transições
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // iPadOS 13+ reporta "Macintosh" — Mac + touch também é mobile
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (/Mac/i.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) > 1);
     this.FADE_TIME = isMobile ? 0.020 : 0.008; // 20ms mobile, 8ms desktop (era 12/5)
 
     // VOLUME BOOST (mobile): speaker de celular é fraco e o pessoal acha
