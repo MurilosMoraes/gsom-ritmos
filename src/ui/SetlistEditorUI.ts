@@ -230,7 +230,26 @@ export class SetlistEditorUI {
       </button>
     `;
 
-    setlistPanel.querySelector('.sle-clear-btn')!.addEventListener('click', () => {
+    // Limpar com dupla confirmação — toque acidental aqui apagava o
+    // repertório inteiro de uma vez
+    const clearBtn = setlistPanel.querySelector('.sle-clear-btn') as HTMLElement;
+    clearBtn.addEventListener('click', () => {
+      if (!clearBtn.dataset.confirming) {
+        clearBtn.dataset.confirming = '1';
+        clearBtn.classList.add('sle-clear-btn-confirm');
+        clearBtn.textContent = 'Limpar tudo?';
+        // Auto-cancela em 3s sem confirmação
+        window.setTimeout(() => {
+          if (!clearBtn.isConnected || !clearBtn.dataset.confirming) return;
+          delete clearBtn.dataset.confirming;
+          clearBtn.classList.remove('sle-clear-btn-confirm');
+          clearBtn.textContent = 'Limpar';
+        }, 3000);
+        return;
+      }
+      delete clearBtn.dataset.confirming;
+      clearBtn.classList.remove('sle-clear-btn-confirm');
+      clearBtn.textContent = 'Limpar';
       this.setlistManager?.clear();
       this.renderSetlist(setlistPanel.querySelector('.sle-setlist-list')!);
       this.renderCatalog(catalogPanel.querySelector('.sle-catalog-list')!, searchInput.value);
@@ -1099,6 +1118,12 @@ export class SetlistEditorUI {
         -webkit-tap-highlight-color: transparent;
       }
       .sle-clear-btn:hover { background: rgba(255, 100, 100, 0.15); color: rgba(255, 100, 100, 0.9); }
+      .sle-clear-btn-confirm {
+        background: rgba(255, 68, 102, 0.22) !important;
+        border-color: rgba(255, 68, 102, 0.6) !important;
+        color: #ff8298 !important;
+        font-weight: 800;
+      }
 
       .sle-panel-list {
         flex: 1;
