@@ -5484,6 +5484,8 @@ ctaUrl: '/plans?renew=true',
       this.currentRhythmName = name;
       const nameEl = document.getElementById('currentRhythmName');
       if (nameEl) nameEl.textContent = name;
+      this.playingOutsideSetlist = true; // loadSetlistItem desfaz se for do repertório
+      this.updateSetlistUI();
 
       this.updateRhythmStripActive();
 
@@ -6853,6 +6855,10 @@ ctaUrl: '/plans?renew=true',
         </div>
 
         <div class="x-body x-picker-body-wrap">
+          <div class="catg-search-wrap">
+            <svg class="catg-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="catg-search-input" id="xPickerSearch" placeholder="Buscar no repertório..." autocomplete="off" />
+          </div>
           <div class="x-picker-list">${rows}</div>
         </div>
 
@@ -6880,6 +6886,19 @@ ctaUrl: '/plans?renew=true',
 
     overlay.querySelector('#xPickerClose')?.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    // Busca: filtra as linhas em tempo real (fuzzy pt-BR, ignora acento).
+    // Input seguro no iPhone: x-overlay tá no hasModalOpen() do pedal.
+    const normPick = (t: string): string =>
+      t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const searchInput = overlay.querySelector('#xPickerSearch') as HTMLInputElement | null;
+    searchInput?.addEventListener('input', () => {
+      const q = normPick(searchInput.value.trim());
+      overlay.querySelectorAll<HTMLElement>('.x-picker-row').forEach(row => {
+        const name = row.querySelector('.x-picker-name')?.textContent || '';
+        row.style.display = !q || normPick(name).includes(q) ? '' : 'none';
+      });
+    });
 
     // Scroll pro atual
     const list = overlay.querySelector('.x-picker-list') as HTMLElement | null;
@@ -6944,6 +6963,9 @@ ctaUrl: '/plans?renew=true',
 
   private async loadSetlistItem(item: { name: string; path: string; userRhythmId?: string }): Promise<void> {
     let loaded = false;
+    // Veio do repertório: o fav-bar volta a mostrar a posição do show.
+    // (loadRhythm/loadUserRhythm setam true por padrão; aqui a gente
+    // desfaz DEPOIS do load — ver fim da função.)
     if (item.userRhythmId) {
       const rhythm = this.userRhythmService.getById(item.userRhythmId);
       if (rhythm) {
@@ -6980,6 +7002,7 @@ ctaUrl: '/plans?renew=true',
       }
     }
     void loaded;
+    this.playingOutsideSetlist = false; // veio do repertório
     // Atualizar UI do setlist (posição, nomes dos vizinhos, strip)
     this.updateSetlistUI();
     this.uiManager.updatePerformanceGrid();
@@ -6995,6 +7018,13 @@ ctaUrl: '/plans?renew=true',
     const metaEl = document.getElementById('currentRhythmMeta');
     if (!metaEl) return;
     if (this.setlistManager.isEmpty()) { metaEl.textContent = ''; return; }
+
+    // Ritmo avulso (fora do repertório): meta é só o BPM atual — não
+    // mistura com o "base" do item do setlist que NÃO está tocando
+    if (this.playingOutsideSetlist) {
+      metaEl.textContent = `${Math.round(this.stateManager.getTempo())} BPM`;
+      return;
+    }
 
     const current = this.setlistManager.getCurrentItem();
     const currentBpm = Math.round(this.stateManager.getTempo());
@@ -7044,9 +7074,18 @@ ctaUrl: '/plans?renew=true',
     const prev = this.setlistManager.getPreviousItem();
     const next = this.setlistManager.getNextItem();
 
-    if (numEl) numEl.textContent = `${idx + 1}`;
-    if (positionEl) positionEl.textContent = `de ${total}`;
-    if (nameEl && current) nameEl.textContent = current.name;
+    if (this.playingOutsideSetlist && this.currentRhythmName) {
+      // Ritmo AVULSO tocando (TODOS/painel/Meus Ritmos): o centro mostra
+      // ele — não finge que o item do repertório continua. Anterior/
+      // próximo seguem navegando o repertório (voltar é 1 toque).
+      if (numEl) numEl.textContent = '♪';
+      if (positionEl) positionEl.textContent = 'fora do repertório';
+      if (nameEl) nameEl.textContent = this.currentRhythmName;
+    } else {
+      if (numEl) numEl.textContent = `${idx + 1}`;
+      if (positionEl) positionEl.textContent = `de ${total}`;
+      if (nameEl && current) nameEl.textContent = current.name;
+    }
     if (prevNameEl) prevNameEl.textContent = prev ? prev.name : '--';
     if (nextNameEl) nextNameEl.textContent = next ? next.name : '--';
 
@@ -7076,6 +7115,10 @@ ctaUrl: '/plans?renew=true',
   /** Id do ritmo PESSOAL carregado (null se for da biblioteca). Habilita
    *  o "Atualizar 'X'" no salvar em vez de duplicar. */
   private currentUserRhythmId: string | null = null;
+  /** True quando o ritmo tocando NÃO veio do repertório (TODOS, painel
+   *  lateral, Meus Ritmos) — o fav-bar mostra ele como "fora do
+   *  repertório" em vez de fingir que o item do setlist continua. */
+  private playingOutsideSetlist = false;
 
   private async loadAvailableRhythms(): Promise<void> {
     try {
@@ -7605,6 +7648,10 @@ ctaUrl: '/plans?renew=true',
         // User: atualizar nome do ritmo, favoritos, strip
         this.currentRhythmName = name;
         this.currentUserRhythmId = null; // ritmo de biblioteca
+        // Carregado avulso (TODOS/painel) — o loadSetlistItem desfaz
+        // essa flag logo depois quando o load veio do repertório
+        this.playingOutsideSetlist = true;
+        this.updateSetlistUI();
         const currentRhythmNameEl = document.getElementById('currentRhythmName');
         if (currentRhythmNameEl) {
           currentRhythmNameEl.textContent = name;

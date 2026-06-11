@@ -1034,7 +1034,7 @@
   right: 7px;
   width: 14px;
   height: 14px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(0,212,255,0.55)' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><line x1='8' y1='6' x2='21' y2='6'/><line x1='8' y1='12' x2='21' y2='12'/><line x1='8' y1='18' x2='21' y2='18'/><line x1='3' y1='6' x2='3.01' y2='6'/><line x1='3' y1='12' x2='3.01' y2='12'/><line x1='3' y1='18' x2='3.01' y2='18'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,150,40,0.9)' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><line x1='8' y1='6' x2='21' y2='6'/><line x1='8' y1='12' x2='21' y2='12'/><line x1='8' y1='18' x2='21' y2='18'/><line x1='3' y1='6' x2='3.01' y2='6'/><line x1='3' y1='12' x2='3.01' y2='12'/><line x1='3' y1='18' x2='3.01' y2='18'/></svg>");
   background-repeat: no-repeat;
   background-size: contain;
   opacity: 0.7;
@@ -1703,6 +1703,33 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   left: 0.85rem;
   color: rgba(0, 212, 255, 0.6);
   pointer-events: none;
+}
+
+/* ── Fav-bar: acentos LARANJA (risquinhos + Anterior/Próximo) ──── */
+.fav-side-label {
+  color: rgba(255, 150, 40, 0.85) !important;
+}
+.fav-center-clickable .fav-position::after {
+  color: rgba(255, 150, 40, 0.6);
+}
+
+/* ── Pills compactas no mobile: REPERTÓRIO | TODOS | MEUS RITMOS +
+   salvar TUDO numa linha (o salvar caía pra baixo). Com fonte gigante
+   de acessibilidade o wrap continua valendo. ──────────────────────── */
+@media (max-width: 480px) {
+  .pills-row { gap: 0.3rem; }
+  .pills-row .fav-edit-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0.55rem 0.4rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+  }
+  .pills-row .fav-icon-btn {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+  }
 }
 
 /* ── Marca no header: "GDrums" com cara de marca ───────────────── */
