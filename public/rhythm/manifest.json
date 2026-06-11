@@ -1,10 +1,11 @@
 {
-  "version": 40,
+  "version": 41,
   "rhythms": [
     "Anos 60.json",
     "Anunciação.json",
     "Arrasta Pé.json",
     "Arrocha (cajon).json",
+    "Arrocha (intro).json",
     "Arrocha.json",
     "Axe.json",
     "Bachata.json",
@@ -28,6 +29,7 @@
     "Celebração.json",
     "Chamame.json",
     "Chicabana.json",
+    "Choro.json",
     "Cipó Preto.json",
     "Congas.json",
     "Corinho de fogo (pandeiro).json",
@@ -43,7 +45,9 @@
     "Forró (Aviões).json",
     "Forró (Cajon).json",
     "Forró Romântico.json",
+    "Frevo 2.json",
     "Frevo.json",
+    "Funk das Antigas.json",
     "Funk Groove.json",
     "Gospel (cajon).json",
     "Gospel (Crescente).json",
@@ -74,6 +78,7 @@
     "Polka Paraguaya.json",
     "Pop (Cajon).json",
     "Pop 2.json",
+    "Pop Alternativo.json",
     "Pop Latino.json",
     "Pop Lento.json",
     "Pop MPB.json",
@@ -81,6 +86,7 @@
     "Pop Rock.json",
     "Pop Sertanejo.json",
     "Pop Universitário.json",
+    "Pop-Pagode.json",
     "Pop.json",
     "Punk Rock.json",
     "Quadrilha.json",
@@ -88,6 +94,7 @@
     "Reggae 2.json",
     "Reggae Pop.json",
     "Reggae.json",
+    "Reggaeton.json",
     "Rock 'n' Roll.json",
     "Rock (cajon).json",
     "Rock 2.json",
@@ -114,12 +121,15 @@
     "Vaneira Reta.json",
     "Vaneira.json",
     "Vaquejada.json",
+    "Worship (pregação).json",
     "Worship (tribal).json",
     "Worship 2 (tribal).json",
+    "Worship 3.json",
     "Xaxado.json",
     "Xote acelerado.json",
     "Xote Estilizado.json",
     "Xote Nordestino.json",
+    "Xote Tropical.json",
     "Xote.json"
   ],
   "categories": {
@@ -127,6 +137,7 @@
       "Anunciação.json",
       "Arrasta Pé.json",
       "Arrocha (cajon).json",
+      "Arrocha (intro).json",
       "Arrocha.json",
       "Axe.json",
       "Baiao.json",
@@ -139,6 +150,7 @@
       "Calypso.json",
       "Carimbó.json",
       "Chicabana.json",
+      "Choro.json",
       "Cipó Preto.json",
       "Congas.json",
       "Cumbia.json",
@@ -148,6 +160,7 @@
       "Forró (Aviões).json",
       "Forró (Cajon).json",
       "Forró Romântico.json",
+      "Frevo 2.json",
       "Frevo.json",
       "Lambada.json",
       "Marcha de Carnaval.json",
@@ -164,6 +177,7 @@
       "Pop MPB.json",
       "Pop Sertanejo.json",
       "Pop Universitário.json",
+      "Pop-Pagode.json",
       "Quadrilha.json",
       "Roda de Samba.json",
       "Salsa.json",
@@ -181,7 +195,8 @@
       "Vaquejada.json",
       "Xaxado.json",
       "Xote acelerado.json",
-      "Xote Estilizado.json"
+      "Xote Estilizado.json",
+      "Xote Tropical.json"
     ],
     "Pop/Rock": [
       "Anos 60.json",
@@ -196,6 +211,7 @@
       "Dance.json",
       "Disco.json",
       "Electro Funk.json",
+      "Funk das Antigas.json",
       "Funk Groove.json",
       "Hard Rock.json",
       "Heavy Metal.json",
@@ -204,6 +220,7 @@
       "Neo-Soul.json",
       "Pop (Cajon).json",
       "Pop 2.json",
+      "Pop Alternativo.json",
       "Pop Latino.json",
       "Pop Lento.json",
       "Pop Rock (cajon).json",
@@ -240,18 +257,21 @@
       "Celebração.json",
       "Corinho de fogo (pandeiro).json",
       "Corinho de fogo.json",
-      "Gospel (Crescente).json",
       "Gospel (cajon).json",
+      "Gospel (Crescente).json",
       "Gospel 2.json",
       "Gospel 6-8.json",
       "Gospel.json",
+      "Worship (pregação).json",
       "Worship (tribal).json",
-      "Worship 2 (tribal).json"
+      "Worship 2 (tribal).json",
+      "Worship 3.json"
     ],
     "Reggae": [
       "Reggae 2.json",
       "Reggae Pop.json",
-      "Reggae.json"
+      "Reggae.json",
+      "Reggaeton.json"
     ]
   }
 }
