@@ -7236,15 +7236,20 @@ ctaUrl: '/plans?renew=true',
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
       const cats = Object.keys(this.rhythmCategories).sort();
       if (all.some(r => r.cat === 'Outros')) cats.push('Outros');
+      // "Todos" primeiro (tudo em ordem alfabética), igual ao modal TODOS
+      const allCats = ['Todos', ...cats];
+      const countOf = (c: string): number =>
+        c === 'Todos' ? all.length : all.filter(r => r.cat === c).length;
 
-      if (!this.deskCategory || !cats.includes(this.deskCategory)) {
-        this.deskCategory = cats[0] || '';
+      if (!this.deskCategory || !allCats.includes(this.deskCategory)) {
+        this.deskCategory = 'Todos';
       }
 
       // Com busca ativa, o grid mostra matches de TODAS as categorias
       const computeList = (): Array<{ name: string; path: string }> => {
         const q = norm(this.deskSearch.trim());
         if (q) return all.filter(r => norm(r.name).includes(q));
+        if (this.deskCategory === 'Todos') return all;
         return all.filter(r => r.cat === this.deskCategory);
       };
 
@@ -7279,8 +7284,10 @@ ctaUrl: '/plans?renew=true',
             <input type="text" class="desk-search-input" id="deskRhythmSearch" placeholder="Buscar ritmo..." autocomplete="off" value="${esc(this.deskSearch)}" />
           </div>` : ''}
         <div class="desk-cat-pills">
-          ${cats.map(c => `
-            <button class="desk-cat-pill ${c === this.deskCategory && !this.deskSearch ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>
+          ${allCats.map(c => `
+            <button class="desk-cat-pill ${c === this.deskCategory && !this.deskSearch ? 'active' : ''}" data-cat="${esc(c)}">
+              ${esc(c)} <span class="desk-cat-count">${countOf(c)}</span>
+            </button>
           `).join('')}
         </div>
         <div class="desk-rhythm-grid">${gridHtml(computeList())}</div>
