@@ -1646,9 +1646,21 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
 .catg-sheet {
   height: auto !important;
   max-height: calc(100dvh - max(env(safe-area-inset-top), 16px) - max(env(safe-area-inset-bottom), 16px) - 16px) !important;
-  min-height: 60dvh;
   margin-bottom: max(env(safe-area-inset-bottom), 16px);
   border-radius: 24px !important;
+}
+/* Mobile: sheets com BUSCA têm altura FIXA de tela. Se encolherem com
+   poucos resultados (ancorados embaixo), o teclado cobre o sheet
+   inteiro. Altura estável = busca sempre visível no alto; só a lista
+   interna varia. */
+@media (max-width: 639px) {
+  .catg-sheet,
+  .x-sheet.x-myrh-sheet {
+    height: calc(100dvh - max(env(safe-area-inset-top), 16px) - max(env(safe-area-inset-bottom), 16px) - 16px) !important;
+    max-height: calc(100dvh - max(env(safe-area-inset-top), 16px) - max(env(safe-area-inset-bottom), 16px) - 16px) !important;
+    margin-bottom: max(env(safe-area-inset-bottom), 16px);
+    border-radius: 24px;
+  }
 }
 
 /* Web: sheet TODOS não precisa ocupar a tela inteira de largura */
