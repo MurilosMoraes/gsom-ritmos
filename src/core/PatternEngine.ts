@@ -67,8 +67,10 @@ export class PatternEngine {
       }
     }
 
-    // Verificar end pendente
-    if (activePattern === 'main' && state.pendingEnd) {
+    // Verificar end pendente — o entryPoint vive no espaço do padrão em
+    // que foi agendado (space): 'main' clássico, ou 'fill' quando a
+    // finalização foi pisada durante a virada e ASSUME ela.
+    if (state.pendingEnd && activePattern === (state.pendingEnd.space ?? 'main')) {
       if (currentStep === state.pendingEnd.entryPoint) {
         this.transitionInProgress = true;
         try {
@@ -435,6 +437,18 @@ export class PatternEngine {
 
   // ─── End com timing corrigido ───────────────────────────────────────
 
+  /**
+   * Agenda a finalização com a MESMA lógica da virada v3:
+   * - Entra no próximo step quando o material do end cobre o que resta
+   *   do ciclo (imediata, parcial), SEMPRE acabando no downbeat com o
+   *   prato final.
+   * - Pisou cedo demais: groove segue e o end COMPLETO entra no ponto
+   *   ideal pra desembocar no beat 1.
+   * - Pisada DURANTE a virada (duplo tap com a fill já tocando — comum
+   *   agora que a virada entra imediata): o end ASSUME a virada. Como a
+   *   fill v3 sempre termina no downbeat, a posição dela mapeia direto
+   *   pro compasso; o entryPoint fica no espaço da FILL (space: 'fill').
+   */
   activateEndWithTiming(variationIndex: number): void {
     if (!this.stateManager.isPlaying()) return;
 
@@ -451,8 +465,10 @@ export class PatternEngine {
     this.stateManager.setCurrentVariation('end', 0);
     this.stateManager.loadVariation('end', 0);
 
-    // End cancela fill pendente
+    // End cancela fill pendente e troca de ritmo agendada
     this.stateManager.setPendingFill(null);
+    this.shouldChangeRhythmAfterFill = false;
+    this.fillLoopsRemaining = 0;
 
     const mainVariationIndex = this.stateManager.getCurrentVariation('main');
     const mainVariation = state.variations.main[mainVariationIndex];
@@ -462,7 +478,6 @@ export class PatternEngine {
     const endSteps = variation.steps || 8;
     const endSpeed = variation.speed || 1;
 
-    const currentStep = this.stateManager.getCurrentStep();
     const nextStep = this.getNextEntryPoint();
     const endDurationInMainSteps = Math.round(endSteps * mainSpeed / endSpeed);
     const idealEntry = mainSteps - endDurationInMainSteps;
@@ -470,17 +485,63 @@ export class PatternEngine {
     let entryPoint: number;
     let endStartStep: number;
 
-    if (idealEntry >= nextStep) {
-      entryPoint = idealEntry;
+    if (state.activePattern === 'fill' && nextStep !== 0) {
+      // FINALIZAÇÃO DURANTE A VIRADA: assume a fill. nextStep está no
+      // espaço da fill; a fill v3 acaba no downbeat, então o que resta
+      // dela É o que resta do compasso.
+      const fillVariation =
+        state.variations.fill[this.stateManager.getCurrentVariation('fill')];
+      const fillSteps = fillVariation?.steps || 16;
+      const fillSpeed = fillVariation?.speed || 1;
+      const remainingFillSteps = fillSteps - nextStep;
+      const needed = Math.max(1, Math.round(remainingFillSteps * endSpeed / fillSpeed));
+
+      if (needed > endSteps) {
+        // End não cobre o resto da virada: entra mais à frente DA fill,
+        // completo, desembocando no beat 1.
+        const endDurationInFillSteps = Math.max(1, Math.round(endSteps * fillSpeed / endSpeed));
+        entryPoint = Math.min(
+          Math.max(nextStep, fillSteps - endDurationInFillSteps),
+          fillSteps - 1
+        );
+        endStartStep = 0;
+      } else {
+        // Cabe: assume a virada JÁ, do pedaço final, acaba no 1.
+        entryPoint = nextStep;
+        endStartStep = endSteps - needed;
+      }
+
+      this.stateManager.setPendingEnd({
+        variationIndex: 0,
+        entryPoint,
+        startStep: endStartStep,
+        space: 'fill'
+      });
+      return;
+    }
+
+    if (nextStep === 0) {
+      // Pisou no último step (do main OU da fill terminando): o próximo
+      // step agendável já é o downbeat — end completo no final do
+      // próximo ciclo do main ("finalização no próximo tempo").
+      entryPoint = Math.max(0, idealEntry);
       endStartStep = 0;
     } else {
+      // Mesma lógica da virada v3 (espaço do main).
       entryPoint = nextStep;
       const remainingMainSteps = mainSteps - entryPoint;
       const endStepsPerMainStep = mainSpeed > 0 ? endSpeed / mainSpeed : 1;
-      const actualToPlay = Math.min(Math.round(remainingMainSteps * endStepsPerMainStep), endSteps);
-      endStartStep = Math.max(0, endSteps - actualToPlay);
+      const needed = Math.max(1, Math.round(remainingMainSteps * endStepsPerMainStep));
+
+      if (needed > endSteps) {
+        // Pisou cedo: groove segue, end completo no ponto ideal.
+        entryPoint = idealEntry;
+        endStartStep = 0;
+      } else {
+        // Cabe em uma volta: imediata, do pedaço final, acaba no 1.
+        endStartStep = endSteps - needed;
+      }
     }
-    void currentStep;
 
     this.stateManager.setPendingEnd({
       variationIndex: 0,

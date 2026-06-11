@@ -21,6 +21,10 @@ export interface PendingPattern {
    *  instantânea E sempre termina no beat 1 com o prato de retorno.
    *  0/undefined = sem repetição (clássico). */
   loops?: number;
+  /** Em qual padrão ativo o entryPoint deve ser comparado.
+   *  undefined = 'main' (clássico). 'fill' = finalização pisada DURANTE
+   *  a virada: o end assume a virada no step indicado (espaço da fill). */
+  space?: PatternType;
 }
 
 export interface PatternSteps {
