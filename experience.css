@@ -1280,7 +1280,7 @@ body.stage-mode .ctrl-btn-bpm {
 /* ── Desktop ≥1024px: 3 colunas (ritmos | app | repertório) ─────── */
 .desk-panel { display: none; }
 
-@media (min-width: 1024px) {
+@media (min-width: 1160px) {
   #userMode.active {
     display: grid;
     grid-template-columns: 330px minmax(0, 1fr) 290px;
@@ -1368,7 +1368,7 @@ body.stage-mode .ctrl-btn-bpm {
 }
 /* Modo Show esconde os painéis desktop também */
 body.stage-mode .desk-panel { display: none !important; }
-@media (min-width: 1024px) {
+@media (min-width: 1160px) {
   body.stage-mode #userMode.active {
     display: block;
     max-width: 900px;
@@ -1641,7 +1641,7 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
 }
 
 /* Web: sheet TODOS não precisa ocupar a tela inteira de largura */
-@media (min-width: 1024px) {
+@media (min-width: 1160px) {
   .catg-sheet {
     max-width: 780px;
     margin-left: auto;
@@ -1701,7 +1701,7 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
    embaixo minúsculos. Isso também somava (viewport + header) > 100dvh
    = scroll fantasma na raiz da página.
    Agora: grid com altura própria e os controles logo abaixo dele. */
-@media (min-width: 1024px) {
+@media (min-width: 1160px) {
   .user-layout {
     min-height: 0;
     justify-content: flex-start;
