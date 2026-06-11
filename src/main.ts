@@ -6943,12 +6943,28 @@ ctaUrl: '/plans?renew=true',
       return;
     }
 
-    // Sempre carregar o ritmo da posição atual ao fechar o editor
     const current = this.setlistManager.getCurrentItem();
-    if (current) {
-      if (this.stateManager.isPlaying()) this.stop();
-      await this.loadSetlistItem(current);
+    if (!current) return;
+
+    // Tocando ritmo AVULSO (fora do repertório)? Fechar o editor não
+    // interrompe o som — o user só foi espiar/editar.
+    if (this.playingOutsideSetlist && this.stateManager.isPlaying()) return;
+
+    // O ritmo carregado JÁ é o item atual do repertório? Não recarrega
+    // nem para o som — fechar o modal sem mudar nada não pode parar o
+    // ritmo no meio do show.
+    const alreadyLoaded = current.userRhythmId
+      ? current.userRhythmId === this.currentUserRhythmId
+      : (!this.currentUserRhythmId && current.name === this.currentRhythmName);
+    if (alreadyLoaded) {
+      this.playingOutsideSetlist = false;
+      this.updateSetlistUI();
+      return;
     }
+
+    // Mudou de fato (trocou repertório/posição): carrega o item atual
+    if (this.stateManager.isPlaying()) this.stop();
+    await this.loadSetlistItem(current);
   }
 
   private async navigateSetlist(direction: 'next' | 'previous'): Promise<void> {

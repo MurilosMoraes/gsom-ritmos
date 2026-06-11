@@ -59,9 +59,10 @@ export class SetlistEditorUI {
     this.previewPlayer = opts?.previewPlayer || null;
     this.resolveRhythmData = opts?.resolveRhythmData || null;
 
-    // Tela inicial no mobile: hub se tem 2+ repertórios (escolher é o
-    // primeiro passo); direto na lista se só tem 1 (sem passo inútil).
-    this.mobileView = (setlistManager.getSetlists().length > 1) ? 'hub' : 'setlist';
+    // Tela inicial no mobile: SEMPRE o hub (lista de repertórios) — mesmo
+    // com 1 só. Pular direto pra dentro obrigava o user a "voltar" só pra
+    // conseguir criar um repertório novo (comportamento errado).
+    this.mobileView = 'hub';
 
     // Subscribe pra re-pintar botões de preview quando estado muda
     this.previewUnsubscribe?.();
