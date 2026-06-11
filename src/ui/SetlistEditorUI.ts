@@ -1685,6 +1685,91 @@ export class SetlistEditorUI {
       .sle-panel-list {
         -webkit-overflow-scrolling: touch;
       }
+
+      /* ════ DESKTOP (>640px): alinhado à linguagem nova do app ════
+         Antes: vidro antigo, chip ativo BRANCO, painéis colados com
+         divisor de 1px — destoava do resto (neon cyan). Agora: painéis
+         em cards separados, pills neon, container mais largo. */
+      @media (min-width: 641px) {
+        .sle-container {
+          max-width: 960px;
+          max-height: 88vh;
+          background: linear-gradient(165deg, rgba(12, 14, 34, 0.97) 0%, rgba(5, 6, 16, 0.99) 100%);
+          border: 1px solid rgba(0, 212, 255, 0.14);
+          box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 212, 255, 0.05);
+        }
+        .sle-header {
+          padding: 1.1rem 1.4rem;
+          border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+        }
+        .sle-title {
+          font-size: 1.05rem;
+          letter-spacing: 0.02em;
+        }
+        /* Painéis viram CARDS separados (não mais colados por 1px) */
+        .sle-body {
+          gap: 0.9rem;
+          background: transparent;
+          padding: 0.9rem;
+        }
+        .sle-panel {
+          background: rgba(10, 10, 28, 0.55);
+          border: 1px solid rgba(255, 255, 255, 0.07);
+          border-radius: 16px;
+        }
+        /* Chip de categoria ativo: NEON cyan (era branco, destoava) */
+        .sle-chip.active {
+          background: rgba(0, 212, 255, 0.1);
+          color: #00D4FF;
+          border-color: #00D4FF;
+          box-shadow: 0 0 10px rgba(0, 212, 255, 0.18);
+        }
+        .sle-chip.active .sle-chip-count { opacity: 1; color: rgba(0, 212, 255, 0.8); }
+        /* Busca no padrão dos painéis laterais */
+        .sle-search-v2 {
+          border-color: rgba(0, 212, 255, 0.3);
+          border-radius: 12px;
+        }
+        .sle-search-v2:focus {
+          border-color: rgba(0, 212, 255, 0.8);
+          background: rgba(255, 255, 255, 0.05);
+          box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.12);
+        }
+        .sle-search-icon { color: rgba(0, 212, 255, 0.6); }
+        /* Itens do catálogo: hover neon + borda visível */
+        .sle-catalog-item {
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          background: rgba(255, 255, 255, 0.02);
+          margin-bottom: 4px;
+        }
+        .sle-catalog-item:hover {
+          border-color: rgba(0, 212, 255, 0.35);
+          background: rgba(0, 212, 255, 0.04);
+        }
+        /* Itens do repertório com borda visível */
+        .sle-setlist-item {
+          border: 1.5px solid rgba(255, 255, 255, 0.06);
+          margin-bottom: 4px;
+        }
+        /* Barra de repertórios: respiro melhor */
+        .sle-setlists-bar {
+          padding: 0.8rem 0.85rem 0.4rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .sle-setlist-chip {
+          padding: 0.5rem 0.8rem;
+          min-height: 40px;
+          border-radius: 999px;
+          font-size: 0.8rem;
+        }
+        .sle-panel-header {
+          padding: 0.75rem 1rem;
+        }
+        .sle-panel-title {
+          color: rgba(0, 212, 255, 0.75);
+          letter-spacing: 0.08em;
+        }
+      }
     `;
     document.head.appendChild(css);
   }
