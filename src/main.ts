@@ -22,6 +22,28 @@ import { AttributionService } from './native/AttributionService';
 // PushService removido — push agora é gerenciado pelo OneSignalService
 // (tanto web quanto Capacitor nativo via onesignal-cordova-plugin).
 import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore, isIOSNative } from './native/Platform';
+import { registerSW } from 'virtual:pwa-register';
+
+// ═══ Service Worker: SÓ na web/PWA ═══
+// No app nativo (Capacitor) os assets são locais no bundle — SW não
+// agrega nada e CAUSAVA bug: após update da loja, o SW persistido no
+// WebView servia o precache da versão ANTERIOR até fechar/abrir o app.
+// Aqui: nativo = desregistra qualquer SW preso de versões antigas e
+// limpa o Cache Storage (idempotente); web = registro normal.
+if (isNativeApp()) {
+  try {
+    navigator.serviceWorker?.getRegistrations?.()
+      .then(regs => regs.forEach(r => r.unregister()))
+      .catch(() => { /* sem SW */ });
+    if (typeof caches !== 'undefined') {
+      caches.keys()
+        .then(keys => keys.forEach(k => { void caches.delete(k); }))
+        .catch(() => { /* sem cache */ });
+    }
+  } catch { /* WebView sem suporte — ok */ }
+} else {
+  registerSW({ immediate: true });
+}
 import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
