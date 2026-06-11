@@ -21,6 +21,9 @@ export class UserRhythmService {
 
   constructor() {
     this.loadLocal();
+    // Voltou a rede → sobe os pendentes na hora (antes só re-tentava no
+    // próximo boot do app, e o badge "pendente sync" ficava eterno)
+    window.addEventListener('online', () => { void this.syncNow(); });
   }
 
   // ─── Init com Supabase (chamado após auth) ────────────────────────
@@ -106,6 +109,8 @@ export class UserRhythmService {
         if (!error) {
           rhythm.synced = true;
           this.saveLocal();
+        } else {
+          console.warn('[UserRhythms] insert falhou (fica pendente):', error.message);
         }
       } catch { /* salva local, sincroniza depois */ }
     }
@@ -127,17 +132,30 @@ export class UserRhythmService {
     rhythm.synced = false;
     this.saveLocal();
 
-    if (navigator.onLine && this.supabase) {
+    if (navigator.onLine && this.supabase && this.userId) {
       try {
-        const payload: Record<string, any> = { name, bpm, updated_at: rhythm.updated_at };
-        if (rhythmData !== undefined) payload.rhythm_data = rhythmData;
+        // UPSERT com payload completo, não update por id: se o INSERT
+        // original falhou (offline/rede), o update atingia 0 linhas SEM
+        // erro → marcava synced=true mas o ritmo nunca tinha subido.
+        // Upsert cria a linha que falta ou atualiza a existente.
+        const payload: Record<string, any> = {
+          id: rhythm.id,
+          user_id: this.userId,
+          name: rhythm.name,
+          bpm: rhythm.bpm,
+          rhythm_data: rhythm.rhythm_data,
+          created_at: rhythm.created_at,
+          updated_at: rhythm.updated_at,
+        };
+        if (rhythm.base_rhythm_name) payload.base_rhythm_name = rhythm.base_rhythm_name;
         const { error } = await this.supabase
           .from('gdrums_user_rhythms')
-          .update(payload)
-          .eq('id', id);
+          .upsert(payload);
         if (!error) {
           rhythm.synced = true;
           this.saveLocal();
+        } else {
+          console.warn('[UserRhythms] upsert falhou (fica pendente):', error.message);
         }
       } catch { /* sincroniza depois */ }
     }
@@ -167,10 +185,15 @@ export class UserRhythmService {
 
   // ─── Sync ─────────────────────────────────────────────────────────
 
-  private async syncPending(): Promise<void> {
-    if (!this.supabase || !this.userId) return;
+  /** Sobe todos os pendentes AGORA. Retorna true se algum sincronizou.
+   *  Chamado no boot (initWithUser), na volta da rede (evento online) e
+   *  ao abrir o modal Meus Ritmos (re-render some com o badge). */
+  async syncNow(): Promise<boolean> {
+    if (!this.supabase || !this.userId || !navigator.onLine) return false;
 
     const pending = this.rhythms.filter(r => !r.synced);
+    if (pending.length === 0) return false;
+
     for (const r of pending) {
       try {
         const payload: Record<string, any> = {
@@ -188,13 +211,19 @@ export class UserRhythmService {
           .upsert(payload);
         if (!error) {
           r.synced = true;
+        } else {
+          console.warn('[UserRhythms] sync pendente falhou:', error.message);
         }
       } catch { break; /* sem rede */ }
     }
 
-    if (pending.some(r => r.synced)) {
-      this.saveLocal();
-    }
+    const anySynced = pending.some(r => r.synced);
+    if (anySynced) this.saveLocal();
+    return anySynced;
+  }
+
+  private async syncPending(): Promise<void> {
+    await this.syncNow();
   }
 
   // ─── localStorage ─────────────────────────────────────────────────

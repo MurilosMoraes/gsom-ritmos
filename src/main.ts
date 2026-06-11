@@ -5390,6 +5390,12 @@ ctaUrl: '/plans?renew=true',
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('active'));
     renderList();
+
+    // Tem pendente? tenta subir agora — se sincronizar, o badge
+    // "pendente sync" some na hora em vez de esperar o próximo boot
+    void this.userRhythmService.syncNow().then(changed => {
+      if (changed && overlay.isConnected) renderList();
+    });
   }
 
   private async loadUserRhythm(name: string, bpm: number, rhythmData: any, rhythmId?: string): Promise<void> {
