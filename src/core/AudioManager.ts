@@ -62,7 +62,7 @@ export class AudioManager {
     // iPadOS 13+ reporta "Macintosh" — Mac + touch também é mobile
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
       (/Mac/i.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) > 1);
-    this.FADE_TIME = isMobile ? 0.020 : 0.008; // 20ms mobile, 8ms desktop (era 12/5)
+    this.FADE_TIME = isMobile ? 0.020 : 0.012; // 20ms mobile, 12ms desktop (mini-estralo na web; era 8/5)
 
     // VOLUME BOOST (mobile): speaker de celular é fraco e o pessoal acha
     // o app baixo. Ganho extra ANTES do compressor = loudness sem clipar.

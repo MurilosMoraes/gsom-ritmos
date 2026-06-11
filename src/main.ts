@@ -108,8 +108,12 @@ class RhythmSequencer {
     const isIPadPerf = /iPad/i.test(navigator.userAgent) ||
       (/Mac/i.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) > 1);
     if (isIPadPerf) document.body.classList.add('perf-lite');
+    // Desktop: meio-termo. 'interactive' puro (~10-20ms de buffer) deixa
+    // o audio thread no limite e dava MINI-estralo em notebook sob carga.
+    // 0.05s de buffer = folga real contra underrun, mantendo latência de
+    // comando imperceptível (~50ms). Mobile segue 'playback' (~4x maior).
     this.audioContext = new AudioContext(
-      isMobileCtx ? { latencyHint: 'playback' } : undefined
+      isMobileCtx ? { latencyHint: 'playback' } : { latencyHint: 0.05 }
     );
 
     // ═══════════════════════════════════════════════════════════════════════
