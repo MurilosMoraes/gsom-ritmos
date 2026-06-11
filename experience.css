@@ -1807,6 +1807,12 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   white-space: nowrap;
 }
 
+/* Stepper grande (modal Salvar ritmo) */
+.x-bpm-ctrl-lg { padding: 0.2rem; }
+.x-bpm-ctrl-lg .x-bpm-btn { width: 40px; height: 40px; font-size: 1.2rem; }
+.x-bpm-ctrl-lg .x-bpm-val { min-width: 48px; font-size: 1rem; }
+.x-bpm-ctrl-lg .x-bpm-input { width: 56px; font-size: 1rem; }
+
 /* Web: sheet do Meus Ritmos mais largo (cards respiram) */
 @media (min-width: 640px) {
   .x-sheet.x-myrh-sheet { max-width: 620px; }

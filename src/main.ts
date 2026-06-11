@@ -4934,8 +4934,12 @@ ctaUrl: '/plans?renew=true',
               <div class="x-save-hint">Vai aparecer na sua lista de "Meus Ritmos"</div>
             </div>
             <div class="x-save-field">
-              <label for="xSaveBpm">BPM</label>
-              <input type="number" id="xSaveBpm" class="x-save-input x-save-input-bpm" value="${currentBpm}" min="40" max="240" inputmode="numeric" />
+              <label>BPM</label>
+              <div class="x-bpm-ctrl x-bpm-ctrl-lg" id="xSaveBpmCtrl">
+                <button class="x-bpm-btn" data-step="-1" type="button" aria-label="Diminuir BPM">&minus;</button>
+                <span class="x-bpm-val" id="xSaveBpmVal" role="button" title="Toque pra digitar">${Math.round(currentBpm)}</span>
+                <button class="x-bpm-btn" data-step="1" type="button" aria-label="Aumentar BPM">+</button>
+              </div>
             </div>
             <div class="x-save-field">
               <label>Adicionar ao repertório</label>
@@ -4975,8 +4979,40 @@ ctaUrl: '/plans?renew=true',
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
     const nameInput = overlay.querySelector('#xSaveName') as HTMLInputElement;
-    const bpmInput = overlay.querySelector('#xSaveBpm') as HTMLInputElement;
     setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
+
+    // ── BPM: stepper pill (mesmo do Meus Ritmos) ──
+    let bpmValue = Math.max(40, Math.min(240, Math.round(currentBpm)));
+    const bpmCtrl = overlay.querySelector('#xSaveBpmCtrl') as HTMLElement;
+    const bpmVal = overlay.querySelector('#xSaveBpmVal') as HTMLElement;
+    const setBpmValue = (v: number): void => {
+      bpmValue = Math.max(40, Math.min(240, Math.round(v)));
+      bpmVal.textContent = String(bpmValue);
+    };
+    bpmCtrl.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setBpmValue(bpmValue + parseInt(btn.dataset.step!));
+        HapticsService.light();
+      });
+    });
+    // Tap no número → digita direto
+    bpmVal.addEventListener('click', () => {
+      if (bpmCtrl.querySelector('.x-bpm-input')) return;
+      bpmVal.innerHTML = `<input type="number" class="x-bpm-input" value="${bpmValue}" min="40" max="240" inputmode="numeric" />`;
+      const input = bpmVal.querySelector('input') as HTMLInputElement;
+      input.focus();
+      input.select();
+      const commit = (): void => {
+        const typed = parseInt(input.value);
+        bpmVal.textContent = String(bpmValue);
+        if (!isNaN(typed)) setBpmValue(typed);
+      };
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+        if (ev.key === 'Escape') { ev.preventDefault(); input.value = String(bpmValue); input.blur(); }
+      });
+      input.addEventListener('blur', commit);
+    });
 
     // Chips de destino
     overlay.querySelectorAll<HTMLButtonElement>('.x-dest-chip').forEach(chip => {
@@ -4989,19 +5025,14 @@ ctaUrl: '/plans?renew=true',
 
     const validate = (): { name: string; bpm: number } | null => {
       const name = nameInput.value.trim();
-      const bpm = parseInt(bpmInput.value);
       if (!name) {
         nameInput.focus();
         nameInput.style.borderColor = 'rgba(255, 107, 131, 0.5)';
         Toast.show('Dê um nome ao ritmo', { type: 'warn' });
         return null;
       }
-      if (isNaN(bpm) || bpm < 40 || bpm > 240) {
-        bpmInput.focus();
-        Toast.show('BPM precisa ser entre 40 e 240', { type: 'warn' });
-        return null;
-      }
-      return { name, bpm };
+      // bpmValue é sempre válido por construção (clamp 40-240 no stepper)
+      return { name, bpm: bpmValue };
     };
 
     const addToDest = (rhythmId: string, name: string, bpm: number, baseRhythmName?: string): string => {
@@ -5067,10 +5098,9 @@ ctaUrl: '/plans?renew=true',
       }
       doSaveAsNew();
     });
-    // Enter em qualquer input salva (no modo editar = atualizar)
+    // Enter no nome salva (no modo editar = atualizar)
     const onEnter = editing ? doUpdate : doSaveAsNew;
     nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') onEnter(); });
-    bpmInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') onEnter(); });
 
     // ESC fecha
     const onEsc = (e: KeyboardEvent): void => {
@@ -5130,7 +5160,9 @@ ctaUrl: '/plans?renew=true',
       const q = norm(searchQuery.trim());
       const filtered = q ? list.filter(r => norm(r.name).includes(q)) : list;
 
-      const showSearch = total > 5;
+      // Busca sempre visível quando há ritmos (era só com 6+, parecia
+      // que "faltava um pesquisar")
+      const showSearch = total > 0;
 
       const listHtml = filtered.length === 0
         ? (q
