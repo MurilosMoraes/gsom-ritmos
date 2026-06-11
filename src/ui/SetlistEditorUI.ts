@@ -360,7 +360,9 @@ export class SetlistEditorUI {
             ${lists.length > 1 ? `<button class="sle-hub-act sle-hub-del" data-id="${l.id}" aria-label="Excluir">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>` : ''}
-            <svg class="sle-hub-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            <button class="sle-hub-act sle-hub-open" data-id="${l.id}" aria-label="Editar repertório (abrir lista)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
           </div>
         </div>
       `).join('')}
@@ -372,12 +374,22 @@ export class SetlistEditorUI {
         : `<div class="sle-hub-limit">Limite de ${max} repertórios atingido</div>`}
     `;
 
-    // Tap no card: ativa + entra na lista
+    // Tap no card: SELECIONA o repertório e FECHA o modal (vai tocar).
+    // Entrar na lista pra editar é só pelo botão de editar (risquinhos).
     container.querySelectorAll<HTMLElement>('.sle-hub-card').forEach(card => {
       card.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('.sle-hub-act')) return;
         const id = card.dataset.hubId!;
         mgr.switchSetlist(id);
+        this.close(); // onClose do main.ts carrega o ritmo atual do repertório
+      });
+    });
+
+    // Editar (abrir a lista do repertório)
+    container.querySelectorAll<HTMLElement>('.sle-hub-open').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mgr.switchSetlist(btn.dataset.id!);
         onChanged();
         this.setMobileView('setlist');
       });
@@ -1454,7 +1466,11 @@ export class SetlistEditorUI {
         padding: 0 0.55rem;
         background: rgba(255, 68, 102, 0.18) !important;
       }
-      .sle-hub-chevron { color: rgba(255, 255, 255, 0.3); margin-left: 0.1rem; }
+      .sle-hub-open {
+        color: #00D4FF;
+        border-color: rgba(0, 212, 255, 0.35) !important;
+        background: rgba(0, 212, 255, 0.06) !important;
+      }
       .sle-hub-new {
         width: 100%;
         display: flex;
