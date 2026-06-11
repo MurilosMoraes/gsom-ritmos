@@ -1691,6 +1691,20 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   pointer-events: none;
 }
 
+/* ── Marca no header: "GDrums" com cara de marca ───────────────── */
+.global-brand-text {
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.03em !important;
+  background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 60%, #EC4899 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent !important;
+  /* Glow ESTÁTICO — clip-text + animação crasha a GPU no iOS, não animar */
+  filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.3));
+}
+
 /* ── Layout: controles desgrudados do bottom + respiro nas pills ── */
 
 /* Mais espaço entre as pills (REPERTÓRIO | TODOS | MEUS RITMOS) e os
