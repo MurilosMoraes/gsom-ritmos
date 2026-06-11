@@ -113,21 +113,27 @@ export class UserRhythmService {
     return rhythm;
   }
 
-  async update(id: string, name: string, bpm: number): Promise<void> {
+  /** Atualiza nome/BPM e, se fornecido, o CONTEÚDO do ritmo (rhythmData).
+   *  rhythmData permite o fluxo "Atualizar 'X'" no salvar (sobrescreve em
+   *  vez de duplicar). */
+  async update(id: string, name: string, bpm: number, rhythmData?: any): Promise<void> {
     const rhythm = this.rhythms.find(r => r.id === id);
     if (!rhythm) return;
 
     rhythm.name = name;
     rhythm.bpm = bpm;
+    if (rhythmData !== undefined) rhythm.rhythm_data = rhythmData;
     rhythm.updated_at = new Date().toISOString();
     rhythm.synced = false;
     this.saveLocal();
 
     if (navigator.onLine && this.supabase) {
       try {
+        const payload: Record<string, any> = { name, bpm, updated_at: rhythm.updated_at };
+        if (rhythmData !== undefined) payload.rhythm_data = rhythmData;
         const { error } = await this.supabase
           .from('gdrums_user_rhythms')
-          .update({ name, bpm, updated_at: rhythm.updated_at })
+          .update(payload)
           .eq('id', id);
         if (!error) {
           rhythm.synced = true;

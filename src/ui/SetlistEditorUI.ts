@@ -30,8 +30,10 @@ export class SetlistEditorUI {
   private activeCategory: string = 'all'; // 'all' | 'Meus' | 'Favoritos' | <category name>
   private currentQuery: string = '';
   private previewPlayer: PreviewPlayer | null = null;
-  // Em mobile (<=640px) alternamos entre 'catalog' e 'setlist' em tabs.
-  private mobileTab: 'catalog' | 'setlist' = 'catalog';
+  // Em mobile (<=640px) navegamos em TELAS empilhadas (sem tabs):
+  // hub (lista de repertórios) → setlist (itens do ativo) → catalog
+  // (adicionar ritmos). Desktop ignora isso (2 colunas lado a lado).
+  private mobileView: 'hub' | 'setlist' | 'catalog' = 'hub';
   // Função que resolve rhythm data de um CatalogItem (pra preview)
   private resolveRhythmData:
     | ((item: CatalogItem) => Promise<any | null>)
@@ -56,6 +58,10 @@ export class SetlistEditorUI {
     this.onClose = onClose;
     this.previewPlayer = opts?.previewPlayer || null;
     this.resolveRhythmData = opts?.resolveRhythmData || null;
+
+    // Tela inicial no mobile: hub se tem 2+ repertórios (escolher é o
+    // primeiro passo); direto na lista se só tem 1 (sem passo inútil).
+    this.mobileView = (setlistManager.getSetlists().length > 1) ? 'hub' : 'setlist';
 
     // Subscribe pra re-pintar botões de preview quando estado muda
     this.previewUnsubscribe?.();
@@ -118,21 +124,15 @@ export class SetlistEditorUI {
     const container = document.createElement('div');
     container.className = 'sle-container';
 
-    // Header — com tabs em mobile (catálogo | repertório)
+    // Header — voltar contextual (mobile) + título dinâmico
     const header = document.createElement('div');
     header.className = 'sle-header';
-    const setlistCount = this.setlistManager?.getItems().length || 0;
     header.innerHTML = `
       <div class="sle-header-left">
+        <button class="sle-back-btn" aria-label="Voltar" style="display:none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
         <h2 class="sle-title">Repertório</h2>
-        <div class="sle-tabs-mobile" role="tablist">
-          <button class="sle-tab ${this.mobileTab === 'catalog' ? 'active' : ''}" data-tab="catalog" role="tab">
-            Catálogo
-          </button>
-          <button class="sle-tab ${this.mobileTab === 'setlist' ? 'active' : ''}" data-tab="setlist" role="tab">
-            Meu show <span class="sle-tab-count">${setlistCount}</span>
-          </button>
-        </div>
       </div>
       <button class="sle-close-btn" aria-label="Fechar">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -141,10 +141,19 @@ export class SetlistEditorUI {
       </button>
     `;
     header.querySelector('.sle-close-btn')!.addEventListener('click', () => this.close());
+    header.querySelector('.sle-back-btn')!.addEventListener('click', () => {
+      // catalog → setlist → hub
+      this.setMobileView(this.mobileView === 'catalog' ? 'setlist' : 'hub');
+    });
 
-    // Body (dois painéis)
+    // Body (3 painéis: hub mobile-only + catálogo + setlist)
     const body = document.createElement('div');
-    body.className = `sle-body mobile-tab-${this.mobileTab}`;
+    body.className = `sle-body mobile-view-${this.mobileView}`;
+
+    // Painel: HUB de repertórios (mobile) — cards grandes
+    const hubPanel = document.createElement('div');
+    hubPanel.className = 'sle-panel sle-hub';
+    hubPanel.innerHTML = '<div class="sle-panel-list sle-hub-list"></div>';
 
     // Painel: Ritmos disponíveis
     const catalogPanel = document.createElement('div');
@@ -215,6 +224,10 @@ export class SetlistEditorUI {
         <button class="sle-clear-btn">Limpar</button>
       </div>
       <div class="sle-panel-list sle-setlist-list"></div>
+      <button class="sle-cta-add" type="button">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        ADICIONAR RITMOS
+      </button>
     `;
 
     setlistPanel.querySelector('.sle-clear-btn')!.addEventListener('click', () => {
@@ -223,43 +236,204 @@ export class SetlistEditorUI {
       this.renderCatalog(catalogPanel.querySelector('.sle-catalog-list')!, searchInput.value);
     });
 
-    // Render dos chips de repertórios (troca/cria/renomeia/exclui)
+    // CTA mobile: lista → tela de adicionar ritmos
+    setlistPanel.querySelector('.sle-cta-add')!.addEventListener('click', () => {
+      this.setMobileView('catalog');
+    });
+
+    const refreshAll = (): void => {
+      // Após trocar/criar/excluir repertório: re-render de tudo
+      this.renderSetlist(setlistPanel.querySelector('.sle-setlist-list')!);
+      this.renderCatalog(catalogPanel.querySelector('.sle-catalog-list')!, searchInput.value);
+      this.renderHub(hubPanel.querySelector('.sle-hub-list') as HTMLElement, refreshAll);
+      this.syncHeader();
+    };
+
+    // Render dos chips de repertórios (desktop; no mobile o hub cobre)
     this.renderSetlistsBar(
       setlistPanel.querySelector('.sle-setlists-bar') as HTMLElement,
-      () => {
-        // Após trocar/criar/excluir repertório: re-render das duas listas
-        this.renderSetlist(setlistPanel.querySelector('.sle-setlist-list')!);
-        this.renderCatalog(catalogPanel.querySelector('.sle-catalog-list')!, searchInput.value);
-        // E atualiza os tabs mobile (contagem)
-        const countEl = header.querySelector('.sle-tab-count');
-        if (countEl) countEl.textContent = String(this.setlistManager?.getItems().length || 0);
-      }
+      refreshAll
     );
 
-    body.append(catalogPanel, setlistPanel);
+    body.append(hubPanel, catalogPanel, setlistPanel);
     container.append(header, body);
     this.overlay.appendChild(container);
     document.body.appendChild(this.overlay);
 
-    // Tabs mobile — alterna entre catálogo/setlist sem perder estado
-    header.querySelectorAll<HTMLElement>('.sle-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const next = tab.dataset.tab as 'catalog' | 'setlist';
-        if (next === this.mobileTab) return;
-        this.mobileTab = next;
-        // Atualiza classes sem re-renderizar tudo
-        header.querySelectorAll('.sle-tab').forEach(t => t.classList.toggle('active', (t as HTMLElement).dataset.tab === next));
-        body.className = `sle-body mobile-tab-${next}`;
-      });
-    });
-
     // Renderizar listas
+    this.renderHub(hubPanel.querySelector('.sle-hub-list') as HTMLElement, refreshAll);
     this.renderCatalog(catalogPanel.querySelector('.sle-catalog-list')!, '');
     this.renderSetlist(setlistPanel.querySelector('.sle-setlist-list')!);
+    this.syncHeader();
 
     // Animate in
     void this.overlay.offsetHeight;
     this.overlay.classList.add('sle-visible');
+  }
+
+  /** Troca a tela do mobile (hub → setlist → catalog) e sincroniza header. */
+  private setMobileView(view: 'hub' | 'setlist' | 'catalog'): void {
+    this.mobileView = view;
+    const body = this.overlay?.querySelector('.sle-body');
+    if (body) body.className = `sle-body mobile-view-${view}`;
+    this.syncHeader();
+  }
+
+  /** Header contextual: título + botão voltar conforme a tela mobile. */
+  private syncHeader(): void {
+    if (!this.overlay) return;
+    const title = this.overlay.querySelector('.sle-title') as HTMLElement | null;
+    const back = this.overlay.querySelector('.sle-back-btn') as HTMLElement | null;
+    if (!title || !back) return;
+
+    const isMobile = window.matchMedia('(max-width: 640px)').matches;
+    if (!isMobile) {
+      title.textContent = 'Repertório';
+      back.style.display = 'none';
+      return;
+    }
+    const lists = this.setlistManager?.getSetlists() || [];
+    const hasHub = lists.length > 1 || true; // hub sempre acessível pelo voltar
+    void hasHub;
+    switch (this.mobileView) {
+      case 'hub':
+        title.textContent = 'Repertórios';
+        back.style.display = 'none';
+        break;
+      case 'setlist':
+        title.textContent = this.setlistManager?.getName() || 'Repertório';
+        back.style.display = 'inline-flex';
+        break;
+      case 'catalog':
+        title.textContent = 'Adicionar ritmos';
+        back.style.display = 'inline-flex';
+        break;
+    }
+  }
+
+  // ─── HUB de repertórios (mobile) ────────────────────────────────────
+  //
+  // Cards grandes: tap abre o repertório (vira o ativo); ações por card:
+  // renomear (inline), duplicar, excluir (dupla confirmação). "+ Novo"
+  // no fim com contador N/MAX. Inputs funcionam no iPhone (sle-overlay
+  // tá no hasModalOpen() do pedal).
+
+  private renderHub(container: HTMLElement, onChanged: () => void): void {
+    const mgr = this.setlistManager;
+    if (!mgr) return;
+    const lists = mgr.getSetlists();
+    const max = mgr.getMaxSetlists();
+
+    container.innerHTML = `
+      ${lists.map(l => `
+        <div class="sle-hub-card ${l.active ? 'active' : ''}" data-hub-id="${l.id}">
+          <div class="sle-hub-card-main">
+            <span class="sle-hub-card-name">${this.escapeHtml(l.name)}</span>
+            <span class="sle-hub-card-meta">${l.count} ${l.count === 1 ? 'ritmo' : 'ritmos'}${l.active ? ' · <span class="sle-hub-ativo">ATIVO</span>' : ''}</span>
+          </div>
+          <div class="sle-hub-card-actions">
+            <button class="sle-hub-act sle-hub-rename" data-id="${l.id}" aria-label="Renomear">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </button>
+            <button class="sle-hub-act sle-hub-dup" data-id="${l.id}" aria-label="Duplicar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+            ${lists.length > 1 ? `<button class="sle-hub-act sle-hub-del" data-id="${l.id}" aria-label="Excluir">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>` : ''}
+            <svg class="sle-hub-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      `).join('')}
+      ${lists.length < max
+        ? `<button class="sle-hub-new" type="button">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            Novo repertório <span class="sle-hub-new-count">${lists.length}/${max}</span>
+          </button>`
+        : `<div class="sle-hub-limit">Limite de ${max} repertórios atingido</div>`}
+    `;
+
+    // Tap no card: ativa + entra na lista
+    container.querySelectorAll<HTMLElement>('.sle-hub-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('.sle-hub-act')) return;
+        const id = card.dataset.hubId!;
+        mgr.switchSetlist(id);
+        onChanged();
+        this.setMobileView('setlist');
+      });
+    });
+
+    // Renomear inline (substitui o conteúdo do card pelo editor)
+    container.querySelectorAll<HTMLElement>('.sle-hub-rename').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id!;
+        const card = container.querySelector(`.sle-hub-card[data-hub-id="${id}"]`) as HTMLElement;
+        const current = mgr.getSetlists().find(l => l.id === id);
+        if (!card || !current) return;
+        card.innerHTML = `
+          <div class="sle-setlist-edit" style="flex:1;">
+            <input type="text" class="sle-setlist-edit-input" value="${this.escapeHtml(current.name)}" maxlength="40" autocomplete="off" />
+            <button class="sle-setlist-edit-save" aria-label="Salvar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </button>
+            <button class="sle-setlist-edit-cancel" aria-label="Cancelar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        `;
+        const input = card.querySelector('.sle-setlist-edit-input') as HTMLInputElement;
+        const save = (): void => {
+          const name = input.value.trim();
+          if (name) mgr.renameSetlist(id, name);
+          onChanged();
+        };
+        card.querySelector('.sle-setlist-edit-save')?.addEventListener('click', (ev) => { ev.stopPropagation(); save(); });
+        card.querySelector('.sle-setlist-edit-cancel')?.addEventListener('click', (ev) => { ev.stopPropagation(); onChanged(); });
+        input.addEventListener('click', (ev) => ev.stopPropagation());
+        input.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') { ev.preventDefault(); save(); }
+          if (ev.key === 'Escape') onChanged();
+        });
+        input.focus();
+        input.select();
+      });
+    });
+
+    // Duplicar
+    container.querySelectorAll<HTMLElement>('.sle-hub-dup').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newId = mgr.duplicateSetlist(btn.dataset.id!);
+        if (!newId) return; // bateu o limite
+        onChanged();
+      });
+    });
+
+    // Excluir (dupla confirmação no próprio botão)
+    container.querySelectorAll<HTMLElement>('.sle-hub-del').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!btn.dataset.confirming) {
+          btn.dataset.confirming = '1';
+          btn.innerHTML = '<span style="font-size:0.68rem;font-weight:800;">Excluir?</span>';
+          btn.classList.add('sle-hub-del-confirm');
+          return;
+        }
+        mgr.deleteSetlist(btn.dataset.id!);
+        onChanged();
+      });
+    });
+
+    // Novo repertório → cria e abre rename na hora
+    container.querySelector('.sle-hub-new')?.addEventListener('click', () => {
+      const id = mgr.createSetlist(`Repertório ${lists.length + 1}`);
+      if (!id) return;
+      onChanged();
+      const renameBtn = container.querySelector(`.sle-hub-rename[data-id="${id}"]`) as HTMLElement | null;
+      renameBtn?.click();
+    });
   }
 
   // ─── Barra de múltiplos repertórios ─────────────────────────────────
@@ -458,9 +632,11 @@ export class SetlistEditorUI {
       }
 
       // Add
+      const addId = rhythm.userRhythmId || rhythm.path;
       const addBtn = document.createElement('button');
       addBtn.className = 'sle-add-btn';
       addBtn.setAttribute('aria-label', 'Adicionar ao repertório');
+      addBtn.setAttribute('data-add-id', addId);
       addBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
       addBtn.addEventListener('click', () => {
         const setlistItem: SetlistItem = { name: rhythm.name, path: rhythm.path };
@@ -471,6 +647,17 @@ export class SetlistEditorUI {
         const setlistList = this.overlay?.querySelector('.sle-setlist-list');
         if (setlistList) this.renderSetlist(setlistList as HTMLElement);
         this.renderCatalog(container, filter);
+        // Feedback ✓ no botão recém-renderizado (confirma que adicionou
+        // sem fechar a tela — dá pra meter 10 ritmos em sequência)
+        const fresh = container.querySelector(`[data-add-id="${CSS.escape(addId)}"]`) as HTMLElement | null;
+        if (fresh) {
+          fresh.classList.add('sle-add-flash');
+          fresh.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+          setTimeout(() => {
+            fresh.classList.remove('sle-add-flash');
+            fresh.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+          }, 700);
+        }
       });
       actions.appendChild(addBtn);
 
@@ -486,10 +673,6 @@ export class SetlistEditorUI {
     container.innerHTML = '';
     const items = this.setlistManager?.getItems() || [];
 
-    // Atualiza badge da tab "Meu show" no header (mobile)
-    const tabCount = this.overlay?.querySelector('.sle-tab[data-tab="setlist"] .sle-tab-count');
-    if (tabCount) tabCount.textContent = String(items.length);
-
     if (items.length === 0) {
       container.innerHTML = `
         <div class="sle-empty-pro">
@@ -502,6 +685,7 @@ export class SetlistEditorUI {
     }
 
     const canPreview = !!this.previewPlayer;
+    const currentIdx = this.setlistManager?.getCurrentIndex() ?? -1;
 
     items.forEach((item, index) => {
       const isFirst = index === 0;
@@ -509,6 +693,10 @@ export class SetlistEditorUI {
 
       const row = document.createElement('div');
       row.className = 'sle-setlist-item';
+      // Posição do show: ATUAL bem visível + "a seguir" sutil (no palco
+      // o músico pensa sempre 1 música à frente)
+      if (index === currentIdx) row.classList.add('sle-now');
+      else if (index === currentIdx + 1) row.classList.add('sle-next');
       // Drag-drop HTML5 ainda ativo em desktop (CSS controla cursor no handle)
       row.setAttribute('draggable', 'true');
       row.setAttribute('data-index', index.toString());
@@ -1142,67 +1330,197 @@ export class SetlistEditorUI {
       }
       .sle-chip.active .sle-chip-count { opacity: 0.65; }
 
-      /* ─── Header v2 — título + tabs mobile ─── */
+      /* ─── Header — voltar contextual + título dinâmico ─── */
       .sle-header-left {
         display: flex; align-items: center;
-        gap: 1rem;
+        gap: 0.6rem;
         min-width: 0;
         flex: 1;
       }
-      .sle-tabs-mobile {
-        display: none;
-        background: rgba(255, 255, 255, 0.04);
+      .sle-back-btn {
+        width: 36px; height: 36px;
         border-radius: 10px;
-        padding: 3px;
-        gap: 2px;
-      }
-      .sle-tab {
-        background: transparent;
-        border: none;
-        color: rgba(255, 255, 255, 0.55);
-        font-family: inherit;
-        font-size: 0.78rem;
-        font-weight: 600;
-        padding: 0.45rem 0.75rem;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background 0.14s, color 0.14s;
-        -webkit-tap-highlight-color: transparent;
+        border: 1px solid rgba(0, 212, 255, 0.3);
+        background: rgba(0, 212, 255, 0.06);
+        color: #00D4FF;
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 0.12s;
+      }
+      .sle-back-btn:active { background: rgba(0, 212, 255, 0.15); }
+      .sle-title {
         white-space: nowrap;
-      }
-      .sle-tab.active {
-        background: rgba(255, 255, 255, 0.1);
-        color: #fff;
-      }
-      .sle-tab-count {
-        font-size: 0.66rem;
-        font-weight: 700;
-        padding: 0.05rem 0.35rem;
-        border-radius: 5px;
-        background: rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.75);
-        font-variant-numeric: tabular-nums;
-      }
-      .sle-tab.active .sle-tab-count {
-        background: rgba(62, 232, 167, 0.15);
-        color: #3ee8a7;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
-      /* Em mobile, exibe tabs e esconde um painel por vez */
+      /* ─── HUB de repertórios (mobile) ─── */
+      .sle-hub { display: none; }
+      .sle-hub-list { padding: 0.75rem; }
+      .sle-hub-card {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.9rem 0.9rem;
+        min-height: 64px;
+        border-radius: 14px;
+        border: 1.5px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.03);
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: border-color 0.12s, background 0.12s;
+      }
+      .sle-hub-card.active {
+        border-color: rgba(0, 212, 255, 0.7);
+        background: rgba(0, 212, 255, 0.07);
+        box-shadow: 0 0 14px rgba(0, 212, 255, 0.15);
+      }
+      .sle-hub-card-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+      .sle-hub-card-name {
+        font-size: 0.98rem;
+        font-weight: 700;
+        color: #fff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sle-hub-card-meta {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.45);
+      }
+      .sle-hub-ativo {
+        color: #00D4FF;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+      .sle-hub-card-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        flex-shrink: 0;
+      }
+      .sle-hub-act {
+        width: 38px; height: 38px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(255, 255, 255, 0.65);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        font-family: inherit;
+      }
+      .sle-hub-del { color: #ff6b83; border-color: rgba(255, 68, 102, 0.3); }
+      .sle-hub-del-confirm {
+        width: auto !important;
+        padding: 0 0.55rem;
+        background: rgba(255, 68, 102, 0.18) !important;
+      }
+      .sle-hub-chevron { color: rgba(255, 255, 255, 0.3); margin-left: 0.1rem; }
+      .sle-hub-new {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 54px;
+        border-radius: 14px;
+        border: 1.5px dashed rgba(0, 230, 140, 0.55);
+        background: rgba(0, 230, 140, 0.05);
+        color: #00E68C;
+        font-size: 0.9rem;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        margin-top: 0.25rem;
+      }
+      .sle-hub-new-count {
+        font-size: 0.7rem;
+        opacity: 0.7;
+        font-variant-numeric: tabular-nums;
+      }
+      .sle-hub-limit {
+        text-align: center;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.35);
+        padding: 0.75rem 0;
+      }
+
+      /* ─── CTA "+ ADICIONAR RITMOS" (mobile, fixo no fim da lista) ─── */
+      .sle-cta-add {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin: 0.6rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+        min-height: 52px;
+        border-radius: 14px;
+        border: none;
+        background: linear-gradient(135deg, #00D4FF, #0095cc);
+        color: #021018;
+        font-size: 0.9rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        font-family: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        box-shadow: 0 4px 18px rgba(0, 212, 255, 0.3);
+        flex-shrink: 0;
+      }
+      .sle-cta-add:active { transform: scale(0.98); }
+
+      /* ─── Feedback ✓ no botão de adicionar ─── */
+      .sle-add-flash {
+        background: rgba(0, 230, 140, 0.25) !important;
+        color: #00E68C !important;
+        transform: scale(1.12);
+      }
+
+      /* ─── Posição do show na lista (ATUAL / a seguir) ─── */
+      .sle-setlist-item.sle-now {
+        border-color: rgba(0, 212, 255, 0.65);
+        background: rgba(0, 212, 255, 0.08);
+        box-shadow: 0 0 12px rgba(0, 212, 255, 0.12);
+      }
+      .sle-setlist-item.sle-now .sle-item-num {
+        color: #00D4FF;
+      }
+      .sle-setlist-item.sle-next {
+        border-color: rgba(0, 212, 255, 0.2);
+      }
+
+      /* Em mobile: telas empilhadas (hub → setlist → catalog) */
       @media (max-width: 640px) {
-        .sle-tabs-mobile { display: inline-flex; }
-        .sle-title { display: none; }
         .sle-body {
           grid-template-columns: 1fr !important;
           grid-template-rows: 1fr !important;
         }
-        .sle-body.mobile-tab-catalog .sle-setlist { display: none; }
-        .sle-body.mobile-tab-setlist .sle-catalog { display: none; }
-        .sle-container { max-height: 92vh; }
+        .sle-body.mobile-view-hub .sle-catalog,
+        .sle-body.mobile-view-hub .sle-setlist { display: none; }
+        .sle-body.mobile-view-hub .sle-hub { display: flex; }
+        .sle-body.mobile-view-setlist .sle-catalog,
+        .sle-body.mobile-view-setlist .sle-hub { display: none; }
+        .sle-body.mobile-view-catalog .sle-setlist,
+        .sle-body.mobile-view-catalog .sle-hub { display: none; }
+        .sle-container { max-height: 92vh; height: 92vh; }
         .sle-header { padding: 0.85rem 1rem; }
+        .sle-cta-add { display: flex; }
+        /* No mobile o hub substitui a barra de chips */
+        .sle-setlists-bar { display: none; }
       }
 
       /* ─── Item actions (catálogo e setlist) ─── */

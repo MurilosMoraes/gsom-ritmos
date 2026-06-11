@@ -33,7 +33,7 @@ const LEGACY_LOCAL_KEY = 'gdrums-setlist';
 const LEGACY_BACKUP_KEY = 'gdrums-setlist-backup';
 const LEGACY_IDB_KEY = 'setlist';
 
-export const MAX_SETLISTS = 5;
+export const MAX_SETLISTS = 10;
 
 export interface NamedSetlist extends Setlist {
   id: string;
@@ -290,6 +290,32 @@ export class SetlistManager {
   }
 
   getMaxSetlists(): number { return MAX_SETLISTS; }
+
+  /** Duplica um repertório (itens copiados, nome "X (cópia)"). Null se bateu o limite. */
+  duplicateSetlist(id: string): string | null {
+    if (this.state.setlists.length >= MAX_SETLISTS) return null;
+    const src = this.state.setlists.find(x => x.id === id);
+    if (!src) return null;
+    const newId = genId();
+    this.state.setlists.push({
+      id: newId,
+      name: `${src.name} (cópia)`.slice(0, 40),
+      items: src.items.map(i => ({ ...i })),
+      currentIndex: 0,
+    });
+    this.notify();
+    return newId;
+  }
+
+  /** Adiciona item num repertório ESPECÍFICO sem trocar o ativo.
+   *  Usado pelo "salvar ritmo → escolher repertório de destino". */
+  addItemTo(setlistId: string, item: SetlistItem): boolean {
+    const s = this.state.setlists.find(x => x.id === setlistId);
+    if (!s) return false;
+    s.items.push(item);
+    this.notify();
+    return true;
+  }
 
   // ─── Getters (API v1 — operam no repertório ATIVO) ──────────────────
 

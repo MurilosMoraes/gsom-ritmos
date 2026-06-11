@@ -4887,13 +4887,29 @@ ctaUrl: '/plans?renew=true',
       return;
     }
 
+    const esc = (s: string): string =>
+      s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
     const currentBpm = this.stateManager.getTempo();
-    // Auto-nome: "Vaneira · 21:42" ou "Meu ritmo · 21:42"
+
+    // Modo ATUALIZAR: o ritmo carregado é um "meu ritmo" — o save
+    // sobrescreve ele (padrão DAW), com "Salvar como novo" de escape.
+    // Ritmo de biblioteca NUNCA é sobrescrito — só "salvar como novo".
+    const editing = this.currentUserRhythmId
+      ? this.userRhythmService.getById(this.currentUserRhythmId)
+      : undefined;
+
+    // Auto-nome (modo novo): "Vaneira · 21:42" ou "Meu ritmo · 21:42"
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
     const base = this.currentRhythmName || 'Meu ritmo';
-    const suggestedName = `${base} · ${hh}:${mm}`;
+    const suggestedName = editing ? editing.name : `${base} · ${hh}:${mm}`;
+
+    // Destino: chips de repertório. Default = ATIVO (modo novo) / nenhum
+    // (modo atualizar — re-adicionar duplicaria o item no repertório).
+    const setlists = this.setlistManager.getSetlists();
+    let destId: string | null = editing ? null : (setlists.find(l => l.active)?.id ?? null);
 
     const overlay = document.createElement('div');
     overlay.className = 'x-overlay';
@@ -4902,8 +4918,8 @@ ctaUrl: '/plans?renew=true',
         <div class="x-grip"></div>
         <div class="x-head">
           <div>
-            <h2 class="x-head-title">Salvar ritmo</h2>
-            <div class="x-head-sub">Crie sua versão com nome e BPM</div>
+            <h2 class="x-head-title">${editing ? 'Salvar alterações' : 'Salvar ritmo'}</h2>
+            <div class="x-head-sub">${editing ? `Editando "${esc(editing.name)}"` : 'Crie sua versão com nome e BPM'}</div>
           </div>
           <button class="x-close" id="xSaveClose" aria-label="Fechar">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -4914,17 +4930,31 @@ ctaUrl: '/plans?renew=true',
           <div class="x-save-fields">
             <div class="x-save-field">
               <label for="xSaveName">Nome do ritmo</label>
-              <input type="text" id="xSaveName" class="x-save-input" value="${suggestedName.replace(/"/g, '&quot;')}" maxlength="60" placeholder="Ex: Vaneira do João" autocomplete="off" />
+              <input type="text" id="xSaveName" class="x-save-input" value="${esc(suggestedName)}" maxlength="60" placeholder="Ex: Vaneira do João" autocomplete="off" />
               <div class="x-save-hint">Vai aparecer na sua lista de "Meus Ritmos"</div>
             </div>
             <div class="x-save-field">
               <label for="xSaveBpm">BPM</label>
               <input type="number" id="xSaveBpm" class="x-save-input x-save-input-bpm" value="${currentBpm}" min="40" max="240" inputmode="numeric" />
             </div>
+            <div class="x-save-field">
+              <label>Adicionar ao repertório</label>
+              <div class="x-save-dest">
+                <button class="x-dest-chip ${destId === null ? 'active' : ''}" data-dest="" type="button">Não adicionar</button>
+                ${setlists.map(l => `
+                  <button class="x-dest-chip ${destId === l.id ? 'active' : ''}" data-dest="${esc(l.id)}" type="button">
+                    ${esc(l.name)} <span class="x-dest-count">${l.count}</span>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
           </div>
           <div class="x-save-actions">
-            <button class="x-btn x-btn-ghost" id="xSaveCancel" type="button">Cancelar</button>
-            <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">Salvar ritmo</button>
+            ${editing
+              ? `<button class="x-btn x-btn-ghost" id="xSaveAsNew" type="button">Salvar como novo</button>
+                 <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">Atualizar "${esc(editing.name.length > 18 ? editing.name.slice(0, 18) + '…' : editing.name)}"</button>`
+              : `<button class="x-btn x-btn-ghost" id="xSaveCancel" type="button">Cancelar</button>
+                 <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">Salvar ritmo</button>`}
           </div>
         </div>
       </div>
@@ -4948,31 +4978,64 @@ ctaUrl: '/plans?renew=true',
     const bpmInput = overlay.querySelector('#xSaveBpm') as HTMLInputElement;
     setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
 
-    const doSave = async (): Promise<void> => {
+    // Chips de destino
+    overlay.querySelectorAll<HTMLButtonElement>('.x-dest-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        destId = chip.dataset.dest || null;
+        overlay.querySelectorAll('.x-dest-chip').forEach(c =>
+          c.classList.toggle('active', c === chip));
+      });
+    });
+
+    const validate = (): { name: string; bpm: number } | null => {
       const name = nameInput.value.trim();
       const bpm = parseInt(bpmInput.value);
-
       if (!name) {
         nameInput.focus();
         nameInput.style.borderColor = 'rgba(255, 107, 131, 0.5)';
         Toast.show('Dê um nome ao ritmo', { type: 'warn' });
-        return;
+        return null;
       }
       if (isNaN(bpm) || bpm < 40 || bpm > 240) {
         bpmInput.focus();
         Toast.show('BPM precisa ser entre 40 e 240', { type: 'warn' });
-        return;
+        return null;
       }
+      return { name, bpm };
+    };
+
+    const addToDest = (rhythmId: string, name: string, bpm: number, baseRhythmName?: string): string => {
+      if (!destId) return '';
+      const dest = this.setlistManager.getSetlists().find(l => l.id === destId);
+      if (!dest) return '';
+      this.setlistManager.addItemTo(destId, {
+        name,
+        path: '',
+        userRhythmId: rhythmId,
+        ...(baseRhythmName ? { baseRhythmName } : {}),
+        bpm,
+      });
+      this.updateSetlistUI();
+      return ` e adicionado em "${dest.name}"`;
+    };
+
+    const doSaveAsNew = async (): Promise<void> => {
+      const v = validate();
+      if (!v) return;
 
       const rhythmData = this.fileManager.exportProjectAsJSON();
       const isLibraryRhythm = this.availableRhythms.some(r => r.name === this.currentRhythmName);
-      const baseRhythmName = isLibraryRhythm ? this.currentRhythmName : undefined;
+      const baseRhythmName = isLibraryRhythm
+        ? this.currentRhythmName
+        : (editing?.base_rhythm_name || undefined);
 
-      const saved = await this.userRhythmService.save(name, bpm, rhythmData, baseRhythmName);
+      const saved = await this.userRhythmService.save(v.name, v.bpm, rhythmData, baseRhythmName);
+      this.currentUserRhythmId = saved.id; // próximo save já oferece "Atualizar"
+      const destMsg = addToDest(saved.id, v.name, v.bpm, baseRhythmName);
       close();
       HapticsService.success();
 
-      Toast.show(`"${name}" salvo`, {
+      Toast.show(`"${v.name}" salvo${destMsg}`, {
         type: 'success',
         durationMs: 5000,
         action: {
@@ -4982,10 +5045,32 @@ ctaUrl: '/plans?renew=true',
       });
     };
 
-    overlay.querySelector('#xSaveConfirm')?.addEventListener('click', doSave);
-    // Enter em qualquer input salva
-    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
-    bpmInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
+    const doUpdate = async (): Promise<void> => {
+      if (!editing) return doSaveAsNew();
+      const v = validate();
+      if (!v) return;
+
+      const rhythmData = this.fileManager.exportProjectAsJSON();
+      await this.userRhythmService.update(editing.id, v.name, v.bpm, rhythmData);
+      const destMsg = addToDest(editing.id, v.name, v.bpm, editing.base_rhythm_name || undefined);
+      close();
+      HapticsService.success();
+      Toast.show(`"${v.name}" atualizado${destMsg}`, { type: 'success' });
+    };
+
+    overlay.querySelector('#xSaveConfirm')?.addEventListener('click', editing ? doUpdate : doSaveAsNew);
+    overlay.querySelector('#xSaveAsNew')?.addEventListener('click', () => {
+      // "Salvar como novo" sem mexer no nome: sugere variação pra não
+      // criar homônimo sem querer
+      if (editing && nameInput.value.trim() === editing.name) {
+        nameInput.value = `${editing.name} 2`;
+      }
+      doSaveAsNew();
+    });
+    // Enter em qualquer input salva (no modo editar = atualizar)
+    const onEnter = editing ? doUpdate : doSaveAsNew;
+    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') onEnter(); });
+    bpmInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') onEnter(); });
 
     // ESC fecha
     const onEsc = (e: KeyboardEvent): void => {
@@ -5154,7 +5239,7 @@ ctaUrl: '/plans?renew=true',
           const id = card.dataset.id!;
           const rhythm = this.userRhythmService.getById(id);
           if (!rhythm) return;
-          this.loadUserRhythm(rhythm.name, rhythm.bpm, rhythm.rhythm_data);
+          this.loadUserRhythm(rhythm.name, rhythm.bpm, rhythm.rhythm_data, rhythm.id);
           close();
         });
       });
@@ -5239,13 +5324,15 @@ ctaUrl: '/plans?renew=true',
     renderList();
   }
 
-  private async loadUserRhythm(name: string, bpm: number, rhythmData: any): Promise<void> {
+  private async loadUserRhythm(name: string, bpm: number, rhythmData: any, rhythmId?: string): Promise<void> {
     try {
       if (this.stateManager.isPlaying()) this.stop();
 
       await this.fileManager.loadProjectFromData(rhythmData);
       this.stateManager.setTempo(bpm);
       this.currentRhythmOriginalBpm = bpm;
+      // Rastreia o id pro fluxo "Atualizar 'X'" (salvar sem duplicar)
+      this.currentUserRhythmId = rhythmId || null;
 
       const patternType = this.stateManager.getEditingPattern();
       this.stateManager.loadVariation(patternType, 0);
@@ -6722,7 +6809,7 @@ ctaUrl: '/plans?renew=true',
     if (item.userRhythmId) {
       const rhythm = this.userRhythmService.getById(item.userRhythmId);
       if (rhythm) {
-        await this.loadUserRhythm(rhythm.name, rhythm.bpm, rhythm.rhythm_data);
+        await this.loadUserRhythm(rhythm.name, rhythm.bpm, rhythm.rhythm_data, rhythm.id);
         loaded = true;
       } else {
         // Ritmo personalizado FANTASMA — o usuário apagou o ritmo mas o
@@ -6848,6 +6935,9 @@ ctaUrl: '/plans?renew=true',
   private rhythmCategories: Record<string, string[]> = {};
   private currentRhythmName: string = '';
   private currentRhythmOriginalBpm: number = 0; // BPM original do JSON do ritmo
+  /** Id do ritmo PESSOAL carregado (null se for da biblioteca). Habilita
+   *  o "Atualizar 'X'" no salvar em vez de duplicar. */
+  private currentUserRhythmId: string | null = null;
 
   private async loadAvailableRhythms(): Promise<void> {
     try {
@@ -7365,6 +7455,7 @@ ctaUrl: '/plans?renew=true',
       } else {
         // User: atualizar nome do ritmo, favoritos, strip
         this.currentRhythmName = name;
+        this.currentUserRhythmId = null; // ritmo de biblioteca
         const currentRhythmNameEl = document.getElementById('currentRhythmName');
         if (currentRhythmNameEl) {
           currentRhythmNameEl.textContent = name;

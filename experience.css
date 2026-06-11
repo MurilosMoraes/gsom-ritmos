@@ -1674,6 +1674,44 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   pointer-events: none;
 }
 
+/* ── Salvar ritmo: chips de repertório de destino ──────────────── */
+.x-save-dest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.x-dest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.75rem;
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.x-dest-chip.active {
+  border-color: #00E68C;
+  color: #00E68C;
+  background: rgba(0, 230, 140, 0.08);
+  box-shadow: 0 0 10px rgba(0, 230, 140, 0.15);
+}
+.x-dest-count {
+  font-size: 0.64rem;
+  color: rgba(0, 212, 255, 0.7);
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Painel desktop ESQUERDO: busca + pills + grid ─────────────── */
 .desk-search-wrap {
   position: relative;
