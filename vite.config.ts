@@ -42,11 +42,6 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       registerType: 'autoUpdate',
-      // Registro MANUAL (main.ts): no app NATIVO o SW não é registrado.
-      // Com auto-inject, o SW persistido no WebView servia o precache da
-      // versão ANTERIOR após update da loja — o app abria "velho" até
-      // fechar/abrir de novo. Bundle nativo é local, SW não agrega nada.
-      injectRegister: null,
       injectManifest: {
         // Pré-cachear tudo: app shell + ritmos + samples + imagens.
         // EXCLUI midi-native/ — esses só são usados pelo NativeAudioEngine
