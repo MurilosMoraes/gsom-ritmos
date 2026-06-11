@@ -5349,13 +5349,28 @@ ctaUrl: '/plans?renew=true',
         });
       });
 
-      // Deletar com undo
+      // Deletar: dupla confirmação (1º tap vira "Excluir?", 2º confirma —
+      // igual no repertório) + undo de 5s por garantia
       overlay.querySelectorAll<HTMLElement>('[data-delete]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           e.stopPropagation();
           const id = btn.dataset.delete!;
           const rhythm = this.userRhythmService.getById(id);
           if (!rhythm) return;
+
+          if (!btn.dataset.confirming) {
+            btn.dataset.confirming = '1';
+            btn.classList.add('confirming');
+            btn.innerHTML = '<span class="x-delete-confirm-label">Excluir?</span>';
+            // Cancela sozinho se o user não confirmar em 3s
+            window.setTimeout(() => {
+              if (!btn.isConnected || !btn.dataset.confirming) return;
+              delete btn.dataset.confirming;
+              btn.classList.remove('confirming');
+              btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+            }, 3000);
+            return;
+          }
 
           // Captura snapshot pra undo
           const snapshot = {

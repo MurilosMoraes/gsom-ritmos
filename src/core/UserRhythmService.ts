@@ -13,9 +13,14 @@ export interface UserRhythm {
 }
 
 const LOCAL_KEY = 'gdrums-user-rhythms';
+// Tombstones: ids excluídos localmente cuja exclusão REMOTA ainda não
+// confirmou. Sem isso, excluir offline ressuscitava o ritmo no próximo
+// boot (banco ainda tinha a linha e o merge trazia de volta).
+const PENDING_DELETES_KEY = 'gdrums-user-rhythms-pending-deletes';
 
 export class UserRhythmService {
   private rhythms: UserRhythm[] = [];
+  private pendingDeletes: string[] = [];
   private userId: string | null = null;
   private supabase: any = null;
 
@@ -49,17 +54,22 @@ export class UserRhythmService {
         // Manter ritmos locais não sincronizados
         const localOnly = this.rhythms.filter(r => !r.synced && !remoteIds.has(r.id));
 
+        // Tombstones: excluídos localmente NÃO ressuscitam do banco
+        const deleted = new Set(this.pendingDeletes);
+
         // Converter remotos
-        this.rhythms = data.map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          bpm: r.bpm,
-          rhythm_data: r.rhythm_data,
-          base_rhythm_name: r.base_rhythm_name || undefined,
-          created_at: r.created_at,
-          updated_at: r.updated_at,
-          synced: true,
-        }));
+        this.rhythms = data
+          .filter((r: any) => !deleted.has(r.id))
+          .map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            bpm: r.bpm,
+            rhythm_data: r.rhythm_data,
+            base_rhythm_name: r.base_rhythm_name || undefined,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+            synced: true,
+          }));
 
         // Adicionar locais não sincronizados
         this.rhythms.push(...localOnly);
@@ -163,15 +173,24 @@ export class UserRhythmService {
 
   async delete(id: string): Promise<void> {
     this.rhythms = this.rhythms.filter(r => r.id !== id);
+    // Tombstone até a exclusão REMOTA confirmar — senão excluir offline
+    // ressuscita o ritmo no próximo boot
+    if (!this.pendingDeletes.includes(id)) this.pendingDeletes.push(id);
     this.saveLocal();
 
     if (navigator.onLine && this.supabase) {
       try {
-        await this.supabase
+        const { error } = await this.supabase
           .from('gdrums_user_rhythms')
           .delete()
           .eq('id', id);
-      } catch { /* já removeu local */ }
+        if (!error) {
+          this.pendingDeletes = this.pendingDeletes.filter(d => d !== id);
+          this.saveLocal();
+        } else {
+          console.warn('[UserRhythms] delete remoto falhou (fica pendente):', error.message);
+        }
+      } catch { /* tombstone garante a exclusão no próximo sync */ }
     }
   }
 
@@ -185,14 +204,33 @@ export class UserRhythmService {
 
   // ─── Sync ─────────────────────────────────────────────────────────
 
-  /** Sobe todos os pendentes AGORA. Retorna true se algum sincronizou.
-   *  Chamado no boot (initWithUser), na volta da rede (evento online) e
-   *  ao abrir o modal Meus Ritmos (re-render some com o badge). */
+  /** Sobe todos os pendentes AGORA (saves E exclusões). Retorna true se
+   *  algo sincronizou. Chamado no boot (initWithUser), na volta da rede
+   *  (evento online) e ao abrir o modal Meus Ritmos. */
   async syncNow(): Promise<boolean> {
     if (!this.supabase || !this.userId || !navigator.onLine) return false;
 
+    let deletedAny = false;
+    // 1) Exclusões pendentes (tombstones)
+    for (const id of [...this.pendingDeletes]) {
+      try {
+        const { error } = await this.supabase
+          .from('gdrums_user_rhythms')
+          .delete()
+          .eq('id', id);
+        if (!error) {
+          this.pendingDeletes = this.pendingDeletes.filter(d => d !== id);
+          deletedAny = true;
+        } else {
+          console.warn('[UserRhythms] sync de exclusão falhou:', error.message);
+        }
+      } catch { break; /* sem rede */ }
+    }
+    if (deletedAny) this.saveLocal();
+
+    // 2) Saves pendentes
     const pending = this.rhythms.filter(r => !r.synced);
-    if (pending.length === 0) return false;
+    if (pending.length === 0) return deletedAny;
 
     for (const r of pending) {
       try {
@@ -219,7 +257,7 @@ export class UserRhythmService {
 
     const anySynced = pending.some(r => r.synced);
     if (anySynced) this.saveLocal();
-    return anySynced;
+    return anySynced || deletedAny;
   }
 
   private async syncPending(): Promise<void> {
@@ -235,11 +273,21 @@ export class UserRhythmService {
     } catch {
       this.rhythms = [];
     }
+    try {
+      const dels = localStorage.getItem(PENDING_DELETES_KEY);
+      this.pendingDeletes = dels ? JSON.parse(dels) : [];
+      if (!Array.isArray(this.pendingDeletes)) this.pendingDeletes = [];
+    } catch {
+      this.pendingDeletes = [];
+    }
   }
 
   private saveLocal(): void {
     try {
       localStorage.setItem(LOCAL_KEY, JSON.stringify(this.rhythms));
+    } catch { /* storage full */ }
+    try {
+      localStorage.setItem(PENDING_DELETES_KEY, JSON.stringify(this.pendingDeletes));
     } catch { /* storage full */ }
   }
 }

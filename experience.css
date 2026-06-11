@@ -1784,6 +1784,20 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
 .x-bpm-input::-webkit-inner-spin-button,
 .x-bpm-input::-webkit-outer-spin-button { -webkit-appearance: none; }
 
+/* Lixeira em modo confirmação ("Excluir?") */
+.x-rhythm-action.danger.confirming {
+  width: auto;
+  padding: 0 0.6rem;
+  background: rgba(255, 68, 102, 0.18);
+  border-color: rgba(255, 68, 102, 0.5);
+}
+.x-delete-confirm-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #ff6b83;
+  white-space: nowrap;
+}
+
 /* Web: sheet do Meus Ritmos mais largo (cards respiram) */
 @media (min-width: 640px) {
   .x-sheet.x-myrh-sheet { max-width: 620px; }
