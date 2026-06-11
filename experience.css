@@ -1320,17 +1320,6 @@ body.stage-mode .ctrl-btn-bpm {
     flex-direction: column;
     gap: 0.85rem;
   }
-  /* No painel esquerdo as categorias empilham em COLUNA (sem scroll
-     lateral — desktop tem altura) */
-  .desk-panel-left .catg-row {
-    flex-wrap: wrap;
-    overflow-x: visible;
-  }
-  .desk-panel-left .catg-card {
-    font-size: 0.78rem;
-    padding: 0.5rem 0.7rem;
-    min-height: 36px;
-  }
   /* Itens do repertório (painel direito) */
   .desk-setlist-item {
     display: flex;
@@ -1550,11 +1539,13 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   box-shadow: 0 0 8px rgba(0, 230, 140, 0.8);
 }
 
-/* ── TODOS: grid de QUADRADOS 3 colunas por categoria ──────────── */
+/* ── TODOS: grid de QUADRADOS compactos por categoria ──────────── */
+/* auto-fill: no celular dá ~3-4 colunas, na web os quadrados param de
+   crescer (ficavam gigantes com 3 colunas fixas em tela larga). */
 .catg-row {
   display: grid !important;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 0.45rem;
   overflow-x: visible !important;
 }
 .catg-card {
@@ -1565,17 +1556,28 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   text-align: center;
   white-space: normal !important;
   word-break: break-word;
-  padding: 0.5rem !important;
-  font-size: 0.82rem !important;
-  border-radius: 16px !important;
+  padding: 0.4rem !important;
+  font-size: 0.74rem !important;
+  border-radius: 12px !important;
   border-width: 1.5px !important;
   border-color: rgba(0, 212, 255, 0.35) !important;
   background: linear-gradient(160deg, rgba(0, 50, 70, 0.25), rgba(5, 12, 25, 0.5)) !important;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 .catg-card.active {
   border-color: #00D4FF !important;
   box-shadow: 0 0 16px rgba(0, 212, 255, 0.3);
+}
+/* Web: sheet TODOS não precisa ocupar a tela inteira de largura */
+@media (min-width: 1024px) {
+  .catg-sheet {
+    max-width: 780px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .catg-row {
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  }
 }
 /* Busca dentro do sheet TODOS */
 .catg-search-wrap {
@@ -1608,52 +1610,115 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   pointer-events: none;
 }
 
-/* ── Painel desktop ESQUERDO: LISTA vertical organizada ────────── */
-@media (min-width: 1024px) {
-  /* Sobrescreve o grid quadrado: no painel lateral vira LISTA limpa
-     (nome da categoria + ritmos um embaixo do outro). Zero scroll
-     horizontal — gente que não sabe shift+scroll agradece. */
-  .desk-panel-left .catg-row {
-    display: flex !important;
-    flex-direction: column;
-    gap: 0.2rem;
-  }
-  .desk-panel-left .catg-card {
-    aspect-ratio: auto;
-    justify-content: flex-start;
-    text-align: left;
-    padding: 0.5rem 0.7rem !important;
-    font-size: 0.8rem !important;
-    border-radius: 9px !important;
-    border-width: 1px !important;
-    border-color: rgba(255, 255, 255, 0.07) !important;
-    background: rgba(255, 255, 255, 0.02) !important;
-    min-height: 34px;
-    box-shadow: none;
-  }
-  .desk-panel-left .catg-card:hover {
-    border-color: rgba(0, 212, 255, 0.4) !important;
-    background: rgba(0, 212, 255, 0.05) !important;
-  }
-  .desk-panel-left .catg-card.active {
-    border-color: rgba(0, 212, 255, 0.7) !important;
-    background: rgba(0, 212, 255, 0.08) !important;
-    color: #00D4FF !important;
-  }
-  .desk-panel-left .catg-title {
-    position: sticky;
-    top: 0;
-    background: rgba(10, 10, 28, 0.95);
-    padding: 0.3rem 0;
-    z-index: 1;
-    color: rgba(0, 212, 255, 0.75);
-  }
-  /* Chips do strip central: wrap no desktop (sem scroll horizontal) */
-  .rhythm-category-filters,
-  .rhythm-cards-wrap {
-    flex-wrap: wrap;
-    overflow-x: visible !important;
-  }
+/* ── Painel desktop ESQUERDO: pills de categoria + grid quadrado ── */
+.desk-cat-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+.desk-cat-pill {
+  padding: 0.32rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.desk-cat-pill:hover { border-color: rgba(0, 212, 255, 0.4); color: #fff; }
+.desk-cat-pill.active {
+  border-color: #00D4FF;
+  color: #00D4FF;
+  background: rgba(0, 212, 255, 0.08);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
+}
+.desk-rhythm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 0.4rem;
+}
+.desk-r-card {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  padding: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: 12px;
+  border: 1.5px solid rgba(0, 212, 255, 0.3);
+  background: linear-gradient(160deg, rgba(0, 50, 70, 0.25), rgba(5, 12, 25, 0.5));
+  color: rgba(255, 255, 255, 0.85);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.desk-r-card:hover { border-color: rgba(0, 212, 255, 0.6); }
+.desk-r-card:active { transform: scale(0.97); }
+.desk-r-card.active {
+  border-color: #00D4FF;
+  color: #00D4FF;
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.3);
+}
+
+/* ── Painel desktop DIREITO: chips de seleção de repertório ─────── */
+.desk-setlists-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+.desk-setlist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+  max-width: 100%;
+}
+.desk-setlist-chip-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+.desk-setlist-chip-count {
+  font-size: 0.62rem;
+  color: rgba(0, 212, 255, 0.7);
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  font-variant-numeric: tabular-nums;
+}
+.desk-setlist-chip:hover { border-color: rgba(0, 212, 255, 0.4); color: #fff; }
+.desk-setlist-chip.active {
+  border-color: #00D4FF;
+  color: #00D4FF;
+  background: rgba(0, 212, 255, 0.08);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
+}
+.desk-setlist-list {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Sheet TODOS: busca fixa no topo, lista rola embaixo */

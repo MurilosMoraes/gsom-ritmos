@@ -3631,14 +3631,6 @@ ctaUrl: '/plans?renew=true',
     if (document.body.classList.contains('stage-mode')) return;
     document.body.classList.add('stage-mode');
 
-    // No Modo Show a barra de categorias fica escondida (CSS), então
-    // limpa o filtro ativo e re-renderiza pra mostrar TODOS os ritmos.
-    // Sem isso, se user estava filtrando "Gospel", veria só Gospel sem
-    // ter como trocar.
-    if (this.activeCategory) {
-      this.activeCategory = '';
-      this.renderRhythmStrip();
-    }
 
     // Ativa keep-awake (ignora erro se não for native)
     KeepAwake.keepAwake().catch(() => { /* navegador web — sem efeito */ });
@@ -6536,9 +6528,7 @@ ctaUrl: '/plans?renew=true',
     const allRhythmsBtn = document.getElementById('allRhythmsBtn');
     allRhythmsBtn?.addEventListener('click', () => this.showAllRhythmsSheet());
 
-    // Lupa na linha de pills — abre o modal de busca (mesmo do strip)
-    const rhythmSearchBtn = document.getElementById('rhythmSearchBtn');
-    rhythmSearchBtn?.addEventListener('click', () => this.showRhythmStripSearchModal());
+    // (Lupa removida 06/2026 — a busca vive dentro do modal TODOS)
 
     // Salvar como meu ritmo
     const saveAsBtn = document.getElementById('saveAsMyRhythmBtn');
@@ -6801,9 +6791,9 @@ ctaUrl: '/plans?renew=true',
     const stripCards = document.getElementById('rhythmStripCards');
     const favBar = document.querySelector('.fav-bar') as HTMLElement;
 
-    // ✦ Categorias de ritmos ficam SEMPRE visíveis (mesmo com setlist).
-    // User pediu: continuar navegando categorias mesmo com repertório montado.
-    if (stripCards) stripCards.style.display = 'flex';
+    // ✦ Listagem categorizada CENTRAL removida (06/2026): o modal TODOS
+    // (com busca embutida) cobre a navegação — com ou sem repertório.
+    if (stripCards) stripCards.style.display = 'none';
 
     if (this.setlistManager.isEmpty()) {
       if (numEl) numEl.textContent = '#';
@@ -6856,8 +6846,6 @@ ctaUrl: '/plans?renew=true',
 
   private availableRhythms: Array<{name: string, path: string, category: string}> = [];
   private rhythmCategories: Record<string, string[]> = {};
-  private activeCategory: string = '';
-  private rhythmStripQuery: string = '';
   private currentRhythmName: string = '';
   private currentRhythmOriginalBpm: number = 0; // BPM original do JSON do ritmo
 
@@ -6999,255 +6987,14 @@ ctaUrl: '/plans?renew=true',
     }
   }
 
-  private renderRhythmStrip(): void {
-    const container = document.getElementById('rhythmStripCards');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    // Normaliza pra busca fuzzy pt-BR (ignora acento e caixa)
-    const norm = (s: string): string =>
-      s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-    // ── Botão lupa (abre modal de busca) + indicador de query ativo ──
-    //
-    // ⚠️ ANTES: tinha um <input> inline aqui. No iPhone, o pedalInput
-    // (sagrado) roubava o keyboard mapping porque esse input não estava
-    // em modal (hasModalOpen()=false → pedal segue legalmente focado).
-    // Não foi possível abrir teclado nesse input mesmo com blur/focus
-    // sync no touchstart.
-    //
-    // AGORA: botão lupa abre um modal x-overlay. Modais em .x-overlay
-    // são detectados por hasModalOpen() → o pedal libera o foco sozinho
-    // → teclado abre normal. Mesmo padrão usado em "Meus Ritmos" e
-    // "Repertório" (que já funcionam no iPhone).
-    // Busca: o trigger principal virou a LUPA na pills-row (redesign).
-    // Aqui só renderiza o INDICADOR de filtro ativo (com X pra limpar)
-    // quando há query — senão nada (estado limpo, tela enxuta).
-    const hasQuery = !!this.rhythmStripQuery;
-    if (hasQuery) {
-      const searchBar = document.createElement('div');
-      searchBar.className = 'rhythm-strip-search';
-      searchBar.innerHTML = `
-        <button class="rhythm-strip-search-trigger has-query" id="rhythmStripSearchBtn" aria-label="Filtro ativo">
-          <svg class="rhythm-strip-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span class="rhythm-strip-search-label">${this.rhythmStripQuery.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)}</span>
-          <span class="rhythm-strip-search-clear-inline" id="rhythmStripSearchClearBtn" aria-label="Limpar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
-        </button>
-      `;
-      container.appendChild(searchBar);
-
-      const triggerBtn = searchBar.querySelector('#rhythmStripSearchBtn');
-      triggerBtn?.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        if (target.closest('#rhythmStripSearchClearBtn')) {
-          e.stopPropagation();
-          this.rhythmStripQuery = '';
-          this.renderRhythmStrip();
-          return;
-        }
-        this.showRhythmStripSearchModal();
-      });
-    }
-
-    // ── Filtros de categoria ──
-    const categories = Object.keys(this.rhythmCategories).sort();
-    if (categories.length > 0) {
-      const filterBar = document.createElement('div');
-      filterBar.className = 'rhythm-category-filters';
-
-      // Botão "Todos"
-      const allBtn = document.createElement('button');
-      allBtn.className = 'rhythm-cat-btn' + (!this.activeCategory ? ' active' : '');
-      allBtn.textContent = 'Todos';
-      allBtn.addEventListener('click', () => {
-        this.activeCategory = '';
-        this.renderRhythmStrip();
-      });
-      filterBar.appendChild(allBtn);
-
-      categories.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.className = 'rhythm-cat-btn' + (this.activeCategory === cat ? ' active' : '');
-        btn.textContent = cat;
-        btn.addEventListener('click', () => {
-          this.activeCategory = cat;
-          this.renderRhythmStrip();
-        });
-        filterBar.appendChild(btn);
-      });
-
-      container.appendChild(filterBar);
-    }
-
-    // ── Cards de ritmos (filtrados) ──
-    const cardsWrap = document.createElement('div');
-    cardsWrap.className = 'rhythm-cards-wrap';
-
-    const query = norm(this.rhythmStripQuery.trim());
-    let filtered = this.activeCategory
-      ? this.availableRhythms.filter(r => r.category === this.activeCategory)
-      : this.availableRhythms;
-    if (query) {
-      filtered = filtered.filter(r => norm(r.name).includes(query));
-    }
-
-    filtered.forEach(rhythm => {
-      const card = document.createElement('button');
-      card.className = 'rhythm-card-btn';
-      if (rhythm.name === this.currentRhythmName) {
-        card.classList.add('active');
-      }
-      card.setAttribute('data-rhythm-path', rhythm.path);
-      card.textContent = rhythm.name;
-
-      card.addEventListener('click', async () => {
-        await this.loadRhythm(rhythm.name, rhythm.path);
-      });
-
-      cardsWrap.appendChild(card);
-    });
-
-    if (filtered.length === 0) {
-      cardsWrap.innerHTML = query
-        ? `<span class="rhythm-strip-empty">Nada achado pra "${this.rhythmStripQuery}"</span>`
-        : '<span class="rhythm-strip-empty">Nenhum ritmo nesta categoria</span>';
-    }
-
-    container.appendChild(cardsWrap);
-
-    // Painel esquerdo do desktop (catálogo) acompanha ritmos carregados/ativo
-    this.renderDesktopPanels();
-  }
-
   /**
-   * Modal de busca de ritmos — substitui o input inline que não funcionava
-   * no iPhone (pedalInput roubava keyboard mapping fora de modal).
-   *
-   * Padrão idêntico ao Meus Ritmos: classe x-overlay (hasModalOpen() pega),
-   * __refocusPedal no close (devolve foco pro pedal dentro do user gesture).
+   * SHIM (06/2026): a listagem categorizada CENTRAL e o modal de busca da
+   * lupa foram removidos — o modal TODOS (busca embutida) cobre tudo.
+   * Mantido como atualizador dos painéis laterais do desktop porque
+   * dezenas de call sites chamam renderRhythmStrip() após carregar ritmo.
    */
-  private showRhythmStripSearchModal(): void {
-    const overlay = document.createElement('div');
-    overlay.className = 'x-overlay';
-
-    let query = this.rhythmStripQuery;
-
-    const norm = (s: string): string =>
-      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-
-    const escapeHtml = (s: string): string =>
-      s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-
-    const close = (): void => {
-      overlay.classList.remove('active');
-      overlay.classList.add('x-exit');
-      (window as any).__refocusPedal?.();
-      setTimeout(() => overlay.remove(), 220);
-    };
-
-    const filterRhythms = () => {
-      const q = norm(query.trim());
-      // Mesma fonte usada pelo strip: respeita categoria ativa
-      let list = this.activeCategory
-        ? (this.rhythmCategories[this.activeCategory] || []).map(name => ({
-            name: name.replace(/\.json$/, ''),
-            path: `/rhythm/${name}`,
-          }))
-        : this.availableRhythms;
-      if (q) {
-        list = list.filter(r => norm(r.name).includes(q));
-      }
-      return list;
-    };
-
-    const renderList = (): void => {
-      const list = filterRhythms();
-      const listEl = overlay.querySelector('.rss-results') as HTMLElement | null;
-      if (!listEl) return;
-      if (list.length === 0) {
-        listEl.innerHTML = `<div class="rss-empty">${query ? `Nada achado pra "${escapeHtml(query)}"` : 'Nenhum ritmo'}</div>`;
-        return;
-      }
-      listEl.innerHTML = list.map(r => `
-        <button class="rss-item ${r.name === this.currentRhythmName ? 'active' : ''}" data-name="${escapeHtml(r.name)}" data-path="${escapeHtml(r.path)}">
-          ${escapeHtml(r.name)}
-        </button>
-      `).join('');
-      // Bind dos cliques nos resultados
-      listEl.querySelectorAll<HTMLButtonElement>('.rss-item').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const name = btn.dataset.name!;
-          const path = btn.dataset.path!;
-          // Salva query no estado pro strip refletir
-          this.rhythmStripQuery = query;
-          close();
-          await this.loadRhythm(name, path);
-          this.renderRhythmStrip();
-        });
-      });
-    };
-
-    overlay.innerHTML = `
-      <div class="x-sheet rss-sheet" role="dialog" aria-label="Buscar ritmo">
-        <div class="x-grip"></div>
-        <div class="x-head">
-          <div>
-            <h2 class="x-head-title">Buscar ritmo</h2>
-            <div class="x-head-sub">Digita pra filtrar</div>
-          </div>
-          <button class="x-close" id="rssClose" aria-label="Fechar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div class="x-body">
-          <div class="x-search-wrap">
-            <div class="x-search-input-wrap">
-              <svg class="x-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" class="x-search-input" id="rssInput" placeholder="Buscar ritmo..." value="${escapeHtml(query)}" autocomplete="off" />
-              <button class="x-search-clear ${query ? 'visible' : ''}" id="rssClear" aria-label="Limpar busca">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-          </div>
-          <div class="rss-results"></div>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-    requestAnimationFrame(() => overlay.classList.add('active'));
-
-    // Fechar (botão X)
-    overlay.querySelector('#rssClose')?.addEventListener('click', close);
-    // Fechar clicando no backdrop
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-
-    const input = overlay.querySelector('#rssInput') as HTMLInputElement | null;
-    const clearBtn = overlay.querySelector('#rssClear') as HTMLElement | null;
-
-    input?.addEventListener('input', () => {
-      query = input.value;
-      this.rhythmStripQuery = query; // atualiza estado pro strip refletir ao fechar
-      clearBtn?.classList.toggle('visible', !!query);
-      renderList();
-    });
-
-    clearBtn?.addEventListener('click', () => {
-      query = '';
-      if (input) input.value = '';
-      this.rhythmStripQuery = '';
-      clearBtn.classList.remove('visible');
-      renderList();
-      input?.focus();
-    });
-
-    // Primeira renderização
-    renderList();
-
-    // Foca o input automaticamente — o modal x-overlay é detectado pelo
-    // hasModalOpen() do pedal, então o focusPedalInput não vai roubar.
-    setTimeout(() => input?.focus(), 50);
+  private renderRhythmStrip(): void {
+    this.renderDesktopPanels();
   }
 
   // ─── TODOS os ritmos — bottom sheet fullheight categorizado ─────────
@@ -7370,45 +7117,117 @@ ctaUrl: '/plans?renew=true',
 
   // ─── Painéis laterais DESKTOP (≥1024px) ─────────────────────────────
   //
-  // Web/PC tem espaço sobrando: esquerda = catálogo categorizado sempre
-  // aberto; direita = repertório ativo. Centro continua o app (igual
-  // mobile). Tablets (<1024px) não veem os painéis (CSS esconde).
+  // Web/PC tem espaço sobrando: esquerda = ritmos com pills de categoria
+  // no topo (clica na pill → grid de quadrados da categoria); direita =
+  // repertório com seletor dos até 5 repertórios em cima. Centro continua
+  // o app (igual mobile). Tablets (<1024px) não veem os painéis.
+
+  /** Categoria selecionada no painel esquerdo do desktop. */
+  private deskCategory = '';
 
   private renderDesktopPanels(): void {
+    const esc = (s: string): string =>
+      s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+    // ── ESQUERDA: pills de categoria + grid da categoria ativa ──
     const left = document.getElementById('deskRhythmsBody');
     if (left) {
-      this.buildCategorizedRhythmList(left, async (name, path) => {
-        await this.loadRhythm(name, path);
-        this.renderRhythmStrip();
+      const cats = Object.keys(this.rhythmCategories).sort();
+      // Ritmos fora de categoria viram pill "Outros" (paridade com TODOS)
+      const categorized = new Set(cats.flatMap(c => this.rhythmCategories[c] || []));
+      const uncategorized = this.availableRhythms.filter(r => !categorized.has(`${r.name}.json`));
+      const allCats = uncategorized.length ? [...cats, 'Outros'] : cats;
+
+      if (!this.deskCategory || !allCats.includes(this.deskCategory)) {
+        this.deskCategory = allCats[0] || '';
+      }
+
+      const rhythms: Array<{ name: string; path: string }> =
+        this.deskCategory === 'Outros'
+          ? uncategorized
+          : (this.rhythmCategories[this.deskCategory] || []).map(n => ({
+              name: n.replace(/\.json$/, ''),
+              path: `/rhythm/${n}`,
+            }));
+
+      left.innerHTML = `
+        <div class="desk-cat-pills">
+          ${allCats.map(c => `
+            <button class="desk-cat-pill ${c === this.deskCategory ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>
+          `).join('')}
+        </div>
+        <div class="desk-rhythm-grid">
+          ${rhythms.map(r => `
+            <button class="desk-r-card ${r.name === this.currentRhythmName ? 'active' : ''}"
+                    data-name="${esc(r.name)}" data-path="${esc(r.path)}">${esc(r.name)}</button>
+          `).join('')}
+        </div>
+      `;
+
+      left.querySelectorAll<HTMLButtonElement>('.desk-cat-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.deskCategory = btn.dataset.cat!;
+          this.renderDesktopPanels();
+        });
+      });
+      left.querySelectorAll<HTMLButtonElement>('.desk-r-card').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await this.loadRhythm(btn.dataset.name!, btn.dataset.path!);
+          this.renderDesktopPanels();
+        });
       });
     }
 
+    // ── DIREITA: seletor de repertórios + itens do ativo ──
     const right = document.getElementById('deskSetlistBody');
     if (right) {
+      const lists = this.setlistManager.getSetlists();
       const items = this.setlistManager.getItems();
       const cur = this.setlistManager.getCurrentIndex();
-      const esc = (s: string): string =>
-        s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-      if (items.length === 0) {
-        right.innerHTML = '<div class="desk-empty">Repertório vazio.<br>Monte no botão REPERTÓRIO.</div>';
-      } else {
-        right.innerHTML = items.map((item, i) => `
-          <button class="desk-setlist-item ${i === cur ? 'active' : ''}" data-idx="${i}">
-            <span class="desk-setlist-num">${i + 1}</span>
-            <span class="desk-setlist-name">${esc(item.name)}</span>
-          </button>
-        `).join('');
-        right.querySelectorAll<HTMLButtonElement>('.desk-setlist-item').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const idx = parseInt(btn.dataset.idx!, 10);
-            const item = this.setlistManager.goTo(idx);
-            if (item) {
-              if (this.stateManager.isPlaying()) this.stop();
-              await this.loadSetlistItem(item);
-            }
-          });
+
+      const chipsHtml = lists.length > 1 ? `
+        <div class="desk-setlists-chips">
+          ${lists.map(l => `
+            <button class="desk-setlist-chip ${l.active ? 'active' : ''}" data-setlist-id="${esc(l.id)}">
+              <span class="desk-setlist-chip-name">${esc(l.name)}</span>
+              <span class="desk-setlist-chip-count">${l.count}</span>
+            </button>
+          `).join('')}
+        </div>
+      ` : '';
+
+      const itemsHtml = items.length === 0
+        ? '<div class="desk-empty">Repertório vazio.<br>Monte no botão REPERTÓRIO.</div>'
+        : `<div class="desk-setlist-list">${items.map((item, i) => `
+            <button class="desk-setlist-item ${i === cur ? 'active' : ''}" data-idx="${i}">
+              <span class="desk-setlist-num">${i + 1}</span>
+              <span class="desk-setlist-name">${esc(item.name)}</span>
+            </button>
+          `).join('')}</div>`;
+
+      right.innerHTML = chipsHtml + itemsHtml;
+
+      // Trocar de repertório (não corta o som — item só carrega no clique)
+      right.querySelectorAll<HTMLButtonElement>('.desk-setlist-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const id = chip.dataset.setlistId!;
+          if (this.setlistManager.switchSetlist(id)) {
+            this.updateSetlistUI(); // re-renderiza painéis + fav-bar
+          }
         });
-      }
+      });
+
+      right.querySelectorAll<HTMLButtonElement>('.desk-setlist-item').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const idx = parseInt(btn.dataset.idx!, 10);
+          const item = this.setlistManager.goTo(idx);
+          if (item) {
+            if (this.stateManager.isPlaying()) this.stop();
+            await this.loadSetlistItem(item);
+          }
+        });
+      });
+
       // Nome do repertório ativo no título do painel
       const title = document.getElementById('deskSetlistTitle');
       if (title) title.textContent = this.setlistManager.getName();
