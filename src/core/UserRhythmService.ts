@@ -264,6 +264,38 @@ export class UserRhythmService {
     await this.syncNow();
   }
 
+  /** Sincroniza UM ritmo e devolve o resultado COM o motivo da falha —
+   *  usado pelo badge "pendente sync" (tap = tentar agora + ver erro). */
+  async syncOne(id: string): Promise<{ ok: boolean; error?: string }> {
+    const r = this.rhythms.find(x => x.id === id);
+    if (!r) return { ok: false, error: 'ritmo não encontrado' };
+    if (r.synced) return { ok: true };
+    if (!navigator.onLine) return { ok: false, error: 'sem internet' };
+    if (!this.supabase || !this.userId) return { ok: false, error: 'sessão não iniciada' };
+
+    try {
+      const payload: Record<string, any> = {
+        id: r.id,
+        user_id: this.userId,
+        name: r.name,
+        bpm: r.bpm,
+        rhythm_data: r.rhythm_data,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+      };
+      if (r.base_rhythm_name) payload.base_rhythm_name = r.base_rhythm_name;
+      const { error } = await this.supabase
+        .from('gdrums_user_rhythms')
+        .upsert(payload);
+      if (error) return { ok: false, error: error.message };
+      r.synced = true;
+      this.saveLocal();
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'falha de rede' };
+    }
+  }
+
   // ─── localStorage ─────────────────────────────────────────────────
 
   private loadLocal(): void {

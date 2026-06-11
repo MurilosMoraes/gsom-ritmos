@@ -5152,7 +5152,7 @@ ctaUrl: '/plans?renew=true',
                   <div class="x-rhythm-name" data-name="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
                   <div class="x-rhythm-meta">
                     ${r.base_rhythm_name ? `<span class="x-rhythm-base">baseado em ${escapeHtml(r.base_rhythm_name)}</span>` : ''}
-                    ${!r.synced ? `${r.base_rhythm_name ? '<span class="x-rhythm-meta-dot"></span>' : ''}<span class="x-rhythm-pending">pendente sync</span>` : ''}
+                    ${!r.synced ? `${r.base_rhythm_name ? '<span class="x-rhythm-meta-dot"></span>' : ''}<button class="x-rhythm-pending" data-sync-one="${r.id}" title="Toque pra sincronizar agora">pendente sync ↻</button>` : ''}
                   </div>
                 </div>
                 <div class="x-bpm-ctrl" data-bpm-ctrl="${r.id}" aria-label="BPM do ritmo">
@@ -5246,6 +5246,23 @@ ctaUrl: '/plans?renew=true',
           flushBpm(id); // BPM editado mas ainda não salvo? salva antes de carregar
           this.loadUserRhythm(rhythm.name, rhythm.bpm, rhythm.rhythm_data, rhythm.id);
           close();
+        });
+      });
+
+      // Badge "pendente sync": tap = tenta subir AGORA e mostra o motivo
+      // real se falhar (antes o erro era invisível, só no console)
+      overlay.querySelectorAll<HTMLElement>('[data-sync-one]').forEach(badge => {
+        badge.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          badge.textContent = 'sincronizando...';
+          const result = await this.userRhythmService.syncOne(badge.dataset.syncOne!);
+          if (result.ok) {
+            Toast.show('Ritmo sincronizado', { type: 'success' });
+            renderList();
+          } else {
+            badge.textContent = 'pendente sync ↻';
+            Toast.show(`Sync falhou: ${result.error}`, { type: 'warn', durationMs: 8000 });
+          }
         });
       });
 

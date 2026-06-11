@@ -498,6 +498,15 @@
 .x-rhythm-pending {
   color: var(--x-gold);
   font-weight: 600;
+  /* É botão agora: tap = sincronizar + ver erro real */
+  background: rgba(255, 200, 60, 0.08);
+  border: 1px solid rgba(255, 200, 60, 0.3);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .x-rhythm-actions {
