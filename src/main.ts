@@ -7045,7 +7045,13 @@ ctaUrl: '/plans?renew=true',
   private updateCurrentRhythmMeta(): void {
     const metaEl = document.getElementById('currentRhythmMeta');
     if (!metaEl) return;
-    if (this.setlistManager.isEmpty()) { metaEl.textContent = ''; return; }
+    if (this.setlistManager.isEmpty()) {
+      // Sem repertório: se tem ritmo carregado, mantém o BPM vivo
+      metaEl.textContent = this.currentRhythmName
+        ? `${Math.round(this.stateManager.getTempo())} BPM`
+        : '';
+      return;
+    }
 
     // Ritmo avulso (fora do repertório): meta é só o BPM atual — não
     // mistura com o "base" do item do setlist que NÃO está tocando
@@ -7079,15 +7085,26 @@ ctaUrl: '/plans?renew=true',
     if (stripCards) stripCards.style.display = 'none';
 
     if (this.setlistManager.isEmpty()) {
-      if (numEl) numEl.textContent = '#';
-      if (positionEl) positionEl.textContent = '';
-      if (nameEl) nameEl.textContent = 'Monte seus favoritos';
-      if (metaEl) metaEl.textContent = '';
+      if (this.currentRhythmName) {
+        // SEM repertório mas COM ritmo carregado (TODOS/painel/Meus
+        // Ritmos): mostra o que tá tocando em cima — antes a barra
+        // sumia inteira e o user tocava "no escuro".
+        if (favBar) favBar.style.display = '';
+        if (numEl) numEl.textContent = '♪';
+        if (positionEl) positionEl.textContent = 'sem repertório';
+        if (nameEl) nameEl.textContent = this.currentRhythmName;
+        if (metaEl) metaEl.textContent = `${Math.round(this.stateManager.getTempo())} BPM`;
+      } else {
+        if (favBar) favBar.style.display = 'none';
+        if (numEl) numEl.textContent = '#';
+        if (positionEl) positionEl.textContent = '';
+        if (nameEl) nameEl.textContent = 'Monte seus favoritos';
+        if (metaEl) metaEl.textContent = '';
+      }
       if (prevNameEl) prevNameEl.textContent = '--';
       if (nextNameEl) nextNameEl.textContent = '--';
       if (prevBtn) { prevBtn.disabled = true; prevBtn.style.opacity = '0.25'; }
       if (nextBtn) { nextBtn.disabled = true; nextBtn.style.opacity = '0.25'; }
-      if (favBar) favBar.style.display = 'none';
       this.renderDesktopPanels();
       return;
     }
