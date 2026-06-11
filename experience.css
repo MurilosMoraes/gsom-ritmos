@@ -1705,10 +1705,7 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   pointer-events: none;
 }
 
-/* ── Fav-bar: acentos LARANJA (risquinhos + Anterior/Próximo) ──── */
-.fav-side-label {
-  color: rgba(255, 150, 40, 0.85) !important;
-}
+/* ── Fav-bar: risquinhos LARANJA (Anterior/Próximo na cor original) ── */
 .fav-center-clickable .fav-position::after {
   color: rgba(255, 150, 40, 0.6);
 }
