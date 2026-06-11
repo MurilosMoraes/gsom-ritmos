@@ -1729,6 +1729,14 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   }
 }
 
+/* ── iOS: respiro pra faixa do pedal BT ────────────────────────────
+   O input do pedal (bloco SAGRADO — nunca tocar nele) é fixo no bottom
+   com 24px. Sem este respiro, os toggles INTRO/VIRADAS/FINAL ficavam
+   embaixo da faixa. :has() só aplica quando o input existe (iOS). */
+body:has(#pedalBtInput) .user-layout {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px) !important;
+}
+
 /* ── Marca no header: "GDrums" com cara de marca ───────────────── */
 .global-brand-text {
   font-size: 1.15rem !important;
