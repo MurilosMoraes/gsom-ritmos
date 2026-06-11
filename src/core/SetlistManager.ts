@@ -166,6 +166,23 @@ export class SetlistManager {
       let remoteState: MultiSetlistState | null = null;
       if (data.setlists && Array.isArray(data.setlists?.setlists)) {
         remoteState = this.normalizeState(data.setlists as MultiSetlistState);
+        // ── Detecção de escrita de APP ANTIGO (período de transição) ──
+        // O app novo SEMPRE grava items + setlists juntos (dual-write
+        // consistente: items === itens do repertório ativo). Se as
+        // colunas divergem, um app antigo (PWA cacheada em outro device)
+        // gravou só items DEPOIS — adota items no repertório ativo pra
+        // não perder as edições feitas lá.
+        if (Array.isArray(data.items) && data.items.length > 0) {
+          const act = remoteState.setlists.find(s => s.id === remoteState!.activeId);
+          if (act && JSON.stringify(act.items) !== JSON.stringify(data.items)) {
+            console.warn('[SetlistManager] items (app antigo) diverge do setlists — adotando items no repertório ativo');
+            act.items = data.items;
+            act.currentIndex = Math.min(
+              typeof data.current_index === 'number' ? data.current_index : 0,
+              Math.max(0, data.items.length - 1)
+            );
+          }
+        }
       } else if (Array.isArray(data.items) && data.items.length > 0) {
         const id = genId();
         remoteState = {
