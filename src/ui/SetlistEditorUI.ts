@@ -1692,7 +1692,7 @@ export class SetlistEditorUI {
          em cards separados, pills neon, container mais largo. */
       @media (min-width: 641px) {
         .sle-container {
-          max-width: 960px;
+          max-width: 1120px;
           max-height: 88vh;
           background: linear-gradient(165deg, rgba(12, 14, 34, 0.97) 0%, rgba(5, 6, 16, 0.99) 100%);
           border: 1px solid rgba(0, 212, 255, 0.14);

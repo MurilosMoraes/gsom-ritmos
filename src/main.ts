@@ -5151,10 +5151,14 @@ ctaUrl: '/plans?renew=true',
                 <div class="x-rhythm-body">
                   <div class="x-rhythm-name" data-name="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
                   <div class="x-rhythm-meta">
-                    <span class="x-rhythm-bpm">${r.bpm} BPM</span>
-                    ${r.base_rhythm_name ? `<span class="x-rhythm-meta-dot"></span><span class="x-rhythm-base">baseado em ${escapeHtml(r.base_rhythm_name)}</span>` : ''}
-                    ${!r.synced ? `<span class="x-rhythm-meta-dot"></span><span class="x-rhythm-pending">pendente sync</span>` : ''}
+                    ${r.base_rhythm_name ? `<span class="x-rhythm-base">baseado em ${escapeHtml(r.base_rhythm_name)}</span>` : ''}
+                    ${!r.synced ? `${r.base_rhythm_name ? '<span class="x-rhythm-meta-dot"></span>' : ''}<span class="x-rhythm-pending">pendente sync</span>` : ''}
                   </div>
+                </div>
+                <div class="x-bpm-ctrl" data-bpm-ctrl="${r.id}" aria-label="BPM do ritmo">
+                  <button class="x-bpm-btn" data-bpm-step="-1" aria-label="Diminuir BPM">&minus;</button>
+                  <span class="x-bpm-val" data-bpm-val="${r.id}" role="button" title="Toque pra digitar">${r.bpm}</span>
+                  <button class="x-bpm-btn" data-bpm-step="1" aria-label="Aumentar BPM">+</button>
                 </div>
                 <div class="x-rhythm-actions">
                   <button class="x-rhythm-action" data-rename="${r.id}" aria-label="Renomear">
@@ -5169,7 +5173,7 @@ ctaUrl: '/plans?renew=true',
           }</div>`;
 
       overlay.innerHTML = `
-        <div class="x-sheet" role="dialog" aria-label="Meus Ritmos">
+        <div class="x-sheet x-myrh-sheet" role="dialog" aria-label="Meus Ritmos">
           <div class="x-grip"></div>
           <div class="x-head">
             <div>
@@ -5234,13 +5238,77 @@ ctaUrl: '/plans?renew=true',
       overlay.querySelectorAll<HTMLElement>('.x-rhythm-card').forEach(card => {
         card.addEventListener('click', (e) => {
           const target = e.target as HTMLElement;
-          // Ignora cliques nos botões de ação ou em inputs de rename
-          if (target.closest('.x-rhythm-action, .x-rhythm-name-input')) return;
+          // Ignora cliques nos botões de ação, no controle de BPM ou em inputs
+          if (target.closest('.x-rhythm-action, .x-rhythm-name-input, .x-bpm-ctrl')) return;
           const id = card.dataset.id!;
           const rhythm = this.userRhythmService.getById(id);
           if (!rhythm) return;
+          flushBpm(id); // BPM editado mas ainda não salvo? salva antes de carregar
           this.loadUserRhythm(rhythm.name, rhythm.bpm, rhythm.rhythm_data, rhythm.id);
           close();
+        });
+      });
+
+      // ── BPM editável no card ──
+      // ±1 nos botões; tap no número abre input pra digitar. Salva com
+      // debounce de 600ms (não spamma o Supabase a cada toque).
+      const bpmTimers: Record<string, number> = {};
+      const flushBpm = (id: string): void => {
+        if (!bpmTimers[id]) return;
+        clearTimeout(bpmTimers[id]);
+        delete bpmTimers[id];
+        const valEl = overlay.querySelector(`[data-bpm-val="${id}"]`);
+        const rhythm = this.userRhythmService.getById(id);
+        const bpm = parseInt(valEl?.textContent || '');
+        if (rhythm && !isNaN(bpm)) void this.userRhythmService.update(id, rhythm.name, bpm);
+      };
+      const commitBpm = (id: string, bpm: number): void => {
+        const rhythm = this.userRhythmService.getById(id);
+        if (!rhythm) return;
+        const clamped = Math.max(40, Math.min(240, bpm));
+        const valEl = overlay.querySelector(`[data-bpm-val="${id}"]`);
+        if (valEl) valEl.textContent = String(clamped);
+        if (bpmTimers[id]) clearTimeout(bpmTimers[id]);
+        bpmTimers[id] = window.setTimeout(() => {
+          delete bpmTimers[id];
+          void this.userRhythmService.update(id, rhythm.name, clamped);
+        }, 600);
+      };
+
+      overlay.querySelectorAll<HTMLElement>('[data-bpm-ctrl]').forEach(ctrl => {
+        const id = ctrl.dataset.bpmCtrl!;
+        ctrl.addEventListener('click', (e) => e.stopPropagation());
+
+        ctrl.querySelectorAll<HTMLButtonElement>('[data-bpm-step]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const valEl = ctrl.querySelector('.x-bpm-val');
+            const cur = parseInt(valEl?.textContent || '');
+            if (isNaN(cur)) return;
+            commitBpm(id, cur + parseInt(btn.dataset.bpmStep!));
+            HapticsService.light();
+          });
+        });
+
+        // Tap no número → input pra digitar direto
+        const valEl = ctrl.querySelector('.x-bpm-val') as HTMLElement | null;
+        valEl?.addEventListener('click', () => {
+          if (ctrl.querySelector('.x-bpm-input')) return;
+          const cur = valEl.textContent || '';
+          valEl.innerHTML = `<input type="number" class="x-bpm-input" value="${cur}" min="40" max="240" inputmode="numeric" />`;
+          const input = valEl.querySelector('input') as HTMLInputElement;
+          input.focus();
+          input.select();
+          const commit = (): void => {
+            const typed = parseInt(input.value);
+            valEl.textContent = cur; // restaura; commitBpm regrava clampeado
+            if (!isNaN(typed)) commitBpm(id, typed);
+          };
+          input.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+            if (ev.key === 'Escape') { ev.preventDefault(); input.value = cur; input.blur(); }
+          });
+          input.addEventListener('blur', commit);
+          input.addEventListener('click', (ev) => ev.stopPropagation());
         });
       });
 

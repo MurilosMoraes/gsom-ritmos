@@ -1712,6 +1712,83 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   }
 }
 
+/* ── Meus Ritmos: BPM editável + polimento dos cards ───────────── */
+.x-myrh-sheet .x-rhythm-card {
+  border: 1.5px solid rgba(139, 92, 246, 0.22);
+  background: linear-gradient(160deg, rgba(50, 30, 80, 0.18), rgba(8, 8, 22, 0.5));
+  border-radius: 14px;
+  transition: border-color 0.12s, background 0.12s;
+}
+.x-myrh-sheet .x-rhythm-card:hover {
+  border-color: rgba(139, 92, 246, 0.5);
+  background: linear-gradient(160deg, rgba(50, 30, 80, 0.28), rgba(8, 8, 22, 0.55));
+}
+.x-myrh-sheet .x-rhythm-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* Stepper de BPM no card: − 96 + */
+.x-bpm-ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  background: rgba(0, 212, 255, 0.05);
+  border-radius: 999px;
+  padding: 0.15rem;
+  margin-right: 0.35rem;
+}
+.x-bpm-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: rgba(0, 212, 255, 0.85);
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+.x-bpm-btn:active { background: rgba(0, 212, 255, 0.15); }
+.x-bpm-val {
+  min-width: 34px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #00D4FF;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.x-bpm-input {
+  width: 46px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  font-family: inherit;
+  color: #00D4FF;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(0, 212, 255, 0.5);
+  border-radius: 8px;
+  padding: 0.15rem 0;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.x-bpm-input::-webkit-inner-spin-button,
+.x-bpm-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+/* Web: sheet do Meus Ritmos mais largo (cards respiram) */
+@media (min-width: 640px) {
+  .x-sheet.x-myrh-sheet { max-width: 620px; }
+}
+
 /* ── Salvar ritmo: chips de repertório de destino ──────────────── */
 .x-save-dest {
   display: flex;
