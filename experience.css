@@ -1377,6 +1377,8 @@ body.stage-mode .ctrl-btn-bpm {
 }
 /* Modo Show esconde os painéis desktop também */
 body.stage-mode .desk-panel { display: none !important; }
+/* Modo Show: salvar ritmo é tarefa de ensaio, não de palco */
+body.stage-mode #saveAsMyRhythmBtn { display: none !important; }
 @media (min-width: 1160px) {
   body.stage-mode #userMode.active {
     display: block;
