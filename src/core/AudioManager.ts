@@ -35,6 +35,9 @@ export class AudioManager {
   // Sem isso, masterVolume * stepVolume * múltiplos canais podia somar > 1.0
   // → clipping digital → harmônicos altos = clique perceptual aleatório.
   private masterCompressor: DynamicsCompressorNode;
+  // Boost de saída (loudness): ganho ANTES do compressor — o compressor
+  // segura os picos, então dá pra subir o volume percebido sem clipar.
+  private masterBoost: GainNode;
 
   // Rastrear source ativo por canal para cortar sample anterior sem estralo
   private activeSources = new Map<number, ActiveSource>();
@@ -52,15 +55,31 @@ export class AudioManager {
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     this.FADE_TIME = isMobile ? 0.020 : 0.008; // 20ms mobile, 8ms desktop (era 12/5)
 
+    // VOLUME BOOST (mobile): speaker de celular é fraco e o pessoal acha
+    // o app baixo. Ganho extra ANTES do compressor = loudness sem clipar.
+    // Override manual via localStorage 'gdrums_volume_boost' (1.0–2.5)
+    // pra calibrar em campo sem novo deploy. Desktop fica em 1.0.
+    let boost = isMobile ? 1.6 : 1.0;
+    try {
+      const saved = parseFloat(localStorage.getItem('gdrums_volume_boost') || '');
+      if (!isNaN(saved)) boost = Math.max(1.0, Math.min(2.5, saved));
+    } catch {}
+
     // Master compressor: protege contra clipping no destino. Knee suave +
     // ratio moderado pra ser inaudível em uso normal mas pegar peaks.
+    // Com boost ativo, threshold/ratio mais firmes — a soma dos 12 canais
+    // chega mais quente e o compressor vira o limitador de segurança.
     this.masterCompressor = audioContext.createDynamicsCompressor();
-    this.masterCompressor.threshold.value = -3;
+    this.masterCompressor.threshold.value = boost > 1 ? -4 : -3;
     this.masterCompressor.knee.value = 6;
-    this.masterCompressor.ratio.value = 4;
+    this.masterCompressor.ratio.value = boost > 1 ? 8 : 4;
     this.masterCompressor.attack.value = 0.003;
     this.masterCompressor.release.value = 0.1;
     this.masterCompressor.connect(audioContext.destination);
+
+    this.masterBoost = audioContext.createGain();
+    this.masterBoost.gain.value = boost;
+    this.masterBoost.connect(this.masterCompressor);
   }
 
   /**
@@ -151,7 +170,7 @@ export class AudioManager {
     }
 
     source.connect(gainNode);
-    gainNode.connect(this.masterCompressor);
+    gainNode.connect(this.masterBoost);
     source.start(safeStart);
 
     // Rastrear + safety cleanup (Chromium Android às vezes não dispara onended)
@@ -213,7 +232,7 @@ export class AudioManager {
     }
 
     source.connect(gainNode);
-    gainNode.connect(this.masterCompressor);
+    gainNode.connect(this.masterBoost);
     source.start(safeStart);
 
     const endTime = safeStart + duration;
