@@ -1599,6 +1599,14 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   background: rgba(0, 212, 255, 0.08);
   box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
 }
+.catg-pill-count {
+  font-size: 0.64rem;
+  color: rgba(0, 212, 255, 0.7);
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  font-variant-numeric: tabular-nums;
+}
 
 /* Título da categoria selecionada: DESTACADO (tava apagado) */
 .catg-body .catg-title {

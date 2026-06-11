@@ -7119,6 +7119,8 @@ ctaUrl: '/plans?renew=true',
     const cats = Object.keys(this.rhythmCategories).sort();
     if (all.some(r => r.cat === 'Outros')) cats.push('Outros');
     const pills = ['Todos', ...cats];
+    const countOf = (c: string): number =>
+      c === 'Todos' ? all.length : all.filter(r => r.cat === c).length;
 
     let activeCat = 'Todos';
 
@@ -7148,7 +7150,9 @@ ctaUrl: '/plans?renew=true',
           </div>
           <div class="catg-pills">
             ${pills.map(c => `
-              <button class="catg-pill ${c === activeCat ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>
+              <button class="catg-pill ${c === activeCat ? 'active' : ''}" data-cat="${esc(c)}">
+                ${esc(c)} <span class="catg-pill-count">${countOf(c)}</span>
+              </button>
             `).join('')}
           </div>
           <div class="catg-body"></div>
