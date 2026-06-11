@@ -6997,52 +6997,20 @@ ctaUrl: '/plans?renew=true',
     this.renderDesktopPanels();
   }
 
-  // ─── TODOS os ritmos — bottom sheet fullheight categorizado ─────────
+  // ─── TODOS os ritmos — bottom sheet com pills de categoria ──────────
   //
-  // Render reutilizável: o mesmo conteúdo (seções por categoria com scroll
-  // lateral de cards) alimenta o bottom sheet (mobile) e o painel lateral
-  // esquerdo do desktop (≥1024px).
+  // Pills no topo (Todos + categorias): "Todos" mostra TUDO em ordem
+  // alfabética num grid único; pill de categoria mostra só ela com o
+  // título destacado. Busca filtra a visão ativa em tempo real.
 
-  private buildCategorizedRhythmList(
-    container: HTMLElement,
-    onPick: (name: string, path: string) => void,
-  ): void {
-    const esc = (s: string): string =>
-      s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-
-    const cats = Object.keys(this.rhythmCategories).sort();
-    const sections: Array<{ title: string; rhythms: Array<{ name: string; path: string }> }> = [];
-
-    for (const cat of cats) {
-      const names = this.rhythmCategories[cat] || [];
-      const rhythms = names.map(n => ({
-        name: n.replace(/\.json$/, ''),
-        path: `/rhythm/${n}`,
-      }));
-      if (rhythms.length) sections.push({ title: cat, rhythms });
-    }
-    // Ritmos sem categoria (se houver)
-    const categorized = new Set(cats.flatMap(c => this.rhythmCategories[c] || []));
-    const uncategorized = this.availableRhythms.filter(r => !categorized.has(`${r.name}.json`));
-    if (uncategorized.length) sections.push({ title: 'Outros', rhythms: uncategorized });
-
-    container.innerHTML = sections.map(sec => `
-      <div class="catg-section">
-        <div class="catg-title">${esc(sec.title)} <span class="catg-count">${sec.rhythms.length}</span></div>
-        <div class="catg-row">
-          ${sec.rhythms.map(r => `
-            <button class="catg-card ${r.name === this.currentRhythmName ? 'active' : ''}"
-                    data-name="${esc(r.name)}" data-path="${esc(r.path)}">
-              ${esc(r.name)}
-            </button>
-          `).join('')}
-        </div>
-      </div>
-    `).join('');
-
-    container.querySelectorAll<HTMLButtonElement>('.catg-card').forEach(btn => {
-      btn.addEventListener('click', () => onPick(btn.dataset.name!, btn.dataset.path!));
-    });
+  /** Lista normalizada de ritmos com categoria efetiva ('Outros' se sem). */
+  private getAllRhythmsWithCategory(): Array<{ name: string; path: string; cat: string }> {
+    const cats = new Set(Object.keys(this.rhythmCategories));
+    return this.availableRhythms.map(r => ({
+      name: r.name,
+      path: r.path,
+      cat: r.category && cats.has(r.category) ? r.category : 'Outros',
+    }));
   }
 
   private showAllRhythmsSheet(): void {
@@ -7050,6 +7018,19 @@ ctaUrl: '/plans?renew=true',
     // x-overlay: hasModalOpen() do pedal detecta → foco liberado dentro
     // do sheet. __refocusPedal no close devolve o foco (regra sagrada).
     overlay.className = 'x-overlay';
+
+    const esc = (s: string): string =>
+      s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+    const norm = (s: string): string =>
+      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+    const all = this.getAllRhythmsWithCategory()
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    const cats = Object.keys(this.rhythmCategories).sort();
+    if (all.some(r => r.cat === 'Outros')) cats.push('Outros');
+    const pills = ['Todos', ...cats];
+
+    let activeCat = 'Todos';
 
     const close = (): void => {
       overlay.classList.remove('active');
@@ -7064,7 +7045,7 @@ ctaUrl: '/plans?renew=true',
         <div class="x-head">
           <div>
             <h2 class="x-head-title">Todos os ritmos</h2>
-            <div class="x-head-sub">${this.availableRhythms.length} ritmos por categoria</div>
+            <div class="x-head-sub">${all.length} ritmos</div>
           </div>
           <button class="x-close" id="catgClose" aria-label="Fechar">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -7073,7 +7054,12 @@ ctaUrl: '/plans?renew=true',
         <div class="x-body catg-body-wrap">
           <div class="catg-search-wrap">
             <svg class="catg-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" class="catg-search-input" id="catgSearch" placeholder="Buscar em todos os ritmos..." autocomplete="off" />
+            <input type="text" class="catg-search-input" id="catgSearch" placeholder="Buscar ritmo..." autocomplete="off" />
+          </div>
+          <div class="catg-pills">
+            ${pills.map(c => `
+              <button class="catg-pill ${c === activeCat ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>
+            `).join('')}
           </div>
           <div class="catg-body"></div>
         </div>
@@ -7087,32 +7073,52 @@ ctaUrl: '/plans?renew=true',
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
     const body = overlay.querySelector('.catg-body') as HTMLElement;
-    const onPick = async (name: string, path: string) => {
-      close();
-      await this.loadRhythm(name, path);
-      this.renderRhythmStrip();
+    const searchInput = overlay.querySelector('#catgSearch') as HTMLInputElement | null;
+
+    const renderBody = (): void => {
+      const q = norm((searchInput?.value || '').trim());
+      let list = activeCat === 'Todos' ? all : all.filter(r => r.cat === activeCat);
+      if (q) list = list.filter(r => norm(r.name).includes(q));
+
+      const titleHtml = activeCat !== 'Todos'
+        ? `<div class="catg-title">${esc(activeCat)} <span class="catg-count">${list.length}</span></div>`
+        : '';
+
+      body.innerHTML = list.length === 0
+        ? `${titleHtml}<div class="catg-empty">Nada achado${q ? ` pra "${esc(searchInput!.value)}"` : ''}</div>`
+        : `${titleHtml}
+           <div class="catg-row">
+             ${list.map(r => `
+               <button class="catg-card ${r.name === this.currentRhythmName ? 'active' : ''}"
+                       data-name="${esc(r.name)}" data-path="${esc(r.path)}">${esc(r.name)}</button>
+             `).join('')}
+           </div>`;
+
+      body.querySelectorAll<HTMLButtonElement>('.catg-card').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const name = btn.dataset.name!;
+          const path = btn.dataset.path!;
+          close();
+          await this.loadRhythm(name, path);
+          this.renderRhythmStrip();
+        });
+      });
     };
 
-    this.buildCategorizedRhythmList(body, onPick);
-
-    // Busca: filtra os CARDS em tempo real (esconde os que não batem;
-    // esconde seções que ficaram vazias). Fuzzy pt-BR (ignora acento).
-    // Input funciona no iPhone: x-overlay tá no hasModalOpen() do pedal.
-    const searchInput = overlay.querySelector('#catgSearch') as HTMLInputElement | null;
-    const norm = (s: string): string =>
-      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    searchInput?.addEventListener('input', () => {
-      const q = norm(searchInput.value.trim());
-      body.querySelectorAll<HTMLElement>('.catg-section').forEach(section => {
-        let visible = 0;
-        section.querySelectorAll<HTMLElement>('.catg-card').forEach(card => {
-          const match = !q || norm(card.dataset.name || '').includes(q);
-          card.style.display = match ? '' : 'none';
-          if (match) visible++;
-        });
-        section.style.display = visible > 0 ? '' : 'none';
+    overlay.querySelectorAll<HTMLButtonElement>('.catg-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        activeCat = pill.dataset.cat!;
+        overlay.querySelectorAll('.catg-pill').forEach(p =>
+          p.classList.toggle('active', p === pill));
+        renderBody();
       });
     });
+
+    // Busca em tempo real (input funciona no iPhone: x-overlay tá no
+    // hasModalOpen() do pedal)
+    searchInput?.addEventListener('input', renderBody);
+
+    renderBody();
   }
 
   // ─── Painéis laterais DESKTOP (≥1024px) ─────────────────────────────
@@ -7124,57 +7130,94 @@ ctaUrl: '/plans?renew=true',
 
   /** Categoria selecionada no painel esquerdo do desktop. */
   private deskCategory = '';
+  /** Busca ativa no painel esquerdo do desktop (filtra TODAS as categorias). */
+  private deskSearch = '';
 
   private renderDesktopPanels(): void {
     const esc = (s: string): string =>
       s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+    const norm = (s: string): string =>
+      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-    // ── ESQUERDA: pills de categoria + grid da categoria ativa ──
+    // ── ESQUERDA: busca + pills de categoria + grid ──
     const left = document.getElementById('deskRhythmsBody');
     if (left) {
+      const all = this.getAllRhythmsWithCategory()
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
       const cats = Object.keys(this.rhythmCategories).sort();
-      // Ritmos fora de categoria viram pill "Outros" (paridade com TODOS)
-      const categorized = new Set(cats.flatMap(c => this.rhythmCategories[c] || []));
-      const uncategorized = this.availableRhythms.filter(r => !categorized.has(`${r.name}.json`));
-      const allCats = uncategorized.length ? [...cats, 'Outros'] : cats;
+      if (all.some(r => r.cat === 'Outros')) cats.push('Outros');
 
-      if (!this.deskCategory || !allCats.includes(this.deskCategory)) {
-        this.deskCategory = allCats[0] || '';
+      if (!this.deskCategory || !cats.includes(this.deskCategory)) {
+        this.deskCategory = cats[0] || '';
       }
 
-      const rhythms: Array<{ name: string; path: string }> =
-        this.deskCategory === 'Outros'
-          ? uncategorized
-          : (this.rhythmCategories[this.deskCategory] || []).map(n => ({
-              name: n.replace(/\.json$/, ''),
-              path: `/rhythm/${n}`,
-            }));
+      // Com busca ativa, o grid mostra matches de TODAS as categorias
+      const computeList = (): Array<{ name: string; path: string }> => {
+        const q = norm(this.deskSearch.trim());
+        if (q) return all.filter(r => norm(r.name).includes(q));
+        return all.filter(r => r.cat === this.deskCategory);
+      };
+
+      const gridHtml = (list: Array<{ name: string; path: string }>): string =>
+        list.length === 0
+          ? '<div class="desk-empty">Nada achado</div>'
+          : list.map(r => `
+              <button class="desk-r-card ${r.name === this.currentRhythmName ? 'active' : ''}"
+                      data-name="${esc(r.name)}" data-path="${esc(r.path)}">${esc(r.name)}</button>
+            `).join('');
+
+      const bindCards = (scope: HTMLElement): void => {
+        scope.querySelectorAll<HTMLButtonElement>('.desk-r-card').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            await this.loadRhythm(btn.dataset.name!, btn.dataset.path!);
+            this.renderDesktopPanels();
+          });
+        });
+      };
+
+      // ⚠️ PEDAL: input inline FORA de modal não funciona em iOS (o
+      // pedalInput sagrado disputa o foco — ver história do strip).
+      // Painéis ≥1024px aparecem em iPad → lá a busca fica de fora
+      // (iPad usa o TODOS, que é x-overlay e o pedal respeita).
+      const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 
       left.innerHTML = `
+        ${!isIOSDevice ? `
+          <div class="desk-search-wrap">
+            <svg class="desk-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="desk-search-input" id="deskRhythmSearch" placeholder="Buscar ritmo..." autocomplete="off" value="${esc(this.deskSearch)}" />
+          </div>` : ''}
         <div class="desk-cat-pills">
-          ${allCats.map(c => `
-            <button class="desk-cat-pill ${c === this.deskCategory ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>
+          ${cats.map(c => `
+            <button class="desk-cat-pill ${c === this.deskCategory && !this.deskSearch ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>
           `).join('')}
         </div>
-        <div class="desk-rhythm-grid">
-          ${rhythms.map(r => `
-            <button class="desk-r-card ${r.name === this.currentRhythmName ? 'active' : ''}"
-                    data-name="${esc(r.name)}" data-path="${esc(r.path)}">${esc(r.name)}</button>
-          `).join('')}
-        </div>
+        <div class="desk-rhythm-grid">${gridHtml(computeList())}</div>
       `;
+
+      bindCards(left);
 
       left.querySelectorAll<HTMLButtonElement>('.desk-cat-pill').forEach(btn => {
         btn.addEventListener('click', () => {
           this.deskCategory = btn.dataset.cat!;
+          this.deskSearch = '';
           this.renderDesktopPanels();
         });
       });
-      left.querySelectorAll<HTMLButtonElement>('.desk-r-card').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          await this.loadRhythm(btn.dataset.name!, btn.dataset.path!);
-          this.renderDesktopPanels();
-        });
+
+      // Busca re-renderiza SÓ o grid (re-render total mataria o foco do
+      // input a cada tecla)
+      const searchInput = left.querySelector<HTMLInputElement>('#deskRhythmSearch');
+      searchInput?.addEventListener('input', () => {
+        this.deskSearch = searchInput.value;
+        const grid = left.querySelector<HTMLElement>('.desk-rhythm-grid');
+        if (grid) {
+          grid.innerHTML = gridHtml(computeList());
+          bindCards(grid);
+        }
+        left.querySelectorAll<HTMLButtonElement>('.desk-cat-pill').forEach(p =>
+          p.classList.toggle('active', p.dataset.cat === this.deskCategory && !this.deskSearch));
       });
     }
 

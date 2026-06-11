@@ -1283,10 +1283,10 @@ body.stage-mode .ctrl-btn-bpm {
 @media (min-width: 1024px) {
   #userMode.active {
     display: grid;
-    grid-template-columns: 280px minmax(0, 1fr) 280px;
+    grid-template-columns: 330px minmax(0, 1fr) 290px;
     gap: 1rem;
     align-items: start;
-    max-width: 1400px;
+    max-width: 1480px;
     margin: 0 auto;
     padding: 0 1rem;
   }
@@ -1299,7 +1299,7 @@ body.stage-mode .ctrl-btn-bpm {
     background: rgba(10, 10, 28, 0.55);
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 16px;
-    padding: 0.85rem;
+    padding: 1rem 1.15rem;
     overflow: hidden;
   }
   .desk-panel-title {
@@ -1316,9 +1316,11 @@ body.stage-mode .ctrl-btn-bpm {
     min-height: 0;
     overflow-y: auto;
     scrollbar-width: thin;
+    scrollbar-gutter: stable; /* scrollbar não rouba espaço da view */
+    padding-right: 0.45rem;
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: 0.75rem;
   }
   /* Itens do repertório (painel direito) */
   .desk-setlist-item {
@@ -1539,24 +1541,25 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   box-shadow: 0 0 8px rgba(0, 230, 140, 0.8);
 }
 
-/* ── TODOS: grid de QUADRADOS compactos por categoria ──────────── */
-/* auto-fill: no celular dá ~3-4 colunas, na web os quadrados param de
-   crescer (ficavam gigantes com 3 colunas fixas em tela larga). */
+/* ── TODOS: grid de cards ACHATADOS (1.6:1) ────────────────────── */
+/* auto-fill: no celular dá ~3 colunas, na web os cards param de
+   crescer. Achatado (não quadrado) = mais ritmos por tela. */
 .catg-row {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
   gap: 0.45rem;
   overflow-x: visible !important;
 }
 .catg-card {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1.6 / 1;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   white-space: normal !important;
   word-break: break-word;
-  padding: 0.4rem !important;
+  padding: 0.35rem !important;
   font-size: 0.74rem !important;
   border-radius: 12px !important;
   border-width: 1.5px !important;
@@ -1568,6 +1571,67 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   border-color: #00D4FF !important;
   box-shadow: 0 0 16px rgba(0, 212, 255, 0.3);
 }
+
+/* Pills de categoria do sheet TODOS (Todos | Brasileiro | ...) */
+.catg-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+.catg-pill {
+  padding: 0.38rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.catg-pill.active {
+  border-color: #00D4FF;
+  color: #00D4FF;
+  background: rgba(0, 212, 255, 0.08);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
+}
+
+/* Título da categoria selecionada: DESTACADO (tava apagado) */
+.catg-body .catg-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #00D4FF;
+  border-left: 3px solid #00D4FF;
+  padding-left: 0.55rem;
+  margin-bottom: 0.65rem;
+  text-shadow: 0 0 12px rgba(0, 212, 255, 0.35);
+}
+.catg-body .catg-title .catg-count {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+.catg-empty {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.85rem;
+  padding: 2rem 0;
+}
+
+/* Respiro do sheet: nada de colar no top/bottom da tela */
+.catg-sheet {
+  height: auto !important;
+  max-height: calc(100dvh - max(env(safe-area-inset-top), 16px) - max(env(safe-area-inset-bottom), 16px) - 16px) !important;
+  min-height: 60dvh;
+  margin-bottom: max(env(safe-area-inset-bottom), 16px);
+  border-radius: 24px !important;
+}
+
 /* Web: sheet TODOS não precisa ocupar a tela inteira de largura */
 @media (min-width: 1024px) {
   .catg-sheet {
@@ -1576,7 +1640,7 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
     margin-right: auto;
   }
   .catg-row {
-    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
   }
 }
 /* Busca dentro do sheet TODOS */
@@ -1610,7 +1674,36 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   pointer-events: none;
 }
 
-/* ── Painel desktop ESQUERDO: pills de categoria + grid quadrado ── */
+/* ── Painel desktop ESQUERDO: busca + pills + grid ─────────────── */
+.desk-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.desk-search-input {
+  width: 100%;
+  padding: 0.55rem 0.8rem 0.55rem 2.1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  font-size: 0.82rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.desk-search-input:focus {
+  border-color: rgba(0, 212, 255, 0.8);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.12);
+}
+.desk-search-icon {
+  position: absolute;
+  left: 0.7rem;
+  color: rgba(0, 212, 255, 0.6);
+  pointer-events: none;
+}
+
 .desk-cat-pills {
   display: flex;
   flex-wrap: wrap;
@@ -1639,11 +1732,12 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
 }
 .desk-rhythm-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
   gap: 0.4rem;
 }
 .desk-r-card {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1.6 / 1;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
