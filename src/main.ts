@@ -79,6 +79,12 @@ class RhythmSequencer {
   private installPrompt: any = null;
   // Unlock do AudioContext (iOS) — re-armável quando o contexto cai
   private unlockListenersArmed = false;
+  /** iOS: app foi pro background desde o último play — o pipeline de
+   *  áudio pode ter morrido MUDO (state 'running' mas sem som). O kick
+   *  suspend→resume religa; pendente até o próximo foreground/play. */
+  private iosAudioKickPending = false;
+  private iosWatchdogLastCt = -1;
+  private iosLastKickAt = 0;
   private rearmUnlockListeners: () => void = () => {};
 
   constructor() {
@@ -347,6 +353,39 @@ class RhythmSequencer {
       }
     });
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // WATCHDOG DE RENDER MORTO (iOS) — o modo de falha que NADA acima pega.
+    // ═══════════════════════════════════════════════════════════════════════
+    // A AVAudioSession quica (outro app, Siri, ligação) e o WebKit fica com
+    // o render de áudio MORTO reportando state 'running': resume() é no-op,
+    // statechange nunca dispara, unlock listeners não agem. Sintomas reais
+    // (report 12/06, iPhone 16): som some no meio da reprodução; cold start
+    // mudo; user fechava/abria o app 4x até voltar; e o detector de modo
+    // silencioso acusava FALSO positivo (ele lê zero exatamente porque o
+    // render não tá puxando samples).
+    // Detecção: com render morto, ctx.currentTime CONGELA. Checamos a cada
+    // 600ms; congelou com state 'running' → kick suspend()→resume() religa
+    // o pipeline (e realinha o scheduler se estava tocando). Cooldown 3s.
+    // ⚠️ PEDAL: zero listeners, zero foco, zero capture — só API de áudio.
+    if (isIOSDevice) {
+      window.setInterval(() => {
+        const ctx = this.audioContext;
+        if ((ctx.state as string) !== 'running') { this.iosWatchdogLastCt = -1; return; }
+        const ct = ctx.currentTime;
+        const frozen = this.iosWatchdogLastCt >= 0 && ct === this.iosWatchdogLastCt;
+        this.iosWatchdogLastCt = ct;
+        if (!frozen) return;
+        const now = performance.now();
+        if (now - this.iosLastKickAt < 3000) return;
+        this.iosLastKickAt = now;
+        console.warn('[GDrums] render de áudio congelado (state running) — kick automático');
+        const wasPlaying = this.stateManager.isPlaying();
+        ctx.suspend().then(() => ctx.resume()).then(() => {
+          if (wasPlaying && this.stateManager.isPlaying()) this.scheduler.restart();
+        }).catch(() => {});
+      }, 600);
+    }
+
     // Inicializar gerenciadores
     this.stateManager = new StateManager();
     // Factory decide qual engine usar:
@@ -438,6 +477,7 @@ class RhythmSequencer {
     let backgroundStartedAt = 0;
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
+        if (isIOSVis) this.iosAudioKickPending = true;
         backgroundStartedAt = performance.now();
         // Indo pro background — iOS fade-out antes do WKWebView pausar
         if (isIOSVis && this.stateManager.isPlaying()) {
@@ -448,6 +488,21 @@ class RhythmSequencer {
         // exempt vale. Samples tocam limpos.
       } else {
         // Voltou pro foreground.
+        // ── KICK do pipeline (iOS) ──
+        // Modo de falha que NENHUM retry pega: AVAudioSession quica no
+        // background e o WebAudio fica MUDO com state 'running' — o
+        // resume() vira no-op e o user precisava matar/reabrir o app
+        // várias vezes pro som voltar (relatos no iPhone 16).
+        // suspend()→resume() força o WebKit a religar o render pipeline.
+        // Só quando NÃO há som tocando (tocando, o kick daria um buraco;
+        // nesse caso o kick acontece no próximo play, dentro do gesto).
+        if (isIOSVis && this.iosAudioKickPending && !this.stateManager.isPlaying()) {
+          this.iosAudioKickPending = false;
+          const ctx = this.audioContext;
+          if ((ctx.state as string) === 'running') {
+            ctx.suspend().then(() => ctx.resume()).catch(() => {});
+          }
+        }
         if (this.stateManager.isPlaying()) {
           // resume() é seguro em qualquer plataforma — no-op se contexto já
           // tá running. Sem cancel/reset/restart em NENHUMA plataforma —
@@ -4470,6 +4525,15 @@ ctaUrl: '/plans?renew=true',
   }
 
   private togglePlayStop(): void {
+    // iOS: pipeline pode estar mudo com state 'running' (sessão quicou no
+    // background). Kick suspend→resume DENTRO do gesto religa o áudio.
+    if (this.iosAudioKickPending && !this.stateManager.isPlaying()) {
+      this.iosAudioKickPending = false;
+      const ctx = this.audioContext;
+      if ((ctx.state as string) === 'running') {
+        ctx.suspend().then(() => ctx.resume()).catch(() => {});
+      }
+    }
     if (this.stateManager.isPlaying()) {
       if (this.useFinal) {
         this.patternEngine.playEndAndStop();
