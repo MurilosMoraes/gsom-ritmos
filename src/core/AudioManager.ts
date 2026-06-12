@@ -37,6 +37,13 @@ export class AudioManager {
   // Spec do Web Audio: rampa "no passado" vira step function = clique.
   // 20ms cobre jitter normal de JS thread (GC, render) sem audível atraso.
   private readonly SAFE_MARGIN = 0.020;
+  // Fade do CORTE de sample anterior (retrigger no mesmo canal).
+  // SEPARADO do FADE_TIME (ataque): cortar GRAVE com fade menor que um
+  // ciclo da onda (60Hz = 16,7ms) trunca a onda no meio = tic surdo
+  // ritmado (bumbo retrigado em piseiro/forró ainda tem ~4,5% de
+  // energia no corte). 30ms cobre ~2 ciclos de 60Hz = corte inaudível.
+  // Não afeta o ataque do sample novo (esse segue FADE_TIME).
+  private readonly CUT_FADE = 0.030;
   private bufferCache = new Map<string, AudioBuffer>();
   // Master node — DynamicsCompressor previne clipping na soma de canais.
   // Sem isso, masterVolume * stepVolume * múltiplos canais podia somar > 1.0
@@ -214,8 +221,8 @@ export class AudioManager {
     if (prev) {
       try {
         this.cancelAndHold(prev.gain.gain, safeStart);
-        prev.gain.gain.linearRampToValueAtTime(0, safeStart + this.FADE_TIME);
-        prev.source.stop(safeStart + this.FADE_TIME + 0.005);
+        prev.gain.gain.linearRampToValueAtTime(0, safeStart + this.CUT_FADE);
+        prev.source.stop(safeStart + this.CUT_FADE + 0.005);
       } catch {
         // Source já parou naturalmente — ignorar
       }
