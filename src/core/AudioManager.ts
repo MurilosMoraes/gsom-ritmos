@@ -85,17 +85,33 @@ export class AudioManager {
     // ratio moderado pra ser inaudível em uso normal mas pegar peaks.
     // Com boost ativo, threshold/ratio mais firmes — a soma dos 12 canais
     // chega mais quente e o compressor vira o limitador de segurança.
+    // Ajuste anti-tic de GRAVE: ataque 3ms modulava o ganho DENTRO de um
+    // ciclo de 60Hz (16,7ms) = distorção ritmada nos hits de bumbo (com
+    // master em 200% o bumbo passa do threshold em todo hit). Knee mais
+    // largo espalha a compressão (soft knee), ataque 9ms deixa o
+    // transiente passar inteiro, release mais longo evita bombeio por hit.
+    // Threshold mais baixo compensa o ataque lento (pega antes do clip).
     this.masterCompressor = audioContext.createDynamicsCompressor();
-    this.masterCompressor.threshold.value = boost > 1 ? -4 : -3;
-    this.masterCompressor.knee.value = 6;
-    this.masterCompressor.ratio.value = boost > 1 ? 8 : 4;
-    this.masterCompressor.attack.value = 0.003;
-    this.masterCompressor.release.value = 0.1;
+    this.masterCompressor.threshold.value = -8;
+    this.masterCompressor.knee.value = 14;
+    this.masterCompressor.ratio.value = boost > 1 ? 8 : 5;
+    this.masterCompressor.attack.value = 0.009;
+    this.masterCompressor.release.value = 0.25;
     this.masterCompressor.connect(audioContext.destination);
 
     this.masterBoost = audioContext.createGain();
     this.masterBoost.gain.value = boost;
-    this.masterBoost.connect(this.masterCompressor);
+    // DIAGNÓSTICO em campo: localStorage 'gdrums_no_comp' = '1' liga o
+    // bypass do compressor (boost direto na saída). Se o tic sumir com
+    // o bypass, o vilão é compressão; se continuar, é scheduling/sample.
+    let bypassComp = false;
+    try { bypassComp = localStorage.getItem('gdrums_no_comp') === '1'; } catch {}
+    if (bypassComp) {
+      console.warn('[AudioManager] compressor BYPASSED (gdrums_no_comp=1)');
+      this.masterBoost.connect(audioContext.destination);
+    } else {
+      this.masterBoost.connect(this.masterCompressor);
+    }
   }
 
   /**
@@ -221,8 +237,12 @@ export class AudioManager {
     if (prev) {
       try {
         this.cancelAndHold(prev.gain.gain, safeStart);
-        prev.gain.gain.linearRampToValueAtTime(0, safeStart + this.CUT_FADE);
-        prev.source.stop(safeStart + this.CUT_FADE + 0.005);
+        // Release EXPONENCIAL (setTargetAtTime): rampa linear termina com
+        // descontinuidade de derivada ("quina") — em GRAVE isso ainda é
+        // um tic residual. Exponencial decai sem quina (padrão de release
+        // de sampler). τ=10ms → -70dB em ~80ms.
+        prev.gain.gain.setTargetAtTime(0, safeStart, 0.010);
+        prev.source.stop(safeStart + 0.090);
       } catch {
         // Source já parou naturalmente — ignorar
       }
