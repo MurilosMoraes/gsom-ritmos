@@ -751,37 +751,25 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '3.0',
+    version: '3.1',
     overline: 'Atualização',
-    title: 'Viradas na hora, até 10 repertórios e web repaginada.',
-    subtitle: 'A maior atualização do GDrums: pisou, virou. Repertórios separados pra cada show, web nova de respeito, volume mais alto e 130 ritmos.',
+    title: '8 ritmos novos e som ainda mais limpo.',
+    subtitle: 'Biblioteca em 138 ritmos, áudio mais redondo nos graves e correções pra tocar tranquilo no palco.',
     sections: [
       {
-        label: 'Viradas instantâneas',
+        label: '+8 ritmos novos',
         featured: true,
-        body: 'Pisou no pedal, a virada entra já e termina sempre certinha no tempo 1, com o prato de retorno. A finalização ganhou a mesma inteligência: emenda até no meio de uma virada.',
+        body: 'Cacimbinha, Bolero Soft, Pop Arrocha, Balada Forró, Balada Pop, Hip Hop, Rap e Reggae Maranhão. Vários ritmos antigos também foram refinados. Agora são 138 no total.',
       },
       {
-        label: 'Web totalmente nova',
-        body: 'Ritmos com busca e categorias na lateral esquerda, repertórios na direita, controles no lugar certo. Tocar no computador ficou animal.',
+        label: 'Áudio mais limpo',
+        body: 'Acabamos com aquele \'tic\' sutil nos graves de piseiro e forró. Som mais redondo no celular e na web.',
       },
       {
-        label: 'Até 10 repertórios',
-        body: 'Igreja, barzinho, sertanejo: cada show com o seu. Toca no nome pra trocar, e ao salvar um ritmo tu já escolhe pra qual repertório ele vai.',
+        label: 'Mais estável no palco',
+        body: 'Correções no iOS pra o som não sumir, e desempenho melhor nos iPads.',
       },
-      {
-        label: 'Volume mais alto no celular',
-        body: 'Boost de saída com proteção contra distorção. A diferença é audível na hora.',
-      },
-      {
-        label: 'Salvar ficou esperto',
-        body: 'Mexeu num ritmo teu? O app oferece Atualizar em vez de criar cópia. E nos Meus Ritmos dá pra editar o BPM direto no card.',
-      },
-      {
-        label: '+10 ritmos novos',
-        body: 'Choro, Frevo 2, Reggaeton, Funk das Antigas, Pop Alternativo, Pop-Pagode, Xote Tropical, Arrocha (intro), Worship (pregação) e Worship 3. Biblioteca com 130 ritmos.',
-      },
-    ],
+    ]
   };
 
   // ─── Download Offline ─────────────────────────────────────────────
