@@ -546,7 +546,18 @@ class AdminDashboard {
     }
 
     const adminName = document.getElementById('adminUserName');
-    if (adminName) adminName.textContent = user.user_metadata?.name || 'Admin';
+    if (adminName) {
+      const baseName = user.user_metadata?.name || 'Admin';
+      // 👑 Camila é a ADMIN MASTER — a mais fodona de todas.
+      const isMaster = (user.email || '').toLowerCase() === 'camila_arianerodrigues@hotmail.com';
+      if (isMaster) {
+        adminName.innerHTML =
+          `<span class="admin-master-name">👑 ${baseName}` +
+          `<span class="admin-master-badge">ADMIN MASTER</span></span>`;
+      } else {
+        adminName.textContent = baseName;
+      }
+    }
 
     this.setupEvents();
     this.setupEditForm();
