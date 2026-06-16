@@ -503,14 +503,15 @@ class DemoPlayer {
           Bluetooth e montar sua setlist.
         </p>
         <div class="demo-convert-offer">
-          <span class="demo-convert-offer-badge">Grátis</span>
+          <span class="demo-convert-offer-badge">100% Grátis</span>
           <span class="demo-convert-offer-head">48 horas de acesso total</span>
-          <span class="demo-convert-offer-sub">Sem cartão. Cancele quando quiser.</span>
+          <span class="demo-convert-offer-sub">✓ Não pedimos cartão · ✓ Sem cobrança automática</span>
         </div>
         <div class="demo-convert-actions">
-          <a href="/register" class="demo-convert-primary">Começar grátis</a>
+          <a href="/register" class="demo-convert-primary">Criar conta grátis</a>
           <button class="demo-convert-secondary">Continuar testando</button>
         </div>
+        <div class="demo-convert-reassure">É de graça mesmo — só criar a conta e tocar.</div>
       </div>
     `;
     document.body.appendChild(overlay);
@@ -749,11 +750,11 @@ class DemoPlayer {
              aparece abaixo, como referência secundária. -->
         <div class="demo-expired-offer">
           <div class="demo-expired-offer-main">
-            <span class="demo-expired-offer-badge">Grátis</span>
+            <span class="demo-expired-offer-badge">100% Grátis</span>
             <span class="demo-expired-offer-head">48 horas de acesso total</span>
           </div>
-          <div class="demo-expired-offer-sub">Sem cartão. Sem cobrança automática. Cancela a hora que quiser.</div>
-          <div class="demo-expired-offer-price">Depois, R$ 29/mês</div>
+          <div class="demo-expired-offer-sub">✓ Não pedimos cartão · ✓ Sem cobrança automática · cancela quando quiser</div>
+          <div class="demo-expired-offer-price">Só depois das 48h, se gostar: R$ 29/mês</div>
         </div>
         <!-- Campo inline de e-mail: reduz fricção do cadastro.
              O user digita aqui, a gente leva pro /register com o email
