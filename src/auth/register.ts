@@ -310,12 +310,124 @@ class RegisterPage {
         localStorage.setItem('gdrums-session-id', result.session_id);
       }
 
-      this.showAlert('Conta criada! Teste grátis por 48h ativado!', 'success');
-      setTimeout(() => { window.location.href = '/'; }, 1000);
+      // Tela de boas-vindas: o ponto onde a galera que veio da DEMO
+      // (anúncio Insta/Face → navegador) se perdia. Antes caía direto no
+      // app web e ao fechar a aba não achava mais o GDrums. Agora deixa
+      // GRITANTE: baixe o app na loja + 48h grátis sem cartão.
+      this.showWelcomeDownload();
     } catch (err) {
       this.showAlert('Erro de conexão. Verifique sua internet e tente novamente.', 'error');
       this.setLoading(false);
     }
+  }
+
+  /**
+   * Tela de boas-vindas pós-cadastro — converte o cadastro em DOWNLOAD.
+   * Detecta o aparelho e destaca a loja certa. Botão "continuar no
+   * navegador" pra quem não quer baixar (não bloqueia).
+   */
+  private showWelcomeDownload(): void {
+    const ua = navigator.userAgent;
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Mac/i.test(ua) && (navigator as any).maxTouchPoints > 1);
+    const isAndroid = /Android/i.test(ua);
+    const APP_STORE = 'https://apps.apple.com/br/app/gdrums/id6766099516';
+    const PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.gdrums.app&hl=pt';
+
+    const appStoreBtn = `
+      <a href="${APP_STORE}" class="wd-store-btn ${isIOS ? 'wd-store-primary' : ''}" target="_blank" rel="noopener">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 12.04c-.03-2.6 2.13-3.85 2.23-3.91-1.21-1.78-3.1-2.02-3.77-2.05-1.6-.16-3.13.94-3.94.94-.81 0-2.07-.92-3.4-.9-1.75.03-3.36 1.02-4.26 2.58-1.82 3.16-.47 7.83 1.3 10.39.86 1.25 1.89 2.66 3.23 2.61 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.39.81 1.4-.02 2.28-1.28 3.14-2.54.99-1.46 1.4-2.87 1.42-2.94-.03-.01-2.72-1.04-2.75-4.13l.32.02-.02-.02M14.53 4.42c.72-.87 1.2-2.08 1.07-3.29-1.03.04-2.28.69-3.02 1.56-.66.77-1.24 2-1.09 3.18 1.15.09 2.32-.58 3.04-1.45"/></svg>
+        <span class="wd-store-txt"><small>Baixar na</small>App Store</span>
+      </a>`;
+    const playStoreBtn = `
+      <a href="${PLAY_STORE}" class="wd-store-btn ${isAndroid ? 'wd-store-primary' : ''}" target="_blank" rel="noopener">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3.6 2.2c-.3.3-.5.8-.5 1.4v16.8c0 .6.2 1.1.5 1.4l.1.1 9.4-9.4v-.2L3.6 2.2M16.5 15.3l-3.1-3.1 3.1-3.1 3.7 2.1c1.1.6 1.1 1.6 0 2.2l-3.7 1.9M12.9 11.9l-9 9c.4.4 1 .4 1.7 0l10.6-6-3.3-3M5.6 2.9c-.7-.4-1.3-.4-1.7 0l9 9 3.3-3L5.6 2.9"/></svg>
+        <span class="wd-store-txt"><small>Baixar no</small>Google Play</span>
+      </a>`;
+    // Aparelho conhecido → mostra a loja certa primeiro
+    const stores = isIOS ? appStoreBtn + playStoreBtn
+                 : isAndroid ? playStoreBtn + appStoreBtn
+                 : appStoreBtn + playStoreBtn;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'wd-overlay';
+    overlay.innerHTML = `
+      <div class="wd-card">
+        <div class="wd-check">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h1 class="wd-title">Conta criada! 🎉</h1>
+        <div class="wd-badge">✓ 48 horas grátis — sem cartão</div>
+        <p class="wd-sub">Agora <strong>baixe o app</strong> pra tocar com tudo: pedal Bluetooth, mais de 130 ritmos e seu repertório no palco.</p>
+        <div class="wd-stores">${stores}</div>
+        <button class="wd-continue" id="wdContinue">Continuar no navegador por enquanto</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('wd-visible'));
+
+    overlay.querySelector('#wdContinue')?.addEventListener('click', () => {
+      window.location.href = '/';
+    });
+
+    this.injectWelcomeStyles();
+  }
+
+  private injectWelcomeStyles(): void {
+    if (document.getElementById('wd-styles')) return;
+    const css = document.createElement('style');
+    css.id = 'wd-styles';
+    css.textContent = `
+      .wd-overlay {
+        position: fixed; inset: 0; z-index: 100000;
+        background: linear-gradient(165deg, #0a0a1e 0%, #05050f 100%);
+        display: flex; align-items: center; justify-content: center;
+        padding: 1.5rem; opacity: 0; transition: opacity 0.3s ease;
+        overflow-y: auto;
+      }
+      .wd-overlay.wd-visible { opacity: 1; }
+      .wd-card {
+        width: 100%; max-width: 400px; text-align: center;
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      }
+      .wd-check {
+        width: 72px; height: 72px; margin: 0 auto 1.25rem;
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(135deg, #00E68C, #00D4FF); color: #04140d;
+        box-shadow: 0 8px 32px rgba(0, 230, 140, 0.35);
+        animation: wdPop 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes wdPop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      .wd-title { color: #fff; font-size: 1.6rem; font-weight: 800; margin: 0 0 0.85rem; letter-spacing: -0.5px; }
+      .wd-badge {
+        display: inline-block; margin-bottom: 1.1rem;
+        background: rgba(0, 230, 140, 0.12); border: 1.5px solid rgba(0, 230, 140, 0.5);
+        color: #00E68C; font-size: 0.88rem; font-weight: 800;
+        padding: 0.45rem 1rem; border-radius: 999px;
+      }
+      .wd-sub { color: rgba(255,255,255,0.65); font-size: 0.98rem; line-height: 1.55; margin: 0 0 1.6rem; }
+      .wd-sub strong { color: #fff; }
+      .wd-stores { display: flex; flex-direction: column; gap: 0.7rem; margin-bottom: 1.1rem; }
+      .wd-store-btn {
+        display: flex; align-items: center; justify-content: center; gap: 0.7rem;
+        padding: 0.95rem; border-radius: 16px; text-decoration: none;
+        background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.12);
+        color: #fff; transition: transform 0.12s, border-color 0.12s, background 0.12s;
+      }
+      .wd-store-btn:active { transform: scale(0.97); }
+      .wd-store-primary {
+        background: linear-gradient(135deg, #00D4FF, #8B5CF6);
+        border-color: transparent;
+        box-shadow: 0 8px 28px rgba(0, 212, 255, 0.3);
+      }
+      .wd-store-txt { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; font-weight: 700; font-size: 1.05rem; }
+      .wd-store-txt small { font-size: 0.68rem; font-weight: 500; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
+      .wd-continue {
+        background: none; border: none; color: rgba(255,255,255,0.4);
+        font-size: 0.85rem; font-family: inherit; cursor: pointer;
+        text-decoration: underline; padding: 0.5rem;
+      }
+      .wd-continue:hover { color: rgba(255,255,255,0.7); }
+    `;
+    document.head.appendChild(css);
   }
 
   private validateForm(): boolean {

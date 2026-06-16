@@ -58,6 +58,9 @@ export function isAndroidWeb(): boolean {
 /** URL HTTPS da Play Store (fallback pra desktop e quando market:// falha). */
 export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.gdrums.app&hl=pt';
 
+/** URL da App Store (iOS). */
+export const APP_STORE_URL = 'https://apps.apple.com/br/app/gdrums/id6766099516';
+
 /**
  * Esquema `market://` abre direto o app Play Store nativo no Android,
  * pulando a página web intermediária do Chrome ("Abrir no Play Store?").
