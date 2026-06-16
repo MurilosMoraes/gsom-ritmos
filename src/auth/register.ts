@@ -4,6 +4,7 @@ import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { validateCPF, formatCPF } from '../utils/cpf';
 import { AttributionService } from '../native/AttributionService';
+import { isNativeApp } from '../native/Platform';
 import { registerSchema, zodErrorsToFieldMap } from './schemas';
 import { updateRhythmCountInDom } from '../utils/rhythmCount';
 import { redirectIfRecoveryHash } from './recoveryGuard';
@@ -314,7 +315,15 @@ class RegisterPage {
       // (anúncio Insta/Face → navegador) se perdia. Antes caía direto no
       // app web e ao fechar a aba não achava mais o GDrums. Agora deixa
       // GRITANTE: baixe o app na loja + 48h grátis sem cartão.
-      this.showWelcomeDownload();
+      //
+      // ⚠️ SÓ NA WEB. No app NATIVO (Capacitor) o cara JÁ tem o app —
+      // mostrar 'baixe na loja' seria absurdo. Lá entra direto no app.
+      if (isNativeApp()) {
+        this.showAlert('Conta criada! Teste grátis por 48h ativado!', 'success');
+        setTimeout(() => { window.location.href = '/'; }, 1000);
+      } else {
+        this.showWelcomeDownload();
+      }
     } catch (err) {
       this.showAlert('Erro de conexão. Verifique sua internet e tente novamente.', 'error');
       this.setLoading(false);
