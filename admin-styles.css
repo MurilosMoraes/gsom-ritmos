@@ -1176,16 +1176,17 @@ select.adm-input option {
   white-space: nowrap;
 }
 
-/* ── 🍎 Vendas Apple: bruto + líquido ──────────────────────────── */
+/* ── 🍎 Vendas Apple: líquido em destaque + bruto embaixo ──────── */
+.adm-kpi-apple .adm-kpi-value { color: #00E68C; }  /* líquido = verde "entra" */
 .adm-kpi-apple .adm-kpi-meta { display:flex; flex-direction:column; gap:0.1rem; }
-.apple-liq {
-  color: #00E68C;
+.apple-bruto {
+  color: rgba(255, 200, 60, 0.9);  /* bruto = âmbar (o cliente pagou, antes da comissão) */
   font-weight: 700;
   font-size: 0.72rem;
 }
 .apple-count { color: rgba(255,255,255,0.35); font-size: 0.68rem; }
 .apple-liq-sm {
-  color: #00E68C;
+  color: rgba(255, 200, 60, 0.9);
   font-weight: 600;
   font-size: 0.68rem;
 }

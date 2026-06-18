@@ -2690,30 +2690,23 @@ class AdminDashboard {
     // (Small Business Program = 15%, mas mostramos 30% conservador até aprovar.)
     const APPLE_CUT = 0.30;
     const liq = (c: number) => c * (1 - APPLE_CUT);
-    // Card: valor BRUTO grande + LÍQUIDO embaixo (-30%)
+    // Card: LÍQUIDO em destaque (o que cai pra gente) + BRUTO embaixo
+    // em outra cor (o que o cliente pagou, antes da comissão da Apple).
     const dualCard = (label: string, gross: number, count: number) => `
       <div class="adm-kpi adm-kpi-apple">
         <span class="adm-kpi-label">${label}</span>
-        <span class="adm-kpi-value">${brl(gross)}</span>
+        <span class="adm-kpi-value">${brl(liq(gross))}</span>
         <div class="adm-kpi-meta">
-          <span class="apple-liq">líquido ${brl(liq(gross))}</span>
+          <span class="apple-bruto">bruto ${brl(gross)}</span>
           <span class="apple-count">· ${count} venda(s)</span>
         </div>
       </div>`;
-
-    // Total GERAL do app (todas as plataformas, sem sandbox/admin) — pra
-    // comparar o quanto a Apple representa do faturamento total.
-    const totalGeralCents = this.transactions
-      .filter(t => t.status === 'confirmed' && !adminIds.has(t.user_id) && !isSandboxTx(t))
-      .reduce((s, t) => s + (t.amount_cents || 0), 0);
-    const applePct = totalGeralCents > 0 ? Math.round((totalReal / totalGeralCents) * 100) : 0;
 
     kpis.innerHTML =
       dualCard('🍎 Hoje', sumIn(1), countIn(1)) +
       dualCard('Últimos 7 dias', sumIn(7), countIn(7)) +
       dualCard('Últimos 30 dias', sumIn(30), countIn(30)) +
-      dualCard('Total Apple', totalReal, real.length) +
-      `<div class="adm-kpi"><span class="adm-kpi-label">Total Geral (todas plataformas)</span><span class="adm-kpi-value">${brl(totalGeralCents)}</span><div class="adm-kpi-meta">Apple = ${applePct}% do total${sandbox.length ? ` · ${sandbox.length} sandbox ignorado(s)` : ''}</div></div>`;
+      dualCard('Total Apple', totalReal, real.length);
 
     if (real.length === 0) {
       body.innerHTML = `<tr><td colspan="5">${emptyState({ title: 'Nenhuma venda Apple ainda', desc: 'Assim que cair a primeira compra real via App Store, aparece aqui.', inline: true })}</td></tr>`;
@@ -2729,7 +2722,7 @@ class AdminDashboard {
         <tr style="${sb ? 'opacity:0.45;' : ''}">
           <td>${user?.name || '—'}</td>
           <td><span class="badge badge-primary">${t.plan}</span></td>
-          <td class="num">${sb ? '—' : `${brl(t.amount_cents)}<br><span class="apple-liq-sm">líq. ${brl(liq(t.amount_cents))}</span>`}</td>
+          <td class="num">${sb ? '—' : `<span style="color:#00E68C;font-weight:700;">${brl(liq(t.amount_cents))}</span><br><span class="apple-liq-sm">bruto ${brl(t.amount_cents)}</span>`}</td>
           <td>${sb ? '<span class="badge badge-warning">sandbox</span>' : '<span class="badge badge-success">produção</span>'}</td>
           <td>${date}</td>
         </tr>`;
