@@ -48,6 +48,12 @@ interface ScoreSignal {
   detail: string;
 }
 
+/** Compra de SANDBOX da Apple (tester do App Review) — NÃO é dinheiro real,
+ *  não pode entrar no faturamento. payment_method = 'apple_iap_sandbox'. */
+function isSandboxTx(t: Transaction): boolean {
+  return (t.payment_method || '').includes('sandbox');
+}
+
 interface ScoredLead {
   id: string;
   name: string;
@@ -788,6 +794,7 @@ class AdminDashboard {
       case 'acquisition': this.renderAcquisition(); break;
       case 'users': this.renderUsers(); break;
       case 'subscriptions': this.renderTransactions(); break;
+      case 'applesales': this.renderAppleSales(); break;
       case 'coupons': this.renderCoupons(); break;
       case 'leads': this.renderLeads(); break;
       case 'renewal': this.renderRenewal(); break;
@@ -1106,7 +1113,7 @@ class AdminDashboard {
           if (isPaid) {
             curr.pagos += 1;
             // Receita estimada: soma das transações confirmadas desse user
-            const userTxs = this.transactions.filter(t => t.user_id === p.id && t.status === 'confirmed');
+            const userTxs = this.transactions.filter(t => t.user_id === p.id && t.status === 'confirmed' && !isSandboxTx(t));
             curr.receita += userTxs.reduce((s, t) => s + (t.amount_cents || 0), 0);
           }
           byCamp.set(c, curr);
@@ -1861,7 +1868,8 @@ class AdminDashboard {
     });
     const withPhone = realUsers.filter(p => !!p.phone);
     const withCpf = realUsers.filter(p => !!p.cpf_hash);
-    const confirmed = this.transactions.filter(t => t.status === 'confirmed' && !adminIds.has(t.user_id));
+    // Faturamento exclui SANDBOX da Apple (testes do App Review = R$ fake)
+    const confirmed = this.transactions.filter(t => t.status === 'confirmed' && !adminIds.has(t.user_id) && !isSandboxTx(t));
     const revenue = confirmed.reduce((sum, t) => sum + (t.amount_cents || 0), 0);
 
     // ─── Deltas vs período anterior (7d) ──────────────────────────
@@ -2605,7 +2613,7 @@ class AdminDashboard {
       `;
     }).join('');
 
-    const confirmedTotal = filtered.filter(t => t.status === 'confirmed').reduce((s, t) => s + t.amount_cents, 0);
+    const confirmedTotal = filtered.filter(t => t.status === 'confirmed' && !isSandboxTx(t)).reduce((s, t) => s + t.amount_cents, 0);
     const pendingTotal = filtered.filter(t => t.status === 'pending').reduce((s, t) => s + t.amount_cents, 0);
     const pendingOld = this.transactions.filter(t => {
       if (t.status !== 'pending') return false;
@@ -2650,6 +2658,62 @@ class AdminDashboard {
       pagEl.querySelector('#txPrev')?.addEventListener('click', () => { this.txPage--; this.renderTransactions(); this.updateUrl(); });
       pagEl.querySelector('#txNext')?.addEventListener('click', () => { this.txPage++; this.renderTransactions(); this.updateUrl(); });
     }
+  }
+
+  // ─── Vendas Apple (IAP) — acompanhamento dedicado ───────────────────
+
+  private renderAppleSales(): void {
+    const kpis = document.getElementById('appleKpis');
+    const body = document.getElementById('appleSalesBody');
+    if (!kpis || !body) return;
+
+    const adminIds = new Set(this.profiles.filter(p => p.role === 'admin').map(p => p.id));
+    // Todas as transações Apple confirmadas (reais + sandbox), exceto admins
+    const apple = this.transactions
+      .filter(t => (t.payment_method || '').includes('apple_iap') && t.status === 'confirmed' && !adminIds.has(t.user_id))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const real = apple.filter(t => !isSandboxTx(t));
+    const sandbox = apple.filter(t => isSandboxTx(t));
+
+    const now = Date.now();
+    const since = (days: number) => now - days * 24 * 60 * 60 * 1000;
+    const sumIn = (days: number) =>
+      real.filter(t => new Date(t.created_at).getTime() >= since(days))
+          .reduce((s, t) => s + (t.amount_cents || 0), 0);
+    const countIn = (days: number) =>
+      real.filter(t => new Date(t.created_at).getTime() >= since(days)).length;
+
+    const totalReal = real.reduce((s, t) => s + (t.amount_cents || 0), 0);
+    const brl = (c: number) => `R$ ${(c / 100).toFixed(2)}`;
+
+    kpis.innerHTML = `
+      <div class="adm-kpi"><span class="adm-kpi-label">🍎 Hoje</span><span class="adm-kpi-value">${brl(sumIn(1))}</span><div class="adm-kpi-meta">${countIn(1)} venda(s)</div></div>
+      <div class="adm-kpi"><span class="adm-kpi-label">Últimos 7 dias</span><span class="adm-kpi-value">${brl(sumIn(7))}</span><div class="adm-kpi-meta">${countIn(7)} venda(s)</div></div>
+      <div class="adm-kpi"><span class="adm-kpi-label">Últimos 30 dias</span><span class="adm-kpi-value">${brl(sumIn(30))}</span><div class="adm-kpi-meta">${countIn(30)} venda(s)</div></div>
+      <div class="adm-kpi"><span class="adm-kpi-label">Total Apple</span><span class="adm-kpi-value">${brl(totalReal)}</span><div class="adm-kpi-meta">${real.length} venda(s) reais</div></div>
+      <div class="adm-kpi"><span class="adm-kpi-label">Sandbox (testes)</span><span class="adm-kpi-value" style="color:rgba(255,255,255,0.4);">${sandbox.length}</span><div class="adm-kpi-meta">não conta no $</div></div>
+    `;
+
+    if (real.length === 0) {
+      body.innerHTML = `<tr><td colspan="5">${emptyState({ title: 'Nenhuma venda Apple ainda', desc: 'Assim que cair a primeira compra real via App Store, aparece aqui.', inline: true })}</td></tr>`;
+      return;
+    }
+
+    // Mostra reais + sandbox (sandbox marcado e esmaecido)
+    body.innerHTML = apple.slice(0, 100).map(t => {
+      const user = this.profiles.find(p => p.id === t.user_id);
+      const sb = isSandboxTx(t);
+      const date = new Date(t.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+      return `
+        <tr style="${sb ? 'opacity:0.45;' : ''}">
+          <td>${user?.name || '—'}</td>
+          <td><span class="badge badge-primary">${t.plan}</span></td>
+          <td class="num">${sb ? '—' : brl(t.amount_cents)}</td>
+          <td>${sb ? '<span class="badge badge-warning">sandbox</span>' : '<span class="badge badge-success">produção</span>'}</td>
+          <td>${date}</td>
+        </tr>`;
+    }).join('');
   }
 
   // ─── Leads (expirados para contato) ─────────────────────────────────
@@ -2915,7 +2979,7 @@ class AdminDashboard {
 
   /** Métricas de fidelidade a partir das transações confirmadas. */
   private renewalStats(userId: string): { since: Date | null; count: number; totalCents: number } {
-    const txs = this.transactions.filter(t => t.user_id === userId && t.status === 'confirmed');
+    const txs = this.transactions.filter(t => t.user_id === userId && t.status === 'confirmed' && !isSandboxTx(t));
     if (txs.length === 0) return { since: null, count: 0, totalCents: 0 };
     const dates = txs.map(t => new Date(t.created_at).getTime());
     return {

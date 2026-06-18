@@ -34,6 +34,7 @@
       <a href="#acquisition" class="adm-nav-item" data-section="acquisition"><span>Aquisição</span></a>
       <a href="#users" class="adm-nav-item" data-section="users"><span>Usuários</span></a>
       <a href="#subscriptions" class="adm-nav-item" data-section="subscriptions"><span>Transações</span></a>
+      <a href="#applesales" class="adm-nav-item" data-section="applesales"><span>🍎 Vendas Apple</span></a>
       <a href="#coupons" class="adm-nav-item" data-section="coupons"><span>Cupons</span></a>
       <a href="#leads" class="adm-nav-item" data-section="leads"><span>Leads</span></a>
       <a href="#renewal" class="adm-nav-item" data-section="renewal"><span>Renovação</span></a>
@@ -64,6 +65,10 @@
           <a href="#subscriptions" class="adm-nav-item" data-section="subscriptions">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             <span>Transações</span>
+          </a>
+          <a href="#applesales" class="adm-nav-item" data-section="applesales">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0017 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 00-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06z"/><path d="M10 2c1 .5 2 2 2 5"/></svg>
+            <span>Vendas Apple</span>
           </a>
           <a href="#coupons" class="adm-nav-item" data-section="coupons">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
@@ -293,6 +298,26 @@
             </table>
           </div>
           <div id="txPagination" style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1rem;"></div>
+        </section>
+
+        <!-- ═══ Vendas Apple (IAP) ═══ -->
+        <section id="applesalesSection" class="adm-section">
+          <div class="adm-section-head">
+            <div>
+              <h1 class="adm-section-title">🍎 Vendas Apple (In-App)</h1>
+              <p class="adm-section-sub">Assinaturas via App Store. Sandbox (testes do App Review) é mostrado à parte e NÃO conta no faturamento.</p>
+            </div>
+          </div>
+          <div id="appleKpis" class="adm-kpi-grid"></div>
+          <div class="adm-card" style="margin-top:1.25rem;">
+            <div class="adm-card-head"><span class="adm-card-title">Últimas vendas reais</span></div>
+            <div class="adm-card-body" style="overflow-x:auto;">
+              <table class="adm-table">
+                <thead><tr><th>Cliente</th><th>Plano</th><th class="num">Valor</th><th>Ambiente</th><th>Data</th></tr></thead>
+                <tbody id="appleSalesBody"></tbody>
+              </table>
+            </div>
+          </div>
         </section>
 
         <!-- ═══ Cupons ═══ -->
