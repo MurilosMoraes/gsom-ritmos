@@ -2686,14 +2686,34 @@ class AdminDashboard {
 
     const totalReal = real.reduce((s, t) => s + (t.amount_cents || 0), 0);
     const brl = (c: number) => `R$ ${(c / 100).toFixed(2)}`;
+    // Apple desconta 30% (comissão da App Store). Líquido = o que cai pra gente.
+    // (Small Business Program = 15%, mas mostramos 30% conservador até aprovar.)
+    const APPLE_CUT = 0.30;
+    const liq = (c: number) => c * (1 - APPLE_CUT);
+    // Card: valor BRUTO grande + LÍQUIDO embaixo (-30%)
+    const dualCard = (label: string, gross: number, count: number) => `
+      <div class="adm-kpi adm-kpi-apple">
+        <span class="adm-kpi-label">${label}</span>
+        <span class="adm-kpi-value">${brl(gross)}</span>
+        <div class="adm-kpi-meta">
+          <span class="apple-liq">líquido ${brl(liq(gross))}</span>
+          <span class="apple-count">· ${count} venda(s)</span>
+        </div>
+      </div>`;
 
-    kpis.innerHTML = `
-      <div class="adm-kpi"><span class="adm-kpi-label">🍎 Hoje</span><span class="adm-kpi-value">${brl(sumIn(1))}</span><div class="adm-kpi-meta">${countIn(1)} venda(s)</div></div>
-      <div class="adm-kpi"><span class="adm-kpi-label">Últimos 7 dias</span><span class="adm-kpi-value">${brl(sumIn(7))}</span><div class="adm-kpi-meta">${countIn(7)} venda(s)</div></div>
-      <div class="adm-kpi"><span class="adm-kpi-label">Últimos 30 dias</span><span class="adm-kpi-value">${brl(sumIn(30))}</span><div class="adm-kpi-meta">${countIn(30)} venda(s)</div></div>
-      <div class="adm-kpi"><span class="adm-kpi-label">Total Apple</span><span class="adm-kpi-value">${brl(totalReal)}</span><div class="adm-kpi-meta">${real.length} venda(s) reais</div></div>
-      <div class="adm-kpi"><span class="adm-kpi-label">Sandbox (testes)</span><span class="adm-kpi-value" style="color:rgba(255,255,255,0.4);">${sandbox.length}</span><div class="adm-kpi-meta">não conta no $</div></div>
-    `;
+    // Total GERAL do app (todas as plataformas, sem sandbox/admin) — pra
+    // comparar o quanto a Apple representa do faturamento total.
+    const totalGeralCents = this.transactions
+      .filter(t => t.status === 'confirmed' && !adminIds.has(t.user_id) && !isSandboxTx(t))
+      .reduce((s, t) => s + (t.amount_cents || 0), 0);
+    const applePct = totalGeralCents > 0 ? Math.round((totalReal / totalGeralCents) * 100) : 0;
+
+    kpis.innerHTML =
+      dualCard('🍎 Hoje', sumIn(1), countIn(1)) +
+      dualCard('Últimos 7 dias', sumIn(7), countIn(7)) +
+      dualCard('Últimos 30 dias', sumIn(30), countIn(30)) +
+      dualCard('Total Apple', totalReal, real.length) +
+      `<div class="adm-kpi"><span class="adm-kpi-label">Total Geral (todas plataformas)</span><span class="adm-kpi-value">${brl(totalGeralCents)}</span><div class="adm-kpi-meta">Apple = ${applePct}% do total${sandbox.length ? ` · ${sandbox.length} sandbox ignorado(s)` : ''}</div></div>`;
 
     if (real.length === 0) {
       body.innerHTML = `<tr><td colspan="5">${emptyState({ title: 'Nenhuma venda Apple ainda', desc: 'Assim que cair a primeira compra real via App Store, aparece aqui.', inline: true })}</td></tr>`;
@@ -2709,7 +2729,7 @@ class AdminDashboard {
         <tr style="${sb ? 'opacity:0.45;' : ''}">
           <td>${user?.name || '—'}</td>
           <td><span class="badge badge-primary">${t.plan}</span></td>
-          <td class="num">${sb ? '—' : brl(t.amount_cents)}</td>
+          <td class="num">${sb ? '—' : `${brl(t.amount_cents)}<br><span class="apple-liq-sm">líq. ${brl(liq(t.amount_cents))}</span>`}</td>
           <td>${sb ? '<span class="badge badge-warning">sandbox</span>' : '<span class="badge badge-success">produção</span>'}</td>
           <td>${date}</td>
         </tr>`;
