@@ -1176,6 +1176,15 @@ select.adm-input option {
   white-space: nowrap;
 }
 
+/* 🍎 Grid dos 4 cards Apple: estica pela largura toda (auto-fit, sem
+   espaço vazio à direita). auto-fill deixava 200px fixo + vão sobrando. */
+#appleKpis {
+  grid-template-columns: repeat(4, 1fr);
+}
+@media (max-width: 760px) {
+  #appleKpis { grid-template-columns: 1fr 1fr; }
+}
+
 /* ── 🍎 Vendas Apple: líquido em destaque + bruto embaixo ──────── */
 .adm-kpi-apple .adm-kpi-value { color: #00E68C; }  /* líquido = verde "entra" */
 .adm-kpi-apple .adm-kpi-meta { display:flex; flex-direction:column; gap:0.1rem; }
