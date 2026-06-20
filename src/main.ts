@@ -5926,9 +5926,14 @@ ctaUrl: '/plans?renew=true',
     // Barra de progresso (% consumida do plano)
     let progressPercent = 0;
     if (currentPlan && expiresAt) {
-      const totalDays = currentPlan.durationMonths * 30;
-      const elapsed = totalDays - daysLeft;
-      progressPercent = Math.min(100, Math.max(0, (elapsed / totalDays) * 100));
+      // Plano curto (Modo Show 3 Dias) conta em dias, não meses
+      const totalDays = currentPlan.durationDays && currentPlan.durationDays > 0
+        ? currentPlan.durationDays
+        : currentPlan.durationMonths * 30;
+      if (totalDays > 0) {
+        const elapsed = totalDays - daysLeft;
+        progressPercent = Math.min(100, Math.max(0, (elapsed / totalDays) * 100));
+      }
     }
 
     // ─── Upgrade: calcular crédito e planos disponíveis ─────────────
@@ -5942,8 +5947,12 @@ ctaUrl: '/plans?renew=true',
       : ['mensal', 'trimestral', 'semestral', 'anual', 'rei-dos-palcos'];
 
     if (status === 'active' && currentPlan && daysLeft > 0) {
-      const totalDays = currentPlan.durationMonths * 30;
-      upgradeCredit = Math.round(currentPlan.priceCents * (daysLeft / totalDays));
+      const totalDays = currentPlan.durationDays && currentPlan.durationDays > 0
+        ? currentPlan.durationDays
+        : currentPlan.durationMonths * 30;
+      if (totalDays > 0) {
+        upgradeCredit = Math.round(currentPlan.priceCents * (daysLeft / totalDays));
+      }
       const currentIdx = planOrder.indexOf(planId);
       upgradeAvailable = currentIdx >= 0 && currentIdx < planOrder.length - 1;
     }

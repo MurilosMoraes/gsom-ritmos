@@ -115,9 +115,9 @@
         "offers": {
           "@type": "AggregateOffer",
           "priceCurrency": "BRL",
-          "lowPrice": "29.00",
+          "lowPrice": "9.90",
           "highPrice": "522.00",
-          "offerCount": 5
+          "offerCount": 6
         },
         "author": { "@id": "https://gdrums.com.br/#organization" },
         "creator": [
@@ -161,7 +161,7 @@
             "name": "Quanto custa o GDrums?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Planos a partir de R$ 29/mês. Há plano trimestral (R$ 81), semestral (R$ 144), anual (R$ 228) e trienal Rei dos Palcos (R$ 522). Todo novo usuário tem 48h de trial grátis sem cartão."
+              "text": "Planos a partir de R$ 9,90. Há o Modo Show 3 Dias (R$ 9,90 por 3 dias, ideal pro fim de semana ou festa de família), mensal (R$ 29), trimestral (R$ 81), semestral (R$ 144), anual (R$ 228) e trienal Rei dos Palcos (R$ 522). Todo novo usuário tem 48h de trial grátis sem cartão."
             }
           },
           {
@@ -284,6 +284,10 @@
 
         <!-- Mini-strip de preços: user vê valores sem precisar rolar até a section pricing -->
         <div class="hero-pricing-strip" aria-label="Planos disponíveis">
+          <a href="/register?plan=passe-3-dias" class="hero-price-pill">
+            <span class="hpp-name">Modo Show 3 Dias</span>
+            <span class="hpp-value">R$ 9,90<span class="hpp-per">/3 dias</span></span>
+          </a>
           <a href="/register?plan=mensal" class="hero-price-pill">
             <span class="hpp-name">Mensal</span>
             <span class="hpp-value">R$ 29<span class="hpp-per">/mês</span></span>
@@ -445,6 +449,40 @@
             </div>
           </div>
           <a href="/register" class="pricing-button">Criar Conta</a>
+        </div>
+
+        <!-- Modo Show 3 Dias -->
+        <div class="pricing-card">
+          <div class="pricing-header">
+            <h3 class="pricing-title">Modo Show 3 Dias</h3>
+            <div class="pricing-price">
+              <span class="currency">R$</span>
+              <span class="amount">9,90</span>
+              <span class="period">/3 dias</span>
+            </div>
+            <p class="pricing-description">Pro show do fim de semana ou festa de família</p>
+          </div>
+          <div class="pricing-features">
+            <div class="feature-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M16.5 6L7.5 15L3.5 11" stroke="#00D4FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Acesso total por 3 dias</span>
+            </div>
+            <div class="feature-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M16.5 6L7.5 15L3.5 11" stroke="#00D4FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Todos os ritmos liberados</span>
+            </div>
+            <div class="feature-item">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M16.5 6L7.5 15L3.5 11" stroke="#00D4FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Plano curto, sem mensalidade</span>
+            </div>
+          </div>
+          <a href="/register?plan=passe-3-dias" class="pricing-button">Pegar 3 Dias</a>
         </div>
 
         <!-- Mensal -->

@@ -2336,6 +2336,7 @@ class AdminDashboard {
 
   // Preços de tabela em centavos (espelha PaymentService.PLANS / create-checkout)
   private readonly MANUAL_PLAN_PRICES: Record<string, number> = {
+    'passe-3-dias': 990,
     mensal: 2900,
     trimestral: 8100,
     semestral: 14400,
@@ -2345,6 +2346,10 @@ class AdminDashboard {
   private readonly MANUAL_PLAN_MONTHS: Record<string, number> = {
     mensal: 1, trimestral: 3, semestral: 6, anual: 12, 'rei-dos-palcos': 36,
   };
+  // Planos curtos em DIAS (não meses). Modo Show 3 Dias.
+  private readonly MANUAL_PLAN_DAYS: Record<string, number> = {
+    'passe-3-dias': 3,
+  };
 
   /** Calcula a validade nova pela regra de RENOVAÇÃO INTELIGENTE:
    *  - ativo e ainda não venceu (mesmo plano OU qualquer ativação): soma o
@@ -2352,6 +2357,7 @@ class AdminDashboard {
    *  - trial/expirado/vencido: base = agora.
    *  NUNCA dá desconto por tempo restante — isso é só pra UPGRADE no checkout. */
   private computeManualExpiry(profile: Profile, planId: string): Date {
+    const days = this.MANUAL_PLAN_DAYS[planId];
     const months = this.MANUAL_PLAN_MONTHS[planId] || 1;
     const now = new Date();
     const currentExp = profile.subscription_expires_at ? new Date(profile.subscription_expires_at) : null;
@@ -2359,7 +2365,8 @@ class AdminDashboard {
       && currentExp !== null && currentExp > now;
     const base = isActiveNotExpired ? currentExp! : now;
     const result = new Date(base);
-    result.setMonth(result.getMonth() + months);
+    if (days) result.setDate(result.getDate() + days);  // plano curto em dias
+    else result.setMonth(result.getMonth() + months);
     return result;
   }
 
@@ -3048,7 +3055,7 @@ class AdminDashboard {
     const vipCount = filtered.filter(r => r.isVip).length;
     const withPhone = filtered.filter(r => validateBrPhone(r.p.phone).ok).length;
     const potentialCents = filtered.reduce((s, r) => {
-      const prices: Record<string, number> = { mensal: 2900, trimestral: 8100, semestral: 14400, anual: 22800, 'rei-dos-palcos': 52200 };
+      const prices: Record<string, number> = { 'passe-3-dias': 990, mensal: 2900, trimestral: 8100, semestral: 14400, anual: 22800, 'rei-dos-palcos': 52200 };
       return s + (prices[r.p.subscription_plan] || 0);
     }, 0);
     const summaryEl = document.getElementById('renewalSummary');

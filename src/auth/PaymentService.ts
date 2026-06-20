@@ -14,11 +14,30 @@ export interface Plan {
   priceDisplay: string;
   pricePerMonth: string;
   durationMonths: number;
+  /** Duração em DIAS — só pra planos curtos (ex: Modo Show 3 Dias). Quando
+   *  presente, manda em durationMonths no cálculo de expiração. */
+  durationDays?: number;
   savings?: string;
   popular?: boolean;
+  /** Tagline curta exibida no card (posicionamento do plano). */
+  tagline?: string;
+  /** Esconder do iOS (sem produto IAP correspondente — evita rejeição Apple). */
+  hideOnIOS?: boolean;
 }
 
 export const PLANS: Plan[] = [
+  {
+    id: 'passe-3-dias',
+    name: 'Modo Show 3 Dias GDrums',
+    displayName: 'Modo Show 3 Dias',
+    priceCents: 990,
+    priceDisplay: 'R$ 9,90',
+    pricePerMonth: '9,90',
+    durationMonths: 0,
+    durationDays: 3,
+    tagline: 'Pro show do fim de semana ou festa de família',
+    hideOnIOS: true,
+  },
   {
     id: 'mensal',
     name: 'Plano Mensal GDrums',
@@ -68,6 +87,7 @@ export const PLANS: Plan[] = [
     pricePerMonth: '14,50',
     durationMonths: 36,
     savings: 'Metade do mensal!',
+    hideOnIOS: true,
   },
 ];
 
@@ -192,5 +212,17 @@ export function calculateTrialExpiry(): string {
 export function calculatePlanExpiry(durationMonths: number): string {
   const now = new Date();
   now.setMonth(now.getMonth() + durationMonths);
+  return now.toISOString();
+}
+
+/** Expiração a partir de um Plan, respeitando durationDays (planos curtos)
+ *  OU durationMonths. Use este em vez de calcular na mão. */
+export function calculateExpiryFromPlan(plan: Plan): string {
+  const now = new Date();
+  if (plan.durationDays && plan.durationDays > 0) {
+    now.setDate(now.getDate() + plan.durationDays);
+  } else {
+    now.setMonth(now.getMonth() + plan.durationMonths);
+  }
   return now.toISOString();
 }

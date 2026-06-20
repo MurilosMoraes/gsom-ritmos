@@ -397,12 +397,11 @@ class PlansPage {
     if (!grid) return;
     grid.innerHTML = '';
 
-    // No iOS, esconder o plano "Rei dos Palcos" (36 meses).
-    // Apple exige que TODOS os planos exibidos tenham IAP correspondente,
-    // e este ainda não foi criado no ASC — então some no iOS pra evitar
-    // rejeição 2.1 ("referência a plano sem IAP submetido").
+    // No iOS, esconder planos sem IAP correspondente (hideOnIOS): a Apple
+    // exige que TODO plano exibido tenha produto IAP submetido, senão
+    // rejeição 2.1. Hoje: Rei dos Palcos e Modo Show 3 Dias (só web/Android).
     const visiblePlans = isIOSNative()
-      ? PLANS.filter(p => p.id !== 'rei-dos-palcos')
+      ? PLANS.filter(p => !p.hideOnIOS)
       : PLANS;
 
     visiblePlans.forEach(plan => {
@@ -449,14 +448,18 @@ class PlansPage {
         savingsText = plan.savings;
       }
 
-      // Mostrar valor total em destaque pra planos > 1 mes
+      // Plano de DIAS (Modo Show 3 Dias): valor total em destaque, sem /mês.
+      const isDayPlan = !!(plan.durationDays && plan.durationDays > 0);
+      // Mostrar valor total em destaque pra planos > 1 mes (ou plano de dias)
       const isMultiMonth = plan.durationMonths > 1;
-      const totalDisplay = (finalPrice / 100).toFixed(0);
+      const totalDisplay = (finalPrice / 100).toFixed(2).replace('.', ',').replace(',00', '');
       const perMonthDisplay = (hasDiscount || hasCredit) ? finalPerMonth : plan.pricePerMonth;
-      const periodLabel = isMultiMonth
-        ? (plan.durationMonths >= 36 ? 'total' : `/ ${plan.durationMonths} meses`)
-        : '/mes';
-      const amountDisplay = isMultiMonth ? totalDisplay : perMonthDisplay;
+      const periodLabel = isDayPlan
+        ? `/ ${plan.durationDays} dias`
+        : isMultiMonth
+          ? (plan.durationMonths >= 36 ? 'total' : `/ ${plan.durationMonths} meses`)
+          : '/mes';
+      const amountDisplay = (isMultiMonth || isDayPlan) ? totalDisplay : perMonthDisplay;
       const perMonthRef = isMultiMonth
         ? `R$ ${perMonthDisplay}/mes${plan.savings && !hasDiscount && !hasCredit ? ' — ' + plan.savings : ''}`
         : '';
@@ -464,8 +467,9 @@ class PlansPage {
       card.innerHTML = `
         ${isHighlighted ? '<div class="plan-badge">' + (hasCredit ? 'Upgrade' : 'Mais Popular') + '</div>' : ''}
         <span class="plan-name">${plan.durationMonths >= 36 ? plan.displayName + ' — 3 Anos' : plan.displayName}</span>
-        ${(hasDiscount || hasCredit) && isMultiMonth ? `<div class="plan-original-price">R$ ${(originalPrice / 100).toFixed(0)}</div>` : ''}
-        ${(hasDiscount || hasCredit) && !isMultiMonth ? `<div class="plan-original-price">R$ ${plan.pricePerMonth}/mes</div>` : ''}
+        ${plan.tagline ? `<div class="plan-tagline">${plan.tagline}</div>` : ''}
+        ${(hasDiscount || hasCredit) && (isMultiMonth || isDayPlan) ? `<div class="plan-original-price">R$ ${(originalPrice / 100).toFixed(2).replace('.', ',').replace(',00', '')}</div>` : ''}
+        ${(hasDiscount || hasCredit) && !isMultiMonth && !isDayPlan ? `<div class="plan-original-price">R$ ${plan.pricePerMonth}/mes</div>` : ''}
         <div class="plan-price">
           <span class="plan-currency">R$</span>
           <span class="plan-amount">${amountDisplay}</span>
@@ -474,6 +478,13 @@ class PlansPage {
         ${savingsText ? `<span class="plan-savings">${savingsText}</span>` : ''}
         ${perMonthRef ? `<span class="plan-total">${perMonthRef}</span>` : '<span class="plan-total">&nbsp;</span>'}
         <ul class="plan-features">
+          ${isDayPlan ? `
+          <li>Acesso completo por ${plan.durationDays} dias</li>
+          <li>Todos os ritmos liberados</li>
+          <li>Acompanhamento ao vivo, viradas e finalizações</li>
+          <li>Pedal Bluetooth e repertório</li>
+          <li>Ideal pro fim de semana e festas de família</li>
+          ` : `
           <li>Acesso completo a todos os ritmos</li>
           <li>Acompanhamento ao vivo com viradas e finalizações</li>
           <li>Pedal Bluetooth</li>
@@ -482,6 +493,7 @@ class PlansPage {
           <li>Ritmos novos toda semana</li>
           ${plan.durationMonths >= 6 ? '<li>Suporte prioritário</li>' : ''}
           ${plan.durationMonths >= 36 ? '<li>Pague uma vez, toque por 3 anos</li>' : ''}
+          `}
         </ul>
         <button class="plan-btn" data-plan="${plan.id}">${hasCredit ? 'Upgrade para' : 'Assinar'} ${plan.displayName}</button>
       `;
