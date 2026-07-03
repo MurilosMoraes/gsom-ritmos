@@ -1,5 +1,7 @@
 // Gerenciamento de ritmos pessoais do usuário
-// Salva no localStorage (offline) + Supabase (sync online)
+// Salva no localStorage (offline) + IndexedDB (backup) + Supabase (sync online)
+
+import { persistSet, persistGet, requestPersistentStorage } from '../utils/persistentStore';
 
 export interface UserRhythm {
   id: string;
@@ -17,6 +19,15 @@ const LOCAL_KEY = 'gdrums-user-rhythms';
 // confirmou. Sem isso, excluir offline ressuscitava o ritmo no próximo
 // boot (banco ainda tinha a linha e o merge trazia de volta).
 const PENDING_DELETES_KEY = 'gdrums-user-rhythms-pending-deletes';
+// Backup em IndexedDB — mesma defesa que o SetlistManager já tem: se o
+// browser (Safari iOS principalmente) limpar o localStorage sob pressão
+// de disco, os ritmos do usuário não somem — IndexedDB sobrevive.
+const IDB_KEY = 'user-rhythms-v1';
+
+interface PersistedState {
+  rhythms: UserRhythm[];
+  pendingDeletes: string[];
+}
 
 export class UserRhythmService {
   private rhythms: UserRhythm[] = [];
@@ -26,9 +37,40 @@ export class UserRhythmService {
 
   constructor() {
     this.loadLocal();
+    requestPersistentStorage().catch(() => { /* noop */ });
+    if (this.rhythms.length === 0) {
+      this.tryRestoreFromIndexedDB();
+    }
     // Voltou a rede → sobe os pendentes na hora (antes só re-tentava no
     // próximo boot do app, e o badge "pendente sync" ficava eterno)
     window.addEventListener('online', () => { void this.syncNow(); });
+    // Retry periódico — cobre 2 buracos que o listener 'online' sozinho
+    // não resolve: (1) ritmo salvo ANTES do initWithUser terminar (o
+    // client Supabase/userId ainda não tinham sido injetados aqui, então
+    // o upload nem chegou a ser tentado — falha 100% silenciosa) e
+    // (2) o device nunca "ficou offline de verdade" pro evento 'online'
+    // disparar, mas a rede estava ruim o bastante pro insert falhar uma
+    // vez. Sem isso, o ritmo fica preso em "pendente sync" até o usuário
+    // abrir Meus Ritmos de novo ou reiniciar o app — o que pareceu bug
+    // mesmo estando online o tempo todo.
+    setInterval(() => {
+      if (navigator.onLine && this.supabase && this.userId && this.rhythms.some(r => !r.synced)) {
+        void this.syncNow();
+      }
+    }, 20000);
+  }
+
+  /** Recupera do IndexedDB se o localStorage veio vazio (limpo pelo browser). */
+  private async tryRestoreFromIndexedDB(): Promise<void> {
+    try {
+      const recovered = await persistGet<PersistedState>(IDB_KEY);
+      if (recovered && Array.isArray(recovered.rhythms) && recovered.rhythms.length > 0 && this.rhythms.length === 0) {
+        console.warn('[UserRhythms] localStorage vazio — recuperando do IndexedDB:', recovered.rhythms.length, 'ritmos');
+        this.rhythms = recovered.rhythms;
+        this.pendingDeletes = Array.isArray(recovered.pendingDeletes) ? recovered.pendingDeletes : [];
+        this.writeToLocalStorage();
+      }
+    } catch { /* IDB pode não estar disponível */ }
   }
 
   // ─── Init com Supabase (chamado após auth) ────────────────────────
@@ -48,31 +90,50 @@ export class UserRhythmService {
         .order('created_at', { ascending: false });
 
       if (data && data.length > 0) {
-        // Merge: Supabase é fonte de verdade pra ritmos synced
-        const remoteIds = new Set(data.map((r: any) => r.id));
+        // Merge: Supabase é fonte de verdade, EXCETO quando existe uma
+        // edição local ainda não sincronizada e mais recente que a do
+        // banco — nesse caso o servidor tem uma versão desatualizada
+        // (o insert/update daquele ritmo falhou ou ainda não rodou) e
+        // sobrescrever com ela apagaria silenciosamente a edição do
+        // usuário. Decide por timestamp (updated_at), igual ao
+        // SetlistManager já faz pro repertório.
+        const localById = new Map(this.rhythms.map(r => [r.id, r]));
+        const deleted = new Set(this.pendingDeletes); // tombstones não ressuscitam
+        const merged: UserRhythm[] = [];
 
-        // Manter ritmos locais não sincronizados
-        const localOnly = this.rhythms.filter(r => !r.synced && !remoteIds.has(r.id));
-
-        // Tombstones: excluídos localmente NÃO ressuscitam do banco
-        const deleted = new Set(this.pendingDeletes);
-
-        // Converter remotos
-        this.rhythms = data
-          .filter((r: any) => !deleted.has(r.id))
-          .map((r: any) => ({
-            id: r.id,
-            name: r.name,
-            bpm: r.bpm,
-            rhythm_data: r.rhythm_data,
-            base_rhythm_name: r.base_rhythm_name || undefined,
-            created_at: r.created_at,
-            updated_at: r.updated_at,
+        for (const remote of data) {
+          if (deleted.has(remote.id)) continue;
+          const local = localById.get(remote.id);
+          if (local && !local.synced) {
+            const localTime = Date.parse(local.updated_at) || 0;
+            const remoteTime = Date.parse(remote.updated_at) || 0;
+            if (localTime > remoteTime) {
+              // Edição local mais nova ainda não subiu — preserva e
+              // deixa o syncPending() logo abaixo tentar de novo.
+              merged.push(local);
+              continue;
+            }
+          }
+          merged.push({
+            id: remote.id,
+            name: remote.name,
+            bpm: remote.bpm,
+            rhythm_data: remote.rhythm_data,
+            base_rhythm_name: remote.base_rhythm_name || undefined,
+            created_at: remote.created_at,
+            updated_at: remote.updated_at,
             synced: true,
-          }));
+          });
+        }
 
-        // Adicionar locais não sincronizados
-        this.rhythms.push(...localOnly);
+        // Locais que o banco nem conhece ainda (criados offline, nunca
+        // sincronizados) — mantém.
+        const remoteIds = new Set(data.map((r: any) => r.id));
+        for (const local of this.rhythms) {
+          if (!local.synced && !remoteIds.has(local.id)) merged.push(local);
+        }
+
+        this.rhythms = merged;
       }
 
       // Sincronizar pendentes
@@ -315,6 +376,17 @@ export class UserRhythmService {
   }
 
   private saveLocal(): void {
+    this.writeToLocalStorage();
+    // IndexedDB em paralelo (fire-and-forget) — última linha de defesa,
+    // igual ao SetlistManager. Só grava estados com ritmos (não sobrescreve
+    // um IDB bom com um estado vazio por engano).
+    if (this.rhythms.length > 0) {
+      persistSet(IDB_KEY, { rhythms: this.rhythms, pendingDeletes: this.pendingDeletes } as PersistedState)
+        .catch(() => { /* noop */ });
+    }
+  }
+
+  private writeToLocalStorage(): void {
     try {
       localStorage.setItem(LOCAL_KEY, JSON.stringify(this.rhythms));
     } catch { /* storage full */ }

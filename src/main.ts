@@ -5248,25 +5248,29 @@ ctaUrl: '/plans?renew=true',
             filtered.map(r => `
               <div class="x-rhythm-card" data-id="${r.id}">
                 <span class="x-rhythm-accent"></span>
-                <div class="x-rhythm-body">
-                  <div class="x-rhythm-name" data-name="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
-                  <div class="x-rhythm-meta">
-                    ${r.base_rhythm_name ? `<span class="x-rhythm-base">baseado em ${escapeHtml(r.base_rhythm_name)}</span>` : ''}
-                    ${!r.synced ? `${r.base_rhythm_name ? '<span class="x-rhythm-meta-dot"></span>' : ''}<button class="x-rhythm-pending" data-sync-one="${r.id}" title="Toque pra sincronizar agora">pendente sync ↻</button>` : ''}
+                <div class="x-rhythm-content">
+                  <div class="x-rhythm-top">
+                    <div class="x-rhythm-name" data-name="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
+                    <div class="x-rhythm-actions">
+                      <button class="x-rhythm-action" data-rename="${r.id}" aria-label="Renomear">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                      </button>
+                      <button class="x-rhythm-action danger" data-delete="${r.id}" aria-label="Deletar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div class="x-bpm-ctrl" data-bpm-ctrl="${r.id}" aria-label="BPM do ritmo">
-                  <button class="x-bpm-btn" data-bpm-step="-1" aria-label="Diminuir BPM">&minus;</button>
-                  <span class="x-bpm-val" data-bpm-val="${r.id}" role="button" title="Toque pra digitar">${r.bpm}</span>
-                  <button class="x-bpm-btn" data-bpm-step="1" aria-label="Aumentar BPM">+</button>
-                </div>
-                <div class="x-rhythm-actions">
-                  <button class="x-rhythm-action" data-rename="${r.id}" aria-label="Renomear">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                  </button>
-                  <button class="x-rhythm-action danger" data-delete="${r.id}" aria-label="Deletar">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                  </button>
+                  <div class="x-rhythm-bottom">
+                    <div class="x-rhythm-meta">
+                      ${r.base_rhythm_name ? `<span class="x-rhythm-base">baseado em ${escapeHtml(r.base_rhythm_name)}</span>` : ''}
+                      ${!r.synced ? `${r.base_rhythm_name ? '<span class="x-rhythm-meta-dot"></span>' : ''}<button class="x-rhythm-pending" data-sync-one="${r.id}" title="Toque pra sincronizar agora">pendente sync ↻</button>` : ''}
+                    </div>
+                    <div class="x-bpm-ctrl" data-bpm-ctrl="${r.id}" aria-label="BPM do ritmo">
+                      <button class="x-bpm-btn" data-bpm-step="-1" aria-label="Diminuir BPM">&minus;</button>
+                      <span class="x-bpm-val" data-bpm-val="${r.id}" role="button" title="Toque pra digitar">${r.bpm}</span>
+                      <button class="x-bpm-btn" data-bpm-step="1" aria-label="Aumentar BPM">+</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             `).join('')

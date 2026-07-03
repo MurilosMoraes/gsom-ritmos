@@ -417,7 +417,7 @@
   border: 1px solid var(--x-border);
   border-radius: 14px;
   padding: 0.85rem 0.95rem;
-  display: flex; align-items: center;
+  display: flex; align-items: stretch;
   gap: 0.75rem;
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s, transform 0.08s;
@@ -443,11 +443,29 @@
   flex-shrink: 0;
 }
 
-.x-rhythm-body {
+.x-rhythm-content {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.x-rhythm-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.x-rhythm-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 .x-rhythm-name {
+  flex: 1;
+  min-width: 0;
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--x-text);
@@ -479,7 +497,9 @@
   gap: 0.5rem;
   font-size: 0.72rem;
   color: var(--x-text3);
-  margin-top: 0.2rem;
+  min-width: 0;
+  overflow: hidden;
+  flex-wrap: wrap;
 }
 .x-rhythm-meta-dot {
   width: 3px; height: 3px;
@@ -1825,7 +1845,6 @@ body:has(#pedalBtInput) .user-layout {
   background: rgba(0, 212, 255, 0.05);
   border-radius: 999px;
   padding: 0.15rem;
-  margin-right: 0.35rem;
 }
 .x-bpm-btn {
   width: 30px;

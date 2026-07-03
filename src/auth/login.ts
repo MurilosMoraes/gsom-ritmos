@@ -6,6 +6,7 @@ import { AttributionService } from '../native/AttributionService';
 import { loginSchema, zodErrorsToFieldMap } from './schemas';
 import { isNativeApp, openExternal, internalNav } from '../native/Platform';
 import { setupPasswordToggle } from '../utils/passwordToggle';
+import { OfflineCache } from '../native/OfflineCache';
 
 class LoginPage {
   private form: HTMLFormElement;
@@ -27,6 +28,19 @@ class LoginPage {
   }
 
   private async init(): Promise<void> {
+    // ─── Sem internet mas com cache offline válido: não trava no login ──
+    // main.ts:checkAccess() já cai pro cache offline em TODO cenário de
+    // falha de rede — menos um: a checagem de sessão única (outro device
+    // logou) desloga e manda pra cá incondicionalmente, sem checar cache.
+    // Se a rede cair logo depois (ou já tiver caído), o user fica preso
+    // aqui pra sempre — sem internet o form de login não serve pra nada
+    // (signInWithPassword exige rede) e ele tem assinatura ativa. Mesma
+    // regra do app principal: cache válido = entra.
+    if (OfflineCache.isOffline() && OfflineCache.hasValidOfflineAccess() && !OfflineCache.isAdmin()) {
+      internalNav('/');
+      return;
+    }
+
     // Detectar recovery token na URL (reset de senha via email).
     //
     // Supabase pode mandar em 2 formatos dependendo do flow configurado:
@@ -75,10 +89,18 @@ class LoginPage {
       return;
     }
 
-    // Se já logado, redirecionar direto
-    if (await authService.isAuthenticated()) {
-      window.location.href = await this.getDestination();
-      return;
+    // Se já logado, redirecionar direto.
+    // isAuthenticated() valida com o servidor (supabase.auth.getUser()) —
+    // se a rede cair nesse meio tempo, isso pode REJEITAR em vez de
+    // retornar false, e o catch abaixo evita que o form fique morto
+    // (sem os listeners) por causa de uma falha de rede transitória.
+    try {
+      if (await authService.isAuthenticated()) {
+        window.location.href = await this.getDestination();
+        return;
+      }
+    } catch {
+      // Rede falhou validando sessão — segue pro form normal de login
     }
     this.setupEventListeners();
     this.setupNativeRegisterLink();

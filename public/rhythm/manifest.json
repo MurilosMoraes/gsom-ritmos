@@ -1,5 +1,5 @@
 {
-  "version": 43,
+  "version": 44,
   "rhythms": [
     "Anos 60.json",
     "Anunciação.json",
@@ -141,6 +141,7 @@
     "Vaneira Reta.json",
     "Vaneira.json",
     "Vaquejada.json",
+    "Worship (espontâneo).json",
     "Worship (pregação).json",
     "Worship (tribal).json",
     "Worship 2 (tribal).json",
@@ -293,6 +294,7 @@
       "Gospel 2.json",
       "Gospel 6-8.json",
       "Gospel.json",
+      "Worship (espontâneo).json",
       "Worship (pregação).json",
       "Worship (tribal).json",
       "Worship 2 (tribal).json",

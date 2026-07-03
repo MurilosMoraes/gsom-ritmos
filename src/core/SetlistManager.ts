@@ -64,6 +64,12 @@ export class SetlistManager {
   private onChange?: () => void;
   private userId: string | null = null;
   private supabaseClient: any = null;
+  // true = a última tentativa de saveRemote() falhou (ou nem foi tentada
+  // porque userId/supabaseClient ainda não estavam prontos) — sem isso,
+  // uma falha de rede no meio de uma edição fica perdida pra sempre: só
+  // a PRÓXIMA edição do usuário dispara um novo saveRemote(), então um
+  // repertório que parou de ser editado depois da falha nunca sincroniza.
+  private remoteDirty = false;
 
   constructor() {
     this.state = this.loadLocal();
@@ -76,6 +82,17 @@ export class SetlistManager {
     if (this.totalItemCount() === 0) {
       this.tryRestoreFromIndexedDB();
     }
+    // Retry de reconexão + periódico — mesma defesa que o UserRhythmService
+    // tem pro badge "pendente sync". Sem isso, uma falha silenciosa de
+    // saveRemote() (rede ruim, ou edição feita antes do initWithUser
+    // terminar de injetar userId/supabaseClient) deixa o repertório
+    // desatualizado no servidor até a PRÓXIMA edição local acontecer.
+    window.addEventListener('online', () => { if (this.remoteDirty) void this.saveRemote(); });
+    setInterval(() => {
+      if (this.remoteDirty && navigator.onLine && this.userId && this.supabaseClient) {
+        void this.saveRemote();
+      }
+    }, 20000);
   }
 
   // ─── Helpers internos ───────────────────────────────────────────────
@@ -169,18 +186,33 @@ export class SetlistManager {
         // ── Detecção de escrita de APP ANTIGO (período de transição) ──
         // O app novo SEMPRE grava items + setlists juntos (dual-write
         // consistente: items === itens do repertório ativo). Se as
-        // colunas divergem, um app antigo (PWA cacheada em outro device)
-        // gravou só items DEPOIS — adota items no repertório ativo pra
-        // não perder as edições feitas lá.
+        // colunas divergem, um app antigo (PWA cacheada em outro device,
+        // ou um Service Worker grudado numa versão anterior — ver nota do
+        // SW em main.ts) gravou só items DEPOIS — adota items no
+        // repertório ativo pra não perder as edições feitas lá.
+        //
+        // DEFESA: só adota se NÃO for uma redução drástica. As duas
+        // colunas compartilham o mesmo `updated_at` da linha — não dá
+        // pra saber por timestamp se `items` é realmente mais novo ou se
+        // é um app velho reescrevendo por cima com um snapshot pequeno e
+        // desatualizado que ele tinha em cache local. Um repertório
+        // legítimo editado por um app antigo dificilmente ENCOLHE muito;
+        // se encolheu, é sinal de escrita de versão velha/corrompida —
+        // ignora e mantém o `setlists` (maior, mais confiável).
         if (Array.isArray(data.items) && data.items.length > 0) {
           const act = remoteState.setlists.find(s => s.id === remoteState!.activeId);
           if (act && JSON.stringify(act.items) !== JSON.stringify(data.items)) {
-            console.warn('[SetlistManager] items (app antigo) diverge do setlists — adotando items no repertório ativo');
-            act.items = data.items;
-            act.currentIndex = Math.min(
-              typeof data.current_index === 'number' ? data.current_index : 0,
-              Math.max(0, data.items.length - 1)
-            );
+            const shrunk = data.items.length < act.items.length * 0.9;
+            if (shrunk) {
+              console.warn(`[SetlistManager] items (legado, ${data.items.length} itens) muito menor que setlists (${act.items.length} itens) — IGNORADO para não truncar repertório`);
+            } else {
+              console.warn('[SetlistManager] items (app antigo) diverge do setlists — adotando items no repertório ativo');
+              act.items = data.items;
+              act.currentIndex = Math.min(
+                typeof data.current_index === 'number' ? data.current_index : 0,
+                Math.max(0, data.items.length - 1)
+              );
+            }
           }
         }
       } else if (Array.isArray(data.items) && data.items.length > 0) {
@@ -537,10 +569,15 @@ export class SetlistManager {
   // ─── Persistência Supabase ──────────────────────────────────────────
 
   private async saveRemote(): Promise<void> {
-    if (!this.userId || !this.supabaseClient) return;
+    if (!this.userId || !this.supabaseClient) {
+      // Ainda não temos client/userId (edição feita antes do initWithUser
+      // terminar) — marca dirty pro retry pegar assim que initWithUser rodar.
+      this.remoteDirty = true;
+      return;
+    }
     try {
       const a = this.active();
-      await this.supabaseClient
+      const { error } = await this.supabaseClient
         .from('gdrums_favorites')
         .upsert({
           user_id: this.userId,
@@ -555,6 +592,9 @@ export class SetlistManager {
           },
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
-    } catch { /* silencioso */ }
+      this.remoteDirty = !!error;
+    } catch {
+      this.remoteDirty = true; // sem rede — o retry periódico/online tenta de novo
+    }
   }
 }
