@@ -23,6 +23,13 @@ const PENDING_DELETES_KEY = 'gdrums-user-rhythms-pending-deletes';
 // browser (Safari iOS principalmente) limpar o localStorage sob pressão
 // de disco, os ritmos do usuário não somem — IndexedDB sobrevive.
 const IDB_KEY = 'user-rhythms-v1';
+// Dono do conteúdo que está HOJE em LOCAL_KEY/PENDING_DELETES_KEY.
+// localStorage/IndexedDB não são namespaced por usuário — num device que
+// já logou com MAIS DE UMA conta (device compartilhado da banda, celular
+// emprestado, reinstalação), sem essa tag os ritmos de uma pessoa vazavam
+// pra dentro da conta de outra. Ver isolamento em initWithUser.
+const OWNER_KEY = 'gdrums-user-rhythms-owner';
+const namespacedKey = (userId: string) => `gdrums-user-rhythms:${userId}`;
 
 interface PersistedState {
   rhythms: UserRhythm[];
@@ -60,11 +67,22 @@ export class UserRhythmService {
     }, 20000);
   }
 
+  /** true se já sabemos (via OWNER_KEY) que o device pertence a OUTRO
+   *  usuário que não o desta sessão — usado pra recusar um restore de
+   *  IndexedDB (não namespaced) que corra em paralelo com
+   *  isolateFromOtherAccounts e tente reintroduzir dado de outra conta. */
+  private ownedByOther(): boolean {
+    if (!this.userId) return false;
+    let owner: string | null = null;
+    try { owner = localStorage.getItem(OWNER_KEY); } catch { /* noop */ }
+    return !!owner && owner !== this.userId;
+  }
+
   /** Recupera do IndexedDB se o localStorage veio vazio (limpo pelo browser). */
   private async tryRestoreFromIndexedDB(): Promise<void> {
     try {
       const recovered = await persistGet<PersistedState>(IDB_KEY);
-      if (recovered && Array.isArray(recovered.rhythms) && recovered.rhythms.length > 0 && this.rhythms.length === 0) {
+      if (recovered && Array.isArray(recovered.rhythms) && recovered.rhythms.length > 0 && this.rhythms.length === 0 && !this.ownedByOther()) {
         console.warn('[UserRhythms] localStorage vazio — recuperando do IndexedDB:', recovered.rhythms.length, 'ritmos');
         this.rhythms = recovered.rhythms;
         this.pendingDeletes = Array.isArray(recovered.pendingDeletes) ? recovered.pendingDeletes : [];
@@ -73,11 +91,47 @@ export class UserRhythmService {
     } catch { /* IDB pode não estar disponível */ }
   }
 
+  /**
+   * Garante que `this.rhythms`/`this.pendingDeletes` pertencem de fato a
+   * `userId` antes de qualquer merge com o servidor — mesma defesa do
+   * SetlistManager (ver comentário lá). Sem tag de dono, assume que é do
+   * usuário atual (migração, device "virgem" ou dado de antes deste
+   * fix). Com tag de dono DIFERENTE, arquiva o conteúdo pro dono antigo
+   * e troca pelo backup namespaced deste usuário (se existir) ou vazio —
+   * nunca herda ritmos de outra conta.
+   */
+  private isolateFromOtherAccounts(userId: string): void {
+    let owner: string | null = null;
+    try { owner = localStorage.getItem(OWNER_KEY); } catch { /* noop */ }
+
+    if (owner && owner !== userId) {
+      console.warn(`[UserRhythms] Local pertence a outra conta (${owner}) — isolando de ${userId}`);
+      try {
+        localStorage.setItem(namespacedKey(owner), JSON.stringify({ rhythms: this.rhythms, pendingDeletes: this.pendingDeletes } as PersistedState));
+      } catch { /* localStorage cheio — tolera */ }
+
+      let restored: PersistedState | null = null;
+      try {
+        const raw = localStorage.getItem(namespacedKey(userId));
+        restored = raw ? JSON.parse(raw) : null;
+      } catch { restored = null; }
+
+      this.rhythms = restored?.rhythms || [];
+      this.pendingDeletes = restored?.pendingDeletes || [];
+      this.writeToLocalStorage();
+    }
+
+    if (owner !== userId) {
+      try { localStorage.setItem(OWNER_KEY, userId); } catch { /* noop */ }
+    }
+  }
+
   // ─── Init com Supabase (chamado após auth) ────────────────────────
 
   async initWithUser(userId: string, supabase: any): Promise<void> {
     this.userId = userId;
     this.supabase = supabase;
+    this.isolateFromOtherAccounts(userId);
 
     if (!navigator.onLine) return;
 
@@ -393,5 +447,13 @@ export class UserRhythmService {
     try {
       localStorage.setItem(PENDING_DELETES_KEY, JSON.stringify(this.pendingDeletes));
     } catch { /* storage full */ }
+    // Espelho namespaced por conta — permite restaurar certo se ESTE
+    // usuário voltar a usar este mesmo device depois de outra conta ter
+    // usado no meio (ver isolateFromOtherAccounts).
+    if (this.userId) {
+      try {
+        localStorage.setItem(namespacedKey(this.userId), JSON.stringify({ rhythms: this.rhythms, pendingDeletes: this.pendingDeletes } as PersistedState));
+      } catch { /* storage full */ }
+    }
   }
 }

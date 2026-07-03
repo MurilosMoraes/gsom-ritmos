@@ -27,6 +27,14 @@ import { persistSet, persistGet, requestPersistentStorage } from '../utils/persi
 const LOCAL_KEY_V2 = 'gdrums-setlists-v2';
 const LOCAL_BACKUP_KEY_V2 = 'gdrums-setlists-v2-backup';
 const IDB_KEY_V2 = 'setlists-v2';
+// Dono do conteúdo que está HOJE em LOCAL_KEY_V2. localStorage/IndexedDB
+// não são namespaced por usuário — num device que já logou com MAIS DE
+// UMA conta (device compartilhado da banda, reinstalação, celular
+// emprestado), sem essa tag o repertório de uma pessoa vazava pra dentro
+// da conta de outra (e o merge "quem é mais novo ganha" podia até
+// SUBIR isso pro banco da conta errada). Ver isolamento em initWithUser.
+const OWNER_KEY = 'gdrums-setlists-v2-owner';
+const namespacedKey = (userId: string) => `gdrums-setlists-v2:${userId}`;
 
 // Chaves do formato antigo (v1) — só leitura, pra migração
 const LEGACY_LOCAL_KEY = 'gdrums-setlist';
@@ -113,13 +121,24 @@ export class SetlistManager {
     return this.state.setlists.reduce((n, s) => n + s.items.length, 0);
   }
 
+  /** true se já sabemos (via OWNER_KEY) que o device pertence a OUTRO
+   *  usuário que não o desta sessão — usado pra recusar um restore de
+   *  IndexedDB (não namespaced) que corra em paralelo com
+   *  isolateFromOtherAccounts e tente reintroduzir dado de outra conta. */
+  private ownedByOther(): boolean {
+    if (!this.userId) return false;
+    let owner: string | null = null;
+    try { owner = localStorage.getItem(OWNER_KEY); } catch { /* noop */ }
+    return !!owner && owner !== this.userId;
+  }
+
   private async tryRestoreFromIndexedDB(): Promise<void> {
     try {
       // v2 primeiro
       const recovered = await persistGet<MultiSetlistState>(IDB_KEY_V2);
       if (recovered && Array.isArray(recovered.setlists) &&
           recovered.setlists.reduce((n, s) => n + (s.items?.length || 0), 0) > 0) {
-        if (this.totalItemCount() === 0) {
+        if (this.totalItemCount() === 0 && !this.ownedByOther()) {
           console.warn('[SetlistManager] Recuperando setlists v2 do IndexedDB');
           this.state = this.normalizeState(recovered);
           this.writeToLocalStorage();
@@ -130,7 +149,7 @@ export class SetlistManager {
       // Fallback: IDB do formato v1 (pré-migração)
       const legacy = await persistGet<Setlist & { lastModified?: number }>(LEGACY_IDB_KEY);
       if (legacy && Array.isArray(legacy.items) && legacy.items.length > 0 &&
-          this.totalItemCount() === 0) {
+          this.totalItemCount() === 0 && !this.ownedByOther()) {
         console.warn('[SetlistManager] Recuperando setlist v1 do IndexedDB:', legacy.items.length, 'itens');
         const id = genId();
         this.state = {
@@ -144,11 +163,51 @@ export class SetlistManager {
     } catch { /* IDB pode não estar disponível */ }
   }
 
+  /**
+   * Garante que `this.state` pertence de fato a `userId` antes de
+   * qualquer merge com o servidor.
+   *
+   * localStorage/IndexedDB são globais ao device, não por conta. Se
+   * este device já foi usado por OUTRA conta (device compartilhado,
+   * celular emprestado, reinstalação), o que o construtor carregou de
+   * `LOCAL_KEY_V2` pode ser dela — e o merge por timestamp do
+   * initWithUser podia então UPLOAD esse repertório alheio pra dentro
+   * da conta de quem está logando agora.
+   *
+   * Sem tag de dono (device "virgem" ou dado de antes deste fix):
+   * assume que é do usuário atual (migração — não reseta ninguém à toa).
+   * Com tag de dono DIFERENTE: arquiva o conteúdo pro dono antigo (pra
+   * ele não perder nada se voltar a logar neste device) e troca `this.state`
+   * pelo backup namespaced deste usuário (se existir neste device) ou
+   * um estado vazio — nunca herda o conteúdo de outra conta.
+   */
+  private isolateFromOtherAccounts(userId: string): void {
+    let owner: string | null = null;
+    try { owner = localStorage.getItem(OWNER_KEY); } catch { /* noop */ }
+
+    if (owner && owner !== userId) {
+      console.warn(`[SetlistManager] Local pertence a outra conta (${owner}) — isolando de ${userId}`);
+      try {
+        localStorage.setItem(namespacedKey(owner), JSON.stringify(this.state));
+      } catch { /* localStorage cheio — tolera */ }
+
+      const own = this.tryParseState(localStorage.getItem(namespacedKey(userId)));
+      this.state = own || emptyState();
+      this.writeToLocalStorage();
+      this.onChange?.();
+    }
+
+    if (owner !== userId) {
+      try { localStorage.setItem(OWNER_KEY, userId); } catch { /* noop */ }
+    }
+  }
+
   // ─── Init com Supabase (chamado após auth) ──────────────────────────
 
   async initWithUser(userId: string, supabase: any): Promise<void> {
     this.userId = userId;
     this.supabaseClient = supabase;
+    this.isolateFromOtherAccounts(userId);
 
     // Offline: mantém local. Quando voltar online, saveRemote vai sincronizar.
     if (!navigator.onLine) return;
@@ -488,6 +547,12 @@ export class SetlistManager {
       // Backup secundário — não sobrescreve backup bom com vazio
       if (this.totalItemCount() > 0) {
         localStorage.setItem(LOCAL_BACKUP_KEY_V2, serialized);
+      }
+      // Espelho namespaced por conta — permite restaurar certo se ESTE
+      // usuário voltar a usar este mesmo device depois de outra conta
+      // ter usado no meio (ver isolateFromOtherAccounts).
+      if (this.userId) {
+        localStorage.setItem(namespacedKey(this.userId), serialized);
       }
     } catch { /* localStorage cheio — toleramos */ }
   }
