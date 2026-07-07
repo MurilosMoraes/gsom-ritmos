@@ -13,6 +13,13 @@ export class PatternEngine {
   private onPatternChange?: (pattern: PatternType) => void;
   private onStop?: () => void;
   private onEndCymbal?: (time: number) => void;
+  /** Fura-fila do lookahead (Scheduler.resyncForCommand): chamado ANTES
+   *  de todo cálculo de timing de comando (virada/finalização/troca) pra
+   *  rebobinar a cabeça de agendamento pro audível — senão a entrada é
+   *  calculada 0.25-0.5s no futuro e o comando soa atrasado. Opcional:
+   *  testes (engine-test) rodam sem Scheduler e caem no comportamento
+   *  clássico. */
+  private beforeTimingCommand?: () => void;
   /** Voltas completas restantes da fill ativa (virada imediata em loop
    *  até desembocar no downbeat). Setado pelo checkPendingPatterns ao
    *  ativar a fill; decrementado/consumido pelo handleFillCompletion. */
@@ -36,6 +43,10 @@ export class PatternEngine {
 
   setOnEndCymbal(callback: (time: number) => void): void {
     this.onEndCymbal = callback;
+  }
+
+  setBeforeTimingCommand(callback: () => void): void {
+    this.beforeTimingCommand = callback;
   }
 
   // ─── Verificação de padrões pendentes (chamado pelo Scheduler) ──────
@@ -227,9 +238,14 @@ export class PatternEngine {
 
     this.pendingMainVariation = nextMainVariation;
     this.shouldChangeRhythmAfterFill = true;
-    // Troca de ritmo: timing clássico (fill termina no fim do ciclo,
-    // ritmo novo entra no downbeat)
-    this.playRotatingFill('cycle-end');
+    // Troca de ritmo IMEDIATA (era 'cycle-end'): a virada entra já, com
+    // o pedaço que falta, e o ritmo novo continua entrando exatamente no
+    // downbeat — a troca acontece na CONCLUSÃO da fill, que no modo
+    // immediate sempre desemboca no 1. Detalhe útil: se já tem fill
+    // tocando, o activateFillWithTiming recusa (guard) mas o retarget de
+    // pendingMainVariation acima JÁ aconteceu — pisadas seguidas só
+    // redirecionam o destino da troca, sem reiniciar a virada.
+    this.playRotatingFill('immediate');
   }
 
   playRotatingFill(mode: 'immediate' | 'cycle-end' = 'immediate'): void {
@@ -291,6 +307,10 @@ export class PatternEngine {
     const variation = state.variations.main[variationIndex];
     if (!variation || !variation.pattern) return;
     if (!this.hasContent(variation.pattern)) return;
+
+    // Fura-fila do lookahead (ver activateFillWithTiming) — troca direta
+    // de ritmo também deve soar no audível, não na cabeça.
+    this.beforeTimingCommand?.();
 
     // Capturar posição musical atual
     const currentStep = this.stateManager.getCurrentStep();
@@ -365,6 +385,11 @@ export class PatternEngine {
     const variation = state.variations.fill[variationIndex];
     if (!variation || !variation.pattern) return;
     if (!this.hasContent(variation.pattern)) return;
+
+    // Fura-fila: rebobina a cabeça pro audível ANTES de calcular a
+    // entrada — senão o "próximo step" está lookahead à frente do que
+    // o user está ouvindo e a virada soa atrasada (~0.5s no mobile).
+    this.beforeTimingCommand?.();
 
     this.stateManager.setCurrentVariation('fill', variationIndex);
     this.stateManager.loadVariation('fill', variationIndex);
@@ -469,6 +494,12 @@ export class PatternEngine {
     this.stateManager.setPendingFill(null);
     this.shouldChangeRhythmAfterFill = false;
     this.fillLoopsRemaining = 0;
+
+    // Fura-fila do lookahead (ver activateFillWithTiming). Durante a
+    // virada o resync recusa (janela não é groove main puro) e o end
+    // assume a fill pelo comportamento clássico — a fill acabou de
+    // entrar audível, a cabeça está perto.
+    this.beforeTimingCommand?.();
 
     const mainVariationIndex = this.stateManager.getCurrentVariation('main');
     const mainVariation = state.variations.main[mainVariationIndex];

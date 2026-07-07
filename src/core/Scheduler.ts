@@ -153,12 +153,43 @@ export class Scheduler {
    */
   resyncHeadToAudible(): void {
     if (!this.stateManager.isPlaying()) return;
-    if (typeof this.audioManager.cancelScheduledAfter !== 'function') return;
 
     const now = this.audioManager.getCurrentTime();
 
     // Gap normal de foreground? nada a fazer
     if (this.nextStepTime - now <= this.scheduleAheadTime + 0.1) return;
+
+    this.rewindHeadToAudible(now);
+  }
+
+  /**
+   * FURA-FILA DE COMANDO (foreground, uso normal).
+   *
+   * Mesmo fenômeno do resync pós-background, só que em escala menor e
+   * SEMPRE presente: a cabeça roda 0.25s (desktop) / 0.5s (mobile) na
+   * frente do audível por causa do lookahead. Todo comando de timing
+   * (virada/finalização/troca) calculava a entrada em cima da cabeça —
+   * o user pisava no pedal e a virada só soava lookahead + 1 step
+   * depois. Num piseiro 150bpm mobile isso é ~4 steps de atraso.
+   *
+   * Chamado pelo PatternEngine (via setBeforeTimingCommand) ANTES de
+   * calcular o entry point: cancela o áudio agendado ainda não audível,
+   * rebobina a cabeça pro primeiro step futuro e deixa o comando entrar
+   * "em cima" do que o ouvido está ouvindo agora.
+   *
+   * Mesmas guardas conservadoras do resync pós-background (groove main
+   * puro, engine com cancelScheduledAfter) — em qualquer dúvida não faz
+   * nada e o comando cai no comportamento antigo (cabeça à frente), que
+   * é atrasado mas nunca quebra.
+   */
+  resyncForCommand(): void {
+    if (!this.stateManager.isPlaying()) return;
+    this.rewindHeadToAudible(this.audioManager.getCurrentTime());
+  }
+
+  /** Núcleo compartilhado do rebobinar de cabeça (ver docs dos callers). */
+  private rewindHeadToAudible(now: number): void {
+    if (typeof this.audioManager.cancelScheduledAfter !== 'function') return;
 
     // Margem pro tick re-agendar com folga (tick 25ms + SAFE_MARGIN 20ms)
     const margin = 0.15;
