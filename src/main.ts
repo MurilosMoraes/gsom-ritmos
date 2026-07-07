@@ -588,7 +588,17 @@ class RhythmSequencer {
     });
 
     this.patternEngine.setOnStop(() => {
+      // onStop é chamado SÓ quando um "Final" (end) termina de tocar.
+      // Captura antes do stop se o ritmo que finalizou era do repertório.
+      const wasFromSetlist = !this.playingOutsideSetlist && !this.setlistManager.isEmpty();
       this.stop();
+      // Auto-avançar repertório: ao finalizar, carrega a PRÓXIMA música
+      // (parada — o usuário inicia manualmente). Só com o toggle ligado e
+      // se o ritmo finalizado era do repertório. navigateSetlist('next')
+      // não faz nada na última música (fica parada na última).
+      if (this.useAutoNext && wasFromSetlist) {
+        void this.navigateSetlist('next', { silent: true });
+      }
     });
 
     // StateManager -> UI observers
@@ -2769,19 +2779,23 @@ ctaUrl: '/plans?renew=true',
   private useIntro = true;
   private useFills = true;   // Viradas ao trocar de ritmo (default ON)
   private useFinal = true;
+  private useAutoNext = false;  // Auto-avançar repertório ao finalizar (default OFF)
 
   private setupToggles(): void {
     // Carregar do localStorage
     const savedIntro = localStorage.getItem('gdrums-toggle-intro');
     const savedFills = localStorage.getItem('gdrums-toggle-fills');
     const savedFinal = localStorage.getItem('gdrums-toggle-final');
+    const savedAutoNext = localStorage.getItem('gdrums-toggle-autonext');
     if (savedIntro !== null) this.useIntro = savedIntro === 'true';
     if (savedFills !== null) this.useFills = savedFills === 'true';
     if (savedFinal !== null) this.useFinal = savedFinal === 'true';
+    if (savedAutoNext !== null) this.useAutoNext = savedAutoNext === 'true';
 
     const introToggle = document.getElementById('toggleIntro');
     const fillsToggle = document.getElementById('toggleFills');
     const finalToggle = document.getElementById('toggleFinal');
+    const autoNextToggle = document.getElementById('toggleAutoNext');
 
     // Aplicar estado inicial
     if (introToggle) introToggle.classList.toggle('active', this.useIntro);
@@ -2792,6 +2806,12 @@ ctaUrl: '/plans?renew=true',
         : 'Viradas ao trocar de ritmo: desligadas (troca direto)';
     }
     if (finalToggle) finalToggle.classList.toggle('active', this.useFinal);
+    if (autoNextToggle) {
+      autoNextToggle.classList.toggle('active', this.useAutoNext);
+      autoNextToggle.title = this.useAutoNext
+        ? 'Auto-avançar repertório: ligado (ao finalizar, carrega a próxima música)'
+        : 'Auto-avançar repertório: desligado';
+    }
 
     introToggle?.addEventListener('click', () => {
       this.useIntro = !this.useIntro;
@@ -2812,6 +2832,15 @@ ctaUrl: '/plans?renew=true',
       this.useFinal = !this.useFinal;
       finalToggle.classList.toggle('active', this.useFinal);
       localStorage.setItem('gdrums-toggle-final', String(this.useFinal));
+    });
+
+    autoNextToggle?.addEventListener('click', () => {
+      this.useAutoNext = !this.useAutoNext;
+      autoNextToggle.classList.toggle('active', this.useAutoNext);
+      autoNextToggle.title = this.useAutoNext
+        ? 'Auto-avançar repertório: ligado (ao finalizar, carrega a próxima música)'
+        : 'Auto-avançar repertório: desligado';
+      localStorage.setItem('gdrums-toggle-autonext', String(this.useAutoNext));
     });
   }
 
@@ -7059,7 +7088,7 @@ ctaUrl: '/plans?renew=true',
     await this.loadSetlistItem(current);
   }
 
-  private async navigateSetlist(direction: 'next' | 'previous'): Promise<void> {
+  private async navigateSetlist(direction: 'next' | 'previous', opts?: { silent?: boolean }): Promise<void> {
     const item = direction === 'next'
       ? this.setlistManager.next()
       : this.setlistManager.previous();
@@ -7070,10 +7099,10 @@ ctaUrl: '/plans?renew=true',
       this.stop();
     }
 
-    await this.loadSetlistItem(item);
+    await this.loadSetlistItem(item, opts);
   }
 
-  private async loadSetlistItem(item: { name: string; path: string; userRhythmId?: string }): Promise<void> {
+  private async loadSetlistItem(item: { name: string; path: string; userRhythmId?: string }, opts?: { silent?: boolean }): Promise<void> {
     let loaded = false;
     // Veio do repertório: o fav-bar volta a mostrar a posição do show.
     // (loadRhythm/loadUserRhythm setam true por padrão; aqui a gente
@@ -7093,7 +7122,7 @@ ctaUrl: '/plans?renew=true',
         this.setlistManager.removeItem(idx);
         const next = this.setlistManager.getCurrentItem();
         if (next && next !== item) {
-          await this.loadSetlistItem(next);
+          await this.loadSetlistItem(next, opts);
           return;
         }
         // Sem próximo: cai pro default pra app não ficar sem ritmo
@@ -7102,7 +7131,7 @@ ctaUrl: '/plans?renew=true',
       }
     } else {
       try {
-        await this.loadRhythm(item.name, item.path);
+        await this.loadRhythm(item.name, item.path, opts);
         loaded = true;
       } catch (e) {
         // Ritmo do catálogo não carregou (arquivo deletado, manifest novo,
@@ -7726,11 +7755,13 @@ ctaUrl: '/plans?renew=true',
     }
   }
 
-  private async loadRhythm(name: string, path: string): Promise<void> {
+  private async loadRhythm(name: string, path: string, opts?: { silent?: boolean }): Promise<void> {
     if (this.isLoadingRhythm) return;
     this.isLoadingRhythm = true;
 
-    const loader = this.showRhythmLoader(name);
+    // No avanço automático do repertório (AUTO) NÃO mostramos o loader:
+    // ele "pisca" na tela a cada troca. silent = troca limpa e instantânea.
+    if (!opts?.silent) this.showRhythmLoader(name);
 
     try {
       if (this.stateManager.isPlaying()) {
