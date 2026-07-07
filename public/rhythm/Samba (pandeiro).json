@@ -1,6 +1,6 @@
 {
   "version": "1.6",
-  "tempo": 150,
+  "tempo": 158,
   "beatsPerBar": 4,
   "patternSteps": {
     "main": 16,
@@ -49,18 +49,18 @@
             false
           ],
           [
+            true,
+            false,
+            false,
+            true,
             false,
             false,
             false,
             false,
+            true,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
+            true,
             false,
             false,
             false,
@@ -71,18 +71,18 @@
             false,
             false,
             false,
+            true,
+            false,
+            false,
+            true,
             false,
             false,
             false,
             false,
+            true,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
+            true
           ],
           [
             true,
@@ -267,56 +267,56 @@
             0
           ],
           [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
             0.5,
-            0.42,
+            0,
+            0,
+            0.5,
+            0,
+            0,
+            0,
+            0,
+            0.5,
+            0,
             0.8,
+            0.5,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0.5,
+            0,
+            0,
+            0.5,
+            0,
+            0,
+            0,
+            0,
+            0.5,
+            0,
+            0,
+            0.5
+          ],
+          [
+            0.38,
+            0.42,
+            0.41,
             0,
             0.5,
             0.44,
-            0.8,
+            0.56,
             0,
-            0.5,
-            0.41,
-            0.8,
+            0.45,
+            0.3,
+            0.56,
             0,
-            0.5,
-            0.42,
+            0.39,
+            0.31,
             0.8,
             0
           ],
@@ -459,14 +459,14 @@
             "midiPath": "/midi/aro.wav"
           },
           {
-            "fileName": "tom_1.wav",
+            "fileName": "tantan close.wav",
             "audioData": "",
-            "midiPath": "/midi/tom_1.wav"
+            "midiPath": "/midi/tantan close.wav"
           },
           {
-            "fileName": "tom_2.wav",
+            "fileName": "tantan open.wav",
             "audioData": "",
-            "midiPath": "/midi/tom_2.wav"
+            "midiPath": "/midi/tantan open.wav"
           },
           {
             "fileName": "chimbal_fechado.wav",
@@ -551,18 +551,18 @@
             false
           ],
           [
+            true,
+            false,
+            false,
+            true,
             false,
             false,
             false,
             false,
+            true,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
+            true,
             false,
             false,
             false,
@@ -573,18 +573,18 @@
             false,
             false,
             false,
+            true,
+            false,
+            false,
+            true,
             false,
             false,
             false,
             false,
+            true,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
+            true
           ],
           [
             true,
@@ -769,18 +769,18 @@
             0
           ],
           [
+            0.5,
+            0,
+            0,
+            0.5,
             0,
             0,
             0,
+            0.5,
+            0.5,
             0,
             0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
+            0.5,
             0,
             0,
             0,
@@ -791,35 +791,35 @@
             0,
             0,
             0,
+            0.5,
+            0,
+            0,
+            0.5,
             0,
             0,
             0,
             0,
+            0.5,
             0,
             0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
+            0.5
           ],
           [
+            0.43,
+            0.41,
+            0.64,
+            0,
+            0.33,
+            0.39,
+            0.62,
+            0,
             0.5,
-            0.5,
-            0.8,
+            0.31,
+            0.72,
             0,
             0.5,
             0.5,
-            0.8,
-            0,
-            0.5,
-            0.5,
-            0.8,
-            0,
-            0.5,
-            0.5,
-            0.8,
+            0.59,
             0
           ],
           [
@@ -961,14 +961,14 @@
             "midiPath": "/midi/caixa.wav"
           },
           {
-            "fileName": "tom_1.wav",
+            "fileName": "tantan close.wav",
             "audioData": "",
-            "midiPath": "/midi/tom_1.wav"
+            "midiPath": "/midi/tantan close.wav"
           },
           {
-            "fileName": "tom_2.wav",
+            "fileName": "tantan open.wav",
             "audioData": "",
-            "midiPath": "/midi/tom_2.wav"
+            "midiPath": "/midi/tantan open.wav"
           },
           {
             "fileName": "chimbal_fechado.wav",
@@ -1053,18 +1053,18 @@
             false
           ],
           [
+            true,
+            false,
+            false,
+            true,
             false,
             false,
             false,
             false,
+            true,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
+            true,
             false,
             false,
             false,
@@ -1219,18 +1219,18 @@
             false,
             false,
             false,
+            true,
+            false,
+            false,
+            true,
             false,
             false,
             false,
             false,
+            true,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
+            true
           ]
         ],
         "volumes": [
@@ -1271,18 +1271,18 @@
             0
           ],
           [
+            0.5,
+            0,
+            0,
+            0.5,
             0,
             0,
             0,
             0,
+            0.5,
             0,
             0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
+            0.5,
             0,
             0,
             0,
@@ -1437,18 +1437,18 @@
             1,
             1,
             1,
+            0.5,
+            1,
+            1,
+            0.5,
             1,
             1,
             1,
+            0.5,
+            0.5,
             1,
             1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
+            0.5
           ]
         ],
         "audioFiles": [
@@ -1463,9 +1463,9 @@
             "midiPath": "/midi/caixa.wav"
           },
           {
-            "fileName": "tom_1.wav",
+            "fileName": "tantan close.wav",
             "audioData": "",
-            "midiPath": "/midi/tom_1.wav"
+            "midiPath": "/midi/tantan close.wav"
           },
           {
             "fileName": "ride.wav",
@@ -1508,9 +1508,9 @@
             "midiPath": "/midi/pandeiro 3.wav"
           },
           {
-            "fileName": "",
+            "fileName": "tantan open.wav",
             "audioData": "",
-            "midiPath": ""
+            "midiPath": "/midi/tantan open.wav"
           }
         ],
         "steps": 16,
@@ -1563,11 +1563,11 @@
           [
             false,
             false,
+            true,
             false,
+            true,
             false,
-            false,
-            false,
-            false,
+            true,
             false
           ],
           [
@@ -1685,11 +1685,11 @@
           [
             0.9,
             0,
-            0.6,
+            0.5,
             0,
+            0.5,
             0.8,
-            0.8,
-            0,
+            0.5,
             0
           ],
           [
@@ -1785,9 +1785,9 @@
             "midiPath": "/midi/tom_2.wav"
           },
           {
-            "fileName": "chimbal_fechado.wav",
+            "fileName": "tantan open.wav",
             "audioData": "",
-            "midiPath": "/midi/chimbal_fechado.wav"
+            "midiPath": "/midi/tantan open.wav"
           },
           {
             "fileName": "chimbal_aberto.wav",
@@ -1907,6 +1907,7 @@
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
@@ -1914,8 +1915,7 @@
             false,
             false,
             false,
-            false,
-            false,
+            true,
             false,
             false,
             false
@@ -1972,7 +1972,7 @@
             false,
             false,
             true,
-            true
+            false
           ],
           [
             false,
@@ -2125,15 +2125,15 @@
             0,
             0,
             0,
+            0.5,
             0,
             0,
             0,
-            0,
             1,
             1,
+            0.8,
             1,
-            1,
-            1,
+            0.5,
             1,
             1,
             1
@@ -2287,9 +2287,9 @@
             "midiPath": "/midi/tom_2.wav"
           },
           {
-            "fileName": "chimbal_fechado.wav",
+            "fileName": "tantan open.wav",
             "audioData": "",
-            "midiPath": "/midi/chimbal_fechado.wav"
+            "midiPath": "/midi/tantan open.wav"
           },
           {
             "fileName": "chimbal_aberto.wav",
@@ -2427,13 +2427,13 @@
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
             false,
             false,
-            false,
-            false,
+            true,
             false,
             false,
             false,
@@ -2644,15 +2644,15 @@
             0.8,
             0,
             0,
-            0,
-            0,
+            0.5,
+            0.8,
             0,
             0,
             0,
             1,
             1,
-            1,
-            1,
+            0.5,
+            0.5,
             1,
             1,
             1,
@@ -2794,9 +2794,9 @@
             "midiPath": "/midi/t3.mp3"
           },
           {
-            "fileName": "chimbal_aberto.wav",
+            "fileName": "tantan open.wav",
             "audioData": "",
-            "midiPath": "/midi/chimbal_aberto.wav"
+            "midiPath": "/midi/tantan open.wav"
           },
           {
             "fileName": "china.wav",
@@ -3001,19 +3001,19 @@
           [
             false,
             false,
+            true,
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
-            false,
-            false,
-            false,
-            false,
+            true,
             false
           ],
           [
@@ -3219,19 +3219,19 @@
           [
             1,
             1,
+            0.5,
             1,
             1,
             1,
+            0.5,
             1,
             1,
             1,
+            0.5,
             1,
             1,
             1,
-            1,
-            1,
-            1,
-            1,
+            0.5,
             1
           ],
           [
@@ -3318,9 +3318,9 @@
             "midiPath": "/midi/pandeiro 1.wav"
           },
           {
-            "fileName": "",
+            "fileName": "tantan open.wav",
             "audioData": "",
-            "midiPath": ""
+            "midiPath": "/midi/tantan open.wav"
           },
           {
             "fileName": "",
@@ -3658,5 +3658,5 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-05-08T13:37:41.258Z"
+  "timestamp": "2026-07-05T15:02:05.070Z"
 }
