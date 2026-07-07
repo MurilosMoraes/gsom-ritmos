@@ -565,6 +565,14 @@ class RhythmSequencer {
       this.uiManager.clearQueuedCells();
     });
 
+    // Fura-fila do lookahead: virada/finalização/troca calculam a entrada
+    // em cima do que está SOANDO, não da cabeça de agendamento (0.25-0.5s
+    // à frente). Sem isso, pisar no pedal demorava lookahead + 1 step pra
+    // responder — o famoso "apertei e não fez na hora".
+    this.patternEngine.setBeforeTimingCommand(() => {
+      this.scheduler.resyncForCommand();
+    });
+
     this.patternEngine.setOnEndCymbal((time: number) => {
       // Agendar prato no tempo exato após o último step do end
       if (this.cymbalBuffer) {
