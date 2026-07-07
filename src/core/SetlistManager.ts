@@ -41,7 +41,7 @@ const LEGACY_LOCAL_KEY = 'gdrums-setlist';
 const LEGACY_BACKUP_KEY = 'gdrums-setlist-backup';
 const LEGACY_IDB_KEY = 'setlist';
 
-export const MAX_SETLISTS = 10;
+export const MAX_SETLISTS = 30;
 
 export interface NamedSetlist extends Setlist {
   id: string;
