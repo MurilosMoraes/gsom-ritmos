@@ -587,7 +587,17 @@ class RhythmSequencer {
     });
 
     this.patternEngine.setOnStop(() => {
+      // onStop é chamado SÓ quando um "Final" (end) termina de tocar.
+      // Captura antes do stop se o ritmo que finalizou era do repertório.
+      const wasFromSetlist = !this.playingOutsideSetlist && !this.setlistManager.isEmpty();
       this.stop();
+      // Auto-avançar repertório: ao finalizar, carrega a PRÓXIMA música
+      // (parada — o usuário inicia manualmente). Só com o toggle ligado e
+      // se o ritmo finalizado era do repertório. navigateSetlist('next')
+      // não faz nada na última música (fica parada na última).
+      if (this.useAutoNext && wasFromSetlist) {
+        void this.navigateSetlist('next');
+      }
     });
 
     // StateManager -> UI observers
@@ -2768,19 +2778,23 @@ ctaUrl: '/plans?renew=true',
   private useIntro = true;
   private useFills = true;   // Viradas ao trocar de ritmo (default ON)
   private useFinal = true;
+  private useAutoNext = false;  // Auto-avançar repertório ao finalizar (default OFF)
 
   private setupToggles(): void {
     // Carregar do localStorage
     const savedIntro = localStorage.getItem('gdrums-toggle-intro');
     const savedFills = localStorage.getItem('gdrums-toggle-fills');
     const savedFinal = localStorage.getItem('gdrums-toggle-final');
+    const savedAutoNext = localStorage.getItem('gdrums-toggle-autonext');
     if (savedIntro !== null) this.useIntro = savedIntro === 'true';
     if (savedFills !== null) this.useFills = savedFills === 'true';
     if (savedFinal !== null) this.useFinal = savedFinal === 'true';
+    if (savedAutoNext !== null) this.useAutoNext = savedAutoNext === 'true';
 
     const introToggle = document.getElementById('toggleIntro');
     const fillsToggle = document.getElementById('toggleFills');
     const finalToggle = document.getElementById('toggleFinal');
+    const autoNextToggle = document.getElementById('toggleAutoNext');
 
     // Aplicar estado inicial
     if (introToggle) introToggle.classList.toggle('active', this.useIntro);
@@ -2791,6 +2805,12 @@ ctaUrl: '/plans?renew=true',
         : 'Viradas ao trocar de ritmo: desligadas (troca direto)';
     }
     if (finalToggle) finalToggle.classList.toggle('active', this.useFinal);
+    if (autoNextToggle) {
+      autoNextToggle.classList.toggle('active', this.useAutoNext);
+      autoNextToggle.title = this.useAutoNext
+        ? 'Auto-avançar repertório: ligado (ao finalizar, carrega a próxima música)'
+        : 'Auto-avançar repertório: desligado';
+    }
 
     introToggle?.addEventListener('click', () => {
       this.useIntro = !this.useIntro;
@@ -2811,6 +2831,15 @@ ctaUrl: '/plans?renew=true',
       this.useFinal = !this.useFinal;
       finalToggle.classList.toggle('active', this.useFinal);
       localStorage.setItem('gdrums-toggle-final', String(this.useFinal));
+    });
+
+    autoNextToggle?.addEventListener('click', () => {
+      this.useAutoNext = !this.useAutoNext;
+      autoNextToggle.classList.toggle('active', this.useAutoNext);
+      autoNextToggle.title = this.useAutoNext
+        ? 'Auto-avançar repertório: ligado (ao finalizar, carrega a próxima música)'
+        : 'Auto-avançar repertório: desligado';
+      localStorage.setItem('gdrums-toggle-autonext', String(this.useAutoNext));
     });
   }
 
