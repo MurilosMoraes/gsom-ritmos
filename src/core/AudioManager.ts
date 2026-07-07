@@ -1,6 +1,6 @@
 // Gerenciamento de áudio e reprodução — com suporte a snapshot imutável
 
-import { MAX_CHANNELS, type AudioChannel, type SequencerState } from '../types';
+import { MAX_CHANNELS, AUTO_CYMBAL_GAIN, type AudioChannel, type SequencerState } from '../types';
 import { base64ToArrayBuffer } from '../utils/helpers';
 
 export interface AudioSnapshot {
@@ -300,14 +300,14 @@ export class AudioManager {
   scheduleStepFromSnapshot(snapshot: AudioSnapshot, time: number): void {
     const { step, pattern, channels, volumes, masterVolume, offsets, stepDuration } = snapshot;
 
-    // Som de início de fill
+    // Som de início de fill (prato automático — ganho reduzido)
     if (snapshot.shouldPlayStartSound && snapshot.fillStartBuffer) {
-      this.playSound(snapshot.fillStartBuffer, time, masterVolume);
+      this.playSound(snapshot.fillStartBuffer, time, masterVolume * AUTO_CYMBAL_GAIN);
     }
 
-    // Som de retorno do fill
+    // Som de retorno do fill (prato automático — ganho reduzido)
     if (snapshot.shouldPlayReturnSound && snapshot.fillReturnBuffer) {
-      this.playSound(snapshot.fillReturnBuffer, time, masterVolume);
+      this.playSound(snapshot.fillReturnBuffer, time, masterVolume * AUTO_CYMBAL_GAIN);
     }
 
     // Sons dos canais ativos — com corte de sample anterior por canal

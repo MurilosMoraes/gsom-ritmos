@@ -27,7 +27,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import type { IAudioEngine, AudioEngineKind } from './IAudioEngine';
 import type { AudioSnapshot } from '../AudioManager';
 import { WebAudioEngine } from './WebAudioEngine';
-import { MAX_CHANNELS } from '../../types';
+import { MAX_CHANNELS, AUTO_CYMBAL_GAIN } from '../../types';
 import { DebugOverlay } from '../../native/DebugOverlay';
 
 // ─── Plugin interface (deve bater com Swift/Java) ───────────────────────
@@ -220,7 +220,7 @@ export class NativeAudioEngine implements IAudioEngine {
       const k = this.bufferToKey.get(fillStartBuffer);
       if (k) {
         NativePlugin.scheduleSample({
-          channel: MAX_CHANNELS - 1, key: k, offsetSeconds: deltaSeconds, volume: masterVolume
+          channel: MAX_CHANNELS - 1, key: k, offsetSeconds: deltaSeconds, volume: masterVolume * AUTO_CYMBAL_GAIN
         }).catch(() => {});
       }
     }
@@ -228,7 +228,7 @@ export class NativeAudioEngine implements IAudioEngine {
       const k = this.bufferToKey.get(fillReturnBuffer);
       if (k) {
         NativePlugin.scheduleSample({
-          channel: MAX_CHANNELS - 1, key: k, offsetSeconds: deltaSeconds, volume: masterVolume
+          channel: MAX_CHANNELS - 1, key: k, offsetSeconds: deltaSeconds, volume: masterVolume * AUTO_CYMBAL_GAIN
         }).catch(() => {});
       }
     }

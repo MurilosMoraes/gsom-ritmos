@@ -12,7 +12,7 @@ import { Toast } from './ui/Toast';
 import { SetlistManager } from './core/SetlistManager';
 import { SetlistEditorUI } from './ui/SetlistEditorUI';
 import { ConversionManager } from './ui/ConversionManager';
-import { MAX_CHANNELS, type PatternType, type SequencerState } from './types';
+import { MAX_CHANNELS, AUTO_CYMBAL_GAIN, type PatternType, type SequencerState } from './types';
 import { expandPattern, expandVolumes, normalizeMidiPath } from './utils/helpers';
 import { KeepAwake } from '@capacitor-community/keep-awake';
 import { HapticsService } from './native/HapticsService';
@@ -575,13 +575,14 @@ class RhythmSequencer {
 
     this.patternEngine.setOnEndCymbal((time: number) => {
       // Agendar prato no tempo exato após o último step do end
+      // (prato automático — ganho reduzido, ver AUTO_CYMBAL_GAIN)
       if (this.cymbalBuffer) {
-        this.audioManager.playSound(this.cymbalBuffer, time, this.stateManager.getState().masterVolume);
+        this.audioManager.playSound(this.cymbalBuffer, time, this.stateManager.getState().masterVolume * AUTO_CYMBAL_GAIN);
       } else {
         // Buffer ainda não carregado — carregar e tocar
         this.audioManager.loadAudioFromPath('/midi/prato.mp3').then(buffer => {
           this.cymbalBuffer = buffer;
-          this.audioManager.playSound(buffer, time, this.stateManager.getState().masterVolume);
+          this.audioManager.playSound(buffer, time, this.stateManager.getState().masterVolume * AUTO_CYMBAL_GAIN);
         });
       }
     });
@@ -4476,9 +4477,10 @@ ctaUrl: '/plans?renew=true',
     this.audioManager.resume();
     const returnBuf = this.stateManager.getState().fillReturnSound?.buffer;
     if (returnBuf) {
-      this.audioManager.playSound(returnBuf, this.audioManager.getCurrentTime(), this.stateManager.getState().masterVolume);
+      // Deixa automática — mesmo ganho reduzido dos pratos automáticos
+      this.audioManager.playSound(returnBuf, this.audioManager.getCurrentTime(), this.stateManager.getState().masterVolume * AUTO_CYMBAL_GAIN);
     } else {
-      this.playCymbal();
+      this.playCymbal(AUTO_CYMBAL_GAIN);
     }
     // Não chama playIntroAndStart — resume direto, sem countdown
     this.stateManager.setShouldPlayStartSound(false);
@@ -6388,14 +6390,16 @@ ctaUrl: '/plans?renew=true',
     });
   }
 
-  private playCymbal(): void {
+  /** @param gain 1.0 no uso MANUAL (botão/pedal — performático); os
+   *  disparos automáticos (ex: deixa do pause) passam AUTO_CYMBAL_GAIN. */
+  private playCymbal(gain: number = 1.0): void {
     // Resume síncrono — essencial para iOS (não pode ter await antes)
     this.audioManager.resume();
 
     // Buffer já foi pré-carregado no init(). Se ainda não carregou, ignorar.
     if (this.cymbalBuffer) {
       const currentTime = this.audioManager.getCurrentTime();
-      this.audioManager.playSound(this.cymbalBuffer, currentTime, 1.0);
+      this.audioManager.playSound(this.cymbalBuffer, currentTime, gain);
 
       // Feedback visual
       const cymbalBtn = document.getElementById('cymbalBtn');
