@@ -21,7 +21,7 @@ import { StatusBarService } from './native/StatusBarService';
 import { AttributionService } from './native/AttributionService';
 // PushService removido — push agora é gerenciado pelo OneSignalService
 // (tanto web quanto Capacitor nativo via onesignal-cordova-plugin).
-import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore, isIOSNative } from './native/Platform';
+import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore, isIOSNative, APP_STORE_URL } from './native/Platform';
 import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
@@ -3083,6 +3083,24 @@ ctaUrl: '/plans?renew=true',
       pedalInfoBtn.addEventListener('click', () => {
         if (fabDropdown) fabDropdown.style.display = 'none';
         this.showPedalInfo();
+      });
+    }
+
+    // Baixar app nas lojas (pra quem quiser instalar o app nativo)
+    const playStoreBtn = document.getElementById('menuPlayStoreBtn');
+    if (playStoreBtn) {
+      playStoreBtn.addEventListener('click', () => {
+        const dd = document.getElementById('fabDropdown');
+        if (dd) dd.style.display = 'none';
+        openPlayStore(); // market:// no Android com fallback HTTPS
+      });
+    }
+    const appStoreBtn = document.getElementById('menuAppStoreBtn');
+    if (appStoreBtn) {
+      appStoreBtn.addEventListener('click', () => {
+        const dd = document.getElementById('fabDropdown');
+        if (dd) dd.style.display = 'none';
+        openExternal(APP_STORE_URL);
       });
     }
 
