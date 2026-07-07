@@ -238,9 +238,14 @@ export class PatternEngine {
 
     this.pendingMainVariation = nextMainVariation;
     this.shouldChangeRhythmAfterFill = true;
-    // Troca de ritmo: timing clássico (fill termina no fim do ciclo,
-    // ritmo novo entra no downbeat)
-    this.playRotatingFill('cycle-end');
+    // Troca de ritmo IMEDIATA (era 'cycle-end'): a virada entra já, com
+    // o pedaço que falta, e o ritmo novo continua entrando exatamente no
+    // downbeat — a troca acontece na CONCLUSÃO da fill, que no modo
+    // immediate sempre desemboca no 1. Detalhe útil: se já tem fill
+    // tocando, o activateFillWithTiming recusa (guard) mas o retarget de
+    // pendingMainVariation acima JÁ aconteceu — pisadas seguidas só
+    // redirecionam o destino da troca, sem reiniciar a virada.
+    this.playRotatingFill('immediate');
   }
 
   playRotatingFill(mode: 'immediate' | 'cycle-end' = 'immediate'): void {

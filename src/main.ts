@@ -2649,11 +2649,20 @@ ctaUrl: '/plans?renew=true',
   }
 
   // ─── Handlers de pedal reutilizáveis ──────────────────────────────
+  //
+  // SEM ZONA MORTA (v2026-07): antes, a 1ª pisada esperava 500ms num
+  // setTimeout pra saber se vinha uma 2ª (duplo-tap) — ou seja, TODA
+  // ação simples do pedal atrasava meio segundo fixo, além do lookahead.
+  // Agora a 1ª pisada dispara NA HORA e a 2ª (< 500ms) CONVERTE a ação:
+  // - direito: virada já → 2ª pisada = finalização ASSUME a virada em
+  //   andamento (activateEndWithTiming já suporta, space:'fill').
+  // - esquerdo: próximo ritmo já → 2ª pisada = redireciona pro ANTERIOR
+  //   ao ritmo da 1ª pisada (playFillToNextRhythm re-chamado com fill
+  //   ativa só retarget-eia o destino, sem reiniciar a virada).
 
   private pedalLeftLastPress = 0;
-  private pedalLeftTimeout: number | null = null;
+  private pedalLeftBaseVariation = 0;
   private pedalRightLastPress = 0;
-  private pedalRightTimeout: number | null = null;
 
   private handlePedalLeft(): void {
     if (!this.stateManager.isPlaying()) {
@@ -2668,17 +2677,15 @@ ctaUrl: '/plans?renew=true',
     } else {
       const now = Date.now();
       if (now - this.pedalLeftLastPress < 500 && this.pedalLeftLastPress > 0) {
-        if (this.pedalLeftTimeout) { clearTimeout(this.pedalLeftTimeout); this.pedalLeftTimeout = null; }
-        this.playFillToPreviousRhythm();
+        // 2ª pisada: converte pra ritmo ANTERIOR ao da 1ª pisada
+        this.cyclePedalRhythm(-1, this.pedalLeftBaseVariation);
         this.pedalLeftLastPress = 0;
       } else {
         this.pedalLeftLastPress = now;
-        if (this.pedalLeftTimeout) clearTimeout(this.pedalLeftTimeout);
-        this.pedalLeftTimeout = window.setTimeout(() => {
-          // Pedal long-press = próximo ritmo (rotativo). Respeita toggle VIRADAS.
-          this.cyclePedalRhythm(+1);
-          this.pedalLeftTimeout = null;
-        }, 500);
+        // Base ANTES da troca — se a 2ª pisada vier, "anterior" é
+        // relativo ao ritmo que estava tocando, não ao já trocado
+        this.pedalLeftBaseVariation = this.stateManager.getCurrentVariation('main');
+        this.cyclePedalRhythm(+1);
       }
     }
   }
@@ -2689,16 +2696,12 @@ ctaUrl: '/plans?renew=true',
     } else {
       const now = Date.now();
       if (now - this.pedalRightLastPress < 500 && this.pedalRightLastPress > 0) {
-        if (this.pedalRightTimeout) { clearTimeout(this.pedalRightTimeout); this.pedalRightTimeout = null; }
+        // 2ª pisada: finalização assume a virada disparada pela 1ª
         if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stop(); }
         this.pedalRightLastPress = 0;
       } else {
         this.pedalRightLastPress = now;
-        if (this.pedalRightTimeout) clearTimeout(this.pedalRightTimeout);
-        this.pedalRightTimeout = window.setTimeout(() => {
-          this.patternEngine.playRotatingFill();
-          this.pedalRightTimeout = null;
-        }, 500);
+        this.patternEngine.playRotatingFill();
       }
     }
   }
@@ -2826,11 +2829,16 @@ ctaUrl: '/plans?renew=true',
   }
 
   /**
-   * Rotação de ritmo via pedal (long-press) ou pedal-direito (single-tap).
-   * Direção +1 = próximo, -1 = anterior. Pula ritmos vazios.
-   * Respeita toggle VIRADAS: ON faz virada antes, OFF troca direto.
+   * Rotação de ritmo via pedal. Direção +1 = próximo, -1 = anterior.
+   * Pula ritmos vazios. Respeita toggle VIRADAS: ON faz virada antes,
+   * OFF troca direto.
+   *
+   * @param baseIndex Variação de REFERÊNCIA pro cálculo. Usado pelo
+   * duplo-tap do pedal esquerdo: a 1ª pisada já trocou (ou agendou) o
+   * próximo, então "anterior" precisa ser relativo ao ritmo da 1ª
+   * pisada, não ao atual. Default: variação main corrente.
    */
-  private cyclePedalRhythm(direction: 1 | -1): void {
+  private cyclePedalRhythm(direction: 1 | -1, baseIndex?: number): void {
     const state = this.stateManager.getState();
     const available = state.variations.main
       .map((v, index) => ({ index, hasContent: v.pattern.some(row => row.some(s => s === true)) }))
@@ -2843,7 +2851,7 @@ ctaUrl: '/plans?renew=true',
       return;
     }
 
-    const currentIndex = this.stateManager.getCurrentVariation('main');
+    const currentIndex = baseIndex ?? this.stateManager.getCurrentVariation('main');
     const currentPos = available.findIndex(r => r.index === currentIndex);
     const nextPos = direction === 1
       ? (currentPos + 1) % available.length
@@ -4553,11 +4561,6 @@ ctaUrl: '/plans?renew=true',
       }
       this.play();
     }
-  }
-
-  private playFillToPreviousRhythm(): void {
-    // Delegado pro cyclePedalRhythm, que respeita toggle VIRADAS.
-    this.cyclePedalRhythm(-1);
   }
 
   private hasRhythmLoaded(): boolean {
