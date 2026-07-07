@@ -135,8 +135,11 @@
 }
 .x-body::-webkit-scrollbar { width: 4px; }
 .x-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--scrollbar-thumb);
   border-radius: 2px;
+}
+.x-body::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* ─── Botões base ─── */

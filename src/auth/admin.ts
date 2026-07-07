@@ -2597,12 +2597,39 @@ class AdminDashboard {
       return;
     }
 
+    // Mensagem WhatsApp pronta — ciente do status da transação
+    const txWhatsMsg = (name: string, status: string, plan: string) => {
+      const first = (name || '').split(' ')[0] || '';
+      const oi = `Oi${first ? ' ' + first : ''}! Tudo bem? Aqui é o pessoal do GDrums 🥁`;
+      let body: string;
+      if (status === 'confirmed') {
+        body = `Vi que sua assinatura do plano ${plan} está ativa. Qualquer dúvida pra usar o app é só me chamar por aqui!`;
+      } else if (status === 'pending') {
+        body = `Vi que você começou a assinatura do plano ${plan} mas o pagamento ficou pendente. Posso te ajudar a finalizar?`;
+      } else {
+        body = `Vi que sua assinatura do plano ${plan} expirou. Quer que eu te ajude a renovar? Posso liberar uma condição especial pra você.`;
+      }
+      return encodeURIComponent(`${oi}\n\n${body}`);
+    };
+
     tbody.innerHTML = paged.map(t => {
       const user = this.profiles.find(p => p.id === t.user_id);
       const statusColor = t.status === 'confirmed' ? 'success' : t.status === 'pending' ? 'warning' : 'error';
       const date = new Date(t.created_at).toLocaleDateString('pt-BR', {
         day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'
       });
+
+      // Contato via WhatsApp (mensagem pronta) — usa o telefone do perfil do cliente
+      const phoneValid = validateBrPhone(user?.phone);
+      const waLink = user?.phone
+        ? (phoneValid.ok
+          ? `<a href="https://wa.me/${phoneValid.e164}?text=${txWhatsMsg(user?.name || '', t.status, t.plan)}" target="_blank" style="color:var(--a-green);text-decoration:none;font-size:0.8rem;" title="Abrir WhatsApp: ${phoneValid.display}">WhatsApp</a>`
+          : `<span style="color:var(--a-red);font-size:0.72rem;opacity:0.7;" title="Número ${phoneValid.reason} — sem WhatsApp">⚠ tel</span>`)
+        : '';
+      const receiptLink = t.receipt_url
+        ? `<a href="${t.receipt_url}" target="_blank" style="color:#00D4FF;text-decoration:none;font-size:0.8rem;">Recibo</a>`
+        : '';
+      const actionsCell = [waLink, receiptLink].filter(Boolean).join(' &middot; ') || '—';
 
       return `
         <tr>
@@ -2613,8 +2640,8 @@ class AdminDashboard {
           <td>${t.payment_method || '—'}</td>
           <td>${t.coupon_code || '—'}</td>
           <td>${date}</td>
-          <td>
-            ${t.receipt_url ? `<a href="${t.receipt_url}" target="_blank" style="color:#00D4FF;text-decoration:none;font-size:0.8rem;">Recibo</a>` : '—'}
+          <td style="white-space:nowrap;">
+            ${actionsCell}
           </td>
         </tr>
       `;
