@@ -553,6 +553,11 @@ class RhythmSequencer {
 
     // Scheduler -> UI (step visual + beat marker + countdown)
     this.scheduler.setUpdateStepCallback((step: number, pattern: PatternType) => {
+      // Fase da grade no TEMPO REAL do step (este callback dispara no drain
+      // de áudio, ~no instante em que o step toca) — usado pela contagem da
+      // pausa pra cair no tempo do ritmo, não no agendamento (lookahead).
+      this.lastStepTime = this.audioManager.getCurrentTime();
+      this.lastStepIndex = step;
       this.uiManager.updateCurrentStepVisual();
       this.updateBeatMarker(step, pattern);
       this.updateCountdown(step, pattern);
@@ -2492,7 +2497,8 @@ ctaUrl: '/plans?renew=true',
       }
       if (this.pedalCount >= 4 && this.pedalEnd &&
           (kc === pedalEndCode || keyId === this.pedalEnd)) {
-        if (this.useFinal) this.patternEngine.playEndAndStop();
+        if (this.isPaused) this.resumeWithAction('end', 0);        // pausa → finaliza
+        else if (this.useFinal) this.patternEngine.playEndAndStop();
         else this.stopAndMaybeAdvance();
         return;
       }
@@ -2694,6 +2700,12 @@ ctaUrl: '/plans?renew=true',
   }
 
   private handlePedalRight(): void {
+    // Durante a PAUSA: botão direito faz VIRADA (volta pro ritmo), NÃO toca
+    // prato. O prato do pedal só volta quando estiver parado (após finalizar).
+    if (this.isPaused) {
+      this.resumeWithAction('fill', 0);
+      return;
+    }
     if (!this.stateManager.isPlaying()) {
       this.playCymbal();
     } else {
@@ -2751,6 +2763,9 @@ ctaUrl: '/plans?renew=true',
         } else if (cellType === 'fill') {
           if (this.stateManager.isPlaying()) {
             this.patternEngine.activateFillWithTiming(variationIndex);
+          } else if (this.isPaused) {
+            // Virada durante a pausa: sai da pausa e aplica (volta pro ritmo).
+            this.resumeWithAction('fill', variationIndex);
           }
         } else if (cellType === 'end') {
           if (this.stateManager.isPlaying()) {
@@ -2760,6 +2775,9 @@ ctaUrl: '/plans?renew=true',
             } else {
               this.stopAndMaybeAdvance();
             }
+          } else if (this.isPaused) {
+            // Finalização durante a pausa: sai da pausa e finaliza.
+            this.resumeWithAction('end', variationIndex);
           }
         }
       });
@@ -4481,6 +4499,15 @@ ctaUrl: '/plans?renew=true',
   // Implementação: scheduler.stop() + flag interna + fade-out anti-clique.
   // Resume: scheduler.start() de novo. Sem reset de pattern/variation.
   private isPaused = false;
+  private resuming = false;            // CONTINUAR pressionado, aguardando downbeat
+  private countActive = false;         // loop da contagem (chimbal) rodando
+  private countLoopTimer: number | null = null;
+  private countGridStart = 0;          // t0 da grade da contagem (relógio de áudio)
+  private countSpb = 0;                // segundos por tempo da contagem
+  private lastStepTime = 0;            // tempo de áudio do último step (fase do ritmo)
+  private lastStepIndex = 0;           // índice do último step tocado
+  private countFlashTimers: number[] = []; // timers do pisca laranja do botão
+  private pendingResumeAction: { type: 'fill' | 'end'; variationIndex: number } | null = null;
 
   private pauseInstant(): void {
     if (!this.stateManager.isPlaying()) return;
@@ -4503,48 +4530,166 @@ ctaUrl: '/plans?renew=true',
     if (statusUser) statusUser.textContent = 'Pausado';
     this.uiManager.updatePerformanceGrid();
     this.updatePauseButtonUI();
+    // Pausa NÃO fica muda: começa a contagem (chimbal) em loop, no tempo.
+    this.resuming = false;
+    this.startCountLoop();
   }
 
   private resumeFromPause(fromPedal: boolean = false): void {
     if (!this.isPaused) return;
     this.isPaused = false;
-    // Toca o PRATO DE RETORNO do ritmo como "deixa" de retomada — o mesmo
-    // som que o app usa quando a virada volta pro ritmo (consistência
-    // sonora). Antes tocava o prato avulso da interface (cymbalBuffer),
-    // que não tem nada a ver com o ritmo carregado. Fallback pro prato
-    // da interface só se o ritmo não tiver som de retorno.
+    void fromPedal;
+    // Mantém isPaused=true e a CONTAGEM tocando até o ritmo re-entrar no
+    // topo do próximo compasso — sem buraco no metrônomo. `resuming` trava
+    // toque duplo enquanto a re-entrada está agendada.
+    this.resuming = true;
     this.audioManager.resume();
-    const returnBuf = this.stateManager.getState().fillReturnSound?.buffer;
-    if (returnBuf) {
-      // Deixa automática — mesmo ganho reduzido dos pratos automáticos
-      this.audioManager.playSound(returnBuf, this.audioManager.getCurrentTime(), this.stateManager.getState().masterVolume * AUTO_CYMBAL_GAIN);
-    } else {
-      this.playCymbal(AUTO_CYMBAL_GAIN);
-    }
-    // Não chama playIntroAndStart — resume direto, sem countdown
     this.stateManager.setShouldPlayStartSound(false);
 
-    // ─── Compensação de latência no CONTINUAR ───────────────────────
-    // O músico tá cantando no tempo; o atraso entre a pisada e o som
-    // sair (BT do pedal + buffer de saída de áudio) deixava o ritmo
-    // atrasado em relação à voz. Compensa deslocando a grade pra trás:
-    //
-    // 1. Saída de áudio (DINÂMICO): outputLatency é reportado pelo
-    //    browser (Chrome/Android); baseLatency é o fallback (Safari).
-    //    Com latencyHint 'playback' esse valor é significativo (~0.1s+).
-    // 2. Pedal BT (estimativa): keydown chega ~30-60ms após a pisada
-    //    física. Não-mensurável via JS — constante calibrável em
-    //    localStorage 'gdrums_pedal_latency_ms' (default 60). Só soma
-    //    quando o resume veio do pedal (botão de tela não tem BT).
-    const ctx = this.audioContext as AudioContext & { outputLatency?: number };
-    const outputLatency = ctx.outputLatency || ctx.baseLatency || 0;
-    let pedalLatency = 0;
-    if (fromPedal) {
-      const stored = parseInt(localStorage.getItem('gdrums_pedal_latency_ms') || '60', 10);
-      pedalLatency = (isNaN(stored) ? 60 : Math.max(0, Math.min(300, stored))) / 1000;
+    const spb = this.countSpb || (60 / this.stateManager.getTempo());
+    const now = this.audioManager.getCurrentTime();
+    // Volta no PRÓXIMO TEMPO (batida) da grade — NÃO espera o compasso
+    // reiniciar. Entrada na hora que apertou, casada com o metrônomo.
+    const k = Math.ceil((now + 0.05 - this.countGridStart) / spb);
+    const entry = this.countGridStart + k * spb;
+    this.scheduleRhythmEntryAt(entry);
+  }
+
+  /**
+   * Espera o relógio de áudio chegar em `downbeatTime` e faz o ritmo entrar
+   * CRAVADO (o comp absorve o jitter do timer, pro 1º step cair exato no
+   * downbeat). Ao entrar, corta a contagem. NÃO altera o motor.
+   */
+  private scheduleRhythmEntryAt(downbeatTime: number): void {
+    const SCHED_LEAD = 0.05; // = lead interno do scheduler.start()
+    const tick = () => {
+      // Abortar se algo já retomou a reprodução no meio (outro botão).
+      if (this.stateManager.isPlaying()) { this.resuming = false; this.pendingResumeAction = null; return; }
+      const now = this.audioManager.getCurrentTime();
+      const target = downbeatTime - SCHED_LEAD;
+      if (now >= target) {
+        const comp = Math.max(0, Math.min(0.4, now - target));
+        this.stopCountLoop();
+        this.resuming = false;
+        const action = this.pendingResumeAction;
+        this.pendingResumeAction = null;
+        this.play(comp);
+        if (action) {
+          // Virada/Finalização pedida durante a pausa: aplica ao re-entrar.
+          if (action.type === 'fill') {
+            this.patternEngine.activateFillWithTiming(action.variationIndex); // volta pro ritmo anterior
+          } else if (this.useFinal) {
+            this.patternEngine.activateEndWithTiming(action.variationIndex);
+          } else {
+            this.stopAndMaybeAdvance();
+          }
+        } else {
+          // Resume NORMAL: toca um prato de "deixa" no re-entry pra não
+          // voltar do nada (prato de retorno do ritmo, ou fallback).
+          const returnBuf = this.stateManager.getState().fillReturnSound?.buffer;
+          const gain = this.stateManager.getState().masterVolume * AUTO_CYMBAL_GAIN;
+          if (returnBuf) this.audioManager.playSound(returnBuf, downbeatTime, gain);
+          else this.playCymbal(AUTO_CYMBAL_GAIN);
+        }
+      } else {
+        setTimeout(tick, Math.max(0, (target - now) * 1000 - 4));
+      }
+    };
+    tick();
+  }
+
+  /** Sai da pausa JÁ aplicando uma virada/finalização (botões durante a pausa). */
+  private resumeWithAction(type: 'fill' | 'end', variationIndex: number): void {
+    if (!this.isPaused || this.resuming) return;
+    this.pendingResumeAction = { type, variationIndex };
+    this.resumeFromPause();
+  }
+
+  // ─── Contagem em LOOP durante a pausa (chimbal fechado) ───────────────
+  // Enquanto pausado, o chimbal fechado toca 1x por tempo, em loop, no tempo
+  // do ritmo (metrônomo vivo). Agendado no relógio de áudio com lookahead.
+  // Para quando o ritmo re-entra no downbeat OU quando outro botão toca
+  // (play/stop chamam stopCountLoop).
+  private startCountLoop(): void {
+    this.stopCountLoop();
+    this.countActive = true;
+    this.audioManager.loadAudioFromPath('/midi/chimbal_fechado.wav')
+      .then(b => this.runCountLoop(b))
+      .catch(() => this.runCountLoop(null));
+  }
+
+  private runCountLoop(buf: AudioBuffer | null): void {
+    if (!this.countActive || !this.isPaused) return;
+    // Acento: tempos ÍMPARES (1,3,5…) fortes; PARES (2,4,6…) mais fracos.
+    const STRONG = 0.25;
+    const WEAK = 0.15;
+    // Grade REAL do ritmo. stepsPerBeat = floor(totalSteps/beatsPerBar) —
+    // MESMA definição do app (updateBeatMarker). Antes eu assumia 2 steps
+    // por batida, o que deixava a contagem 2x rápida em ritmos de 16 steps.
+    const tempo = this.stateManager.getTempo();
+    const ap = this.stateManager.getActivePattern();
+    const vi = this.stateManager.getCurrentVariation(ap);
+    const speed = this.stateManager.getVariationSpeed(ap, vi) || 1;
+    const beats = Math.max(1, this.stateManager.getState().beatsPerBar || 4);
+    const totalSteps = Math.max(1, this.stateManager.getPatternSteps(ap));
+    const stepsPerBeat = Math.max(1, Math.floor(totalSteps / beats));
+    const secondsPerStep = (60 / tempo / 2) / speed;
+    const spb = stepsPerBeat * secondsPerStep;         // 1 tempo = stepsPerBeat steps
+    const masterVol = this.stateManager.getState().masterVolume;
+    const LOOKAHEAD = 0.3;
+    // Fase: recua do último step até o começo do TEMPO em que ele caiu.
+    const posInBeat = ((this.lastStepIndex % stepsPerBeat) + stepsPerBeat) % stepsPerBeat;
+    const beatPhase = this.lastStepTime - posInBeat * secondsPerStep;
+    // Índice do tempo no compasso (0 = downbeat do ritmo) — pra alinhar o acento.
+    const beatIdxAtPhase = Math.floor(this.lastStepIndex / stepsPerBeat) % beats;
+    const now0 = this.audioManager.getCurrentTime();
+    const kStart = Math.ceil((now0 + 0.08 - beatPhase) / spb);
+    const t0 = beatPhase + kStart * spb;               // 1ª batida, no tempo
+    const beatIdxStart = (((beatIdxAtPhase + kStart) % beats) + beats) % beats;
+    this.countGridStart = t0;
+    this.countSpb = spb;
+    let nextHit = 0;
+    const schedule = () => {
+      if (!this.countActive) return;
+      const now = this.audioManager.getCurrentTime();
+      while (buf && t0 + nextHit * spb < now + LOOKAHEAD) {
+        const ht = t0 + nextHit * spb;
+        const beatIdx = (beatIdxStart + nextHit) % beats;  // alinhado ao downbeat
+        const strong = (beatIdx % 2 === 0);                // beats 1,3,5 fortes
+        if (ht >= now - 0.005) {
+          this.audioManager.playSound(buf, ht, masterVol * (strong ? STRONG : WEAK));
+          this.schedulePauseFlash(ht, now, strong);
+        }
+        nextHit++;
+      }
+      this.countLoopTimer = window.setTimeout(schedule, 60);
+    };
+    schedule();
+  }
+
+  /** Agenda o pisca LARANJA do botão de pausa pra bater no tempo `atTime`. */
+  private schedulePauseFlash(atTime: number, now: number, strong: boolean): void {
+    const id = window.setTimeout(() => {
+      const cell = document.getElementById('pauseBtnUser');
+      if (!cell) return;
+      cell.classList.remove('count-flash', 'count-flash-strong');
+      void cell.offsetWidth; // reflow: reinicia o pisca em batidas seguidas
+      cell.classList.add(strong ? 'count-flash-strong' : 'count-flash');
+      window.setTimeout(() => cell.classList.remove('count-flash', 'count-flash-strong'), strong ? 130 : 90);
+    }, Math.max(0, (atTime - now) * 1000));
+    this.countFlashTimers.push(id);
+  }
+
+  private stopCountLoop(): void {
+    this.countActive = false;
+    if (this.countLoopTimer !== null) {
+      clearTimeout(this.countLoopTimer);
+      this.countLoopTimer = null;
     }
-    this.play(outputLatency + pedalLatency);
-    this.updatePauseButtonUI();
+    for (const id of this.countFlashTimers) clearTimeout(id);
+    this.countFlashTimers = [];
+    const cell = document.getElementById('pauseBtnUser');
+    if (cell) cell.classList.remove('count-flash', 'count-flash-strong');
   }
 
   /** Atualiza label e classe .active do botão pause user. */
@@ -4557,6 +4702,7 @@ ctaUrl: '/plans?renew=true',
 
   /** Toggle exclusivo de pause/resume — botão e pedal usam esse. */
   private togglePauseInstant(fromPedal: boolean = false): void {
+    if (this.resuming) return; // já a caminho de voltar — ignora toque
     if (this.isPaused) {
       this.resumeFromPause(fromPedal);
     } else if (this.stateManager.isPlaying()) {
@@ -4710,6 +4856,9 @@ ctaUrl: '/plans?renew=true',
     // No iOS, qualquer await antes do resume() quebra a cadeia de gesto
     // e o AudioContext fica permanentemente suspenso (mudo).
     this.audioManager.resume();
+    // Qualquer play encerra a contagem em loop da pausa.
+    this.stopCountLoop();
+    this.resuming = false;
 
     // Sai do estado de pausa em qualquer play (clicar em ritmo, fill, etc).
     // Sem isso, botão CONTINUAR fica visível mesmo tocando = confusão visual.
@@ -4778,6 +4927,9 @@ ctaUrl: '/plans?renew=true',
   }
 
   private stop(): void {
+    this.stopCountLoop();
+    this.resuming = false;
+    this.pendingResumeAction = null;
     this.stateManager.setPlaying(false);
     this.isPaused = false;
     this.updatePauseButtonUI();

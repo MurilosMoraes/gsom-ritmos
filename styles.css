@@ -77,6 +77,19 @@ html {
   background: transparent;
 }
 
+/* Pisca laranja do botão de pausa acompanhando a contagem (metrônomo) */
+#pauseBtnUser.count-flash,
+#pauseBtnUser.count-flash-strong {
+  background: rgba(249, 115, 22, 0.5) !important;
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.55) !important;
+  border-color: rgba(249, 115, 22, 0.7) !important;
+}
+#pauseBtnUser.count-flash-strong {
+  background: rgba(249, 115, 22, 0.92) !important;
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.85) !important;
+  border-color: rgba(249, 115, 22, 0.95) !important;
+}
+
 html {
   /* Mata o double-tap-to-zoom em TODA a superfície (iOS Safari + WKWebView).
      Antes só botões/células tinham touch-action:manipulation — tocar rápido
