@@ -762,23 +762,23 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '3.1',
+    version: '3.2',
     overline: 'Atualização',
-    title: '8 ritmos novos e som ainda mais limpo.',
-    subtitle: 'Biblioteca em 138 ritmos, áudio mais redondo nos graves e correções pra tocar tranquilo no palco.',
+    title: '+17 ritmos novos. Biblioteca em 155.',
+    subtitle: 'Muita percussão e balanço novos, som mais forte e o repertório emendando sozinho no palco.',
     sections: [
       {
-        label: '+8 ritmos novos',
+        label: '+17 ritmos novos',
         featured: true,
-        body: 'Cacimbinha, Bolero Soft, Pop Arrocha, Balada Forró, Balada Pop, Hip Hop, Rap e Reggae Maranhão. Vários ritmos antigos também foram refinados. Agora são 138 no total.',
+        body: 'Arrocha baiano, Foxtrot, Lambadão, Marcha Schlager, New Wave, Percuteria 4/4, Percuteria 6/8, Percuteria Rock, Polka, Pop Funk, Reggae 3, Reggae Roots, Seresta 2, Soul & Swing, Train Beat, Vaneira e milonga e Worship (espontâneo). Agora são 155 no total. Também refinamos Anunciação, Pagode e Samba no pandeiro.',
       },
       {
-        label: 'Áudio mais limpo',
-        body: 'Acabamos com aquele \'tic\' sutil nos graves de piseiro e forró. Som mais redondo no celular e na web.',
+        label: 'Repertório no automático',
+        body: 'Novo botão AUTO: ao finalizar uma música, o app já pula pra próxima do repertório, prontinha pra você dar play.',
       },
       {
-        label: 'Mais estável no palco',
-        body: 'Correções no iOS pra o som não sumir, e desempenho melhor nos iPads.',
+        label: 'Mais pressão de som agora com até 30 repertórios',
+        body: 'Mais som no celular e PC. De 10 agora são 30 repertórios disponíveis para criação!',
       },
     ]
   };
