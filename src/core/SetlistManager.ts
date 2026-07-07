@@ -188,7 +188,16 @@ export class SetlistManager {
     if (owner && owner !== userId) {
       console.warn(`[SetlistManager] Local pertence a outra conta (${owner}) — isolando de ${userId}`);
       try {
-        localStorage.setItem(namespacedKey(owner), JSON.stringify(this.state));
+        // Arquiva o valor BRUTO de LOCAL_KEY_V2, não `this.state` — o
+        // loadLocal() do construtor pode ter trocado this.state pelo
+        // conteúdo do backup GLOBAL (gdrums-setlists-v2-backup, também
+        // não namespaced) quando a chave principal estava vazia. Esse
+        // backup pode já pertencer a um dono ainda mais antigo que
+        // `owner`. Ler a chave principal direto evita arquivar dado
+        // errado sob a tag de `owner` (achado testando troca de conta
+        // duas vezes seguidas no mesmo device — ver test/isolation-test.ts).
+        const raw = localStorage.getItem(LOCAL_KEY_V2);
+        if (raw) localStorage.setItem(namespacedKey(owner), raw);
       } catch { /* localStorage cheio — tolera */ }
 
       const own = this.tryParseState(localStorage.getItem(namespacedKey(userId)));
