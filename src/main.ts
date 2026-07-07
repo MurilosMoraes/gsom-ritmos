@@ -589,16 +589,8 @@ class RhythmSequencer {
 
     this.patternEngine.setOnStop(() => {
       // onStop é chamado SÓ quando um "Final" (end) termina de tocar.
-      // Captura antes do stop se o ritmo que finalizou era do repertório.
-      const wasFromSetlist = !this.playingOutsideSetlist && !this.setlistManager.isEmpty();
       this.stop();
-      // Auto-avançar repertório: ao finalizar, carrega a PRÓXIMA música
-      // (parada — o usuário inicia manualmente). Só com o toggle ligado e
-      // se o ritmo finalizado era do repertório. navigateSetlist('next')
-      // não faz nada na última música (fica parada na última).
-      if (this.useAutoNext && wasFromSetlist) {
-        void this.navigateSetlist('next', { silent: true });
-      }
+      this.maybeAutoAdvance();
     });
 
     // StateManager -> UI observers
@@ -2501,7 +2493,7 @@ ctaUrl: '/plans?renew=true',
       if (this.pedalCount >= 4 && this.pedalEnd &&
           (kc === pedalEndCode || keyId === this.pedalEnd)) {
         if (this.useFinal) this.patternEngine.playEndAndStop();
-        else this.stop();
+        else this.stopAndMaybeAdvance();
         return;
       }
 
@@ -2708,7 +2700,7 @@ ctaUrl: '/plans?renew=true',
       const now = Date.now();
       if (now - this.pedalRightLastPress < 500 && this.pedalRightLastPress > 0) {
         // 2ª pisada: finalização assume a virada disparada pela 1ª
-        if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stop(); }
+        if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stopAndMaybeAdvance(); }
         this.pedalRightLastPress = 0;
       } else {
         this.pedalRightLastPress = now;
@@ -2766,7 +2758,7 @@ ctaUrl: '/plans?renew=true',
             if (this.useFinal) {
               this.patternEngine.activateEndWithTiming(variationIndex);
             } else {
-              this.stop();
+              this.stopAndMaybeAdvance();
             }
           }
         }
@@ -4573,7 +4565,7 @@ ctaUrl: '/plans?renew=true',
       if (this.useFinal) {
         this.patternEngine.playEndAndStop();
       } else {
-        this.stop();
+        this.stopAndMaybeAdvance();
       }
     } else {
       if (!this.hasRhythmLoaded()) {
@@ -7100,6 +7092,30 @@ ctaUrl: '/plans?renew=true',
     }
 
     await this.loadSetlistItem(item, opts);
+  }
+
+  /**
+   * Avança pro PRÓXIMO item do repertório (parado, sem piscar a tela)
+   * quando o AUTO está ligado e o ritmo atual é do repertório. Chamado ao
+   * finalizar uma música — tanto pelo fim do "Final" (onStop) quanto quando
+   * o FINAL está DESLIGADO e a finalização só para o som (stopAndMaybeAdvance).
+   * Na última música fica parada (navigateSetlist não faz nada).
+   */
+  private maybeAutoAdvance(): void {
+    const wasFromSetlist = !this.playingOutsideSetlist && !this.setlistManager.isEmpty();
+    if (this.useAutoNext && wasFromSetlist) {
+      void this.navigateSetlist('next', { silent: true });
+    }
+  }
+
+  /**
+   * Finalização com o toggle FINAL DESLIGADO: para na hora (sem tocar o
+   * padrão de Final) e, se o AUTO estiver ligado, avança pro próximo do
+   * repertório. Substitui o this.stop() puro nos pontos de finalização.
+   */
+  private stopAndMaybeAdvance(): void {
+    this.stop();
+    this.maybeAutoAdvance();
   }
 
   private async loadSetlistItem(item: { name: string; path: string; userRhythmId?: string }, opts?: { silent?: boolean }): Promise<void> {
