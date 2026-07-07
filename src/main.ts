@@ -3104,22 +3104,19 @@ ctaUrl: '/plans?renew=true',
       });
     }
 
-    // Baixar app nas lojas (pra quem quiser instalar o app nativo)
-    const playStoreBtn = document.getElementById('menuPlayStoreBtn');
-    if (playStoreBtn) {
-      playStoreBtn.addEventListener('click', () => {
-        const dd = document.getElementById('fabDropdown');
-        if (dd) dd.style.display = 'none';
-        openPlayStore(); // market:// no Android com fallback HTTPS
-      });
-    }
-    const appStoreBtn = document.getElementById('menuAppStoreBtn');
-    if (appStoreBtn) {
-      appStoreBtn.addEventListener('click', () => {
-        const dd = document.getElementById('fabDropdown');
-        if (dd) dd.style.display = 'none';
-        openExternal(APP_STORE_URL);
-      });
+    // Botões de loja no TOPO — só em clientes NÃO-nativos (web/PWA).
+    // No app nativo ficam escondidos (o usuário já baixou).
+    if (!isNativeApp()) {
+      const hdrPlay = document.getElementById('hdrPlayStoreBtn');
+      if (hdrPlay) {
+        hdrPlay.style.display = '';
+        hdrPlay.addEventListener('click', () => openPlayStore()); // market:// c/ fallback HTTPS
+      }
+      const hdrApp = document.getElementById('hdrAppStoreBtn');
+      if (hdrApp) {
+        hdrApp.style.display = '';
+        hdrApp.addEventListener('click', () => openExternal(APP_STORE_URL));
+      }
     }
 
     // Baixar offline (manual — user pode forçar mesmo se já tá baixado)
