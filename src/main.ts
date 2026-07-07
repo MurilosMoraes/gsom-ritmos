@@ -596,7 +596,7 @@ class RhythmSequencer {
       // se o ritmo finalizado era do repertório. navigateSetlist('next')
       // não faz nada na última música (fica parada na última).
       if (this.useAutoNext && wasFromSetlist) {
-        void this.navigateSetlist('next');
+        void this.navigateSetlist('next', { silent: true });
       }
     });
 
@@ -7084,7 +7084,7 @@ ctaUrl: '/plans?renew=true',
     await this.loadSetlistItem(current);
   }
 
-  private async navigateSetlist(direction: 'next' | 'previous'): Promise<void> {
+  private async navigateSetlist(direction: 'next' | 'previous', opts?: { silent?: boolean }): Promise<void> {
     const item = direction === 'next'
       ? this.setlistManager.next()
       : this.setlistManager.previous();
@@ -7095,10 +7095,10 @@ ctaUrl: '/plans?renew=true',
       this.stop();
     }
 
-    await this.loadSetlistItem(item);
+    await this.loadSetlistItem(item, opts);
   }
 
-  private async loadSetlistItem(item: { name: string; path: string; userRhythmId?: string }): Promise<void> {
+  private async loadSetlistItem(item: { name: string; path: string; userRhythmId?: string }, opts?: { silent?: boolean }): Promise<void> {
     let loaded = false;
     // Veio do repertório: o fav-bar volta a mostrar a posição do show.
     // (loadRhythm/loadUserRhythm setam true por padrão; aqui a gente
@@ -7118,7 +7118,7 @@ ctaUrl: '/plans?renew=true',
         this.setlistManager.removeItem(idx);
         const next = this.setlistManager.getCurrentItem();
         if (next && next !== item) {
-          await this.loadSetlistItem(next);
+          await this.loadSetlistItem(next, opts);
           return;
         }
         // Sem próximo: cai pro default pra app não ficar sem ritmo
@@ -7127,7 +7127,7 @@ ctaUrl: '/plans?renew=true',
       }
     } else {
       try {
-        await this.loadRhythm(item.name, item.path);
+        await this.loadRhythm(item.name, item.path, opts);
         loaded = true;
       } catch (e) {
         // Ritmo do catálogo não carregou (arquivo deletado, manifest novo,
@@ -7751,11 +7751,13 @@ ctaUrl: '/plans?renew=true',
     }
   }
 
-  private async loadRhythm(name: string, path: string): Promise<void> {
+  private async loadRhythm(name: string, path: string, opts?: { silent?: boolean }): Promise<void> {
     if (this.isLoadingRhythm) return;
     this.isLoadingRhythm = true;
 
-    const loader = this.showRhythmLoader(name);
+    // No avanço automático do repertório (AUTO) NÃO mostramos o loader:
+    // ele "pisca" na tela a cada troca. silent = troca limpa e instantânea.
+    if (!opts?.silent) this.showRhythmLoader(name);
 
     try {
       if (this.stateManager.isPlaying()) {
