@@ -74,8 +74,8 @@ export class AudioManager {
     // VOLUME BOOST (mobile): speaker de celular é fraco e o pessoal acha
     // o app baixo. Ganho extra ANTES do compressor = loudness sem clipar.
     // Override manual via localStorage 'gdrums_volume_boost' (1.0–2.5)
-    // pra calibrar em campo sem novo deploy. Desktop fica em 1.0.
-    let boost = isMobile ? 1.6 : 1.0;
+    // pra calibrar em campo sem novo deploy.
+    let boost = isMobile ? 1.8 : 1.5;
     try {
       const saved = parseFloat(localStorage.getItem('gdrums_volume_boost') || '');
       if (!isNaN(saved)) boost = Math.max(1.0, Math.min(2.5, saved));
