@@ -218,10 +218,12 @@ export class UIManager {
       const variation = state.variations.main[index];
       const hasContent = variation?.pattern?.some(row => row.some(step => step === true));
 
-      cellElement.classList.remove('active', 'disabled', 'queued');
+      cellElement.classList.remove('active', 'disabled', 'queued', 'user-disabled');
 
       if (!hasContent) {
         cellElement.classList.add('disabled');
+      } else if (this.stateManager.isVariationDisabled('main', index)) {
+        cellElement.classList.add('user-disabled'); // sem cor, mas clicável (long-press reativa)
       } else if (state.isPlaying &&
                  state.activePattern === 'main' &&
                  index === state.currentMainVariation) {
@@ -235,10 +237,12 @@ export class UIManager {
       const variation = state.variations.fill[index];
       const hasContent = variation?.pattern?.some(row => row.some(step => step === true));
 
-      cellElement.classList.remove('active', 'disabled', 'queued');
+      cellElement.classList.remove('active', 'disabled', 'queued', 'user-disabled');
 
       if (!hasContent) {
         cellElement.classList.add('disabled');
+      } else if (this.stateManager.isVariationDisabled('fill', index)) {
+        cellElement.classList.add('user-disabled'); // sem cor, mas clicável (long-press reativa)
       } else if (state.isPlaying &&
                  state.activePattern === 'fill' &&
                  index === state.currentFillVariation) {

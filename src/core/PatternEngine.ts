@@ -217,7 +217,7 @@ export class PatternEngine {
           index,
           hasContent: v.pattern.some(row => row.some(step => step === true))
         }))
-        .filter(r => r.hasContent);
+        .filter(r => r.hasContent && !this.stateManager.isVariationDisabled('main', r.index));
 
       if (availableRhythms.length <= 1) return;
 
@@ -227,9 +227,10 @@ export class PatternEngine {
       nextMainVariation = availableRhythms[nextPosition].index;
     }
 
-    // Verificar fills disponíveis
+    // Verificar fills disponíveis (pula viradas vazias E desativadas)
     const availableFills = state.variations.fill
-      .filter(f => f.pattern.some(row => row.some(step => step === true)));
+      .map((f, index) => ({ index, ok: f.pattern.some(row => row.some(step => step === true)) && !this.stateManager.isVariationDisabled('fill', index) }))
+      .filter(f => f.ok);
 
     if (availableFills.length === 0) {
       this.activateRhythm(nextMainVariation);
@@ -256,18 +257,18 @@ export class PatternEngine {
         index,
         hasContent: v.pattern.some(row => row.some(step => step === true))
       }))
-      .filter(f => f.hasContent);
+      .filter(f => f.hasContent && !this.stateManager.isVariationDisabled('fill', f.index));
 
     if (availableFills.length === 0) return;
 
-    // Encontrar próxima virada disponível
+    // Encontrar próxima virada disponível (pula vazias E desativadas)
     let found = false;
     for (let attempt = 0; attempt < 3; attempt++) {
       const fillIndex = (this.currentFillRotation + attempt) % 3;
       const variation = state.variations.fill[fillIndex];
       const hasContent = variation?.pattern.some(row => row.some(step => step === true));
 
-      if (hasContent) {
+      if (hasContent && !this.stateManager.isVariationDisabled('fill', fillIndex)) {
         this.activateFillWithTiming(fillIndex, mode);
         this.currentFillRotation = (fillIndex + 1) % 3;
         found = true;
