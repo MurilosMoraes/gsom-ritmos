@@ -2171,12 +2171,6 @@ input:checked + .slider:before {
 .count-vol-done:active { transform: scale(0.97); }
 
 /* ─── Manual do Usuário (cores do app) ─── */
-.topbar-dropdown-btn-manual {
-  color: #00D4FF !important;
-  font-weight: 700;
-  background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(139,92,246,0.1)) !important;
-  border: 1px solid rgba(0,212,255,0.3) !important;
-}
 .manual-overlay {
   position: fixed;
   inset: 0;
@@ -2299,7 +2293,7 @@ input:checked + .slider:before {
 .m-list li b { color: #fff; font-weight: 700; }
 .mb.hold, .mb-pad.hold { position: relative; overflow: visible; }
 .mb.hold::after, .mb-pad.hold::after {
-  content: '3 seg'; position: absolute; right: -8px; bottom: -8px;
+  content: '1,5 seg'; position: absolute; right: -8px; bottom: -8px;
   font-size: 0.46rem; font-weight: 800; color: #EC4899; white-space: nowrap;
   background: #12122a; border: 1px solid rgba(236,72,153,0.6); border-radius: 6px; padding: 0 3px;
 }

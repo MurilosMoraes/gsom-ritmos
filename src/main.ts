@@ -787,7 +787,7 @@ class RhythmSequencer {
       },
       {
         label: 'Desative o que não usa',
-        body: 'Segure 3 segundos numa variação de ritmo ou virada pra desligá-la.',
+        body: 'Segure 1,5 segundo numa variação de ritmo ou virada pra desligá-la.',
       },
       {
         label: 'Repertório no automático e até 30',
@@ -2829,7 +2829,7 @@ ctaUrl: '/plans?renew=true',
         this.uiManager.updatePerformanceGrid();
         HapticsService.heavy();
         this.uiManager.showAlert(nowDisabled ? 'Variação desativada' : 'Variação reativada');
-      }, 3000);
+      }, 1500);
     };
     const cancel = () => { if (timer !== null) { clearTimeout(timer); timer = null; } };
     cell.addEventListener('mousedown', start);
@@ -4027,7 +4027,7 @@ ctaUrl: '/plans?renew=true',
             </div>
             <div class="m-row">
               <div class="m-visual m-visual-trio"><span class="mb-pad cyan hold">1</span></div>
-              <div class="m-text"><div class="m-name">Desativar variação</div><div class="m-desc">Segure 3 segundos em uma variação de ritmo ou virada para desativá-la — ela fica sem cor, deixa de tocar e é pulada na troca e no pedal. Segure 3 segundos novamente para reativar. A desativação é salva junto do seu ritmo salvo.</div></div>
+              <div class="m-text"><div class="m-name">Desativar variação</div><div class="m-desc">Segure 1,5 segundo em uma variação de ritmo ou virada para desativá-la: ela fica sem cor, deixa de tocar e é pulada na troca e no pedal. Segure 1,5 segundo novamente para reativar. A desativação é salva junto do seu ritmo salvo.</div></div>
             </div>
           </div>
 
@@ -4059,7 +4059,7 @@ ctaUrl: '/plans?renew=true',
             </div>
             <div class="m-row">
               <div class="m-visual"><span class="mb mb-pause hold">${iconPause}</span></div>
-              <div class="m-text"><div class="m-name">Volume da marcação</div><div class="m-desc">Segure 3 segundos no botão de pausa para abrir o controle de volume do chimbal da marcação.</div></div>
+              <div class="m-text"><div class="m-name">Volume da marcação</div><div class="m-desc">Segure 1,5 segundo no botão de pausa para abrir o controle de volume do chimbal da marcação.</div></div>
             </div>
           </div>
 
@@ -4080,10 +4080,10 @@ ctaUrl: '/plans?renew=true',
           </div>
 
           <div class="m-sec">
-            <div class="m-sec-title">Pedal Bluetooth — 2 botões</div>
+            <div class="m-sec-title">Pedal Bluetooth de 2 botões</div>
             <div class="m-row">
               <div class="m-visual">${pedal('1')}</div>
-              <div class="m-text"><div class="m-name">Botão 1 — esquerdo</div>
+              <div class="m-text"><div class="m-name">Botão 1 (esquerdo)</div>
                 <ul class="m-list">
                   <li><b>Parado:</b> inicia a música</li>
                   <li><b>Um toque:</b> faz virada e vai para o próximo ritmo</li>
@@ -4093,7 +4093,7 @@ ctaUrl: '/plans?renew=true',
             </div>
             <div class="m-row">
               <div class="m-visual">${pedal('2')}</div>
-              <div class="m-text"><div class="m-name">Botão 2 — direito</div>
+              <div class="m-text"><div class="m-name">Botão 2 (direito)</div>
                 <ul class="m-list">
                   <li><b>Parado:</b> toca prato</li>
                   <li><b>Um toque:</b> faz uma virada</li>
@@ -4104,10 +4104,10 @@ ctaUrl: '/plans?renew=true',
           </div>
 
           <div class="m-sec">
-            <div class="m-sec-title">Pedal Bluetooth — 4 botões</div>
+            <div class="m-sec-title">Pedal Bluetooth de 4 botões</div>
             <div class="m-row">
               <div class="m-visual">${pedal('1')}</div>
-              <div class="m-text"><div class="m-name">Botão 1 — esquerdo</div>
+              <div class="m-text"><div class="m-name">Botão 1 (esquerdo)</div>
                 <ul class="m-list">
                   <li><b>Parado:</b> inicia a música</li>
                   <li><b>Um toque:</b> faz virada e vai para o próximo ritmo</li>
@@ -4117,7 +4117,7 @@ ctaUrl: '/plans?renew=true',
             </div>
             <div class="m-row">
               <div class="m-visual">${pedal('2')}</div>
-              <div class="m-text"><div class="m-name">Botão 2 — direito</div>
+              <div class="m-text"><div class="m-name">Botão 2 (direito)</div>
                 <ul class="m-list">
                   <li><b>Parado:</b> toca prato</li>
                   <li><b>Um toque:</b> faz uma virada</li>
@@ -4160,6 +4160,18 @@ ctaUrl: '/plans?renew=true',
             <div class="m-row">
               <div class="m-visual"><span class="mb-pad orange wide">SHOW</span></div>
               <div class="m-text"><div class="m-name">Modo Show</div><div class="m-desc">Deixa a tela cheia e sempre ligada, para tocar sem a tela apagar no meio do show.</div></div>
+            </div>
+          </div>
+
+          <div class="m-sec">
+            <div class="m-sec-title">Equalizador e Reverb</div>
+            <div class="m-row">
+              <div class="m-visual"><span class="mb-pad cyan wide">EQ</span></div>
+              <div class="m-text"><div class="m-name">Equalizador (5 bandas)</div><div class="m-desc">Ajuste graves, médios e agudos em cinco faixas para moldar o som ao seu gosto e ao ambiente onde você toca. Cada faixa reforça ou corta uma parte do som.</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual"><span class="mb-pad orange wide">REV</span></div>
+              <div class="m-text"><div class="m-name">Reverb</div><div class="m-desc">Um controle deslizante que adiciona um reverb leve para amaciar o som, com realce nos médios e um rastro curto. Deixe no zero para o som totalmente seco.</div></div>
             </div>
           </div>
 
@@ -5111,7 +5123,7 @@ ctaUrl: '/plans?renew=true',
         this.longPressFired = true; // suprime o click (não pausa/retoma)
         HapticsService.heavy();
         this.openCountVolumePopup();
-      }, 3000);
+      }, 1500);
     };
     const cancel = () => { if (timer !== null) { clearTimeout(timer); timer = null; } };
     btn.addEventListener('mousedown', start);
