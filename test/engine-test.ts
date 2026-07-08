@@ -270,10 +270,14 @@ section('7. PatternEngine — Fill timing: main 2x, fill 1x');
 
   const pending = sm.getState().pendingFill;
   assert(pending !== null, 'Fill pendente criado');
-  // remaining = 7, fillStepsPerMainStep = 1/2 = 0.5
-  // available = round(7*0.5) = round(3.5) = 4
-  // startStep = 16-4 = 12
-  assertEqual(pending!.startStep, 12, 'Fill 1x (main 2x) start = 12 (toca 4 steps)');
+  // Razão fracionária (0.5): remaining 7 × 0.5 = 3.5 — a expectativa
+  // ANTIGA deste teste (round=4 → start 12 → 8 main-steps em 7 de
+  // espaço) documentava o BUG do overshoot: a virada estourava o
+  // downbeat em +1 main-step (classe Calypso). A quantização de entrada
+  // adia 1 step: entry 10, remaining 6 × 0.5 = 3 EXATO → start 13,
+  // desemboca cravado no 1 (10 + 3/0.5 = 16).
+  assertEqual(pending!.entryPoint, 10, 'Entry adiado 1 step pra conta fechar (quantização)');
+  assertEqual(pending!.startStep, 13, 'Fill 1x (main 2x) start = 13 (toca 3 steps exatos, crava no 1)');
 }
 
 section('8. PatternEngine — Fill timing 1x: step 15 (wrap ao 0)');
@@ -616,6 +620,159 @@ section('22. Timing — Transição main 1x → fill 2x usa speed do step agenda
   // Próximo step é fill → intervalo = secondsPerStepFill
   nextStepTime += secondsPerStepFill;
   assertEqual(nextStepTime, 10.375, 'Segundo intervalo = 125ms (speed do fill)');
+}
+
+section('23. Quantização de entrada — INÉRCIA: razão inteira = fórmula clássica idêntica');
+{
+  // Formas de razão INTEIRA do catálogo (fill/end na mesma velocidade do
+  // main ou múltiplo). A quantização deve produzir EXATAMENTE o mesmo
+  // (entryPoint, startStep) da fórmula clássica, em TODA posição de pisada.
+  const shapes: Array<[number, number, number, number]> = [
+    [16, 1, 16, 1], [16, 2, 16, 2], [32, 4, 32, 4], [12, 1.5, 12, 1.5],
+    [16, 1, 16, 2], [8, 1, 16, 2], [24, 2, 8, 2], [32, 2, 32, 2],
+    [16, 2, 32, 2],  // baladas pós-normalização (end de 2 compassos, razão 1)
+    [32, 4, 16, 4],  // frevo fills pós-normalização
+  ];
+
+  let mismatches = 0;
+  let checked = 0;
+  for (const [mainSteps, mainSpeed, pSteps, pSpeed] of shapes) {
+    for (let step = 0; step < mainSteps; step++) {
+      const sm = new StateManager();
+      const pe = new PatternEngine(sm);
+      fillPattern(sm, 'main', 0, mainSteps, mainSpeed);
+      fillPattern(sm, 'fill', 0, pSteps, pSpeed);
+      sm.setCurrentVariation('main', 0);
+      sm.loadVariation('main', 0);
+      sm.setPlaying(true);
+      sm.setActivePattern('main');
+      sm.setCurrentStep(step);
+
+      pe.activateFillWithTiming(0);
+      const p = sm.getState().pendingFill!;
+
+      // Fórmula CLÁSSICA replicada (pré-quantização)
+      const nextStep = (step + 1) % mainSteps;
+      const ratio = pSpeed / mainSpeed;
+      const dur = Math.round(pSteps * mainSpeed / pSpeed);
+      const ideal = mainSteps - dur;
+      let cEntry: number, cStart: number;
+      if (nextStep === 0) { cEntry = Math.max(0, ideal); cStart = 0; }
+      else {
+        const needed = Math.max(1, Math.round((mainSteps - nextStep) * ratio));
+        if (needed > pSteps) { cEntry = Math.max(0, ideal); cStart = 0; }
+        else { cEntry = nextStep; cStart = pSteps - needed; }
+      }
+      checked++;
+      if (p.entryPoint !== cEntry || p.startStep !== cStart) mismatches++;
+    }
+  }
+  assertEqual(mismatches, 0, `Inércia: ${checked} combinações razão-inteira idênticas ao clássico`);
+}
+
+section('24. Quantização de entrada — EXATIDÃO: razão fracionária crava no downbeat');
+{
+  // Formas FRACIONÁRIAS: dados antigos de ritmos salvos por usuários
+  // (pré-normalização) e os 5 residuais do catálogo. A virada/finalização
+  // deve terminar EXATAMENTE num downbeat, adiando a entrada em ≤3 steps.
+  const shapes: Array<[number, number, number, number]> = [
+    [16, 2, 16, 1],  // baladas ANTIGAS salvas por usuários (razão 0.5)
+    [32, 4, 16, 1],  // frevo antigo (razão 0.25)
+    [32, 4, 32, 2],  // frevo residual atual (razão 0.5)
+    [32, 2, 8, 1],   // tango/pagodão antigos (razão 0.5)
+  ];
+
+  let inexact = 0;
+  let tooDeferred = 0;
+  let checked = 0;
+  for (const [mainSteps, mainSpeed, pSteps, pSpeed] of shapes) {
+    const ratio = pSpeed / mainSpeed;
+    for (let step = 0; step < mainSteps; step++) {
+      const sm = new StateManager();
+      const pe = new PatternEngine(sm);
+      fillPattern(sm, 'main', 0, mainSteps, mainSpeed);
+      fillPattern(sm, 'fill', 0, pSteps, pSpeed);
+      sm.setCurrentVariation('main', 0);
+      sm.loadVariation('main', 0);
+      sm.setPlaying(true);
+      sm.setActivePattern('main');
+      sm.setCurrentStep(step);
+
+      pe.activateFillWithTiming(0);
+      const p = sm.getState().pendingFill!;
+      checked++;
+
+      // Onde a virada REALMENTE termina, em main-steps a partir do entry
+      const realDur = (pSteps - p.startStep) / ratio;
+      const landsAt = p.entryPoint + realDur;
+      // Cravado = landsAt é múltiplo de mainSteps (downbeat)
+      if (Math.abs(landsAt / mainSteps - Math.round(landsAt / mainSteps)) > 1e-9) inexact++;
+      // Entrada adiada no máximo 3 steps além do próximo — só vale pro
+      // caminho PARCIAL quantizado (startStep>0). startStep===0 é o
+      // caminho clássico intencional de "pisou cedo"/"rabo do compasso"
+      // (padrão completo no ponto ideal), não deferral de quantização.
+      const nextStep = (step + 1) % mainSteps;
+      if (p.startStep > 0 && nextStep !== 0 && p.entryPoint >= nextStep && p.entryPoint - nextStep > 3) tooDeferred++;
+    }
+  }
+  assertEqual(inexact, 0, `Exatidão: ${checked} pisadas fracionárias TODAS cravadas no downbeat`);
+  assertEqual(tooDeferred, 0, 'Nenhuma entrada adiada mais que 3 steps');
+}
+
+section('25. Quantização — END no espaço do main (mesma camada)');
+{
+  // Balada antiga de usuário: end 16@1x sob main 16@2x — o caso real do
+  // bug "sobrando um pouco". TODA pisada deve cravar.
+  let inexact = 0;
+  for (let step = 0; step < 16; step++) {
+    const sm = new StateManager();
+    const pe = new PatternEngine(sm);
+    fillPattern(sm, 'main', 0, 16, 2);
+    fillPattern(sm, 'end', 0, 16, 1);
+    sm.setCurrentVariation('main', 0);
+    sm.loadVariation('main', 0);
+    sm.setPlaying(true);
+    sm.setActivePattern('main');
+    sm.setCurrentStep(step);
+
+    pe.activateEndWithTiming(0);
+    const p = sm.getState().pendingEnd!;
+    const landsAt = p.entryPoint + (16 - p.startStep) / (1 / 2);
+    if (Math.abs(landsAt / 16 - Math.round(landsAt / 16)) > 1e-9) inexact++;
+  }
+  assertEqual(inexact, 0, 'END 16@1x sob main 16@2x: 16/16 pisadas cravadas (bug Calypso morto no motor também)');
+}
+
+section('26. Quantização — END pisado DURANTE a virada (espaço da fill)');
+{
+  // Fill 16@2x tocando, end 16@1x (razão 0.5 no espaço da fill) — o caso
+  // FINALxVIRADA que afetava 65 ritmos pré-normalização.
+  // (pisada no ÚLTIMO step da fill fica de fora: rabo fracionário em
+  // espaço-fill não tem solução exata — residual documentado, só em
+  // dado antigo de usuário; catálogo é razão inteira)
+  let inexact = 0;
+  for (let step = 1; step < 14; step++) {
+    const sm = new StateManager();
+    const pe = new PatternEngine(sm);
+    fillPattern(sm, 'main', 0, 16, 2);
+    fillPattern(sm, 'fill', 0, 16, 2);
+    fillPattern(sm, 'end', 0, 16, 1);
+    sm.setCurrentVariation('main', 0);
+    sm.loadVariation('main', 0);
+    sm.setCurrentVariation('fill', 0);
+    sm.loadVariation('fill', 0);
+    sm.setPlaying(true);
+    sm.setActivePattern('fill');
+    sm.setCurrentStep(step);
+
+    pe.activateEndWithTiming(0);
+    const p = sm.getState().pendingEnd!;
+    if ((p.space ?? 'main') !== 'fill') continue; // pisada no fim da fill cai no espaço main — ok
+    // fill 16@2x acaba no downbeat; end deve cobrir o resto EXATO da fill
+    const landsAtFill = p.entryPoint + (16 - p.startStep) / (1 / 2); // end-steps → fill-steps
+    if (Math.abs(landsAtFill - 16) > 1e-9) inexact++;
+  }
+  assertEqual(inexact, 0, 'END durante a virada: todas as pisadas cravam no fim da virada (downbeat)');
 }
 
 // ─── Resultado ────────────────────────────────────────────────────────

@@ -345,6 +345,43 @@ export class PatternEngine {
     }
   }
 
+  /**
+   * QUANTIZAÇÃO DE ENTRADA EXATA (camada sobre o timing clássico).
+   *
+   * O timing de entrada parcial faz `needed = round(restante × razão)`.
+   * Com razão FRACIONÁRIA (ex: end 1x sob main 2x = 0.5 — dados antigos
+   * de ritmos salvos por usuários; o catálogo foi normalizado pra razão
+   * inteira em 2026-07), o round sobe meio step e o padrão termina
+   * DEPOIS do downbeat ("sobrando um pouco").
+   *
+   * Aqui: procura a primeira entrada (adiando no máx. 3 steps) em que a
+   * conta fecha INTEIRA. Contratos de segurança:
+   * - razão inteira fecha na 1ª tentativa → resultado IDÊNTICO ao
+   *   clássico (inércia provada em test/engine-test.ts);
+   * - não fechou em 3 steps (razão exótica) → retorna null e o caller
+   *   usa o clássico arredondado — com desvio residual, mas NUNCA
+   *   trava um agendamento.
+   *
+   * @returns entrada + qtde de steps do padrão a tocar, ou null
+   */
+  private quantizeEntry(
+    nextStep: number,
+    spaceSteps: number,   // steps do padrão onde entra (main ou fill)
+    ratio: number,        // steps do padrão-alvo por step do espaço
+    patternSteps: number  // steps totais do padrão-alvo (fill ou end)
+  ): { entryPoint: number; needed: number } | null {
+    if (!(ratio > 0)) return null;
+    const maxDefer = Math.min(nextStep + 4, spaceSteps);
+    for (let entry = nextStep; entry < maxDefer; entry++) {
+      const neededF = (spaceSteps - entry) * ratio;
+      const needed = Math.round(neededF);
+      if (Math.abs(neededF - needed) < 1e-6 && needed >= 1 && needed <= patternSteps) {
+        return { entryPoint: entry, needed };
+      }
+    }
+    return null;
+  }
+
   // ─── Fill com timing corrigido ──────────────────────────────────────
 
   /**
@@ -439,16 +476,34 @@ export class PatternEngine {
         // Pisou CEDO (resta mais ciclo que a fill tem de material):
         // groove continua e a virada COMPLETA (única) entra no ponto
         // exato pra desembocar no beat 1 — como baterista real.
+        // (clamp em 0: fill de usuário mais longa que o compasso teria
+        // ideal negativo — entry que nunca dispara = pending preso)
         //
         // v2 preenchia esse caso LOOPANDO a fill ([parcial][completa]).
         // REJEITADO em teste: pisando no tempo 1, o parcial saía quase
         // do tamanho da fill inteira e soava como VIRADA DUPLA
         // ("termina a primeira e faz mais uma"). Não reintroduzir.
-        entryPoint = idealEntry; // garantido > nextStep neste ramo
+        entryPoint = Math.max(0, idealEntry);
         fillStartStep = 0;
       } else {
         // Cabe em uma volta: imediata, do pedaço final, acaba no 1.
-        fillStartStep = fillSteps - needed;
+        // Quantização exata (ver quantizeEntry): razão inteira = idêntico
+        // ao clássico; fracionária fecha exata adiando ≤3 steps.
+        const q = this.quantizeEntry(nextStep, mainSteps, fillStepsPerMainStep, fillSteps);
+        if (q) {
+          entryPoint = q.entryPoint;
+          fillStartStep = fillSteps - q.needed;
+        } else if (needed / fillStepsPerMainStep > remainingMainSteps + 1e-9) {
+          // RABO DO COMPASSO fracionário: o pedaço mínimo (1 step) já
+          // estoura o downbeat. Mesma semântica do nextStep===0: virada
+          // completa terminando no downbeat SEGUINTE — exata.
+          entryPoint = Math.max(0, idealEntry);
+          fillStartStep = 0;
+        } else {
+          // Razão exótica sem solução na janela e sem estouro: clássico
+          // (desvio residual raro; só dado antigo de usuário)
+          fillStartStep = fillSteps - needed;
+        }
       }
     }
 
@@ -538,8 +593,15 @@ export class PatternEngine {
         endStartStep = 0;
       } else {
         // Cabe: assume a virada JÁ, do pedaço final, acaba no 1.
-        entryPoint = nextStep;
-        endStartStep = endSteps - needed;
+        // Quantização exata (ver quantizeEntry) — mesma camada da virada.
+        const q = this.quantizeEntry(nextStep, fillSteps, fillSpeed > 0 ? endSpeed / fillSpeed : 1, endSteps);
+        if (q) {
+          entryPoint = q.entryPoint;
+          endStartStep = endSteps - q.needed;
+        } else {
+          entryPoint = nextStep;
+          endStartStep = endSteps - needed;
+        }
       }
 
       this.stateManager.setPendingEnd({
@@ -566,11 +628,24 @@ export class PatternEngine {
 
       if (needed > endSteps) {
         // Pisou cedo: groove segue, end completo no ponto ideal.
-        entryPoint = idealEntry;
+        // (clamp em 0: end mais longo que o compasso tem ideal negativo)
+        entryPoint = Math.max(0, idealEntry);
         endStartStep = 0;
       } else {
         // Cabe em uma volta: imediata, do pedaço final, acaba no 1.
-        endStartStep = endSteps - needed;
+        // Quantização exata (ver quantizeEntry) — mesma camada da virada.
+        const q = this.quantizeEntry(nextStep, mainSteps, endStepsPerMainStep, endSteps);
+        if (q) {
+          entryPoint = q.entryPoint;
+          endStartStep = endSteps - q.needed;
+        } else if (needed / endStepsPerMainStep > remainingMainSteps + 1e-9) {
+          // Rabo do compasso fracionário (ver virada): end completo
+          // terminando no downbeat seguinte — exato.
+          entryPoint = Math.max(0, idealEntry);
+          endStartStep = 0;
+        } else {
+          endStartStep = endSteps - needed;
+        }
       }
     }
 
