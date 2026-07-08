@@ -77,6 +77,19 @@ html {
   background: transparent;
 }
 
+/* Pisca laranja do botão de pausa acompanhando a contagem (metrônomo) */
+#pauseBtnUser.count-flash,
+#pauseBtnUser.count-flash-strong {
+  background: rgba(249, 115, 22, 0.5) !important;
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.55) !important;
+  border-color: rgba(249, 115, 22, 0.7) !important;
+}
+#pauseBtnUser.count-flash-strong {
+  background: rgba(249, 115, 22, 0.92) !important;
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.85) !important;
+  border-color: rgba(249, 115, 22, 0.95) !important;
+}
+
 html {
   /* Mata o double-tap-to-zoom em TODA a superfície (iOS Safari + WKWebView).
      Antes só botões/células tinham touch-action:manipulation — tocar rápido
@@ -2079,6 +2092,288 @@ input:checked + .slider:before {
   pointer-events: none;
   filter: saturate(0.3);
 }
+
+/* Desativada MANUALMENTE (long-press): sem cor, mas continua clicável
+   (pra reativar com outro long-press). NÃO leva pointer-events:none. */
+.grid-cell.user-disabled {
+  opacity: 0.28;
+  filter: saturate(0);
+}
+
+/* Popup do volume da contagem (long-press no botão de pausa) — cores do app */
+.count-vol-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 0, 20, 0.6);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+.count-vol-card {
+  min-width: 290px;
+  max-width: 90vw;
+  padding: 1.4rem 1.5rem 1.25rem;
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(20, 20, 45, 0.96), rgba(10, 10, 28, 0.96));
+  border: 1.5px solid rgba(0, 212, 255, 0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 212, 255, 0.18);
+}
+.count-vol-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-align: center;
+  background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.count-vol-sub {
+  font-size: 0.72rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0.2rem 0 1.1rem;
+}
+.count-vol-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1.2rem;
+}
+.count-vol-slider {
+  flex: 1;
+  height: 6px;
+  accent-color: #00D4FF;
+  cursor: pointer;
+}
+.count-vol-value {
+  min-width: 3.2ch;
+  text-align: right;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #00D4FF;
+}
+.count-vol-done {
+  display: block;
+  width: 100%;
+  padding: 0.65rem;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 100%);
+  box-shadow: 0 4px 16px rgba(0, 212, 255, 0.25);
+}
+.count-vol-done:active { transform: scale(0.97); }
+
+/* ─── Manual do Usuário (cores do app) ─── */
+.manual-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(3, 0, 20, 0.72);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.manual-card {
+  width: 100%;
+  max-width: 560px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(165deg, rgba(18,18,42,0.98), rgba(8,8,24,0.98));
+  border: 1.5px solid rgba(0,212,255,0.35);
+  box-shadow: 0 16px 50px rgba(0,0,0,0.65), 0 0 40px rgba(0,212,255,0.12);
+}
+.manual-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.3rem;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+.manual-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #00D4FF, #8B5CF6, #EC4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.manual-sub { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-top: 0.15rem; }
+.manual-close {
+  width: 34px; height: 34px; flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6);
+  font-size: 1rem; cursor: pointer;
+}
+.manual-body {
+  overflow-y: auto;
+  padding: 1.1rem 1.3rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.m-sec {
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.m-sec-title {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.92rem; font-weight: 800; color: #fff; margin-bottom: 0.6rem;
+}
+.m-row { display: flex; align-items: flex-start; gap: 0.85rem; padding: 0.65rem 0; }
+.m-row + .m-row { border-top: 1px solid rgba(255,255,255,0.05); }
+.m-visual {
+  flex-shrink: 0; width: 104px;
+  display: flex; align-items: center; gap: 0.28rem; flex-wrap: wrap;
+  padding-top: 0.1rem;
+}
+.m-visual-trio { flex-wrap: nowrap; } /* os 3 quadros sempre lado a lado */
+/* Botão de pedal desenhado (redondo, cara de footswitch) — distinto dos pads do app */
+.mb-pedal {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; font-weight: 800; color: #e2e8f0;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  background: radial-gradient(circle at 38% 30%, rgba(255,255,255,0.14), rgba(255,255,255,0.02) 70%);
+  box-shadow: inset 0 -3px 5px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.3);
+}
+.m-text { flex: 1; min-width: 0; }
+.m-name { font-size: 0.83rem; font-weight: 700; color: #fff; margin-bottom: 0.2rem; }
+.m-desc { font-size: 0.76rem; color: rgba(255,255,255,0.55); line-height: 1.5; }
+/* Prévias dos botões (parecidas com os botões reais do app) */
+.mb {
+  width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid;
+}
+.mb svg { width: 20px; height: 20px; }
+.mb-play { color: #00E68C; border-color: rgba(0,230,140,0.55); background: rgba(0,230,140,0.08); box-shadow: 0 0 12px rgba(0,230,140,0.15); }
+.mb-pause { color: #00D4FF; border-color: rgba(0,212,255,0.55); background: rgba(0,212,255,0.08); box-shadow: 0 0 12px rgba(0,212,255,0.15); }
+.mb-save { color: #00E68C; border-color: rgba(0,230,140,0.55); background: rgba(0,230,140,0.08); box-shadow: 0 0 12px rgba(0,230,140,0.15); }
+/* Botões reais de subir/descer (iguais aos do repertório) e de BPM */
+.mb-arrow {
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #00D4FF; border: 1px solid rgba(0,212,255,0.4); background: rgba(0,212,255,0.06);
+}
+.mb-arrow svg { width: 16px; height: 16px; }
+.mb-bpm {
+  min-width: 28px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1rem; font-weight: 800;
+  color: #00D4FF; border: 1px solid rgba(0,212,255,0.4); background: rgba(0,212,255,0.06);
+}
+/* Lista de funções (usada nos pedais) */
+.m-list { margin: 0.2rem 0 0; padding: 0; list-style: none; }
+.m-list li {
+  position: relative; padding-left: 0.95rem;
+  font-size: 0.76rem; color: rgba(255,255,255,0.55); line-height: 1.6;
+}
+.m-list li::before {
+  content: ''; position: absolute; left: 0; top: 0.62em;
+  width: 5px; height: 5px; border-radius: 50%; background: rgba(0,212,255,0.6);
+}
+.m-list li b { color: #fff; font-weight: 700; }
+.mb.hold, .mb-pad.hold { position: relative; overflow: visible; }
+.mb.hold::after, .mb-pad.hold::after {
+  content: '1,5 seg'; position: absolute; right: -8px; bottom: -8px;
+  font-size: 0.46rem; font-weight: 800; color: #EC4899; white-space: nowrap;
+  background: #12122a; border: 1px solid rgba(236,72,153,0.6); border-radius: 6px; padding: 0 3px;
+}
+.mb-pad {
+  min-width: 28px; height: 34px; padding: 0 0.4rem; border-radius: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 800; border: 1.5px solid; flex-shrink: 0;
+}
+.mb-pad.wide { font-size: 0.56rem; letter-spacing: 0.03em; }
+.mb-pad.cyan { color: #00D4FF; border-color: rgba(0,212,255,0.5); background: rgba(0,212,255,0.07); }
+.mb-pad.purple { color: #a78bfa; border-color: rgba(139,92,246,0.5); background: rgba(139,92,246,0.07); }
+.mb-pad.orange { color: #F97316; border-color: rgba(249,115,22,0.5); background: rgba(249,115,22,0.07); }
+.mb-toggle {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.32rem 0.5rem; border-radius: 8px;
+  border: 1px solid rgba(0,230,140,0.35); background: rgba(0,230,140,0.06);
+  font-size: 0.5rem; font-weight: 800; letter-spacing: 0.5px; color: rgba(0,230,140,0.85);
+}
+.mb-dot { width: 6px; height: 6px; border-radius: 50%; background: #00E68C; box-shadow: 0 0 6px rgba(0,230,140,0.6); }
+.m-pedal { display: flex; gap: 0.5rem; margin: 0.25rem 0 0.75rem; flex-wrap: wrap; }
+.m-pbtn {
+  width: 50px; height: 50px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.15rem; font-weight: 800;
+  border: 1.5px solid rgba(0,212,255,0.4);
+  background: rgba(0,212,255,0.06); color: #00D4FF;
+}
+
+/* ─── Painel Equalizador + Reverb (cores do app) ─── */
+.eq-overlay {
+  position: fixed; inset: 0; z-index: 10001;
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+  background: rgba(3, 0, 20, 0.7);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.eq-card {
+  width: 100%; max-width: 420px; max-height: 88vh;
+  display: flex; flex-direction: column; border-radius: 18px; overflow: hidden;
+  background: linear-gradient(165deg, rgba(18,18,42,0.98), rgba(8,8,24,0.98));
+  border: 1.5px solid rgba(0,212,255,0.35);
+  box-shadow: 0 16px 50px rgba(0,0,0,0.65), 0 0 40px rgba(0,212,255,0.12);
+}
+.eq-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0;
+}
+.eq-title {
+  font-size: 1.05rem; font-weight: 800;
+  background: linear-gradient(135deg, #00D4FF, #8B5CF6);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.eq-close {
+  width: 32px; height: 32px; border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6); cursor: pointer;
+}
+.eq-body { overflow-y: auto; padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.9rem; }
+.eq-band-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.35rem; }
+.eq-band-name { font-size: 0.8rem; font-weight: 700; color: #fff; }
+.eq-band-freq { font-size: 0.68rem; color: rgba(255,255,255,0.4); }
+.eq-band-row { display: flex; align-items: center; gap: 0.7rem; }
+.eq-slider { flex: 1; height: 6px; accent-color: #00D4FF; cursor: pointer; }
+.eq-val { min-width: 4.5ch; text-align: right; font-size: 0.76rem; font-weight: 700; color: #00D4FF; }
+.eq-reverb { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.9rem; }
+.eq-reverb .eq-slider { accent-color: #8B5CF6; }
+.eq-reverb .eq-val { color: #a78bfa; }
+.eq-actions {
+  display: flex; gap: 0.6rem; padding: 0.9rem 1.2rem 1.1rem;
+  border-top: 1px solid rgba(255,255,255,0.07); flex-shrink: 0;
+}
+.eq-reset {
+  flex: 0 0 auto; padding: 0.6rem 1rem; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6); font-weight: 700; cursor: pointer;
+}
+.eq-done {
+  flex: 1; padding: 0.6rem; border: none; border-radius: 10px; cursor: pointer;
+  color: #fff; font-weight: 800; background: linear-gradient(135deg, #00D4FF, #8B5CF6);
+}
+.eq-done:active, .eq-reset:active { transform: scale(0.97); }
 
 /* Transition Cell (keep for compatibility) */
 .transition-cell {

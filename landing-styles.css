@@ -133,8 +133,20 @@ body {
 
 .logo-nav {
   display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.logo-img {
+  height: 48px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.footer-logo-img {
+  height: 56px;
+  width: auto;
+  margin-bottom: 0.6rem;
 }
 
 .logo-text {

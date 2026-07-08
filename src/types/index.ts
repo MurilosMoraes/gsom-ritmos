@@ -1,6 +1,13 @@
 // Constante global de canais
 export const MAX_CHANNELS = 12;
 
+// Ganho dos pratos AUTOMÁTICOS (os que o app toca sozinho: entrada da
+// virada, retorno da virada, prato da finalização e deixa de retomada
+// do pause) relativo ao volume base. Em 1.0 soavam mais altos que o
+// groove — 0.8 assenta na mixagem. O prato MANUAL (botão/pedal parado)
+// segue em 1.0: é performático, o músico controla.
+export const AUTO_CYMBAL_GAIN = 0.8;
+
 // Tipos principais do sequenciador
 
 export interface AudioChannel {

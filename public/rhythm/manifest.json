@@ -1,5 +1,5 @@
 {
-  "version": 44,
+  "version": 47,
   "rhythms": [
     "Anos 60.json",
     "Anunciação.json",
@@ -151,7 +151,11 @@
     "Xote Estilizado.json",
     "Xote Nordestino.json",
     "Xote Tropical.json",
-    "Xote.json"
+    "Xote.json",
+    "Percuteria 4-4.json",
+    "Percuteria 6-8.json",
+    "Lambadão.json",
+    "Percuteria Rock.json"
   ],
   "categories": {
     "Brasileiro": [
@@ -223,7 +227,10 @@
       "Xaxado.json",
       "Xote acelerado.json",
       "Xote Estilizado.json",
-      "Xote Tropical.json"
+      "Xote Tropical.json",
+      "Percuteria 4-4.json",
+      "Percuteria 6-8.json",
+      "Lambadão.json"
     ],
     "Pop/Rock": [
       "Anos 60.json",
@@ -265,7 +272,8 @@
       "Rockabilly.json",
       "Shuffle.json",
       "Ska.json",
-      "Tango.json"
+      "Tango.json",
+      "Percuteria Rock.json"
     ],
     "Gaúcho": [
       "Banda (bailao).json",

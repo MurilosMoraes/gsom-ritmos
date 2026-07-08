@@ -74,4 +74,16 @@ export class WebAudioEngine implements IAudioEngine {
   cancelScheduledAfter(time: number): void {
     this.inner.cancelScheduledAfter(time);
   }
+
+  setEqGain(index: number, db: number): void {
+    this.inner.setEqGain(index, db);
+  }
+
+  setReverbAmount(amount: number): void {
+    this.inner.setReverbAmount(amount);
+  }
+
+  setReverbFrequency(hz: number): void {
+    this.inner.setReverbFrequency(hz);
+  }
 }
