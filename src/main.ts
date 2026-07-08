@@ -767,10 +767,10 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '3.2',
+    version: '3.3',
     overline: 'Atualização',
-    title: '+17 ritmos novos. Biblioteca em 155.',
-    subtitle: 'Muita percussão e balanço novos, som mais forte e o repertório emendando sozinho no palco.',
+    title: '+17 ritmos, equalizador e pausa no tempo.',
+    subtitle: 'Leva grande: biblioteca em 155 ritmos, novos controles de som e um jeito mais firme de tocar no palco.',
     sections: [
       {
         label: '+17 ritmos novos',
@@ -778,12 +778,24 @@ class RhythmSequencer {
         body: 'Arrocha baiano, Foxtrot, Lambadão, Marcha Schlager, New Wave, Percuteria 4/4, Percuteria 6/8, Percuteria Rock, Polka, Pop Funk, Reggae 3, Reggae Roots, Seresta 2, Soul & Swing, Train Beat, Vaneira e milonga e Worship (espontâneo). Agora são 155 no total. Também refinamos Anunciação, Pagode e Samba no pandeiro.',
       },
       {
-        label: 'Repertório no automático',
-        body: 'Novo botão AUTO: ao finalizar uma música, o app já pula pra próxima do repertório, prontinha pra você dar play.',
+        label: 'Pausa que te segura no tempo',
+        body: 'Ao pausar, entra uma contagem no chimbal e o botão pisca. Ao continuar, o ritmo volta cravado no tempo. Dá pra fazer virada ou finalizar direto da pausa, e segurar o botão de pausa ajusta o volume da contagem.',
       },
       {
-        label: 'Mais pressão de som agora com até 30 repertórios',
-        body: 'Mais som no celular e PC. De 10 agora são 30 repertórios disponíveis para criação!',
+        label: 'Equalizador e Reverb',
+        body: 'Equalizador de 5 bandas e um reverb leve pra amaciar o som — nas configurações.',
+      },
+      {
+        label: 'Desative o que não usa',
+        body: 'Segure 3 segundos numa variação de ritmo ou virada pra desligá-la.',
+      },
+      {
+        label: 'Repertório no automático e até 30',
+        body: 'Botão AUTO pula pra próxima música ao finalizar. E agora dá pra ter até 30 repertórios.',
+      },
+      {
+        label: 'Mais som e Manual do Usuário',
+        body: 'Som geral mais alto, e um guia completo no app com todos os botões e o pedal (2 e 4 botões).',
       },
     ]
   };
