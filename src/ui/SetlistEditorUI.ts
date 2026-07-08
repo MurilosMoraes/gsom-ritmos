@@ -701,6 +701,31 @@ export class SetlistEditorUI {
     this.updatePreviewButtons();
   }
 
+  /** Anima a troca (slide) das duas linhas e só depois re-renderiza — dá o
+   *  efeito da música de cima trocar de lugar com a de baixo. */
+  private animateSwapAndRender(container: HTMLElement, indexA: number, indexB: number): void {
+    const commit = () => {
+      this.setlistManager?.moveItem(indexA, indexB);
+      this.setlistManager?.goTo(indexB); // deixa o ritmo movido selecionado
+      this.renderSetlist(container);
+    };
+    const rowA = container.querySelector(`.sle-setlist-item[data-index="${indexA}"]`) as HTMLElement | null;
+    const rowB = container.querySelector(`.sle-setlist-item[data-index="${indexB}"]`) as HTMLElement | null;
+    if (!rowA || !rowB) { commit(); return; }
+    const dist = rowB.getBoundingClientRect().top - rowA.getBoundingClientRect().top;
+    const ease = 'transform 0.34s cubic-bezier(0.22, 0.61, 0.36, 1)'; // suave
+    rowA.style.transition = rowB.style.transition = ease;
+    rowA.style.zIndex = '5';
+    rowB.style.zIndex = '4';
+    void rowA.offsetHeight; // reflow antes do transform
+    rowA.style.transform = `translateY(${dist}px)`;
+    rowB.style.transform = `translateY(${-dist}px)`;
+    let done = false;
+    const finish = () => { if (done) return; done = true; commit(); };
+    rowA.addEventListener('transitionend', finish, { once: true });
+    window.setTimeout(finish, 400); // fallback caso o transitionend não dispare
+  }
+
   private renderSetlist(container: HTMLElement): void {
     container.innerHTML = '';
     const items = this.setlistManager?.getItems() || [];
@@ -785,8 +810,7 @@ export class SetlistEditorUI {
       upBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (isFirst) return;
-        this.setlistManager?.moveItem(index, index - 1);
-        this.renderSetlist(container);
+        this.animateSwapAndRender(container, index, index - 1);
       });
       actions.appendChild(upBtn);
 
@@ -799,8 +823,7 @@ export class SetlistEditorUI {
       downBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (isLast) return;
-        this.setlistManager?.moveItem(index, index + 1);
-        this.renderSetlist(container);
+        this.animateSwapAndRender(container, index, index + 1);
       });
       actions.appendChild(downBtn);
 

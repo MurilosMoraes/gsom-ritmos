@@ -53,6 +53,18 @@ export class AudioManager {
   // segura os picos, então dá pra subir o volume percebido sem clipar.
   private masterBoost: GainNode;
 
+  // ─── EQ 5 bandas + Reverb (cadeia master) ─────────────────────────────
+  // Entrada onde TODOS os samples conectam → EQ em série → (dry + reverb) →
+  // boost → compressor → saída. Ganhos ajustáveis pela UI (configurações).
+  private masterInput!: GainNode;
+  private eqBands: BiquadFilterNode[] = [];
+  private reverbConvolver!: ConvolverNode;
+  private reverbWet!: GainNode;
+  private reverbFilter!: BiquadFilterNode; // define QUAL frequência o reverb ataca mais
+  readonly eqFrequencies = [80, 250, 1000, 3500, 10000];
+  private eqOut!: AudioNode;
+  private reverbConnected = false;
+
   // Rastrear source ativo por canal para cortar sample anterior sem estralo
   private activeSources = new Map<number, ActiveSource>();
 
@@ -74,8 +86,8 @@ export class AudioManager {
     // VOLUME BOOST (mobile): speaker de celular é fraco e o pessoal acha
     // o app baixo. Ganho extra ANTES do compressor = loudness sem clipar.
     // Override manual via localStorage 'gdrums_volume_boost' (1.0–2.5)
-    // pra calibrar em campo sem novo deploy. Desktop fica em 1.0.
-    let boost = isMobile ? 1.6 : 1.0;
+    // pra calibrar em campo sem novo deploy.
+    let boost = isMobile ? 1.8 : 1.5;
     try {
       const saved = parseFloat(localStorage.getItem('gdrums_volume_boost') || '');
       if (!isNaN(saved)) boost = Math.max(1.0, Math.min(2.5, saved));
@@ -112,7 +124,88 @@ export class AudioManager {
     } else {
       this.masterBoost.connect(this.masterCompressor);
     }
+
+    // Cadeia de efeitos master: EQ 5 bandas + reverb (feeding o masterBoost).
+    this.buildMasterFx(audioContext);
   }
+
+  private buildMasterFx(ctx: AudioContext): void {
+    this.masterInput = ctx.createGain();
+    // EQ 5 bandas em série (graves shelf, 3 peaking, agudos shelf).
+    const types: BiquadFilterType[] = ['lowshelf', 'peaking', 'peaking', 'peaking', 'highshelf'];
+    let prev: AudioNode = this.masterInput;
+    this.eqFrequencies.forEach((freq, i) => {
+      const f = ctx.createBiquadFilter();
+      f.type = types[i];
+      f.frequency.value = freq;
+      if (types[i] === 'peaking') f.Q.value = 1;
+      f.gain.value = 0; // neutro
+      prev.connect(f);
+      prev = f;
+      this.eqBands.push(f);
+    });
+    this.eqOut = prev;
+    this.eqOut.connect(this.masterBoost); // caminho DRY (sempre ligado)
+
+    // Reverb (wet paralelo). O convolver só é conectado quando reverb > 0,
+    // pra NÃO gastar CPU quando estiver desligado.
+    // Filtro que define QUAL FREQUÊNCIA o reverb ataca mais (peaking no send):
+    // realça a região escolhida antes de entrar no convolver.
+    this.reverbFilter = ctx.createBiquadFilter();
+    this.reverbFilter.type = 'peaking';
+    this.reverbFilter.frequency.value = 900;   // médios — pega caixa e tons
+    this.reverbFilter.Q.value = 0.7;           // banda mais larga
+    this.reverbFilter.gain.value = 8;
+    this.reverbConvolver = ctx.createConvolver();
+    this.reverbConvolver.buffer = this.makeReverbIR(ctx, 1.0, 2.2); // rastro curto-médio (~1s)
+    this.reverbWet = ctx.createGain();
+    this.reverbWet.gain.value = 0;
+    this.reverbFilter.connect(this.reverbConvolver);
+    this.reverbConvolver.connect(this.reverbWet);
+    this.reverbWet.connect(this.masterBoost);
+  }
+
+  /** Impulse response sintética (ruído decaindo) pro reverb — leve e curta. */
+  private makeReverbIR(ctx: AudioContext, seconds: number, decay: number): AudioBuffer {
+    const rate = ctx.sampleRate;
+    const len = Math.max(1, Math.floor(rate * seconds));
+    const ir = ctx.createBuffer(2, len, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = ir.getChannelData(ch);
+      for (let i = 0; i < len; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+      }
+    }
+    return ir;
+  }
+
+  /** Ganho de uma banda do EQ, em dB (-15 a +15). */
+  setEqGain(index: number, db: number): void {
+    const b = this.eqBands[index];
+    if (b) b.gain.setTargetAtTime(Math.max(-15, Math.min(15, db)), this.audioContext.currentTime, 0.02);
+  }
+
+  /** Quantidade de reverb (0 a 1). Em 0, o convolver é desconectado (0 CPU). */
+  setReverbAmount(amount: number): void {
+    if (!this.reverbWet || !this.reverbConvolver) return;
+    const a = Math.max(0, Math.min(1, amount));
+    this.reverbWet.gain.setTargetAtTime(a * 0.55, this.audioContext.currentTime, 0.03);
+    if (a > 0.001 && !this.reverbConnected) {
+      try { this.eqOut.connect(this.reverbFilter); this.reverbConnected = true; } catch {}
+    } else if (a <= 0.001 && this.reverbConnected) {
+      try { this.eqOut.disconnect(this.reverbFilter); } catch {}
+      this.reverbConnected = false;
+    }
+  }
+
+  /** Frequência (Hz) que o reverb ataca mais. */
+  setReverbFrequency(hz: number): void {
+    if (this.reverbFilter) {
+      this.reverbFilter.frequency.setTargetAtTime(Math.max(100, Math.min(8000, hz)), this.audioContext.currentTime, 0.03);
+    }
+  }
+
+  getEqBandCount(): number { return this.eqBands.length; }
 
   /**
    * Cancelamento robusto de rampa em curso num AudioParam.
@@ -202,7 +295,7 @@ export class AudioManager {
     }
 
     source.connect(gainNode);
-    gainNode.connect(this.masterBoost);
+    gainNode.connect(this.masterInput);
     source.start(safeStart);
 
     // Rastrear + safety cleanup (Chromium Android às vezes não dispara onended)
@@ -268,7 +361,7 @@ export class AudioManager {
     }
 
     source.connect(gainNode);
-    gainNode.connect(this.masterBoost);
+    gainNode.connect(this.masterInput);
     source.start(safeStart);
 
     const endTime = safeStart + duration;

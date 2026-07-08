@@ -244,6 +244,33 @@ export class StateManager {
     this.notify('variations');
   }
 
+  // ─── Variações desativadas manualmente (long-press) — só main/fill ───
+  // Uma variação desativada fica "sem cor" na UI e é PULADA na rotação
+  // (pedal / troca automática). Persistido por ritmo pelo main.ts.
+  private disabledVariations: { main: Set<number>; fill: Set<number> } = { main: new Set(), fill: new Set() };
+
+  isVariationDisabled(pattern: 'main' | 'fill', index: number): boolean {
+    return this.disabledVariations[pattern]?.has(index) ?? false;
+  }
+
+  /** Alterna o estado de desativada e retorna o novo estado (true = desativada). */
+  toggleVariationDisabled(pattern: 'main' | 'fill', index: number): boolean {
+    const set = this.disabledVariations[pattern];
+    if (set.has(index)) set.delete(index); else set.add(index);
+    this.notify('variations');
+    return set.has(index);
+  }
+
+  setDisabledVariations(main: number[], fill: number[]): void {
+    this.disabledVariations.main = new Set(main);
+    this.disabledVariations.fill = new Set(fill);
+    this.notify('variations');
+  }
+
+  getDisabledVariations(): { main: number[]; fill: number[] } {
+    return { main: [...this.disabledVariations.main], fill: [...this.disabledVariations.fill] };
+  }
+
   saveVariation(pattern: PatternType, index: number): void {
     const patternClone = this.state.patterns[pattern].map(row => [...row]);
     const volumesClone = this.state.volumes[pattern].map(row => [...row]);
