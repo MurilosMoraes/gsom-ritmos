@@ -2756,7 +2756,17 @@ ctaUrl: '/plans?renew=true',
 
         if (cellType === 'main') {
           if (this.stateManager.isVariationDisabled('main', variationIndex)) return; // desativada: não seleciona
+          if (this.resuming) return; // re-entrada da pausa em andamento: ignora clique
           const currentVariation = this.stateManager.getCurrentVariation('main');
+
+          if (this.isPaused) {
+            // Durante a PAUSA: clicar num ritmo seleciona ele e RETOMA nele,
+            // cravado no tempo — SEM refazer o intro. A contagem da pausa já
+            // faz o papel de metrônomo. Espelha virada/final durante a pausa.
+            this.patternEngine.activateRhythm(variationIndex);
+            this.resumeFromPause();
+            return;
+          }
 
           if (!this.stateManager.isPlaying()) {
             // Verificar se a variação clicada tem conteúdo
