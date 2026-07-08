@@ -62,6 +62,16 @@ export interface IAudioEngine {
    *  resync (comportamento antigo, sem risco). */
   cancelScheduledAfter?(time: number): void;
 
+  // ─── EQ + Reverb (efeitos master) ───────────────────────────────────────
+  /** Ganho de uma banda do equalizador, em dB. No-op em engines sem suporte. */
+  setEqGain(index: number, db: number): void;
+
+  /** Quantidade de reverb (0 a 1). No-op em engines sem suporte. */
+  setReverbAmount(amount: number): void;
+
+  /** Frequência (Hz) que o reverb ataca mais. No-op em engines sem suporte. */
+  setReverbFrequency(hz: number): void;
+
   // ─── Identificação ─────────────────────────────────────────────────────
   /** 'web' | 'native-ios' | 'native-android' — pra debug/telemetria. */
   readonly kind: AudioEngineKind;

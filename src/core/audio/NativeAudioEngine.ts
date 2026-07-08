@@ -324,4 +324,9 @@ export class NativeAudioEngine implements IAudioEngine {
   resetAnchor(): void {
     this.anchored = false;
   }
+
+  // EQ/Reverb ainda não suportados no engine nativo — no-op.
+  setEqGain(_index: number, _db: number): void { /* no-op */ }
+  setReverbAmount(_amount: number): void { /* no-op */ }
+  setReverbFrequency(_hz: number): void { /* no-op */ }
 }
