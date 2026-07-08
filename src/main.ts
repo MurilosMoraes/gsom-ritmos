@@ -2074,22 +2074,30 @@ ctaUrl: '/plans?renew=true',
       playStopBtn.addEventListener('click', () => { HapticsService.medium(); this.togglePlayStop(); });
     }
 
+    // Volume da contagem (chimbal da pausa) — long-press 3s no botão abre o slider.
+    const savedCountVol = parseFloat(localStorage.getItem('gdrums-count-volume') || '');
+    if (!isNaN(savedCountVol)) this.countVolume = Math.max(0, Math.min(1, savedCountVol));
+
     // Pause instantâneo (admin) — pra músico em barzinho
     const pauseInstantBtn = document.getElementById('pauseInstant');
     if (pauseInstantBtn) {
       pauseInstantBtn.addEventListener('click', () => {
+        if (this.longPressFired) { this.longPressFired = false; return; }
         HapticsService.medium();
         this.togglePauseInstant();
       });
+      this.setupCountVolumeLongPress(pauseInstantBtn);
     }
 
     // Pause instantâneo (user) — célula no performance grid
     const pauseBtnUser = document.getElementById('pauseBtnUser');
     if (pauseBtnUser) {
       pauseBtnUser.addEventListener('click', () => {
+        if (this.longPressFired) { this.longPressFired = false; return; }
         HapticsService.medium();
         this.togglePauseInstant();
       });
+      this.setupCountVolumeLongPress(pauseBtnUser);
     }
 
     const playStopUserBtn = document.getElementById('playStopUser');
@@ -2676,7 +2684,7 @@ ctaUrl: '/plans?renew=true',
   private handlePedalLeft(): void {
     if (!this.stateManager.isPlaying()) {
       if (!this.hasRhythmLoaded()) return;
-      this.patternEngine.activateRhythm(0);
+      this.patternEngine.activateRhythm(this.firstAvailableMainVariation()); // não iniciar em desativada
       if (this.useIntro) {
         this.patternEngine.playIntroAndStart();
       } else {
@@ -2721,15 +2729,21 @@ ctaUrl: '/plans?renew=true',
     }
   }
 
+  private longPressFired = false;
+
   private setupPerformanceGrid(): void {
     document.querySelectorAll('.grid-cell').forEach((cell) => {
+      this.setupLongPressDisable(cell as HTMLElement); // segurar 3s desativa (só ritmo/virada)
       cell.addEventListener('click', (e) => {
+        // Long-press acabou de (des)ativar a variação: ignora o click seguinte.
+        if (this.longPressFired) { this.longPressFired = false; return; }
         HapticsService.medium();
         const element = e.currentTarget as HTMLElement;
         const cellType = element.getAttribute('data-type');
         const variationIndex = parseInt(element.getAttribute('data-variation') || '0');
 
         if (cellType === 'main') {
+          if (this.stateManager.isVariationDisabled('main', variationIndex)) return; // desativada: não seleciona
           const currentVariation = this.stateManager.getCurrentVariation('main');
 
           if (!this.stateManager.isPlaying()) {
@@ -2761,6 +2775,7 @@ ctaUrl: '/plans?renew=true',
             this.changeMainRhythm(variationIndex);
           }
         } else if (cellType === 'fill') {
+          if (this.stateManager.isVariationDisabled('fill', variationIndex)) return; // desativada: não seleciona
           if (this.stateManager.isPlaying()) {
             this.patternEngine.activateFillWithTiming(variationIndex);
           } else if (this.isPaused) {
@@ -2782,6 +2797,88 @@ ctaUrl: '/plans?renew=true',
         }
       });
     });
+  }
+
+  // ─── Desativar variação por long-press (3s) — ritmo/virada 1-3 ──────
+  // Segurar 3s numa célula de ritmo ou virada alterna "desativada": fica
+  // sem cor e é PULADA na rotação (pedal/auto). Persistido por ritmo.
+  private setupLongPressDisable(cell: HTMLElement): void {
+    const type = cell.getAttribute('data-type');
+    if (type !== 'main' && type !== 'fill') return; // só ritmo e virada
+    const index = parseInt(cell.getAttribute('data-variation') || '0');
+    let timer: number | null = null;
+    const start = () => {
+      if (timer !== null) return;
+      timer = window.setTimeout(() => {
+        timer = null;
+        this.longPressFired = true; // suprime o click que vem ao soltar
+        const nowDisabled = this.stateManager.toggleVariationDisabled(type as 'main' | 'fill', index);
+        this.persistDisabledVariations();
+        this.uiManager.updatePerformanceGrid();
+        HapticsService.heavy();
+        this.uiManager.showAlert(nowDisabled ? 'Variação desativada' : 'Variação reativada');
+      }, 3000);
+    };
+    const cancel = () => { if (timer !== null) { clearTimeout(timer); timer = null; } };
+    cell.addEventListener('mousedown', start);
+    cell.addEventListener('touchstart', start, { passive: true });
+    cell.addEventListener('mouseup', cancel);
+    cell.addEventListener('mouseleave', cancel);
+    cell.addEventListener('touchend', cancel);
+    cell.addEventListener('touchcancel', cancel);
+  }
+
+  private readonly disabledStorageKey = 'gdrums-disabled-variations';
+
+  // Desativar variações é uma ALTERAÇÃO do ritmo SALVO — não do ritmo base.
+  // Por isso só persiste pra ritmos do usuário (u:<id>). Em ritmo do catálogo
+  // é só da sessão (não altera o base ao recarregar); ao "Salvar como meu
+  // ritmo" a desativação atual viaja pro ritmo salvo (persist chamado no save).
+  private persistDisabledVariations(): void {
+    if (!this.currentUserRhythmId) return; // ritmo base: não persiste
+    try {
+      const all = JSON.parse(localStorage.getItem(this.disabledStorageKey) || '{}');
+      const d = this.stateManager.getDisabledVariations();
+      const key = `u:${this.currentUserRhythmId}`;
+      if (d.main.length === 0 && d.fill.length === 0) delete all[key];
+      else all[key] = d;
+      localStorage.setItem(this.disabledStorageKey, JSON.stringify(all));
+    } catch { /* noop */ }
+  }
+
+  /** Se a variação de ritmo ATUAL está desativada, troca pra 1ª disponível
+   *  (com conteúdo e não desativada). Chamado antes de iniciar a reprodução
+   *  pra não começar tocando uma variação desativada. */
+  /** 1ª variação de ritmo disponível (com conteúdo e não desativada). Fallback 0. */
+  private firstAvailableMainVariation(): number {
+    const vars = this.stateManager.getState().variations.main;
+    for (let i = 0; i < vars.length; i++) {
+      const hasContent = vars[i]?.pattern?.some(r => r.some(s => s === true));
+      if (hasContent && !this.stateManager.isVariationDisabled('main', i)) return i;
+    }
+    return 0;
+  }
+
+  private ensurePlayableMainVariation(): void {
+    const cur = this.stateManager.getCurrentVariation('main');
+    if (!this.stateManager.isVariationDisabled('main', cur)) return;
+    this.patternEngine.activateRhythm(this.firstAvailableMainVariation());
+  }
+
+  /** Carrega o set de desativadas: ritmo do usuário → o que foi salvo; ritmo
+   *  base (catálogo) → limpo (não retém alteração). Chamado ao trocar de ritmo. */
+  private loadDisabledVariations(): void {
+    if (!this.currentUserRhythmId) { this.stateManager.setDisabledVariations([], []); return; }
+    try {
+      const all = JSON.parse(localStorage.getItem(this.disabledStorageKey) || '{}');
+      const d = all[`u:${this.currentUserRhythmId}`];
+      this.stateManager.setDisabledVariations(
+        Array.isArray(d?.main) ? d.main : [],
+        Array.isArray(d?.fill) ? d.fill : []
+      );
+    } catch {
+      this.stateManager.setDisabledVariations([], []);
+    }
   }
 
   // ─── Toggles Intro/Viradas/Final (persistidos) ───────────────────
@@ -2882,7 +2979,7 @@ ctaUrl: '/plans?renew=true',
     const state = this.stateManager.getState();
     const available = state.variations.main
       .map((v, index) => ({ index, hasContent: v.pattern.some(row => row.some(s => s === true)) }))
-      .filter(r => r.hasContent);
+      .filter(r => r.hasContent && !this.stateManager.isVariationDisabled('main', r.index));
 
     if (available.length <= 1) {
       // Só 1 ritmo (ou nenhum) — fallback pro fill rotativo se VIRADAS ON,
@@ -3095,6 +3192,19 @@ ctaUrl: '/plans?renew=true',
   }
 
   private setupModeToggle(): void {
+    // Manual do Usuário
+    const userManualBtn = document.getElementById('userManualBtn');
+    if (userManualBtn) {
+      userManualBtn.addEventListener('click', () => this.showUserManual());
+    }
+
+    // Equalizador e Reverb
+    const eqBtn = document.getElementById('eqBtn');
+    if (eqBtn) {
+      eqBtn.addEventListener('click', () => this.openEqPanel());
+    }
+    this.applyAudioFxFromStorage(); // aplica EQ/reverb salvos ao iniciar
+
     // Info pedal
     const pedalInfoBtn = document.getElementById('pedalInfoBtn');
     if (pedalInfoBtn) {
@@ -3864,6 +3974,295 @@ ctaUrl: '/plans?renew=true',
     document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
   }
 
+  private showUserManual(): void {
+    const dd = document.getElementById('fabDropdown');
+    if (dd) dd.style.display = 'none';
+    document.querySelectorAll('.manual-overlay').forEach(el => el.remove());
+
+    const overlay = document.createElement('div');
+    overlay.className = 'manual-overlay';
+    const iconPause = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+    const iconSave = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>';
+    const iconUp = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
+    const iconDown = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+    const toggle = (label: string) => `<span class="mb-toggle"><span class="mb-dot"></span>${label}</span>`;
+    const pedal = (n: string) => `<span class="mb-pedal">${n}</span>`;
+
+    overlay.innerHTML = `
+      <div class="manual-card">
+        <div class="manual-head">
+          <div>
+            <div class="manual-title">Manual do Usuário</div>
+            <div class="manual-sub">Guia completo dos recursos do GDrums</div>
+          </div>
+          <button class="manual-close" id="manualClose" aria-label="Fechar">&#10005;</button>
+        </div>
+        <div class="manual-body">
+
+          <div class="m-sec">
+            <div class="m-sec-title">Ritmos e variações</div>
+            <div class="m-row">
+              <div class="m-visual m-visual-trio"><span class="mb-pad cyan">1</span><span class="mb-pad cyan">2</span><span class="mb-pad cyan">3</span></div>
+              <div class="m-text"><div class="m-name">Variações de ritmo</div><div class="m-desc">Cada ritmo tem até 3 variações. Toque em uma pra trocar na hora (com virada, se o controle VIRADAS estiver ligado).</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual m-visual-trio"><span class="mb-pad purple">1</span><span class="mb-pad purple">2</span><span class="mb-pad purple">3</span></div>
+              <div class="m-text"><div class="m-name">Viradas</div><div class="m-desc">Toque para fazer a virada e voltar ao ritmo. Use para dar dinâmica entre as partes da música.</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual m-visual-trio"><span class="mb-pad orange wide">FINAL</span></div>
+              <div class="m-text"><div class="m-name">Final</div><div class="m-desc">Toca a finalização e encerra a música.</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual m-visual-trio"><span class="mb-pad cyan hold">1</span></div>
+              <div class="m-text"><div class="m-name">Desativar variação</div><div class="m-desc">Segure 3 segundos em uma variação de ritmo ou virada para desativá-la — ela fica sem cor, deixa de tocar e é pulada na troca e no pedal. Segure 3 segundos novamente para reativar. A desativação é salva junto do seu ritmo salvo.</div></div>
+            </div>
+          </div>
+
+          <div class="m-sec">
+            <div class="m-sec-title">Controles</div>
+            <div class="m-row">
+              <div class="m-visual">${toggle('INTRO')}</div>
+              <div class="m-text"><div class="m-name">Intro</div><div class="m-desc">Liga ou desliga a introdução (contagem tocada antes de iniciar).</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual">${toggle('VIRADAS')}</div>
+              <div class="m-text"><div class="m-name">Viradas na troca</div><div class="m-desc">Ligado: ao trocar de ritmo, entra uma virada antes. Desligado: troca direto.</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual">${toggle('FINAL')}</div>
+              <div class="m-text"><div class="m-name">Finalização</div><div class="m-desc">Ligado: ao parar, toca a finalização. Desligado: para imediatamente.</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual">${toggle('AUTO')}</div>
+              <div class="m-text"><div class="m-name">Auto-avançar repertório</div><div class="m-desc">Ao finalizar uma música, carrega automaticamente a próxima do repertório, pronta para você dar play.</div></div>
+            </div>
+          </div>
+
+          <div class="m-sec">
+            <div class="m-sec-title">Pausa</div>
+            <div class="m-row">
+              <div class="m-visual"><span class="mb mb-pause">${iconPause}</span></div>
+              <div class="m-text"><div class="m-name">Pausar e continuar</div><div class="m-desc">Ao pausar, o app marca o tempo com o chimbal (uma batida por tempo) pra você não se perder. Aperte de novo para continuar, cravado no tempo.</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual"><span class="mb mb-pause hold">${iconPause}</span></div>
+              <div class="m-text"><div class="m-name">Volume da marcação</div><div class="m-desc">Segure 3 segundos no botão de pausa para abrir o controle de volume do chimbal da marcação.</div></div>
+            </div>
+          </div>
+
+          <div class="m-sec">
+            <div class="m-sec-title">Repertório</div>
+            <div class="m-row">
+              <div class="m-visual"><span class="mb-pad cyan wide">30</span></div>
+              <div class="m-text"><div class="m-name">Até 30 repertórios</div><div class="m-desc">Monte até 30 repertórios com suas músicas na ordem do show.</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual"><span class="mb mb-save">${iconSave}</span></div>
+              <div class="m-text"><div class="m-name">Salvar do seu jeito</div><div class="m-desc">Salve o ritmo com o nome e o BPM que você quiser.</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual"><span class="mb-arrow">${iconUp}</span><span class="mb-arrow">${iconDown}</span></div>
+              <div class="m-text"><div class="m-name">Reordenar as músicas</div><div class="m-desc">Use os botões de subir e descer, ao lado de cada música, para alterar a ordem dentro do repertório.</div></div>
+            </div>
+          </div>
+
+          <div class="m-sec">
+            <div class="m-sec-title">Pedal Bluetooth — 2 botões</div>
+            <div class="m-row">
+              <div class="m-visual">${pedal('1')}</div>
+              <div class="m-text"><div class="m-name">Botão 1 — esquerdo</div>
+                <ul class="m-list">
+                  <li><b>Parado:</b> inicia a música</li>
+                  <li><b>Um toque:</b> faz virada e vai para o próximo ritmo</li>
+                  <li><b>Dois toques rápidos:</b> faz virada e volta para o ritmo anterior</li>
+                </ul>
+              </div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual">${pedal('2')}</div>
+              <div class="m-text"><div class="m-name">Botão 2 — direito</div>
+                <ul class="m-list">
+                  <li><b>Parado:</b> toca prato</li>
+                  <li><b>Um toque:</b> faz uma virada</li>
+                  <li><b>Dois toques rápidos:</b> finaliza a música</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="m-sec">
+            <div class="m-sec-title">Pedal Bluetooth — 4 botões</div>
+            <div class="m-row">
+              <div class="m-visual">${pedal('1')}</div>
+              <div class="m-text"><div class="m-name">Botão 1 — esquerdo</div>
+                <ul class="m-list">
+                  <li><b>Parado:</b> inicia a música</li>
+                  <li><b>Um toque:</b> faz virada e vai para o próximo ritmo</li>
+                  <li><b>Dois toques rápidos:</b> faz virada e volta para o ritmo anterior</li>
+                </ul>
+              </div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual">${pedal('2')}</div>
+              <div class="m-text"><div class="m-name">Botão 2 — direito</div>
+                <ul class="m-list">
+                  <li><b>Parado:</b> toca prato</li>
+                  <li><b>Um toque:</b> faz uma virada</li>
+                </ul>
+              </div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual">${pedal('3')}</div>
+              <div class="m-text"><div class="m-name">Botão 3</div>
+                <ul class="m-list">
+                  <li><b>Um toque:</b> pausar e continuar</li>
+                </ul>
+              </div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual">${pedal('4')}</div>
+              <div class="m-text"><div class="m-name">Botão 4</div>
+                <ul class="m-list">
+                  <li><b>Um toque:</b> finaliza a música</li>
+                  <li><b>Durante a pausa:</b> finaliza também</li>
+                </ul>
+              </div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual"><span class="mb-pad cyan wide">MAPEAR</span></div>
+              <div class="m-text"><div class="m-name">Mapear pedal</div><div class="m-desc">Se o pedal não responder, use "Mapear pedal" no menu e pise em cada botão para o app aprender as teclas que ele envia.</div></div>
+            </div>
+          </div>
+
+          <div class="m-sec">
+            <div class="m-sec-title">Volume, Tempo e Modo Show</div>
+            <div class="m-row">
+              <div class="m-visual"><span class="mb-pad cyan wide">VOL</span></div>
+              <div class="m-text"><div class="m-name">Volume geral</div><div class="m-desc">Ajuste o volume geral no controle deslizante da tela.</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual"><span class="mb-bpm">&minus;</span><span class="mb-bpm">+</span></div>
+              <div class="m-text"><div class="m-name">Tempo (BPM)</div><div class="m-desc">Use os botões menos e mais do BPM para deixar a música mais lenta ou mais rápida.</div></div>
+            </div>
+            <div class="m-row">
+              <div class="m-visual"><span class="mb-pad orange wide">SHOW</span></div>
+              <div class="m-text"><div class="m-name">Modo Show</div><div class="m-desc">Deixa a tela cheia e sempre ligada, para tocar sem a tela apagar no meio do show.</div></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    const close = () => { overlay.remove(); (window as any).__refocusPedal?.(); };
+    overlay.querySelector('#manualClose')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+  }
+
+  /** Aplica EQ/reverb salvos no localStorage ao iniciar. */
+  private applyAudioFxFromStorage(): void {
+    try {
+      const eq = JSON.parse(localStorage.getItem('gdrums-eq') || 'null');
+      if (Array.isArray(eq)) eq.forEach((db: any, i: number) => this.audioManager.setEqGain(i, Number(db) || 0));
+    } catch { /* noop */ }
+    try {
+      const rv = parseFloat(localStorage.getItem('gdrums-reverb') || '');
+      if (!isNaN(rv)) this.audioManager.setReverbAmount(rv);
+    } catch { /* noop */ }
+  }
+
+  /** Painel de Equalizador (5 bandas) + Reverb, nas cores do app. */
+  private openEqPanel(): void {
+    const dd = document.getElementById('fabDropdown');
+    if (dd) dd.style.display = 'none';
+    document.querySelectorAll('.eq-overlay').forEach(el => el.remove());
+
+    const labels = ['Graves', 'Médio-grave', 'Médios', 'Médio-agudo', 'Agudos'];
+    const freqs = ['80 Hz', '250 Hz', '1 kHz', '3.5 kHz', '10 kHz'];
+    let eq: number[] = [0, 0, 0, 0, 0];
+    try { const s = JSON.parse(localStorage.getItem('gdrums-eq') || 'null'); if (Array.isArray(s)) eq = s.map((x: any) => Number(x) || 0); } catch { /* noop */ }
+    let reverb = 0;
+    try { const r = parseFloat(localStorage.getItem('gdrums-reverb') || ''); if (!isNaN(r)) reverb = r; } catch { /* noop */ }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'eq-overlay';
+    const bandsHtml = labels.map((lab, i) => `
+      <div class="eq-band">
+        <div class="eq-band-head"><span class="eq-band-name">${lab}</span><span class="eq-band-freq">${freqs[i]}</span></div>
+        <div class="eq-band-row">
+          <input type="range" min="-12" max="12" step="1" value="${eq[i] ?? 0}" data-eq="${i}" class="eq-slider">
+          <span class="eq-val" data-eqval="${i}">${(eq[i] ?? 0) > 0 ? '+' : ''}${eq[i] ?? 0} dB</span>
+        </div>
+      </div>`).join('');
+    overlay.innerHTML = `
+      <div class="eq-card">
+        <div class="eq-head">
+          <div class="eq-title">Equalizador e Reverb</div>
+          <button class="eq-close" id="eqClose" aria-label="Fechar">&#10005;</button>
+        </div>
+        <div class="eq-body">
+          ${bandsHtml}
+          <div class="eq-band eq-reverb">
+            <div class="eq-band-head"><span class="eq-band-name">Reverb</span><span class="eq-band-freq">suaviza o som</span></div>
+            <div class="eq-band-row">
+              <input type="range" min="0" max="100" step="1" value="${Math.round(reverb * 100)}" id="eqReverb" class="eq-slider">
+              <span class="eq-val" id="eqReverbVal">${Math.round(reverb * 100)}%</span>
+            </div>
+          </div>
+        </div>
+        <div class="eq-actions">
+          <button class="eq-reset" id="eqReset">Resetar</button>
+          <button class="eq-done" id="eqDone">Pronto</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    overlay.querySelectorAll('.eq-slider[data-eq]').forEach(el => {
+      el.addEventListener('input', () => {
+        const i = parseInt((el as HTMLElement).getAttribute('data-eq') || '0');
+        const db = parseInt((el as HTMLInputElement).value) || 0;
+        eq[i] = db;
+        this.audioManager.setEqGain(i, db);
+        const v = overlay.querySelector(`[data-eqval="${i}"]`);
+        if (v) v.textContent = `${db > 0 ? '+' : ''}${db} dB`;
+        localStorage.setItem('gdrums-eq', JSON.stringify(eq));
+      });
+    });
+
+    const rvSlider = overlay.querySelector('#eqReverb') as HTMLInputElement;
+    const rvVal = overlay.querySelector('#eqReverbVal') as HTMLElement;
+    rvSlider?.addEventListener('input', () => {
+      const pct = parseInt(rvSlider.value) || 0;
+      reverb = pct / 100;
+      this.audioManager.setReverbAmount(reverb);
+      localStorage.setItem('gdrums-reverb', String(reverb));
+      if (rvVal) rvVal.textContent = `${pct}%`;
+    });
+
+    overlay.querySelector('#eqReset')?.addEventListener('click', () => {
+      eq = [0, 0, 0, 0, 0]; reverb = 0;
+      eq.forEach((_, i) => this.audioManager.setEqGain(i, 0));
+      this.audioManager.setReverbAmount(0);
+      localStorage.setItem('gdrums-eq', JSON.stringify(eq));
+      localStorage.setItem('gdrums-reverb', '0');
+      overlay.querySelectorAll('.eq-slider[data-eq]').forEach((el, i) => {
+        (el as HTMLInputElement).value = '0';
+        const v = overlay.querySelector(`[data-eqval="${i}"]`);
+        if (v) v.textContent = '0 dB';
+      });
+      if (rvSlider) rvSlider.value = '0';
+      if (rvVal) rvVal.textContent = '0%';
+    });
+
+    const close = () => { overlay.remove(); (window as any).__refocusPedal?.(); };
+    overlay.querySelector('#eqClose')?.addEventListener('click', close);
+    overlay.querySelector('#eqDone')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
   private showPedalMapper(): void {
     const keyLabels: Record<string, string> = {
       // e.code values
@@ -4505,6 +4904,7 @@ ctaUrl: '/plans?renew=true',
   private lastStepIndex = 0;           // índice do último step tocado
   private countFlashTimers: number[] = []; // timers do pisca laranja do botão
   private pendingResumeAction: { type: 'fill' | 'end'; variationIndex: number } | null = null;
+  private countVolume = 0.6; // volume do chimbal da contagem (0-1, default 60%)
 
   private pauseInstant(): void {
     if (!this.stateManager.isPlaying()) return;
@@ -4618,8 +5018,7 @@ ctaUrl: '/plans?renew=true',
   private runCountLoop(buf: AudioBuffer | null): void {
     if (!this.countActive || !this.isPaused) return;
     // Acento: tempos ÍMPARES (1,3,5…) fortes; PARES (2,4,6…) mais fracos.
-    const STRONG = 0.25;
-    const WEAK = 0.15;
+    // Volume base = this.countVolume (ajustável no long-press do botão de pausa).
     // Grade REAL do ritmo. stepsPerBeat = floor(totalSteps/beatsPerBar) —
     // MESMA definição do app (updateBeatMarker). Antes eu assumia 2 steps
     // por batida, o que deixava a contagem 2x rápida em ritmos de 16 steps.
@@ -4654,7 +5053,8 @@ ctaUrl: '/plans?renew=true',
         const beatIdx = (beatIdxStart + nextHit) % beats;  // alinhado ao downbeat
         const strong = (beatIdx % 2 === 0);                // beats 1,3,5 fortes
         if (ht >= now - 0.005) {
-          this.audioManager.playSound(buf, ht, masterVol * (strong ? STRONG : WEAK));
+          const gain = this.countVolume * (strong ? 1 : 0.6); // fraco = 60% do forte
+          this.audioManager.playSound(buf, ht, masterVol * gain);
           this.schedulePauseFlash(ht, now, strong);
         }
         nextHit++;
@@ -4687,6 +5087,60 @@ ctaUrl: '/plans?renew=true',
     this.countFlashTimers = [];
     const cell = document.getElementById('pauseBtnUser');
     if (cell) cell.classList.remove('count-flash', 'count-flash-strong');
+  }
+
+  // ─── Volume da contagem (chimbal da pausa) — slider por long-press 3s ──
+  private setupCountVolumeLongPress(btn: HTMLElement): void {
+    let timer: number | null = null;
+    const start = () => {
+      if (timer !== null) return;
+      timer = window.setTimeout(() => {
+        timer = null;
+        this.longPressFired = true; // suprime o click (não pausa/retoma)
+        HapticsService.heavy();
+        this.openCountVolumePopup();
+      }, 3000);
+    };
+    const cancel = () => { if (timer !== null) { clearTimeout(timer); timer = null; } };
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('touchstart', start, { passive: true });
+    btn.addEventListener('mouseup', cancel);
+    btn.addEventListener('mouseleave', cancel);
+    btn.addEventListener('touchend', cancel);
+    btn.addEventListener('touchcancel', cancel);
+  }
+
+  /** Popup (cores do app) pra ajustar o volume do chimbal da contagem.
+   *  Se a contagem estiver tocando, o preview é ao vivo (runCountLoop lê
+   *  this.countVolume a cada batida). */
+  private openCountVolumePopup(): void {
+    document.querySelectorAll('.count-vol-overlay').forEach(el => el.remove());
+    const pct = Math.round(this.countVolume * 100);
+    const overlay = document.createElement('div');
+    overlay.className = 'count-vol-overlay';
+    overlay.innerHTML = `
+      <div class="count-vol-card">
+        <div class="count-vol-title">Volume da contagem</div>
+        <div class="count-vol-sub">Chimbal usado na pausa</div>
+        <div class="count-vol-row">
+          <input type="range" min="0" max="100" step="1" value="${pct}" id="countVolSlider" class="count-vol-slider">
+          <span class="count-vol-value" id="countVolValue">${pct}%</span>
+        </div>
+        <button class="count-vol-done" id="countVolDone">Pronto</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const slider = overlay.querySelector('#countVolSlider') as HTMLInputElement;
+    const valueEl = overlay.querySelector('#countVolValue') as HTMLElement;
+    slider?.addEventListener('input', () => {
+      const v = parseInt(slider.value) || 0;
+      valueEl.textContent = `${v}%`;
+      this.countVolume = v / 100;
+      localStorage.setItem('gdrums-count-volume', String(this.countVolume));
+    });
+    const close = () => overlay.remove();
+    overlay.querySelector('#countVolDone')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   }
 
   /** Atualiza label e classe .active do botão pause user. */
@@ -4737,6 +5191,8 @@ ctaUrl: '/plans?renew=true',
         );
         return;
       }
+
+      this.ensurePlayableMainVariation(); // não iniciar numa variação desativada
 
       if (this.useIntro) {
         this.patternEngine.playIntroAndStart();
@@ -5331,6 +5787,7 @@ ctaUrl: '/plans?renew=true',
 
       const saved = await this.userRhythmService.save(v.name, v.bpm, rhythmData, baseRhythmName);
       this.currentUserRhythmId = saved.id; // próximo save já oferece "Atualizar"
+      this.persistDisabledVariations(); // as variações desativadas viajam pro ritmo salvo
       const destMsg = addToDest(saved.id, v.name, v.bpm, baseRhythmName);
       close();
       HapticsService.success();
@@ -5352,6 +5809,8 @@ ctaUrl: '/plans?renew=true',
 
       const rhythmData = this.fileManager.exportProjectAsJSON();
       await this.userRhythmService.update(editing.id, v.name, v.bpm, rhythmData);
+      this.currentUserRhythmId = editing.id;
+      this.persistDisabledVariations(); // salva as desativadas no ritmo atualizado
       const destMsg = addToDest(editing.id, v.name, v.bpm, editing.base_rhythm_name || undefined);
       close();
       HapticsService.success();
@@ -5755,6 +6214,7 @@ ctaUrl: '/plans?renew=true',
       this.uiManager.updateVariationButtons();
 
       this.currentRhythmName = name;
+      this.loadDisabledVariations(); // aplica as variações desativadas salvas deste ritmo
       const nameEl = document.getElementById('currentRhythmName');
       if (nameEl) nameEl.textContent = name;
       this.playingOutsideSetlist = true; // loadSetlistItem desfaz se for do repertório
@@ -7991,6 +8451,7 @@ ctaUrl: '/plans?renew=true',
         // User: atualizar nome do ritmo, favoritos, strip
         this.currentRhythmName = name;
         this.currentUserRhythmId = null; // ritmo de biblioteca
+        this.loadDisabledVariations(); // aplica as variações desativadas salvas deste ritmo
         // Carregado avulso (TODOS/painel) — o loadSetlistItem desfaz
         // essa flag logo depois quando o load veio do repertório
         this.playingOutsideSetlist = true;
