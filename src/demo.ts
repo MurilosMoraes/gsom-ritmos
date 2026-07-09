@@ -643,6 +643,11 @@ class DemoPlayer {
           ${features.map(f => `<li>${check}<span>${f}</span></li>`).join('')}
         </ul>
         <div class="demo-tourend-close">E muito mais!! Se cadastre e teste gratuitamente.</div>
+        <div class="demo-convert-offer">
+          <span class="demo-convert-offer-badge">100% Grátis</span>
+          <span class="demo-convert-offer-head">48 horas de acesso total</span>
+          <span class="demo-convert-offer-sub">✓ Não pedimos cartão · ✓ Sem cobrança automática</span>
+        </div>
         <div class="demo-convert-actions">
           <a href="/register" class="demo-convert-primary">Se cadastrar</a>
           <button class="demo-convert-secondary">Continuar teste</button>
@@ -699,7 +704,7 @@ class DemoPlayer {
           <a href="/register" class="demo-convert-primary">Criar conta grátis</a>
           <button class="demo-convert-secondary">Continuar testando</button>
         </div>
-        <div class="demo-convert-reassure">É de graça mesmo — só criar a conta e tocar.</div>
+        <div class="demo-convert-reassure">É de graça mesmo, só criar a conta e tocar.</div>
       </div>
     `;
     document.body.appendChild(overlay);
