@@ -781,6 +781,12 @@ class LoginPage {
       if (!kind) return;
       const label = BiometricService.label(kind);
 
+      // O teclado do iOS rola a página durante a digitação da senha e o modal
+      // abre antes do scroll voltar — fundo fica "quebrado" (logo cortada no
+      // topo). Fecha o teclado e volta pro topo antes de mostrar o overlay.
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      window.scrollTo(0, 0);
+
       const accepted = await new Promise<boolean>((resolve) => {
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(3,0,20,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem;';

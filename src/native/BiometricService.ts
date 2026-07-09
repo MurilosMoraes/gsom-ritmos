@@ -109,14 +109,24 @@ export const BiometricService = {
   async authenticate(): Promise<{ email: string; password: string } | null> {
     if (!isNative() || !this.isEnabled()) return null;
     try {
-      const { NativeBiometric } = await plugin();
+      const { NativeBiometric, BiometryType } = await plugin();
       const kind = await this.availableKind();
-      await NativeBiometric.verifyIdentity({
+      const opts: NonNullable<Parameters<typeof NativeBiometric.verifyIdentity>[0]> = {
         reason: 'Entrar no GDrums',
         title: 'Entrar no GDrums',
         subtitle: kind === 'face' ? 'Use o Face ID pra entrar' : 'Use sua digital pra entrar',
         maxAttempts: 3,
-      });
+      };
+      // ANDROID: o BiometricPrompt do plugin autentica com CryptoObject (Keystore),
+      // e o androidx.biometric PROÍBE CryptoObject com biometria WEAK (Classe 2).
+      // O default do plugin manda STRONG|WEAK — que colapsa pra WEAK — e crasha a
+      // AuthActivity ("Crypto-based auth not supported for Class 2 biometrics"),
+      // fechando o app. Restringir a FINGERPRINT força o caminho STRONG-only e
+      // resolve. No iOS NÃO passamos isso: lá afeta o Face ID (que já funciona).
+      if (Capacitor.getPlatform() === 'android') {
+        opts.allowedBiometryTypes = [BiometryType.FINGERPRINT];
+      }
+      await NativeBiometric.verifyIdentity(opts);
       const creds = await NativeBiometric.getCredentials({ server: SERVER });
       if (!creds?.username || !creds?.password) {
         await this.disable(); // cofre vazio/corrompido — volta pro fluxo clássico
