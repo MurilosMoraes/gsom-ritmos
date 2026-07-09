@@ -52,6 +52,10 @@
       "destination": "/completar-cadastro.html"
     },
     {
+      "source": "/assinar",
+      "destination": "/plans.html"
+    },
+    {
       "source": "/download",
       "destination": "/download.html"
     },

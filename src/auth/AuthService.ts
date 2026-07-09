@@ -154,6 +154,11 @@ class AuthService {
     // logar nesse device, o NativePushService refaz o registro com o
     // external_id correto. Sem isso, o user novo herdaria push do anterior.
     localStorage.removeItem('gdrums-native-push-registered');
+    // Quem clicou em "Sair" NÃO pode ser puxado de volta pelo prompt
+    // biométrico AUTOMÁTICO da tela de login (a credencial fica guardada
+    // no cofre; o botão manual continua disponível). Flag one-shot que o
+    // login.ts consome pra pular só o prompt automático.
+    try { sessionStorage.setItem('gdrums-skip-bio-auto', '1'); } catch { /* noop */ }
     internalNav('/login');
   }
 

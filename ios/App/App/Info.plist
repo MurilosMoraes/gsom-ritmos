@@ -12,6 +12,8 @@
 	</array>
 	<key>CFBundleDisplayName</key>
         <string>GDrums</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>O GDrums usa o Face ID para você entrar na sua conta sem digitar a senha.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

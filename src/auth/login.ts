@@ -63,9 +63,30 @@ class LoginPage {
       hash.includes('access_token=') ||
       // PKCE: code= na query string. Confirma que é recovery pelo type
       // que o Supabase agora também passa como query param.
-      /[?&]code=/.test(search);
+      /[?&]code=/.test(search) ||
+      // token_hash: formato do template com {{ .TokenHash }} — validado
+      // via verifyOtp, INDEPENDE de onde o reset foi pedido (o PKCE
+      // ?code= só valida no browser/app que INICIOU o reset; como os
+      // App Links do Android forçam o link do email a abrir no APP,
+      // reset pedido na web + link aberto no app = exchange falhava e
+      // caía no form de login em vez do form de senha nova).
+      /[?&]token_hash=/.test(search);
 
     if (looksLikeRecovery) {
+      // token_hash primeiro (formato robusto, independente de contexto)
+      const tokenHashMatch = search.match(/[?&]token_hash=([^&]+)/);
+      if (tokenHashMatch) {
+        try {
+          const typeMatch = search.match(/[?&]type=([^&]+)/);
+          await supabase.auth.verifyOtp({
+            type: (typeMatch?.[1] as 'recovery') || 'recovery',
+            token_hash: decodeURIComponent(tokenHashMatch[1]),
+          });
+        } catch (e) {
+          console.warn('[recovery] verifyOtp(token_hash) falhou:', e);
+        }
+      }
+
       // PKCE: precisa trocar code → session antes de continuar. Implicit já
       // processa sozinho no detectSessionInUrl do supabase-js.
       const codeMatch = search.match(/[?&]code=([^&]+)/);
@@ -104,6 +125,10 @@ class LoginPage {
     }
     this.setupEventListeners();
     this.setupNativeRegisterLink();
+    // Biometria (só nativo, se ativada): injeta o botão E dispara o
+    // prompt automático na abertura. Fire-and-forget — o form clássico
+    // já está funcional acima, biometria é atalho por cima dele.
+    void this.setupBiometricLogin();
   }
 
   /**
@@ -228,6 +253,11 @@ class LoginPage {
         if (btnText) btnText.style.display = 'block';
         if (btnLoader) btnLoader.style.display = 'none';
       } else {
+        // Senha mudou → credencial biométrica guardada ficou velha.
+        // Apaga; o próximo login com a senha nova reoferece a ativação.
+        import('../native/BiometricService')
+          .then(({ BiometricService }) => BiometricService.disable())
+          .catch(() => {});
         this.showAlert('Senha atualizada! Redirecionando...', 'success');
         // Limpar hash da URL
         history.replaceState(null, '', '/login');
@@ -630,28 +660,153 @@ class LoginPage {
     });
 
     if (response.success && response.user) {
-      // Sessão única (invalida outros devices)
-      const sessionId = crypto.randomUUID();
-      await supabase
-        .from('gdrums_profiles')
-        .update({ active_session_id: sessionId })
-        .eq('id', response.user.id);
-      localStorage.setItem('gdrums-session-id', sessionId);
-
-      // Se conta incompleta, vai pra /completar-cadastro em vez do app
-      if (this.incompleteAccount) {
-        this.showAlert('Login feito! Falta um passo...', 'success');
-        setTimeout(() => { window.location.href = '/completar-cadastro.html'; }, 600);
-        return;
-      }
-
-      this.showAlert('Login realizado! Redirecionando...', 'success');
-      const dest = await this.getDestination();
-      setTimeout(() => { window.location.href = dest; }, 600);
+      // Após login com senha DIGITADA no nativo: oferece ativar a
+      // biometria (uma vez; "agora não" silencia por 7 dias). Fica
+      // ANTES do redirect pra pessoa decidir com calma.
+      await this.maybeOfferBiometric(this.emailInput.value.trim(), password);
+      await this.finishLogin(response.user.id);
     } else {
       this.showAlert(response.message || 'Erro ao fazer login', 'error');
       this.setLoading(false);
     }
+  }
+
+  /** Pós-login compartilhado (senha OU biometria): sessão única + destino. */
+  private async finishLogin(userId: string): Promise<void> {
+    // Sessão única (invalida outros devices)
+    const sessionId = crypto.randomUUID();
+    await supabase
+      .from('gdrums_profiles')
+      .update({ active_session_id: sessionId })
+      .eq('id', userId);
+    localStorage.setItem('gdrums-session-id', sessionId);
+
+    // Se conta incompleta, vai pra /completar-cadastro em vez do app
+    if (this.incompleteAccount) {
+      this.showAlert('Login feito! Falta um passo...', 'success');
+      setTimeout(() => { window.location.href = '/completar-cadastro.html'; }, 600);
+      return;
+    }
+
+    this.showAlert('Login realizado! Redirecionando...', 'success');
+    const dest = await this.getDestination();
+    setTimeout(() => { window.location.href = dest; }, 600);
+  }
+
+  // ─── Biometria (digital / Face ID) — só app nativo ─────────────────
+
+  private bioBusy = false;
+
+  /** Injeta o botão + dispara o prompt AUTOMÁTICO na abertura (se ativada). */
+  private async setupBiometricLogin(): Promise<void> {
+    try {
+      const { BiometricService } = await import('../native/BiometricService');
+      if (!BiometricService.isEnabled()) return;
+      const kind = await BiometricService.availableKind();
+      if (!kind) return; // aparelho sem biometria — form clássico segue
+
+      this.injectBiometricButton(BiometricService.label(kind));
+
+      // AUTO-PROMPT: abriu a tela com biometria ativada = já chama o
+      // Face ID/digital, sem precisar clicar. Exceção: quem acabou de
+      // clicar em "Sair" não pode ser puxado de volta pra dentro — o
+      // logout seta uma flag one-shot que pula SÓ o automático (o botão
+      // continua lá se a pessoa quiser).
+      let skipAuto = false;
+      try {
+        skipAuto = sessionStorage.getItem('gdrums-skip-bio-auto') === '1';
+        sessionStorage.removeItem('gdrums-skip-bio-auto');
+      } catch { /* noop */ }
+      if (!skipAuto) void this.biometricLogin();
+    } catch { /* plugin indisponível — form clássico segue */ }
+  }
+
+  private injectBiometricButton(label: string): void {
+    if (document.getElementById('bioLoginBtn')) return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <button type="button" id="bioLoginBtn" style="
+        width:100%;padding:0.95rem;margin-bottom:1rem;border-radius:14px;
+        border:1px solid rgba(0,212,255,0.35);cursor:pointer;
+        background:linear-gradient(135deg,rgba(0,212,255,0.12),rgba(139,92,246,0.12));
+        color:#fff;font-family:inherit;font-size:1rem;font-weight:700;
+        display:flex;align-items:center;justify-content:center;gap:0.6rem;
+      ">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 11c0 3-1 5.5-2.5 7.5"/><path d="M15.5 10.5c0 4-1 7-2 8.5"/><path d="M8.5 11.5C8.5 9 10 7.5 12 7.5s3.5 1.5 3.5 3"/><path d="M5.5 13c0-4.5 2.5-8 6.5-8 2.5 0 4.5 1.2 5.6 3"/><path d="M4 9.5C5.5 6 8.5 4 12 4c2 0 3.8.6 5.3 1.6"/></svg>
+        Entrar com ${label}
+      </button>
+      <div style="text-align:center;color:rgba(255,255,255,0.35);font-size:0.78rem;margin-bottom:1rem;">
+        ou entre com e-mail e senha
+      </div>
+    `;
+    this.form.parentElement?.insertBefore(wrap, this.form);
+    document.getElementById('bioLoginBtn')?.addEventListener('click', () => void this.biometricLogin());
+  }
+
+  private async biometricLogin(): Promise<void> {
+    if (this.bioBusy) return;
+    this.bioBusy = true;
+    try {
+      const { BiometricService } = await import('../native/BiometricService');
+      const creds = await BiometricService.authenticate();
+      // Cancelou / falhou 3x / sensor com problema: SEM erro agressivo —
+      // o form de email+senha está logo abaixo (requisito: sempre dá pra
+      // entrar do jeito clássico).
+      if (!creds) return;
+
+      this.showAlert('Entrando...', 'success');
+      const response = await authService.login({
+        email: creds.email,
+        password: creds.password,
+        rememberMe: true,
+      });
+
+      if (response.success && response.user) {
+        await this.finishLogin(response.user.id);
+      } else {
+        // Senha mudou em outro lugar — credencial guardada ficou velha.
+        // Apaga e orienta: login clássico reativa a biometria com a nova.
+        await BiometricService.disable();
+        this.showAlert('Sua senha mudou. Entre com e-mail e senha pra reativar a biometria.', 'error');
+      }
+    } catch { /* nunca quebrar o login clássico por causa da biometria */ }
+    finally { this.bioBusy = false; }
+  }
+
+  /** Modal pós-login: "quer ativar digital/Face ID?" (só nativo, 1x/7d). */
+  private async maybeOfferBiometric(email: string, password: string): Promise<void> {
+    try {
+      const { BiometricService } = await import('../native/BiometricService');
+      const kind = await BiometricService.shouldOffer();
+      if (!kind) return;
+      const label = BiometricService.label(kind);
+
+      const accepted = await new Promise<boolean>((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(3,0,20,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem;';
+        overlay.innerHTML = `
+          <div style="background:#0d0a24;border:1px solid rgba(139,92,246,0.35);border-radius:18px;padding:1.8rem;max-width:340px;text-align:center;">
+            <div style="font-size:2rem;margin-bottom:0.6rem;">${kind === 'face' ? '🙂' : '👆'}</div>
+            <h2 style="color:#fff;font-size:1.05rem;margin:0 0 0.5rem;">Entrar mais rápido?</h2>
+            <p style="color:rgba(255,255,255,0.55);font-size:0.85rem;line-height:1.55;margin:0 0 1.2rem;">
+              Ative o login com ${label} e entre no GDrums sem digitar a senha.
+              Sua senha fica guardada só no cofre seguro deste aparelho.
+            </p>
+            <button id="bioYes" style="width:100%;padding:0.85rem;border:none;border-radius:12px;background:linear-gradient(135deg,#00D4FF,#8B5CF6);color:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:inherit;margin-bottom:0.6rem;">Ativar ${label}</button>
+            <button id="bioNo" style="width:100%;padding:0.7rem;border:none;border-radius:12px;background:transparent;color:rgba(255,255,255,0.45);font-size:0.85rem;cursor:pointer;font-family:inherit;">Agora não</button>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+        overlay.querySelector('#bioYes')?.addEventListener('click', () => { overlay.remove(); resolve(true); });
+        overlay.querySelector('#bioNo')?.addEventListener('click', () => { overlay.remove(); resolve(false); });
+      });
+
+      if (accepted) {
+        await BiometricService.enable(email, password);
+      } else {
+        BiometricService.declineForNow();
+      }
+    } catch { /* oferta é opcional — login segue normal */ }
   }
 
   private async getDestination(): Promise<string> {
