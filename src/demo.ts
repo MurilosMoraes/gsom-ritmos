@@ -22,18 +22,29 @@ const DEMO_RHYTHMS = [
   { name: 'Arrocha', path: '/rhythm/Arrocha.json' },
   { name: 'Gospel', path: '/rhythm/Gospel.json' },
   { name: 'Xote Nordestino', path: '/rhythm/Xote Nordestino.json' },
+  { name: 'Vaneira', path: '/rhythm/Vaneira.json' },
+  { name: 'Samba (pandeiro)', path: '/rhythm/Samba (pandeiro).json' },
 ];
 
-// Demo curta de propósito: 3 ritmos + 5min CORRIDOS (não inatividade)
+// Demo curta de propósito: 5 ritmos + 5min CORRIDOS (não inatividade)
 // forçam o user a se cadastrar enquanto a curiosidade está em alta.
 // O timer só começa no PRIMEIRO PLAY (dar tempo do cara ler e entender
 // a tela), não ao abrir a página.
 // Aos 4min (1min restante) aparece um aviso discreto. Aos 5min, showExpired.
-const MAX_RHYTHMS = 3;
+const MAX_RHYTHMS = 5;
 const DEMO_TOTAL_MS = 5 * 60 * 1000;      // tempo total depois do 1º play
 const DEMO_WARN_AT_MS = 4 * 60 * 1000;    // aviso em 1 min restante
 const STORAGE_KEY = 'gdrums_demo_used';
 const FP_KEY = 'gdrums_demo_fp';
+
+// ─── Bypass de TESTE (só desenvolvimento) ────────────────────────────────
+// Com `?nolimit=1` a demo não expira, não inicia o timer e ignora a marca de
+// "demo já usada" — pra testar a tela sem queimar a demo a cada reload.
+// Trava dupla: só vale em localhost / rede local (192.168.x). Em produção
+// (gdrums.com.br) o hostname nunca casa, então é SEMPRE false.
+const IS_LOCAL_DEV =
+  ['localhost', '127.0.0.1'].includes(location.hostname) || /^192\.168\./.test(location.hostname);
+const DEV_NO_LIMIT = IS_LOCAL_DEV && new URLSearchParams(location.search).has('nolimit');
 
 // Passos do tour guiado — cada um aponta pra um elemento e avança
 // quando o user FAZ a ação pedida. Nada bloqueia o usuário: se ele
@@ -92,10 +103,25 @@ class DemoPlayer {
   private demoStartedAt: number | null = null;     // timestamp do 1º play
   private expired = false;
   private cymbalBuffer: AudioBuffer | null = null;
+
+  // ─── Pausa com contagem (mesmo comportamento do app) ──────────────────
+  private isPaused = false;
+  private resuming = false;                 // CONTINUAR apertado, aguardando o tempo
+  private countActive = false;              // loop da contagem (chimbal) rodando
+  private countLoopTimer: number | null = null;
+  private countGridStart = 0;               // t0 da grade da contagem (relógio de áudio)
+  private countSpb = 0;                     // segundos por tempo da contagem
+  private lastStepTime = 0;                 // tempo de áudio do último step (fase do ritmo)
+  private lastStepIndex = 0;                // índice do último step tocado
+  private countFlashTimers: number[] = [];  // timers do pisca laranja do botão
+  private countVolume = 0.6;                // volume do chimbal da contagem
+  private pendingResumeAction: { type: 'fill' | 'end'; variationIndex: number } | null = null;
   private currentRhythmName = '';
   private tourIdx = 0;
   private tourDone = false;
   private tourTooltip: HTMLElement | null = null;
+  private tourMask: HTMLElement[] = [];              // 4 painéis do desfoque
+  private tourMaskReposition: (() => void) | null = null;
   private rhythmsTrocados = 0;
   private conversionShown = false;
   // Lido do manifest real em runtime. RHYTHM_COUNT é fallback (fonte única)
@@ -166,10 +192,12 @@ class DemoPlayer {
   }
 
   private isDemoExpired(): boolean {
+    if (DEV_NO_LIMIT) return false; // teste local: nunca considera expirada
     return localStorage.getItem(STORAGE_KEY) === 'expired' || document.cookie.includes('gdrums_demo_used=expired');
   }
 
   private markExpired(): void {
+    if (DEV_NO_LIMIT) return; // teste local: não queima a demo
     this.expired = true;
     try {
       localStorage.setItem(STORAGE_KEY, 'expired');
@@ -184,6 +212,7 @@ class DemoPlayer {
    * Se já foi iniciado, não reinicia (não acumula tempo em reloads).
    */
   private startDemoTimer(): void {
+    if (DEV_NO_LIMIT) return;                // teste local: sem relógio correndo
     if (this.demoStartedAt !== null) return; // já rodando
     if (this.expired) return;
 
@@ -261,6 +290,11 @@ class DemoPlayer {
 
   private setupCallbacks(): void {
     this.scheduler.setUpdateStepCallback((step: number, pattern: PatternType) => {
+      // Fase da grade no TEMPO REAL do step (este callback dispara no drain de
+      // áudio, ~no instante em que o step toca) — a contagem da pausa usa isso
+      // pra cair no tempo do ritmo, e não no instante do agendamento.
+      this.lastStepTime = this.audioManager.getCurrentTime();
+      this.lastStepIndex = step;
       this.uiManager.updateCurrentStepVisual();
       this.updateBeatMarker(step, pattern);
     });
@@ -280,11 +314,18 @@ class DemoPlayer {
       }
     });
 
-    // Retomar ao voltar do background
+    // Retomar ao voltar do background.
+    // NÃO usar scheduler.restart() aqui: ele limpa os timers e rebobina
+    // nextStepTime pra "agora", mas NÃO cancela o áudio já agendado. Como em
+    // background o lookahead cresce, os samples antigos continuavam tocando
+    // nos horários deles ENQUANTO o scheduler reiniciado agendava novos —
+    // resultado: som sobreposto/acumulado ao voltar pra aba.
+    // resyncHeadToAudible() cancela só o áudio futuro e re-agenda os MESMOS
+    // steps nos MESMOS tempos (é o que o app faz em produção).
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden && this.stateManager.isPlaying()) {
         this.audioManager.resume();
-        this.scheduler.restart();
+        this.scheduler.resyncHeadToAudible();
       }
     });
   }
@@ -311,17 +352,31 @@ class DemoPlayer {
     // Ritmos strip — 3 liberados + 69 bloqueados (biblioteca completa)
     this.renderRhythmStrip();
 
+    // Botão de PAUSA (mesma célula/comportamento do app)
+    document.getElementById('pauseBtnUser')?.addEventListener('click', () => {
+      if (this.expired) { this.showExpired(); return; }
+      HapticsService.medium();
+      this.togglePauseInstant();
+    });
+
     // Performance grid cells
     document.querySelectorAll('.grid-cell').forEach(cell => {
       cell.addEventListener('click', () => {
+        if ((cell as HTMLElement).id === 'pauseBtnUser') return; // tem handler próprio
         if (this.expired) { this.showExpired(); return; }
+        if (this.resuming) return;             // re-entrada da pausa em andamento
         HapticsService.medium();
 
         const cellType = (cell as HTMLElement).getAttribute('data-type');
         const variation = parseInt((cell as HTMLElement).getAttribute('data-variation') || '0');
 
         if (cellType === 'main') {
-          if (!this.stateManager.isPlaying()) {
+          if (this.isPaused) {
+            // Pausado: seleciona o ritmo e RETOMA nele, cravado no tempo —
+            // sem reiniciar do zero (mesmo comportamento do app).
+            this.patternEngine.activateRhythm(variation);
+            this.resumeFromPause();
+          } else if (!this.stateManager.isPlaying()) {
             this.patternEngine.activateRhythm(variation);
             this.stateManager.setShouldPlayStartSound(true);
             this.play();
@@ -335,10 +390,12 @@ class DemoPlayer {
               this.maybeShowConversionModal();
             }
           }
-        } else if (cellType === 'fill' && this.stateManager.isPlaying()) {
-          this.patternEngine.activateFillWithTiming(variation);
-        } else if (cellType === 'end' && this.stateManager.isPlaying()) {
-          this.patternEngine.playEndAndStop();
+        } else if (cellType === 'fill') {
+          if (this.isPaused) this.resumeWithAction('fill', variation);
+          else if (this.stateManager.isPlaying()) this.patternEngine.activateFillWithTiming(variation);
+        } else if (cellType === 'end') {
+          if (this.isPaused) this.resumeWithAction('end', variation);
+          else if (this.stateManager.isPlaying()) this.patternEngine.playEndAndStop();
         }
       });
     });
@@ -435,11 +492,21 @@ class DemoPlayer {
       top = Math.max(12, top);
       tip.style.top = `${top}px`;
       tip.style.left = `${left}px`;
+
+      // Seta apontando pro centro REAL do alvo. Como o balão é clampado na
+      // tela, o centro dele nem sempre coincide com o do alvo — por isso a
+      // seta é posicionada em px, e não fixa em 50%. Alvo na coluna da
+      // esquerda → seta na esquerda; na da direita → seta na direita.
+      const targetCenterX = rect.left + window.scrollX + rect.width / 2;
+      const arrowX = Math.max(16, Math.min(tipRect.width - 16, targetCenterX - left));
+      tip.style.setProperty('--arrow-x', `${arrowX}px`);
+
       tip.classList.add('visible');
     });
 
-    // Pulse no target
+    // Alvo em foco: brilho + desfoque em tudo em volta
     target.classList.add('demo-tour-pulse');
+    this.showTourSpotlight(target);
 
     // Skip button
     tip.querySelector('.demo-tour-tip-skip')?.addEventListener('click', (e) => {
@@ -453,7 +520,9 @@ class DemoPlayer {
     if (step.advanceOn === 'click') {
       const onClick = () => {
         target.removeEventListener('click', onClick);
+        // Apertou → solta o foco na hora: tira o brilho e o desfoque em volta.
         target.classList.remove('demo-tour-pulse');
+        this.clearTourTooltip();
         this.tourIdx += 1;
         // Espera o step musical acontecer antes de pular pro próximo (1.5s)
         setTimeout(() => this.renderTourStep(), 1500);
@@ -468,7 +537,56 @@ class DemoPlayer {
     }
   }
 
+  /**
+   * Desfoca/escurece tudo em volta do alvo com 4 painéis fixos (cima, baixo,
+   * esquerda, direita). O alvo fica no "buraco" — nítido, em foco e o único
+   * clicável, até o passo ser cumprido. Preferido a um overlay com máscara
+   * (mask/clip-path) por compatibilidade e por não roubar o clique do alvo.
+   */
+  private showTourSpotlight(target: HTMLElement): void {
+    this.clearTourSpotlight();
+
+    const panels: HTMLElement[] = [];
+    for (let i = 0; i < 4; i++) {
+      const p = document.createElement('div');
+      p.className = 'demo-tour-mask-panel';
+      document.body.appendChild(p);
+      panels.push(p);
+    }
+    this.tourMask = panels;
+
+    const place = () => {
+      const r = target.getBoundingClientRect();
+      const pad = 8;
+      const top = Math.max(0, r.top - pad);
+      const left = Math.max(0, r.left - pad);
+      const right = r.right + pad;
+      const bottom = r.bottom + pad;
+      const [pT, pB, pL, pR] = panels;
+      pT.style.cssText = `top:0;left:0;right:0;height:${top}px;`;
+      pB.style.cssText = `top:${bottom}px;left:0;right:0;bottom:0;`;
+      pL.style.cssText = `top:${top}px;left:0;width:${left}px;height:${bottom - top}px;`;
+      pR.style.cssText = `top:${top}px;left:${right}px;right:0;height:${bottom - top}px;`;
+    };
+    place();
+
+    this.tourMaskReposition = place;
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, { passive: true });
+  }
+
+  private clearTourSpotlight(): void {
+    if (this.tourMaskReposition) {
+      window.removeEventListener('resize', this.tourMaskReposition);
+      window.removeEventListener('scroll', this.tourMaskReposition);
+      this.tourMaskReposition = null;
+    }
+    this.tourMask.forEach(p => p.remove());
+    this.tourMask = [];
+  }
+
   private clearTourTooltip(): void {
+    this.clearTourSpotlight();
     if (this.tourTooltip) {
       this.tourTooltip.remove();
       this.tourTooltip = null;
@@ -532,16 +650,14 @@ class DemoPlayer {
   // ─── Ritmo ────────────────────────────────────────────────────────
 
   /**
-   * Renderiza tira de ritmos com os 3 liberados + o resto bloqueado.
-   * Mostra ao visitante o tamanho REAL da biblioteca (72 ritmos) pra ele
-   * não sair achando que 3 é tudo que existe. Cards bloqueados têm ícone
-   * de cadeado e clicar neles mostra a tela de fim antecipadamente.
+   * Tira com os 5 ritmos liberados. Sem rolagem lateral (o CSS da demo faz
+   * flex-wrap), então os 5 aparecem de cara na tela inicial. O catálogo
+   * completo abre pelo botão TODOS, ao lado do nome do ritmo.
    */
   private async renderRhythmStrip(): Promise<void> {
     const strip = document.getElementById('demoRhythmStrip');
     if (!strip) return;
 
-    // Monta os 3 liberados primeiro, na ordem
     DEMO_RHYTHMS.forEach(r => {
       const btn = document.createElement('button');
       btn.className = 'rhythm-card-btn';
@@ -550,22 +666,75 @@ class DemoPlayer {
       strip.appendChild(btn);
     });
 
-    // Depois busca o manifest real e adiciona o resto como locked
+    const allBtn = document.getElementById('demoAllRhythmsBtn');
+    allBtn?.setAttribute('title', `Ver todos os ${RHYTHM_COUNT} ritmos`);
+    allBtn?.addEventListener('click', () => this.openAllRhythmsModal());
+
+    this.injectLockedStyles();
+  }
+
+  /** Catálogo completo (nomes), cacheado — evita refetch do manifest. */
+  private allRhythmNames: string[] | null = null;
+
+  private async fetchCatalog(): Promise<string[]> {
+    if (this.allRhythmNames) return this.allRhythmNames;
+    const res = await fetch('/rhythm/manifest.json');
+    const manifest = await res.json();
+    this.allRhythmNames = ((manifest.rhythms || []) as string[])
+      .map(f => f.replace(/\.json$/, ''))
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    return this.allRhythmNames;
+  }
+
+  /**
+   * Catálogo completo, categorizado como no app — porém TODOS com cadeado.
+   * Clicar num ritmo aqui NÃO queima a demo: mostra o convite de cadastro.
+   */
+  private async openAllRhythmsModal(): Promise<void> {
+    if (this.expired) { this.showExpired(); return; }
+    HapticsService.light();
+    this.injectAllRhythmsStyles();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'demo-all-overlay';
+    overlay.innerHTML = `
+      <div class="demo-all-panel" role="dialog" aria-label="Todos os ritmos">
+        <div class="demo-all-head">
+          <div>
+            <div class="demo-all-title">Todos os ritmos</div>
+            <div class="demo-all-sub">${RHYTHM_COUNT} ritmos · liberados no cadastro</div>
+          </div>
+          <button class="demo-all-close" aria-label="Fechar">&#10005;</button>
+        </div>
+        <div class="demo-all-body"></div>
+        <div class="demo-all-foot">
+          <a href="/register" class="demo-all-cta">Cadastrar grátis e liberar tudo</a>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+
+    const close = () => {
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.remove(), 200);
+      document.removeEventListener('keydown', onEsc);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onEsc);
+    overlay.querySelector('.demo-all-close')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    const body = overlay.querySelector('.demo-all-body') as HTMLElement;
     try {
-      const res = await fetch('/rhythm/manifest.json');
-      const manifest = await res.json();
-      const allNames: string[] = (manifest.rhythms || [])
-        .map((f: string) => f.replace(/\.json$/, ''));
-      const freeNames = new Set(DEMO_RHYTHMS.map(r => r.name));
-
-      // Ordena alfabético pra dar sensação de biblioteca completa
-      const lockedNames = allNames
-        .filter(n => !freeNames.has(n))
-        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-      lockedNames.forEach(name => {
+      // Lista única, alfabética, cards do mesmo tamanho — sem categorias.
+      const names = await this.fetchCatalog();
+      const grid = document.createElement('div');
+      grid.className = 'demo-all-grid';
+      names.forEach(name => {
         const btn = document.createElement('button');
         btn.className = 'rhythm-card-btn rhythm-card-locked';
+        btn.title = 'Disponível após cadastro';
         btn.innerHTML = `
           <svg class="rhythm-lock-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect x="4" y="11" width="16" height="10" rx="2"></rect>
@@ -573,21 +742,17 @@ class DemoPlayer {
           </svg>
           <span>${name}</span>
         `;
-        btn.title = 'Disponível após cadastro';
-        btn.addEventListener('click', () => this.handleLockedClick());
-        strip.appendChild(btn);
+        // Não expira a demo — só convida a cadastrar.
+        btn.addEventListener('click', () => {
+          HapticsService.light();
+          this.conversionShown = false;   // permite reabrir o convite daqui
+          this.maybeShowConversionModal();
+        });
+        grid.appendChild(btn);
       });
-
-      // Marcador no final da tira: total da biblioteca
-      const total = document.createElement('div');
-      total.className = 'rhythm-strip-total';
-      total.textContent = `+${lockedNames.length} ritmos com cadastro`;
-      strip.appendChild(total);
-
-      // CSS dos locked + marcador (injetado uma vez)
-      this.injectLockedStyles();
+      body.appendChild(grid);
     } catch {
-      // Manifest falhou: segue sem os locked (pior cenário = igual antes)
+      body.innerHTML = '<div class="demo-all-empty">Não foi possível carregar o catálogo.</div>';
     }
   }
 
@@ -611,28 +776,76 @@ class DemoPlayer {
         color: rgba(255, 255, 255, 0.5);
         flex-shrink: 0;
       }
-      .rhythm-strip-total {
-        display: inline-flex;
-        align-items: center;
-        padding: 0 0.9rem;
-        margin-left: 0.3rem;
-        font-size: 0.72rem;
-        letter-spacing: 0.02em;
-        color: rgba(255, 255, 255, 0.4);
-        white-space: nowrap;
-        border-left: 1px solid rgba(255, 255, 255, 0.08);
-      }
     `;
     document.head.appendChild(style);
   }
 
-  private handleLockedClick(): void {
-    if (this.expired) { this.showExpired(); return; }
-    HapticsService.light();
-    // Se ainda tem cota, mostra a tela de fim antecipadamente
-    // com tom de "isso é só uma prévia"
-    this.markExpired();
-    this.showExpired();
+  private injectAllRhythmsStyles(): void {
+    if (document.getElementById('demo-all-css')) return;
+    const style = document.createElement('style');
+    style.id = 'demo-all-css';
+    style.textContent = `
+      .demo-all-overlay {
+        position: fixed; inset: 0; z-index: 10002;
+        background: rgba(3, 0, 20, 0.82);
+        backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        display: flex; align-items: center; justify-content: center;
+        padding: 1rem;
+        opacity: 0; transition: opacity 0.2s ease;
+      }
+      .demo-all-overlay.visible { opacity: 1; }
+      .demo-all-panel {
+        width: 100%; max-width: 640px; max-height: 84vh;
+        display: flex; flex-direction: column;
+        background: rgba(12, 12, 28, 0.97);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px; overflow: hidden;
+        transform: translateY(10px); transition: transform 0.2s ease;
+      }
+      .demo-all-overlay.visible .demo-all-panel { transform: translateY(0); }
+      .demo-all-head {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 1rem; padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .demo-all-title { font-size: 1.05rem; font-weight: 800; color: #fff; }
+      .demo-all-sub { font-size: 0.75rem; color: rgba(255, 255, 255, 0.45); margin-top: 0.15rem; }
+      .demo-all-close {
+        background: none; border: none; cursor: pointer; font-size: 1rem;
+        color: rgba(255, 255, 255, 0.5); padding: 0.4rem 0.55rem; border-radius: 8px;
+      }
+      .demo-all-close:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
+      .demo-all-body { overflow-y: auto; padding: 1rem 1.25rem; }
+      .demo-all-empty { color: rgba(255, 255, 255, 0.45); font-size: 0.85rem; }
+      /* Cards do MESMO tamanho, numa grade única (sem categorias). */
+      .demo-all-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.5rem;
+      }
+      .demo-all-grid .rhythm-card-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 0.6rem 0.7rem;
+        font-size: 0.8rem;
+        min-height: 46px;
+        overflow: hidden;
+      }
+      .demo-all-grid .rhythm-card-btn span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .demo-all-foot {
+        padding: 0.9rem 1.25rem; border-top: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .demo-all-cta {
+        display: block; text-align: center; text-decoration: none;
+        padding: 0.8rem 1rem; border-radius: 10px; font-weight: 800;
+        color: #05010f; background: linear-gradient(135deg, #00D4FF, #8B5CF6);
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   private async loadRhythm(rhythm: { name: string; path: string }): Promise<void> {
@@ -677,30 +890,39 @@ class DemoPlayer {
 
   // ─── Play/Stop ────────────────────────────────────────────────────
 
-  private play(): void {
+  /** `comp` = compensação de latência, usada pela re-entrada cravada da pausa. */
+  private play(comp: number = 0): void {
     if (this.expired) { this.showExpired(); return; }
     // Inicia o timer corrido no PRIMEIRO play (se já iniciou, no-op)
     this.startDemoTimer();
     this.audioManager.resume();
     this.stateManager.setPlaying(true);
+    this.isPaused = false;
+    this.updatePauseButtonUI();
 
     this.uiManager.updatePlayStopUI(true);
     this.uiManager.updateStatusUI(this.stateManager.getActivePattern());
     this.uiManager.updatePerformanceGrid();
-    this.scheduler.start();
+    this.scheduler.start(comp);
 
     // Mostra banner de reforço assim que o user começa a tocar
     // (primeiro play = ele sentiu o valor, aí reforça o cadastro).
+    // O espaço dele já está reservado no CSS (.app-container), então ele só
+    // aparece — sem reflow, sem empurrar a tela, sem criar rolagem.
     const banner = document.getElementById('demoValueBanner');
     if (banner && banner.style.display === 'none') {
-      setTimeout(() => {
-        banner.style.display = 'flex';
-        document.body.classList.add('with-banner');
-      }, 3000);
+      setTimeout(() => { banner.style.display = 'flex'; }, 3000);
     }
   }
 
   private stop(): void {
+    // Sai de qualquer estado de pausa/contagem antes de parar de vez.
+    this.stopCountLoop();
+    this.isPaused = false;
+    this.resuming = false;
+    this.pendingResumeAction = null;
+    this.updatePauseButtonUI();
+
     this.stateManager.setPlaying(false);
     this.stateManager.resetStep();
     this.stateManager.setActivePattern('main');
@@ -712,6 +934,186 @@ class DemoPlayer {
     document.querySelectorAll('.beat-dot').forEach(d => {
       d.classList.remove('beat-active', 'beat-pulse');
     });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PAUSA COM CONTAGEM — porte do comportamento do app (src/main.ts).
+  //
+  // Cópia deliberada, e não um módulo compartilhado: o bloco de pausa do app
+  // é sensível a timing e está estável em produção. Extrair pra um módulo
+  // comum exigiria mexer no main.ts e arriscar o app por causa da demo.
+  //
+  // Enquanto pausado, o chimbal fechado toca 1x por tempo, em loop, na grade
+  // REAL do ritmo (metrônomo vivo), e o botão pisca laranja. Ao continuar, o
+  // ritmo re-entra CRAVADO no próximo tempo. O motor não é alterado.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /** Toggle exclusivo pause/resume — é o que o botão de pausa chama. */
+  private togglePauseInstant(): void {
+    if (this.resuming) return;                 // já a caminho de voltar
+    if (this.isPaused) {
+      this.resumeFromPause();
+    } else if (this.stateManager.isPlaying()) {
+      this.pauseInstant();
+    }
+  }
+
+  private pauseInstant(): void {
+    if (!this.stateManager.isPlaying()) return;
+    this.isPaused = true;
+    this.audioManager.fadeOutAllActive(0.04);  // evita clique ao cortar sample
+    this.scheduler.stop();
+    this.stateManager.setPlaying(false);
+    this.stateManager.resetStep();             // ao retomar, começa do downbeat
+
+    this.uiManager.updatePerformanceGrid();
+    this.updatePauseButtonUI();
+
+    // Pausa NÃO fica muda: começa a contagem (chimbal) em loop, no tempo.
+    this.resuming = false;
+    this.startCountLoop();
+  }
+
+  private resumeFromPause(): void {
+    if (!this.isPaused) return;
+    this.isPaused = false;
+    // A contagem SEGUE tocando até o ritmo re-entrar no próximo tempo — sem
+    // buraco no metrônomo. `resuming` trava toque duplo nesse meio-tempo.
+    this.resuming = true;
+    this.audioManager.resume();
+
+    const spb = this.countSpb || (60 / this.stateManager.getTempo());
+    const now = this.audioManager.getCurrentTime();
+    // Volta no PRÓXIMO TEMPO da grade (não espera o compasso reiniciar).
+    const k = Math.ceil((now + 0.05 - this.countGridStart) / spb);
+    this.scheduleRhythmEntryAt(this.countGridStart + k * spb);
+  }
+
+  /** Sai da pausa já aplicando virada/finalização (cliques durante a pausa). */
+  private resumeWithAction(type: 'fill' | 'end', variationIndex: number): void {
+    if (!this.isPaused || this.resuming) return;
+    this.pendingResumeAction = { type, variationIndex };
+    this.resumeFromPause();
+  }
+
+  /**
+   * Espera o relógio de áudio chegar em `downbeatTime` e faz o ritmo entrar
+   * cravado (o `comp` absorve o jitter do timer). Ao entrar, corta a contagem.
+   */
+  private scheduleRhythmEntryAt(downbeatTime: number): void {
+    const SCHED_LEAD = 0.05; // = lead interno do scheduler.start()
+    const tick = () => {
+      // Aborta se algo já retomou a reprodução no meio (outro botão).
+      if (this.stateManager.isPlaying()) { this.resuming = false; this.pendingResumeAction = null; return; }
+      const now = this.audioManager.getCurrentTime();
+      const target = downbeatTime - SCHED_LEAD;
+      if (now >= target) {
+        const comp = Math.max(0, Math.min(0.4, now - target));
+        this.stopCountLoop();
+        this.resuming = false;
+        const action = this.pendingResumeAction;
+        this.pendingResumeAction = null;
+        this.play(comp);
+        if (action) {
+          if (action.type === 'fill') this.patternEngine.activateFillWithTiming(action.variationIndex);
+          else this.patternEngine.playEndAndStop();
+        } else if (this.cymbalBuffer) {
+          // Resume normal: prato de "deixa" no re-entry pra não voltar do nada.
+          this.audioManager.playSound(this.cymbalBuffer, downbeatTime, this.stateManager.getState().masterVolume);
+        }
+      } else {
+        setTimeout(tick, Math.max(0, (target - now) * 1000 - 4));
+      }
+    };
+    tick();
+  }
+
+  private startCountLoop(): void {
+    this.stopCountLoop();
+    this.countActive = true;
+    this.audioManager.loadAudioFromPath('/midi/chimbal_fechado.wav')
+      .then(b => this.runCountLoop(b))
+      .catch(() => this.runCountLoop(null));
+  }
+
+  private runCountLoop(buf: AudioBuffer | null): void {
+    if (!this.countActive || !this.isPaused) return;
+    // Grade REAL do ritmo: stepsPerBeat = floor(totalSteps / beatsPerBar) —
+    // MESMA definição do updateBeatMarker. Assumir 2 steps por batida deixaria
+    // a contagem 2x rápida em ritmos de 16 steps.
+    const tempo = this.stateManager.getTempo();
+    const ap = this.stateManager.getActivePattern();
+    const vi = this.stateManager.getCurrentVariation(ap);
+    const speed = this.stateManager.getVariationSpeed(ap, vi) || 1;
+    const beats = Math.max(1, this.stateManager.getState().beatsPerBar || 4);
+    const totalSteps = Math.max(1, this.stateManager.getPatternSteps(ap));
+    const stepsPerBeat = Math.max(1, Math.floor(totalSteps / beats));
+    const secondsPerStep = (60 / tempo / 2) / speed;
+    const spb = stepsPerBeat * secondsPerStep;   // 1 tempo = stepsPerBeat steps
+    const masterVol = this.stateManager.getState().masterVolume;
+    const LOOKAHEAD = 0.3;
+
+    // Fase: recua do último step até o começo do TEMPO em que ele caiu.
+    const posInBeat = ((this.lastStepIndex % stepsPerBeat) + stepsPerBeat) % stepsPerBeat;
+    const beatPhase = this.lastStepTime - posInBeat * secondsPerStep;
+    const beatIdxAtPhase = Math.floor(this.lastStepIndex / stepsPerBeat) % beats;
+    const now0 = this.audioManager.getCurrentTime();
+    const kStart = Math.ceil((now0 + 0.08 - beatPhase) / spb);
+    const t0 = beatPhase + kStart * spb;         // 1ª batida, no tempo
+    const beatIdxStart = (((beatIdxAtPhase + kStart) % beats) + beats) % beats;
+    this.countGridStart = t0;
+    this.countSpb = spb;
+
+    let nextHit = 0;
+    const schedule = () => {
+      if (!this.countActive) return;
+      const now = this.audioManager.getCurrentTime();
+      while (buf && t0 + nextHit * spb < now + LOOKAHEAD) {
+        const ht = t0 + nextHit * spb;
+        const beatIdx = (beatIdxStart + nextHit) % beats;
+        const strong = (beatIdx % 2 === 0);      // tempos 1,3,5 fortes
+        if (ht >= now - 0.005) {
+          const gain = this.countVolume * (strong ? 1 : 0.6);
+          this.audioManager.playSound(buf, ht, masterVol * gain);
+          this.schedulePauseFlash(ht, now, strong);
+        }
+        nextHit++;
+      }
+      this.countLoopTimer = window.setTimeout(schedule, 60);
+    };
+    schedule();
+  }
+
+  /** Agenda o pisca laranja do botão de pausa pra bater no tempo `atTime`. */
+  private schedulePauseFlash(atTime: number, now: number, strong: boolean): void {
+    const id = window.setTimeout(() => {
+      const cell = document.getElementById('pauseBtnUser');
+      if (!cell) return;
+      cell.classList.remove('count-flash', 'count-flash-strong');
+      void cell.offsetWidth; // reflow: reinicia o pisca em batidas seguidas
+      cell.classList.add(strong ? 'count-flash-strong' : 'count-flash');
+      window.setTimeout(() => cell.classList.remove('count-flash', 'count-flash-strong'), strong ? 130 : 90);
+    }, Math.max(0, (atTime - now) * 1000));
+    this.countFlashTimers.push(id);
+  }
+
+  private stopCountLoop(): void {
+    this.countActive = false;
+    if (this.countLoopTimer !== null) {
+      clearTimeout(this.countLoopTimer);
+      this.countLoopTimer = null;
+    }
+    for (const id of this.countFlashTimers) clearTimeout(id);
+    this.countFlashTimers = [];
+    const cell = document.getElementById('pauseBtnUser');
+    if (cell) cell.classList.remove('count-flash', 'count-flash-strong');
+  }
+
+  private updatePauseButtonUI(): void {
+    const cell = document.getElementById('pauseBtnUser');
+    const label = document.getElementById('pauseBtnLabel');
+    if (cell) cell.classList.toggle('active', this.isPaused);
+    if (label) label.textContent = this.isPaused ? 'CONTINUAR' : 'PAUSAR';
   }
 
   // ─── Expired ──────────────────────────────────────────────────────

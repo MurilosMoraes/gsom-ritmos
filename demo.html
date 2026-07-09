@@ -233,14 +233,21 @@
       }
     }
 
-    /* Empurra o conteúdo pra baixo do topbar. Banner adiciona padding
-       quando fica visível via classe .with-banner no body */
+    /* Espaço do topbar (3.5rem) + do banner (2.4rem), reservado SEMPRE —
+       inclusive com o banner escondido.
+       Antes o banner só reservava espaço ao aparecer (classe .with-banner),
+       com transition no padding-top: a página reflowava, descia e ainda
+       estourava a viewport (o .user-layout do styles.css pede
+       min-height: 100vh - 4rem, que não conhece esse padding), o que criava
+       rolagem e o justify-content:center recentralizava tudo.
+       Reservando de saída, o banner surge dentro do próprio espaço e NADA
+       se move. */
     .app-container {
-      padding-top: 3.5rem;
-      transition: padding-top 0.25s ease;
-    }
-    body.with-banner .app-container {
       padding-top: calc(3.5rem + 2.4rem);
+    }
+    /* Desconta o topbar + banner pra caber na tela sem gerar rolagem. */
+    .user-layout {
+      min-height: calc(100vh - 3.5rem - 2.4rem - 1rem);
     }
 
     /* Esconder elementos que nao existem no demo */
@@ -508,11 +515,14 @@
       opacity: 1;
       transform: translateY(0) scale(1);
     }
+    /* A seta aponta pro centro REAL do alvo: o JS grava --arrow-x (px a partir
+       da borda esquerda do balão). Alvo na coluna da esquerda → seta na
+       esquerda; coluna da direita → seta na direita. */
     .demo-tour-tip::after {
       content: '';
       position: absolute;
       bottom: -6px;
-      left: 50%;
+      left: var(--arrow-x, 50%);
       transform: translateX(-50%) rotate(45deg);
       width: 12px;
       height: 12px;
@@ -544,19 +554,45 @@
       color: rgba(255, 255, 255, 0.8);
     }
 
+    /* ─── Alvo em foco ───
+       Fica ACIMA da máscara de desfoque (z-index), então é o único elemento
+       nítido e clicável enquanto o passo não é cumprido. Brilho ciano do app,
+       com anel que expande — bem mais chamativo que o pulse branco anterior. */
     .demo-tour-pulse {
-      animation: demoTourPulse 1.6s ease-in-out infinite;
-      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45);
+      position: relative;
+      z-index: 9450;
       border-radius: 14px;
+      animation: demoTourPulse 1.35s ease-out infinite;
     }
     @keyframes demoTourPulse {
-      0%, 100% {
-        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.0);
+      0% {
+        box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.6),
+                    0 0 20px 3px rgba(0, 212, 255, 0.45);
+        filter: brightness(1.08);
       }
-      50% {
-        box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08),
-                    0 0 24px rgba(255, 255, 255, 0.18);
+      70% {
+        box-shadow: 0 0 0 14px rgba(0, 212, 255, 0),
+                    0 0 38px 10px rgba(0, 212, 255, 0.7);
+        filter: brightness(1.22);
       }
+      100% {
+        box-shadow: 0 0 0 0 rgba(0, 212, 255, 0),
+                    0 0 20px 3px rgba(0, 212, 255, 0.45);
+        filter: brightness(1.08);
+      }
+    }
+
+    /* ─── Máscara: desfoca e escurece TUDO em volta do alvo ───
+       Quatro painéis (cima/baixo/esq/dir) contornando o alvo, em vez de um
+       overlay com furo — funciona em todo browser e deixa o alvo intacto e
+       clicável. O JS posiciona os painéis a partir do rect do alvo. */
+    .demo-tour-mask-panel {
+      position: fixed;
+      z-index: 9400;
+      background: rgba(3, 0, 20, 0.55);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      transition: opacity 0.2s ease;
     }
 
     /* ─── Modal de conversão progressivo ───
@@ -693,6 +729,66 @@
       transition: color 0.15s;
     }
     .demo-convert-secondary:hover { color: rgba(255, 255, 255, 0.85); }
+
+    /* ─── Controles (BPM/VOL) mais perto dos quadros de ação ───
+       Só na demo. No styles.css a .user-grid-section tem flex:1 1 auto, então
+       ela cresce e empurra a barra de controles pro rodapé da tela. Aqui a
+       grade toma só a altura dela e os controles encostam logo abaixo. */
+    .user-grid-section {
+      flex: 0 0 auto;
+      min-height: 300px;
+    }
+    .controls-bar {
+      margin-top: 0.3rem;
+    }
+
+    /* ─── Tira dos 5 ritmos: TODOS visíveis, sem rolar pro lado ───
+       No app a .rhythm-cards-wrap é flex nowrap + overflow-x:auto (biblioteca
+       grande, rola). Na demo são só 5 cards: quebram em linha e ficam todos
+       à vista de cara. */
+    .rhythm-cards-wrap {
+      flex-wrap: wrap;
+      justify-content: center;
+      overflow-x: visible;
+      overflow-y: visible;
+      scroll-snap-type: none;
+    }
+    .rhythm-cards-wrap .rhythm-card-btn {
+      flex: 0 1 auto;
+      padding: 0.55rem 0.85rem;
+      font-size: 0.8rem;
+      min-height: 40px;
+    }
+
+    /* ─── Botão TODOS, ao lado do nome do ritmo ─── */
+    .fav-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .demo-all-btn {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.5rem 0.8rem;
+      border-radius: 10px;
+      border: 1.5px solid rgba(0, 212, 255, 0.35);
+      background: rgba(0, 212, 255, 0.06);
+      color: #00D4FF;
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .demo-all-btn:hover {
+      border-color: rgba(0, 212, 255, 0.65);
+      background: rgba(0, 212, 255, 0.12);
+    }
   </style>
 </head>
 <body>
@@ -729,12 +825,20 @@
       <div id="userMode" class="mode-container active">
         <div class="user-layout">
 
-          <!-- 1. Nome do ritmo -->
+          <!-- 1. Nome do ritmo + botão TODOS (igual ao app) -->
           <div class="fav-section">
             <div class="fav-bar">
               <div class="fav-center">
                 <span class="fav-current-name" id="currentRhythmName">Selecione um ritmo</span>
               </div>
+              <button class="demo-all-btn" id="demoAllRhythmsBtn" aria-label="Ver todos os ritmos">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+                  <line x1="4" y1="6" x2="20" y2="6"></line>
+                  <line x1="4" y1="12" x2="20" y2="12"></line>
+                  <line x1="4" y1="18" x2="20" y2="18"></line>
+                </svg>
+                TODOS
+              </button>
             </div>
             <div class="rhythm-strip-cards" id="rhythmStripCards" style="display:block">
               <div class="rhythm-cards-wrap" id="demoRhythmStrip"></div>
@@ -782,6 +886,10 @@
               <div class="grid-cell fill-cell" data-type="fill" data-variation="2">
                 <span class="cell-number">3</span>
                 <span class="cell-label">VIRADA</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell pause-cell" id="pauseBtnUser">
+                <span class="cell-label" id="pauseBtnLabel">PAUSAR</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell end-cell" data-type="end" data-variation="0">
