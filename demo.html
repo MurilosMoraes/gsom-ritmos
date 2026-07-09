@@ -18,7 +18,8 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>GDrums | Teste Grátis sem Cadastro | Baterista Virtual</title>
-  <meta name="description" content="Teste o GDrums agora sem cadastro. 3 ritmos liberados, acompanhamento profissional pra tocar ao vivo. Biblioteca com 155 ritmos brasileiros.">
+  <meta name="description" content="Teste o GDrums agora sem cadastro. 5 ritmos liberados, acompanhamento profissional pra tocar ao vivo. Biblioteca com 155 ritmos brasileiros.">
+
   <meta name="author" content="Murilo Moraes, Staner Goulart">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#030014">
@@ -31,14 +32,14 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="GDrums">
   <meta property="og:title" content="GDrums — Teste Grátis sem Cadastro">
-  <meta property="og:description" content="3 ritmos liberados sem cadastro. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth, viradas e finalizações.">
+  <meta property="og:description" content="5 ritmos liberados sem cadastro. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth, viradas e finalizações.">
   <meta property="og:image" content="https://gdrums.com.br/img/icon-512.png">
   <meta property="og:url" content="https://gdrums.com.br/demo">
   <meta property="og:locale" content="pt_BR">
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="GDrums — Teste Grátis sem Cadastro">
-  <meta name="twitter:description" content="3 ritmos liberados. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth.">
+  <meta name="twitter:description" content="5 ritmos liberados. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth.">
   <meta name="twitter:image" content="https://gdrums.com.br/img/icon-512.png">
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -595,6 +596,39 @@
       transition: opacity 0.2s ease;
     }
 
+    /* ─── Janela do fim do tour ───
+       Reaproveita o card/ações do modal de conversão, mas com lista de
+       recursos em vez do bloco de oferta. */
+    .demo-tourend-list {
+      list-style: none;
+      margin: 0.9rem 0 0.2rem;
+      padding: 0;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+    .demo-tourend-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.55rem;
+      font-size: 0.85rem;
+      line-height: 1.35;
+      color: rgba(255, 255, 255, 0.78);
+    }
+    .demo-tourend-list svg {
+      flex-shrink: 0;
+      margin-top: 0.15rem;
+      color: #00D4FF;
+    }
+    .demo-tourend-close {
+      margin: 1rem 0 0.2rem;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: #fff;
+      text-align: center;
+    }
+
     /* ─── Modal de conversão progressivo ───
        Aparece depois do tour OU após 3 trocas de ritmo (aha moment).
        Pode ser fechado e o user continua experimentando. */
@@ -760,18 +794,21 @@
       min-height: 40px;
     }
 
-    /* ─── Botão TODOS, ao lado do nome do ritmo ─── */
+    /* ─── Botão do catálogo, sozinho e centralizado ───
+       A demo não mostra o nome do ritmo tocando, então a .fav-bar tem só o
+       botão — centralizado no eixo horizontal. */
     .fav-bar {
       display: flex;
       align-items: center;
-      gap: 0.6rem;
+      justify-content: center;
     }
     .demo-all-btn {
       flex-shrink: 0;
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
-      padding: 0.5rem 0.8rem;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.1rem;
       border-radius: 10px;
       border: 1.5px solid rgba(0, 212, 255, 0.35);
       background: rgba(0, 212, 255, 0.06);
@@ -803,7 +840,7 @@
       <span class="demo-topbar-headline">
         Cadastre e tenha <strong>48h grátis</strong> pra tocar tudo
       </span>
-      <span class="demo-topbar-progress" id="demoCounter">Prévia com 3 ritmos · <strong>100 no catálogo</strong></span>
+      <span class="demo-topbar-progress" id="demoCounter">Prévia com 5 ritmos · <strong>155 no catálogo</strong></span>
     </div>
     <a href="/register" class="demo-topbar-cta">
       <span>Começar grátis</span>
@@ -825,19 +862,16 @@
       <div id="userMode" class="mode-container active">
         <div class="user-layout">
 
-          <!-- 1. Nome do ritmo + botão TODOS (igual ao app) -->
+          <!-- 1. Botão do catálogo completo, centralizado -->
           <div class="fav-section">
             <div class="fav-bar">
-              <div class="fav-center">
-                <span class="fav-current-name" id="currentRhythmName">Selecione um ritmo</span>
-              </div>
               <button class="demo-all-btn" id="demoAllRhythmsBtn" aria-label="Ver todos os ritmos">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
                   <line x1="4" y1="6" x2="20" y2="6"></line>
                   <line x1="4" y1="12" x2="20" y2="12"></line>
                   <line x1="4" y1="18" x2="20" y2="18"></line>
                 </svg>
-                TODOS
+                Ver todos os ritmos
               </button>
             </div>
             <div class="rhythm-strip-cards" id="rhythmStripCards" style="display:block">

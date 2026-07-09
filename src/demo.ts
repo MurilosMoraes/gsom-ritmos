@@ -13,11 +13,12 @@ import { AttributionService } from './native/AttributionService';
 import { RHYTHM_COUNT, LOCKED_RHYTHM_COUNT, updateRhythmCountInDom } from './utils/rhythmCount';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
-// Só 3 ritmos ficam liberados. O resto aparece bloqueado na tira
-// pra mostrar ao user o tamanho REAL da biblioteca — peça central pra
-// evitar o engano de "só tem 3 ritmos, o app é fraco".
+// Só estes ritmos ficam liberados. O resto aparece bloqueado no catálogo
+// (botão TODOS) pra mostrar ao user o tamanho REAL da biblioteca — peça
+// central pra evitar o engano de "só tem uns poucos, o app é fraco".
 // Seleção: estilos populares entre públicos distintos (forró/nordeste,
-// gospel, gaúcho) pra cada perfil sentir que tem algo familiar.
+// gospel, gaúcho, samba) pra cada perfil sentir que tem algo familiar.
+// ATENÇÃO: MAX_RHYTHMS (a cota de créditos) deriva do tamanho desta lista.
 const DEMO_RHYTHMS = [
   { name: 'Arrocha', path: '/rhythm/Arrocha.json' },
   { name: 'Gospel', path: '/rhythm/Gospel.json' },
@@ -26,12 +27,24 @@ const DEMO_RHYTHMS = [
   { name: 'Samba (pandeiro)', path: '/rhythm/Samba (pandeiro).json' },
 ];
 
-// Demo curta de propósito: 5 ritmos + 5min CORRIDOS (não inatividade)
+// Demo curta de propósito: cota de ritmos + 5min CORRIDOS (não inatividade)
 // forçam o user a se cadastrar enquanto a curiosidade está em alta.
 // O timer só começa no PRIMEIRO PLAY (dar tempo do cara ler e entender
 // a tela), não ao abrir a página.
 // Aos 4min (1min restante) aparece um aviso discreto. Aos 5min, showExpired.
-const MAX_RHYTHMS = 5;
+//
+// CRÉDITOS: um por ritmo liberado, então a barra desce de 20 em 20%.
+// O PRIMEIRO ritmo distinto é de graça — é o que já vem carregado e serve
+// pro tour guiado. A cota só desconta do segundo em diante (ver
+// creditsUsed()). Recarregar um ritmo já usado nunca desconta.
+// Percurso da barra: 100% → 80% → 60% → 40% → 20% (último ritmo).
+const MAX_RHYTHMS = DEMO_RHYTHMS.length;   // 5
+
+// Restando ESTE tanto de créditos (ou menos), abre a janela "Isso é só uma
+// prévia". Com 5 ritmos e o 1º grátis, restar 1 = o 5º e ÚLTIMO ritmo foi
+// ativado (barra em 20%) — o visitante já esgotou a demo, é a hora da
+// pressão de cadastro.
+const CONVERT_AT_REMAINING = 1;
 const DEMO_TOTAL_MS = 5 * 60 * 1000;      // tempo total depois do 1º play
 const DEMO_WARN_AT_MS = 4 * 60 * 1000;    // aviso em 1 min restante
 const STORAGE_KEY = 'gdrums_demo_used';
@@ -122,7 +135,6 @@ class DemoPlayer {
   private tourTooltip: HTMLElement | null = null;
   private tourMask: HTMLElement[] = [];              // 4 painéis do desfoque
   private tourMaskReposition: (() => void) | null = null;
-  private rhythmsTrocados = 0;
   private conversionShown = false;
   // Lido do manifest real em runtime. RHYTHM_COUNT é fallback (fonte única)
   private totalRhythms = RHYTHM_COUNT;
@@ -265,8 +277,18 @@ class DemoPlayer {
     }
   }
 
+  /**
+   * Créditos realmente gastos. O 1º ritmo distinto é cortesia (vem carregado
+   * de fábrica e é o do tour), então só desconta do 2º em diante.
+   * `rhythmsUsed` continua sendo o conjunto de DISTINTOS — assim voltar num
+   * ritmo já tocado (inclusive o primeiro) nunca cobra de novo.
+   */
+  private creditsUsed(): number {
+    return Math.max(0, this.rhythmsUsed.size - 1);
+  }
+
   private updateCounter(): void {
-    const remaining = MAX_RHYTHMS - this.rhythmsUsed.size;
+    const remaining = MAX_RHYTHMS - this.creditsUsed();
     const total = this.totalRhythms;
     const el = document.getElementById('demoCounter');
     const bar = document.getElementById('demoBar');
@@ -384,11 +406,6 @@ class DemoPlayer {
             this.stop();
           } else {
             this.patternEngine.playFillToNextRhythm(variation);
-            this.rhythmsTrocados += 1;
-            // 3 trocas sem ter visto ainda → mostra modal (aha moment confirmado)
-            if (this.rhythmsTrocados >= 3 && !this.conversionShown) {
-              this.maybeShowConversionModal();
-            }
           }
         } else if (cellType === 'fill') {
           if (this.isPaused) this.resumeWithAction('fill', variation);
@@ -449,9 +466,14 @@ class DemoPlayer {
 
   private renderTourStep(): void {
     this.clearTourTooltip();
+    // Pulou o tour → não volta mais. Sem esta guarda, o listener de clique
+    // que ficou no alvo (once) reagenda o próximo passo e o tour ressuscita.
+    if (this.tourDone) return;
     if (this.tourIdx >= TOUR_STEPS.length) {
       this.tourDone = true;
-      this.maybeShowConversionModal();
+      // Fim do tour: janela própria (o "Isso é só uma prévia" fica pro
+      // momento em que os créditos estiverem quase acabando).
+      setTimeout(() => this.showTourEndModal(), 500);
       return;
     }
     const step = TOUR_STEPS[this.tourIdx];
@@ -593,9 +615,57 @@ class DemoPlayer {
     }
   }
 
+  /**
+   * Janela do FIM DO TOUR — mostra o tamanho do app logo depois que o
+   * visitante cumpriu os 4 passos guiados. É diferente do modal de conversão
+   * ("Isso é só uma prévia"), que continua servindo aos outros gatilhos
+   * (3 trocas de ritmo, clique em ritmo bloqueado).
+   */
+  private showTourEndModal(): void {
+    if (this.expired) return;
+    document.querySelectorAll('.demo-convert-modal').forEach(el => el.remove());
+
+    const check = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    const features = [
+      `Dentro do app temos <strong>${RHYTHM_COUNT} ritmos</strong>.`,
+      'Suporte para usar pedal sem fio.',
+      'Pode criar repertórios na ordem e velocidade que quiser!',
+      'Ativar e desativar ritmos e viradas.',
+      'Equalizador e Reverb.',
+    ];
+
+    const overlay = document.createElement('div');
+    overlay.className = 'demo-convert-modal';
+    overlay.innerHTML = `
+      <div class="demo-convert-card" role="dialog" aria-label="Demonstração rápida">
+        <h3 class="demo-convert-title">Isso é só uma demonstração rápida!</h3>
+        <ul class="demo-tourend-list">
+          ${features.map(f => `<li>${check}<span>${f}</span></li>`).join('')}
+        </ul>
+        <div class="demo-tourend-close">E muito mais!! Se cadastre e teste gratuitamente.</div>
+        <div class="demo-convert-actions">
+          <a href="/register" class="demo-convert-primary">Se cadastrar</a>
+          <button class="demo-convert-secondary">Continuar teste</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+
+    const close = () => {
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.remove(), 220);
+      document.removeEventListener('keydown', onEsc);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onEsc);
+    overlay.querySelector('.demo-convert-secondary')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
   // ─── Modal de conversão progressivo ──────────────────────────────
-  // Aparece após o tour completar OU após 3 trocas de ritmo (sinal forte
-  // de que o user entendeu o app e tá extraindo valor). Não trava, só
+  // Aparece após 3 trocas de ritmo (sinal forte de que o user entendeu o app
+  // e tá extraindo valor) ou ao clicar num ritmo bloqueado. Não trava, só
   // aparece elegante por cima e pode ser dispensado.
 
   private maybeShowConversionModal(): void {
@@ -618,7 +688,7 @@ class DemoPlayer {
         <p class="demo-convert-body">
           Você acabou de tocar com acompanhamento profissional.
           Cria conta pra liberar os outros ${LOCKED_RHYTHM_COUNT} ritmos, conectar pedal
-          Bluetooth e montar sua setlist.
+          Bluetooth e montar seu repertório.
         </p>
         <div class="demo-convert-offer">
           <span class="demo-convert-offer-badge">100% Grátis</span>
@@ -708,7 +778,7 @@ class DemoPlayer {
         </div>
         <div class="demo-all-body"></div>
         <div class="demo-all-foot">
-          <a href="/register" class="demo-all-cta">Cadastrar grátis e liberar tudo</a>
+          <a href="/register" class="demo-all-cta">Libere tudo grátis por 48h</a>
         </div>
       </div>
     `;
@@ -732,7 +802,10 @@ class DemoPlayer {
       const grid = document.createElement('div');
       grid.className = 'demo-all-grid';
       names.forEach(name => {
-        const btn = document.createElement('button');
+        // Card apenas informativo: não abre modal nem gasta crédito. A janela
+        // "Isso é só uma prévia" fica reservada pro fim dos créditos, e o
+        // convite de cadastro aqui é o CTA fixo do rodapé do catálogo.
+        const btn = document.createElement('div');
         btn.className = 'rhythm-card-btn rhythm-card-locked';
         btn.title = 'Disponível após cadastro';
         btn.innerHTML = `
@@ -742,12 +815,6 @@ class DemoPlayer {
           </svg>
           <span>${name}</span>
         `;
-        // Não expira a demo — só convida a cadastrar.
-        btn.addEventListener('click', () => {
-          HapticsService.light();
-          this.conversionShown = false;   // permite reabrir o convite daqui
-          this.maybeShowConversionModal();
-        });
         grid.appendChild(btn);
       });
       body.appendChild(grid);
@@ -767,10 +834,7 @@ class DemoPlayer {
         display: inline-flex;
         align-items: center;
         gap: 0.35rem;
-        cursor: pointer;
-      }
-      .rhythm-card-btn.rhythm-card-locked:hover {
-        opacity: 0.85;
+        cursor: default;   /* informativo: cadastrar é pelo CTA do rodapé */
       }
       .rhythm-card-locked .rhythm-lock-icon {
         color: rgba(255, 255, 255, 0.5);
@@ -851,9 +915,9 @@ class DemoPlayer {
   private async loadRhythm(rhythm: { name: string; path: string }): Promise<void> {
     if (this.expired) { this.showExpired(); return; }
 
-    // Verificar limite
+    // Verificar limite (só ritmos DISTINTOS gastam; o 1º é cortesia)
     if (!this.rhythmsUsed.has(rhythm.name)) {
-      if (this.rhythmsUsed.size >= MAX_RHYTHMS) {
+      if (this.creditsUsed() >= MAX_RHYTHMS) {
         this.stop();
         this.markExpired();
         this.showExpired();
@@ -861,6 +925,11 @@ class DemoPlayer {
       }
       this.rhythmsUsed.add(rhythm.name);
       this.updateCounter();
+
+      // Créditos quase no fim → janela "Isso é só uma prévia".
+      if (MAX_RHYTHMS - this.creditsUsed() <= CONVERT_AT_REMAINING) {
+        this.maybeShowConversionModal();
+      }
     }
 
     if (this.stateManager.isPlaying()) this.stop();
@@ -1131,7 +1200,7 @@ class DemoPlayer {
         <div class="demo-expired-overline">Você tocou bem</div>
         <h2>Agora é pegar a banda completa.</h2>
         <p>
-          Você tocou 3 ritmos. A biblioteca tem <strong>${this.totalRhythms}</strong> —
+          Você tocou ${DEMO_RHYTHMS.length} ritmos. A biblioteca tem <strong>${this.totalRhythms}</strong> —
           Vaneira, Sertanejo, Gospel, Pagode, Forró, Reggae, Rock e muito
           mais, cada um com viradas, intros e finais prontos pra palco.
         </p>
