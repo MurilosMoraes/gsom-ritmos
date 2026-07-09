@@ -36,6 +36,7 @@
     "@capacitor/push-notifications": "^8.0.4",
     "@capacitor/status-bar": "^8.0.1",
     "@capawesome/capacitor-android-edge-to-edge-support": "^8.0.8",
+    "@capgo/capacitor-native-biometric": "^8.6.0",
     "@capgo/native-purchases": "^8.3.6",
     "@supabase/supabase-js": "^2.99.3",
     "ajv": "^8.20.0",
