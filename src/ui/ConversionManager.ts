@@ -29,7 +29,9 @@
 
 import { isNativeApp, openExternal, internalNav, isIOSNative } from '../native/Platform';
 
-const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/plans';
+// /assinar (não /plans): os App Links do Android interceptam /plans e
+// devolvem o link PRO PRÓPRIO APP — ver comentário em main.ts.
+const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/assinar';
 const PLANS_URL_WEB = '/plans';
 
 // Mínimo entre dois modais quaisquer (20min). Suficiente pra não

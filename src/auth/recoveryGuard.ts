@@ -42,7 +42,13 @@ export function redirectIfRecoveryHash(): boolean {
     // processar e mostrar form de nova senha se a sessão for recovery).
     const hasPkceCode = /[?&]code=[A-Za-z0-9_-]+/.test(search);
 
-    if (!hasHashRecovery && !hasPkceCode) return false;
+    // token_hash (template de email com {{ .TokenHash }}): validado via
+    // verifyOtp — INDEPENDE de onde o reset foi pedido. É o formato
+    // robusto pro app nativo (App Links forçam o link a abrir no app,
+    // e o PKCE ?code= só valida no contexto que PEDIU o reset).
+    const hasTokenHash = /[?&]token_hash=/.test(search) || /[?&#]token_hash=/.test(hash);
+
+    if (!hasHashRecovery && !hasPkceCode && !hasTokenHash) return false;
 
     const path = window.location.pathname || '/';
     const onLogin = /\/login(\.html)?$/i.test(path);

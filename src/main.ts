@@ -31,7 +31,13 @@ import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 // Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
 // Play Store: Android continua usando checkout externo no Chrome
 // (Google Play permite link pra site fora do app pra assinaturas).
-const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/plans';
+// IMPORTANTE: NÃO usar /plans aqui. O AndroidManifest registra App Links
+// com pathPrefix="/plans" — abrir gdrums.com.br/plans "no navegador" faz o
+// Android devolver o link PRO PRÓPRIO APP (handler verificado do domínio),
+// e o upgrade "tenta ir pra web e volta pro app". /assinar é um rewrite do
+// vercel.json pro mesmo plans.html, fora da lista de interceptação — abre
+// no Chrome de verdade, sem precisar de release nas lojas.
+const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/assinar';
 
 /** Roteia ação de "ir pros planos" respeitando compliance:
  *  - iOS nativo → /plans interno (StoreKit/IAP)
@@ -4969,6 +4975,9 @@ ctaUrl: '/plans?renew=true',
   private resumeFromPause(fromPedal: boolean = false): void {
     if (!this.isPaused) return;
     this.isPaused = false;
+    // Sem isso o botão ficava preso em "CONTINUAR" pra sempre depois da
+    // primeira pausa (só pauseInstant/stop atualizavam o rótulo).
+    this.updatePauseButtonUI();
     void fromPedal;
     // Mantém isPaused=true e a CONTAGEM tocando até o ritmo re-entrar no
     // topo do próximo compasso — sem buraco no metrônomo. `resuming` trava

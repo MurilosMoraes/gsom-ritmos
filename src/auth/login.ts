@@ -63,9 +63,30 @@ class LoginPage {
       hash.includes('access_token=') ||
       // PKCE: code= na query string. Confirma que é recovery pelo type
       // que o Supabase agora também passa como query param.
-      /[?&]code=/.test(search);
+      /[?&]code=/.test(search) ||
+      // token_hash: formato do template com {{ .TokenHash }} — validado
+      // via verifyOtp, INDEPENDE de onde o reset foi pedido (o PKCE
+      // ?code= só valida no browser/app que INICIOU o reset; como os
+      // App Links do Android forçam o link do email a abrir no APP,
+      // reset pedido na web + link aberto no app = exchange falhava e
+      // caía no form de login em vez do form de senha nova).
+      /[?&]token_hash=/.test(search);
 
     if (looksLikeRecovery) {
+      // token_hash primeiro (formato robusto, independente de contexto)
+      const tokenHashMatch = search.match(/[?&]token_hash=([^&]+)/);
+      if (tokenHashMatch) {
+        try {
+          const typeMatch = search.match(/[?&]type=([^&]+)/);
+          await supabase.auth.verifyOtp({
+            type: (typeMatch?.[1] as 'recovery') || 'recovery',
+            token_hash: decodeURIComponent(tokenHashMatch[1]),
+          });
+        } catch (e) {
+          console.warn('[recovery] verifyOtp(token_hash) falhou:', e);
+        }
+      }
+
       // PKCE: precisa trocar code → session antes de continuar. Implicit já
       // processa sozinho no detectSessionInUrl do supabase-js.
       const codeMatch = search.match(/[?&]code=([^&]+)/);
