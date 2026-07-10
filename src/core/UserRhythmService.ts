@@ -2,6 +2,7 @@
 // Salva no localStorage (offline) + IndexedDB (backup) + Supabase (sync online)
 
 import { persistSet, persistGet, requestPersistentStorage } from '../utils/persistentStore';
+import { withNetTimeout } from '../utils/netTimeout';
 import { t } from '../i18n';
 
 export interface UserRhythm {
@@ -137,12 +138,17 @@ export class UserRhythmService {
     if (!navigator.onLine) return;
 
     try {
-      // Puxar ritmos do Supabase
-      const { data } = await supabase
-        .from('gdrums_user_rhythms')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+      // Puxar ritmos do Supabase. withNetTimeout: navigator.onLine MENTE
+      // offline e sem timeout esta query pendura no TCP do SO. Como o
+      // initWithUser é AWAITED no boot (main.ts), isso travava o app no
+      // "carregando". Builder do Supabase é thenable → Promise.resolve(...).
+      const { data } = await withNetTimeout(Promise.resolve(
+        supabase
+          .from('gdrums_user_rhythms')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+      )) as { data: any };
 
       if (data && data.length > 0) {
         // Merge: Supabase é fonte de verdade, EXCETO quando existe uma
