@@ -3,6 +3,7 @@
 import type { SetlistManager } from '../core/SetlistManager';
 import type { SetlistItem } from '../types';
 import type { PreviewPlayer } from '../core/PreviewPlayer';
+import { t } from '../i18n';
 
 export interface CatalogItem {
   name: string;
@@ -130,12 +131,12 @@ export class SetlistEditorUI {
     header.className = 'sle-header';
     header.innerHTML = `
       <div class="sle-header-left">
-        <button class="sle-back-btn" aria-label="Voltar" style="display:none;">
+        <button class="sle-back-btn" aria-label="${t('ui.setlist.backAriaLabel')}" style="display:none;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <h2 class="sle-title">Repertório</h2>
+        <h2 class="sle-title">${t('ui.setlist.title')}</h2>
       </div>
-      <button class="sle-close-btn" aria-label="Fechar">
+      <button class="sle-close-btn" aria-label="${t('ui.setlist.closeAriaLabel')}">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
@@ -170,14 +171,14 @@ export class SetlistEditorUI {
       <div class="sle-panel-header-v2">
         <div class="sle-search-wrap">
           <svg class="sle-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" class="sle-search-v2" placeholder="Buscar ritmo..." autocomplete="off" />
-          <button class="sle-search-clear" aria-label="Limpar" style="display:none;">
+          <input type="text" class="sle-search-v2" placeholder="${t('ui.setlist.searchPlaceholder')}" autocomplete="off" />
+          <button class="sle-search-clear" aria-label="${t('ui.setlist.clearAriaLabel')}" style="display:none;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="sle-chips">
-          <button class="sle-chip active" data-cat="all">Todos <span class="sle-chip-count">${this.catalog.length}</span></button>
-          ${countMeus > 0 ? `<button class="sle-chip" data-cat="Meus">Meus <span class="sle-chip-count">${countMeus}</span></button>` : ''}
+          <button class="sle-chip active" data-cat="all">${t('ui.setlist.chipAll')} <span class="sle-chip-count">${this.catalog.length}</span></button>
+          ${countMeus > 0 ? `<button class="sle-chip" data-cat="Meus">${t('ui.setlist.chipMeus')} <span class="sle-chip-count">${countMeus}</span></button>` : ''}
           ${cats.map(cat => {
             const n = this.catalog.filter(c => c.category === cat).length;
             return `<button class="sle-chip" data-cat="${cat}">${cat} <span class="sle-chip-count">${n}</span></button>`;
@@ -221,13 +222,13 @@ export class SetlistEditorUI {
     setlistPanel.innerHTML = `
       <div class="sle-setlists-bar"></div>
       <div class="sle-panel-header">
-        <span class="sle-panel-title">Seu repertório</span>
-        <button class="sle-clear-btn">Limpar</button>
+        <span class="sle-panel-title">${t('ui.setlist.panelTitle')}</span>
+        <button class="sle-clear-btn">${t('ui.setlist.clearButton')}</button>
       </div>
       <div class="sle-panel-list sle-setlist-list"></div>
       <button class="sle-cta-add" type="button">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-        ADICIONAR RITMOS
+        ${t('ui.setlist.addRhythmsButton')}
       </button>
     `;
 
@@ -238,19 +239,19 @@ export class SetlistEditorUI {
       if (!clearBtn.dataset.confirming) {
         clearBtn.dataset.confirming = '1';
         clearBtn.classList.add('sle-clear-btn-confirm');
-        clearBtn.textContent = 'Limpar tudo?';
+        clearBtn.textContent = t('ui.setlist.clearConfirm');
         // Auto-cancela em 3s sem confirmação
         window.setTimeout(() => {
           if (!clearBtn.isConnected || !clearBtn.dataset.confirming) return;
           delete clearBtn.dataset.confirming;
           clearBtn.classList.remove('sle-clear-btn-confirm');
-          clearBtn.textContent = 'Limpar';
+          clearBtn.textContent = t('ui.setlist.clearButton');
         }, 3000);
         return;
       }
       delete clearBtn.dataset.confirming;
       clearBtn.classList.remove('sle-clear-btn-confirm');
-      clearBtn.textContent = 'Limpar';
+      clearBtn.textContent = t('ui.setlist.clearButton');
       this.setlistManager?.clear();
       this.renderSetlist(setlistPanel.querySelector('.sle-setlist-list')!);
       this.renderCatalog(catalogPanel.querySelector('.sle-catalog-list')!, searchInput.value);
@@ -308,7 +309,7 @@ export class SetlistEditorUI {
 
     const isMobile = window.matchMedia('(max-width: 640px)').matches;
     if (!isMobile) {
-      title.textContent = 'Repertório';
+      title.textContent = t('ui.setlist.title');
       back.style.display = 'none';
       return;
     }
@@ -317,15 +318,15 @@ export class SetlistEditorUI {
     void hasHub;
     switch (this.mobileView) {
       case 'hub':
-        title.textContent = 'Repertórios';
+        title.textContent = t('ui.setlist.hubTitle');
         back.style.display = 'none';
         break;
       case 'setlist':
-        title.textContent = this.setlistManager?.getName() || 'Repertório';
+        title.textContent = this.setlistManager?.getName() || t('ui.setlist.title');
         back.style.display = 'inline-flex';
         break;
       case 'catalog':
-        title.textContent = 'Adicionar ritmos';
+        title.textContent = t('ui.setlist.addRhythmsTitle');
         back.style.display = 'inline-flex';
         break;
     }
@@ -349,19 +350,19 @@ export class SetlistEditorUI {
         <div class="sle-hub-card ${l.active ? 'active' : ''}" data-hub-id="${l.id}">
           <div class="sle-hub-card-main">
             <span class="sle-hub-card-name">${this.escapeHtml(l.name)}</span>
-            <span class="sle-hub-card-meta">${l.count} ${l.count === 1 ? 'ritmo' : 'ritmos'}${l.active ? ' · <span class="sle-hub-ativo">ATIVO</span>' : ''}</span>
+            <span class="sle-hub-card-meta">${l.count} ${l.count === 1 ? t('ui.setlist.rhythmSingular') : t('ui.setlist.rhythmPlural')}${l.active ? ` · <span class="sle-hub-ativo">${t('ui.setlist.activeLabel')}</span>` : ''}</span>
           </div>
           <div class="sle-hub-card-actions">
-            <button class="sle-hub-act sle-hub-rename" data-id="${l.id}" aria-label="Renomear">
+            <button class="sle-hub-act sle-hub-rename" data-id="${l.id}" aria-label="${t('ui.setlist.renameAriaLabel')}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
             </button>
-            <button class="sle-hub-act sle-hub-dup" data-id="${l.id}" aria-label="Duplicar">
+            <button class="sle-hub-act sle-hub-dup" data-id="${l.id}" aria-label="${t('ui.setlist.duplicateAriaLabel')}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             </button>
-            ${lists.length > 1 ? `<button class="sle-hub-act sle-hub-del" data-id="${l.id}" aria-label="Excluir">
+            ${lists.length > 1 ? `<button class="sle-hub-act sle-hub-del" data-id="${l.id}" aria-label="${t('ui.setlist.deleteAriaLabel')}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>` : ''}
-            <button class="sle-hub-act sle-hub-open" data-id="${l.id}" aria-label="Editar repertório (abrir lista)">
+            <button class="sle-hub-act sle-hub-open" data-id="${l.id}" aria-label="${t('ui.setlist.editAriaLabel')}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             </button>
           </div>
@@ -370,9 +371,9 @@ export class SetlistEditorUI {
       ${lists.length < max
         ? `<button class="sle-hub-new" type="button">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-            Novo repertório <span class="sle-hub-new-count">${lists.length}/${max}</span>
+            ${t('ui.setlist.newRepertoire')} <span class="sle-hub-new-count">${lists.length}/${max}</span>
           </button>`
-        : `<div class="sle-hub-limit">Limite de ${max} repertórios atingido</div>`}
+        : `<div class="sle-hub-limit">${t('ui.setlist.hubLimit', { max })}</div>`}
     `;
 
     // Tap no card: SELECIONA o repertório e FECHA o modal (vai tocar).
@@ -407,10 +408,10 @@ export class SetlistEditorUI {
         card.innerHTML = `
           <div class="sle-setlist-edit" style="flex:1;">
             <input type="text" class="sle-setlist-edit-input" value="${this.escapeHtml(current.name)}" maxlength="40" autocomplete="off" />
-            <button class="sle-setlist-edit-save" aria-label="Salvar">
+            <button class="sle-setlist-edit-save" aria-label="${t('ui.setlist.saveAriaLabel')}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             </button>
-            <button class="sle-setlist-edit-cancel" aria-label="Cancelar">
+            <button class="sle-setlist-edit-cancel" aria-label="${t('ui.setlist.cancelAriaLabel')}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
@@ -449,7 +450,7 @@ export class SetlistEditorUI {
         e.stopPropagation();
         if (!btn.dataset.confirming) {
           btn.dataset.confirming = '1';
-          btn.innerHTML = '<span style="font-size:0.68rem;font-weight:800;">Excluir?</span>';
+          btn.innerHTML = `<span style="font-size:0.68rem;font-weight:800;">${t('ui.setlist.deleteConfirm')}</span>`;
           btn.classList.add('sle-hub-del-confirm');
           return;
         }
@@ -460,7 +461,7 @@ export class SetlistEditorUI {
 
     // Novo repertório → cria e abre rename na hora
     container.querySelector('.sle-hub-new')?.addEventListener('click', () => {
-      const id = mgr.createSetlist(`Repertório ${lists.length + 1}`);
+      const id = mgr.createSetlist(t('ui.setlist.newRepertoireName', { n: lists.length + 1 }));
       if (!id) return;
       onChanged();
       const renameBtn = container.querySelector(`.sle-hub-rename[data-id="${id}"]`) as HTMLElement | null;
@@ -495,7 +496,7 @@ export class SetlistEditorUI {
           </button>
         `).join('')}
         ${lists.length < max
-          ? '<button class="sle-setlist-chip sle-setlist-new" aria-label="Novo repertório"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Novo</button>'
+          ? `<button class="sle-setlist-chip sle-setlist-new" aria-label="${t('ui.setlist.newRepertoire')}"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> ${t('ui.setlist.newLabel')}</button>`
           : ''}
       </div>
     `;
@@ -518,7 +519,7 @@ export class SetlistEditorUI {
 
     // Criar novo
     container.querySelector('.sle-setlist-new')?.addEventListener('click', () => {
-      const id = mgr.createSetlist(`Repertório ${lists.length + 1}`);
+      const id = mgr.createSetlist(t('ui.setlist.newRepertoireName', { n: lists.length + 1 }));
       if (!id) return;
       this.renderSetlistsBar(container, onSwitched);
       onSwitched();
@@ -538,13 +539,13 @@ export class SetlistEditorUI {
     container.innerHTML = `
       <div class="sle-setlist-edit">
         <input type="text" class="sle-setlist-edit-input" value="${this.escapeHtml(current.name)}" maxlength="40" autocomplete="off" />
-        <button class="sle-setlist-edit-save" aria-label="Salvar">
+        <button class="sle-setlist-edit-save" aria-label="${t('ui.setlist.saveAriaLabel')}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
-        ${canDelete ? `<button class="sle-setlist-edit-delete" aria-label="Excluir repertório">
+        ${canDelete ? `<button class="sle-setlist-edit-delete" aria-label="${t('ui.setlist.deleteRepertoireAriaLabel')}">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>` : ''}
-        <button class="sle-setlist-edit-cancel" aria-label="Cancelar">
+        <button class="sle-setlist-edit-cancel" aria-label="${t('ui.setlist.cancelAriaLabel')}">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -571,7 +572,7 @@ export class SetlistEditorUI {
       const btn = container.querySelector('.sle-setlist-edit-delete') as HTMLElement;
       if (!btn.dataset.confirming) {
         btn.dataset.confirming = '1';
-        btn.innerHTML = '<span style="font-size:0.7rem;font-weight:700;">Excluir?</span>';
+        btn.innerHTML = `<span style="font-size:0.7rem;font-weight:700;">${t('ui.setlist.deleteConfirm')}</span>`;
         btn.classList.add('sle-setlist-edit-delete-confirm');
         return;
       }
@@ -610,8 +611,8 @@ export class SetlistEditorUI {
 
     if (filtered.length === 0) {
       container.innerHTML = query
-        ? `<div class="sle-empty">Nada achado pra "${filter}"</div>`
-        : '<div class="sle-empty">Nenhum ritmo nessa categoria</div>';
+        ? `<div class="sle-empty">${t('ui.setlist.emptySearchResult', { filter })}</div>`
+        : `<div class="sle-empty">${t('ui.setlist.emptyCategory')}</div>`;
       return;
     }
 
@@ -630,7 +631,7 @@ export class SetlistEditorUI {
       const name = document.createElement('span');
       name.className = 'sle-item-name';
       const badge = rhythm.isPersonal
-        ? ' <span class="sle-item-badge-personal">meu</span>'
+        ? ` <span class="sle-item-badge-personal">${t('ui.setlist.myBadge')}</span>`
         : '';
       const countBadge = count > 0
         ? ` <span class="sle-item-badge-count">${count}x</span>`
@@ -646,7 +647,7 @@ export class SetlistEditorUI {
         const previewBtn = document.createElement('button');
         previewBtn.className = 'sle-preview-btn';
         previewBtn.setAttribute('data-preview-id', previewId);
-        previewBtn.setAttribute('aria-label', 'Ouvir preview');
+        previewBtn.setAttribute('aria-label', t('ui.setlist.previewAriaLabel'));
         previewBtn.innerHTML = this.iconPreview();
         if (this.previewPlayer?.isActive(previewId)) {
           previewBtn.classList.add('sle-preview-btn-playing');
@@ -667,7 +668,7 @@ export class SetlistEditorUI {
       const addId = rhythm.userRhythmId || rhythm.path;
       const addBtn = document.createElement('button');
       addBtn.className = 'sle-add-btn';
-      addBtn.setAttribute('aria-label', 'Adicionar ao repertório');
+      addBtn.setAttribute('aria-label', t('ui.setlist.addAriaLabel'));
       addBtn.setAttribute('data-add-id', addId);
       addBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
       addBtn.addEventListener('click', () => {
@@ -734,8 +735,8 @@ export class SetlistEditorUI {
       container.innerHTML = `
         <div class="sle-empty-pro">
           <svg class="sle-empty-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          <div class="sle-empty-title">Monte seu repertório</div>
-          <div class="sle-empty-desc">Toque no <strong>+</strong> ao lado de um ritmo do catálogo pra adicionar aqui.</div>
+          <div class="sle-empty-title">${t('ui.setlist.emptyTitle')}</div>
+          <div class="sle-empty-desc">${t('ui.setlist.emptyDesc')}</div>
         </div>
       `;
       return;
@@ -784,7 +785,7 @@ export class SetlistEditorUI {
         const previewBtn = document.createElement('button');
         previewBtn.className = 'sle-preview-btn';
         previewBtn.setAttribute('data-preview-id', previewId);
-        previewBtn.setAttribute('aria-label', 'Ouvir preview');
+        previewBtn.setAttribute('aria-label', t('ui.setlist.previewAriaLabel'));
         previewBtn.innerHTML = this.iconPreview();
         if (this.previewPlayer?.isActive(previewId)) {
           previewBtn.classList.add('sle-preview-btn-playing');
@@ -804,7 +805,7 @@ export class SetlistEditorUI {
       // Up
       const upBtn = document.createElement('button');
       upBtn.className = 'sle-reorder-btn';
-      upBtn.setAttribute('aria-label', 'Mover pra cima');
+      upBtn.setAttribute('aria-label', t('ui.setlist.moveUpAriaLabel'));
       upBtn.disabled = isFirst;
       upBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
       upBtn.addEventListener('click', (e) => {
@@ -817,7 +818,7 @@ export class SetlistEditorUI {
       // Down
       const downBtn = document.createElement('button');
       downBtn.className = 'sle-reorder-btn';
-      downBtn.setAttribute('aria-label', 'Mover pra baixo');
+      downBtn.setAttribute('aria-label', t('ui.setlist.moveDownAriaLabel'));
       downBtn.disabled = isLast;
       downBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
       downBtn.addEventListener('click', (e) => {
@@ -830,7 +831,7 @@ export class SetlistEditorUI {
       // Remove
       const removeBtn = document.createElement('button');
       removeBtn.className = 'sle-remove-btn';
-      removeBtn.setAttribute('aria-label', 'Remover do repertório');
+      removeBtn.setAttribute('aria-label', t('ui.setlist.removeAriaLabel'));
       removeBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 3L3 11M3 3l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
       removeBtn.addEventListener('click', (e) => {
         e.stopPropagation();

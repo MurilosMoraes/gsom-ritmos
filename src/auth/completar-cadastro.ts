@@ -6,6 +6,11 @@
 import { supabase } from './supabase';
 import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
 import { internalNav } from '../native/Platform';
+import { t, hydrate } from '../i18n';
+
+// Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
+// pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
+hydrate();
 
 class CompletarCadastroPage {
   private cpfInput!: HTMLInputElement;
@@ -70,12 +75,12 @@ class CompletarCadastroPage {
     const phoneRaw = this.phoneInput.value.replace(/\D/g, '');
 
     if (!validateCPF(cpfRaw)) {
-      this.showFieldError('cpf', 'CPF inválido');
+      this.showFieldError('cpf', t('auth.completarCadastro.cpfInvalid'));
       this.cpfInput.focus();
       return;
     }
     if (phoneRaw.length < 10 || phoneRaw.length > 11) {
-      this.showFieldError('phone', 'WhatsApp inválido (10 ou 11 dígitos com DDD)');
+      this.showFieldError('phone', t('auth.completarCadastro.phoneInvalidFull'));
       this.phoneInput.focus();
       return;
     }
@@ -92,7 +97,7 @@ class CompletarCadastroPage {
 
       if (error) {
         this.setLoading(false);
-        this.showAlert('Erro ao salvar. Tente novamente.', 'error');
+        this.showAlert(t('auth.completarCadastro.saveError'), 'error');
         return;
       }
 
@@ -101,30 +106,30 @@ class CompletarCadastroPage {
         this.setLoading(false);
         const code = res?.error;
         if (code === 'cpf_duplicate') {
-          this.showFieldError('cpf', 'Este CPF já está cadastrado em outra conta.');
+          this.showFieldError('cpf', t('auth.completarCadastro.cpfDuplicate'));
         } else if (code === 'phone_duplicate') {
-          this.showFieldError('phone', 'Este WhatsApp já está cadastrado em outra conta.');
+          this.showFieldError('phone', t('auth.completarCadastro.phoneDuplicate'));
         } else if (code === 'invalid_cpf') {
-          this.showFieldError('cpf', 'CPF inválido');
+          this.showFieldError('cpf', t('auth.completarCadastro.cpfInvalid'));
         } else if (code === 'invalid_phone') {
-          this.showFieldError('phone', 'WhatsApp inválido');
+          this.showFieldError('phone', t('auth.completarCadastro.phoneInvalid'));
         } else {
-          this.showAlert('Não foi possível salvar. Tente novamente.', 'error');
+          this.showAlert(t('auth.completarCadastro.saveFailedGeneric'), 'error');
         }
         return;
       }
 
-      this.showAlert('Cadastro completo! Redirecionando...', 'success');
+      this.showAlert(t('auth.completarCadastro.success'), 'success');
       setTimeout(() => { window.location.href = '/'; }, 800);
     } catch {
       this.setLoading(false);
-      this.showAlert('Erro de conexão. Tente novamente.', 'error');
+      this.showAlert(t('auth.completarCadastro.connectionError'), 'error');
     }
   }
 
   private setLoading(loading: boolean): void {
     this.submitBtn.disabled = loading;
-    this.submitText.textContent = loading ? 'Salvando...' : 'Concluir';
+    this.submitText.textContent = loading ? t('auth.completarCadastro.savingBtn') : t('auth.completarCadastro.concludeBtn');
   }
 
   private showAlert(msg: string, type: 'success' | 'error'): void {

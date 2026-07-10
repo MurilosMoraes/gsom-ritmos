@@ -7,6 +7,11 @@ import type { Plan } from './PaymentService';
 import { internalNav, isIOSNative } from '../native/Platform';
 import { purchasePlan as iapPurchase, restorePurchases as iapRestore, loadProducts as iapLoadProducts } from '../native/IAPService';
 import { redirectIfRecoveryHash } from './recoveryGuard';
+import { t, hydrate } from '../i18n';
+
+// Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
+// pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
+hydrate();
 
 interface AppliedCoupon {
   code: string;
@@ -114,7 +119,7 @@ class PlansPage {
     }
 
     if (isUpgrade) {
-      this.showAlert('Escolha um plano superior para fazer o upgrade da sua assinatura.');
+      this.showAlert(t('plans.upgrade.title'));
     } else if (isRenew && plan && plan !== 'trial') {
       // Renovação proativa (assinante pago veio antes de vencer)
       const planLabel = (PLANS.find(p => p.id === plan)?.name) || plan;
@@ -122,13 +127,13 @@ class PlansPage {
         ? Math.ceil((new Date(profile.subscription_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
         : 0;
       const venceMsg = daysToExp <= 0
-        ? 'sua assinatura vence hoje'
+        ? t('plans.renew.expiresToday')
         : daysToExp === 1
-          ? 'sua assinatura vence amanhã'
-          : `sua assinatura vence em ${daysToExp} dias`;
-      this.showAlert(`Renove seu plano ${planLabel} — ${venceMsg}.`);
+          ? t('plans.renew.expiresTomorrow')
+          : t('plans.renew.expiresInDays', { days: daysToExp });
+      this.showAlert(t('plans.renew.message', { plan: planLabel, msg: venceMsg }));
     } else if (status === 'expired' || (status === 'trial' && profile?.subscription_expires_at && new Date(profile.subscription_expires_at) <= new Date())) {
-      this.showAlert('Sua assinatura expirou. Escolha um plano para continuar.');
+      this.showAlert(t('plans.alert.expired'));
     }
 
     // Crédito de upgrade (proporcional ao tempo não usado do plano atual)
@@ -172,7 +177,7 @@ class PlansPage {
       restoreEl.style.cssText = 'text-align:center;margin-top:1.5rem;font-size:0.85rem;';
       restoreEl.innerHTML = `
         <a href="#" style="color:rgba(255,255,255,0.6);text-decoration:underline;">
-          Restaurar compras
+          ${t('plans.iap.restoreLink')}
         </a>
       `;
       grid.parentElement?.insertBefore(restoreEl, grid.nextSibling);
@@ -191,7 +196,7 @@ class PlansPage {
       if (result.success) {
         window.location.href = '/payment-success.html?ios_iap=1&restore=1';
       } else {
-        this.showAlert(result.error || 'Nenhuma assinatura encontrada para restaurar.');
+        this.showAlert(result.error || t('plans.iap.restoreNotFound'));
       }
     });
 
@@ -205,16 +210,14 @@ class PlansPage {
       terms.style.cssText = 'max-width:420px;margin:1.25rem auto 0;padding:0 1rem;text-align:center;font-size:0.72rem;line-height:1.5;color:rgba(255,255,255,0.45);';
       terms.innerHTML = `
         <p style="margin:0 0 0.6rem;">
-          A assinatura é cobrada na sua conta Apple ID na confirmação da
-          compra e renova automaticamente, salvo cancelamento com pelo
-          menos 24h de antecedência. Gerencie em Ajustes da App Store.
+          ${t('plans.iap.subscriptionTerms')}
         </p>
         <p style="margin:0;">
           <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
-             style="color:rgba(255,255,255,0.6);text-decoration:underline;">Termos de Uso (EULA)</a>
+             style="color:rgba(255,255,255,0.6);text-decoration:underline;">${t('plans.iap.eulaLink')}</a>
           &nbsp;·&nbsp;
           <a href="/privacy.html"
-             style="color:rgba(255,255,255,0.6);text-decoration:underline;">Política de Privacidade</a>
+             style="color:rgba(255,255,255,0.6);text-decoration:underline;">${t('plans.iap.privacyLink')}</a>
         </p>
       `;
       restoreEl.parentElement?.insertBefore(terms, restoreEl.nextSibling);
@@ -339,13 +342,13 @@ class PlansPage {
 
     const code = input.value.trim().toUpperCase();
     if (!code) {
-      status.textContent = 'Digite um código de cupom';
+      status.textContent = t('plans.coupon.emptyCode');
       status.className = 'coupon-status error';
       return;
     }
 
     btn.disabled = true;
-    status.textContent = 'Verificando...';
+    status.textContent = t('plans.coupon.checking');
     status.className = 'coupon-status';
 
     // Validar via RPC — retorna só campos mínimos se o cupom for válido
@@ -358,7 +361,7 @@ class PlansPage {
     const coupon = Array.isArray(rpcRows) ? rpcRows[0] : rpcRows;
 
     if (rpcErr || !coupon) {
-      status.textContent = 'Cupom inválido';
+      status.textContent = t('plans.coupon.invalid');
       status.className = 'coupon-status error';
       this.appliedCoupon = null;
       this.renderPlans(null);
@@ -374,7 +377,7 @@ class PlansPage {
     status.innerHTML = '';
     const badge = document.createElement('span');
     badge.className = 'coupon-badge';
-    badge.innerHTML = `${coupon.code} — ${coupon.discount_percent}% OFF <button id="removeCoupon">&times;</button>`;
+    badge.innerHTML = `${t('plans.coupon.badge', { code: coupon.code, percent: coupon.discount_percent })} <button id="removeCoupon">&times;</button>`;
     status.appendChild(badge);
     status.className = 'coupon-status success';
 
@@ -441,9 +444,9 @@ class PlansPage {
       let savingsText = '';
       if (hasCredit && creditApplied > 0) {
         const creditDisplay = (creditApplied / 100).toFixed(0);
-        savingsText = `Crédito de R$ ${creditDisplay} aplicado!`;
+        savingsText = t('plans.card.creditApplied', { amount: creditDisplay });
       } else if (hasDiscount) {
-        savingsText = `${discount}% OFF com cupom!`;
+        savingsText = t('plans.card.discountApplied', { percent: discount });
       } else if (plan.savings) {
         savingsText = plan.savings;
       }
@@ -465,8 +468,8 @@ class PlansPage {
         : '';
 
       card.innerHTML = `
-        ${isHighlighted ? '<div class="plan-badge">' + (hasCredit ? 'Upgrade' : 'Mais Popular') + '</div>' : ''}
-        <span class="plan-name">${plan.durationMonths >= 36 ? plan.displayName + ' — 3 Anos' : plan.displayName}</span>
+        ${isHighlighted ? '<div class="plan-badge">' + (hasCredit ? t('plans.card.badgeUpgrade') : t('plans.card.badgeMostPopular')) + '</div>' : ''}
+        <span class="plan-name">${plan.durationMonths >= 36 ? plan.displayName + t('plans.card.years3Suffix') : plan.displayName}</span>
         ${plan.tagline ? `<div class="plan-tagline">${plan.tagline}</div>` : ''}
         ${(hasDiscount || hasCredit) && (isMultiMonth || isDayPlan) ? `<div class="plan-original-price">R$ ${(originalPrice / 100).toFixed(2).replace('.', ',').replace(',00', '')}</div>` : ''}
         ${(hasDiscount || hasCredit) && !isMultiMonth && !isDayPlan ? `<div class="plan-original-price">R$ ${plan.pricePerMonth}/mes</div>` : ''}
@@ -479,23 +482,23 @@ class PlansPage {
         ${perMonthRef ? `<span class="plan-total">${perMonthRef}</span>` : '<span class="plan-total">&nbsp;</span>'}
         <ul class="plan-features">
           ${isDayPlan ? `
-          <li>Acesso completo por ${plan.durationDays} dias</li>
-          <li>Todos os ritmos liberados</li>
-          <li>Acompanhamento ao vivo, viradas e finalizações</li>
-          <li>Pedal Bluetooth e repertório</li>
-          <li>Ideal pro fim de semana e festas de família</li>
+          <li>${t('plans.features.dayAccess', { days: plan.durationDays! })}</li>
+          <li>${t('plans.features.dayAllRhythms')}</li>
+          <li>${t('plans.features.dayLiveTracking')}</li>
+          <li>${t('plans.features.dayPedalRepertoire')}</li>
+          <li>${t('plans.features.dayWeekendIdeal')}</li>
           ` : `
-          <li>Acesso completo a todos os ritmos</li>
-          <li>Acompanhamento ao vivo com viradas e finalizações</li>
-          <li>Pedal Bluetooth</li>
-          <li>Repertório e ritmos personalizados</li>
-          <li>Modo offline</li>
-          <li>Ritmos novos toda semana</li>
-          ${plan.durationMonths >= 6 ? '<li>Suporte prioritário</li>' : ''}
-          ${plan.durationMonths >= 36 ? '<li>Pague uma vez, toque por 3 anos</li>' : ''}
+          <li>${t('plans.features.fullAccess')}</li>
+          <li>${t('plans.features.fullLiveTracking')}</li>
+          <li>${t('plans.features.fullPedal')}</li>
+          <li>${t('plans.features.fullRepertoire')}</li>
+          <li>${t('plans.features.fullOffline')}</li>
+          <li>${t('plans.features.fullNewRhythms')}</li>
+          ${plan.durationMonths >= 6 ? `<li>${t('plans.features.fullPrioritySupport')}</li>` : ''}
+          ${plan.durationMonths >= 36 ? `<li>${t('plans.features.fullPayOnce3Years')}</li>` : ''}
           `}
         </ul>
-        <button class="plan-btn" data-plan="${plan.id}">${hasCredit ? 'Upgrade para' : 'Assinar'} ${plan.displayName}</button>
+        <button class="plan-btn" data-plan="${plan.id}">${hasCredit ? t('plans.card.btnUpgradeTo') : t('plans.card.btnSubscribe')} ${plan.displayName}</button>
       `;
 
       card.querySelector('.plan-btn')!.addEventListener('click', () => this.selectPlan(plan, finalPrice));
@@ -521,14 +524,14 @@ class PlansPage {
           return;
         }
         if (!result.success) {
-          this.showAlert(result.error || 'Erro ao processar compra. Tente novamente.');
+          this.showAlert(result.error || t('plans.iap.purchaseError'));
           return;
         }
         // Sucesso: backend já atualizou o profile. Redireciona pro app.
         window.location.href = '/payment-success.html?ios_iap=1';
       } catch (e) {
         if (loading) loading.classList.remove('active');
-        this.showAlert('Erro ao processar compra. Tente novamente.');
+        this.showAlert(t('plans.iap.purchaseError'));
       }
       return;
     }
@@ -598,11 +601,11 @@ class PlansPage {
         window.location.href = result.url;
       } else {
         if (loading) loading.classList.remove('active');
-        this.showAlert(result.error || 'Erro ao gerar pagamento. Tente novamente.');
+        this.showAlert(result.error || t('plans.checkout.genericError'));
       }
     } catch {
       if (loading) loading.classList.remove('active');
-      this.showAlert('Erro ao processar. Tente novamente.');
+      this.showAlert(t('plans.checkout.processError'));
     }
   }
 

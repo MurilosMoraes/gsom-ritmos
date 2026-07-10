@@ -28,6 +28,7 @@
 // Sempre espera o user parar OU trocar de ritmo OU ficar idle.
 
 import { isNativeApp, openExternal, internalNav, isIOSNative } from '../native/Platform';
+import { t } from '../i18n';
 
 // /assinar (não /plans): os App Links do Android interceptam /plans e
 // devolvem o link PRO PRÓPRIO APP — ver comentário em main.ts.
@@ -72,101 +73,101 @@ interface TriggerCopy {
  */
 const TRIGGERS: Record<TriggerKey, TriggerCopy> = {
   firstRhythmTouch: {
-    overline: 'Acompanhamento real',
-    title: 'Isso é uma banda de verdade.',
-    body: 'Você acabou de tocar com viradas, intros e finais profissionais. Garanta o acesso enquanto está testando — 10% OFF pra assinantes novos.',
-    ctaPrimary: 'Ver planos com 10% OFF',
-    ctaSecondary: 'Continuar testando',
+    overline: t('ui.conversion.firstRhythmTouch.overline'),
+    title: t('ui.conversion.firstRhythmTouch.title'),
+    body: t('ui.conversion.firstRhythmTouch.body'),
+    ctaPrimary: t('ui.conversion.firstRhythmTouch.ctaPrimary'),
+    ctaSecondary: t('ui.conversion.firstRhythmTouch.ctaSecondary'),
     coupon: 'TRIAL10',
     skipAfterAffiliate: true,
   },
   firstPlayComplete: {
-    overline: 'Período de teste',
-    title: 'Seu acompanhamento está pronto.',
-    body: 'Você tem 48 horas pra conhecer os ritmos, conectar o pedal e montar o show. Cupom de 10% OFF esperando na tela de planos.',
-    ctaPrimary: 'Ver planos',
-    ctaSecondary: 'Continuar testando',
+    overline: t('ui.conversion.firstPlayComplete.overline'),
+    title: t('ui.conversion.firstPlayComplete.title'),
+    body: t('ui.conversion.firstPlayComplete.body'),
+    ctaPrimary: t('ui.conversion.firstPlayComplete.ctaPrimary'),
+    ctaSecondary: t('ui.conversion.firstPlayComplete.ctaSecondary'),
     coupon: 'TRIAL10',
     skipAfterAffiliate: true,
   },
   thirdRhythmExplored: {
-    overline: 'Sua banda está montada',
-    title: 'Três ritmos diferentes. Já tá fluindo.',
-    body: 'Quando você assina, tudo fica na sua conta: personalizações, setlist e pedal configurado. Use 10% OFF agora.',
-    ctaPrimary: 'Garantir 10% OFF',
-    ctaSecondary: 'Continuar testando',
+    overline: t('ui.conversion.thirdRhythmExplored.overline'),
+    title: t('ui.conversion.thirdRhythmExplored.title'),
+    body: t('ui.conversion.thirdRhythmExplored.body'),
+    ctaPrimary: t('ui.conversion.thirdRhythmExplored.ctaPrimary'),
+    ctaSecondary: t('ui.conversion.thirdRhythmExplored.ctaSecondary'),
     coupon: 'TRIAL10',
     skipAfterAffiliate: true,
   },
   tenMinutesIn: {
-    overline: 'Você tá aqui há 10 minutos',
-    title: 'Que tal transformar isso em palco?',
-    body: 'Setlist, pedal Bluetooth e modo offline entram no plano. Enquanto você tá testando, 10% OFF no primeiro mês.',
-    ctaPrimary: 'Assinar com 10% OFF',
-    ctaSecondary: 'Continuar',
+    overline: t('ui.conversion.tenMinutesIn.overline'),
+    title: t('ui.conversion.tenMinutesIn.title'),
+    body: t('ui.conversion.tenMinutesIn.body'),
+    ctaPrimary: t('ui.conversion.tenMinutesIn.ctaPrimary'),
+    ctaSecondary: t('ui.conversion.tenMinutesIn.ctaSecondary'),
     coupon: 'TRIAL10',
     skipAfterAffiliate: true,
   },
   saveRhythmAttempt: {
-    overline: 'Ritmos personalizados',
-    title: 'Você está montando seu próprio ritmo.',
-    body: 'Ritmos salvos continuam na conta depois do teste — desde que o plano esteja ativo. 10% OFF se assinar agora.',
-    ctaPrimary: 'Assinar com 10% OFF',
-    ctaSecondary: 'Voltar pro ritmo',
+    overline: t('ui.conversion.saveRhythmAttempt.overline'),
+    title: t('ui.conversion.saveRhythmAttempt.title'),
+    body: t('ui.conversion.saveRhythmAttempt.body'),
+    ctaPrimary: t('ui.conversion.saveRhythmAttempt.ctaPrimary'),
+    ctaSecondary: t('ui.conversion.saveRhythmAttempt.ctaSecondary'),
     coupon: 'TRIAL10',
     skipAfterAffiliate: true,
   },
   setlistAddAttempt: {
-    overline: 'Repertório do show',
-    title: 'Você está montando um repertório.',
-    body: 'Setlist funciona no palco, offline, desde que o plano esteja ativo. Garanta com 10% OFF.',
-    ctaPrimary: 'Assinar com 10% OFF',
-    ctaSecondary: 'Voltar',
+    overline: t('ui.conversion.setlistAddAttempt.overline'),
+    title: t('ui.conversion.setlistAddAttempt.title'),
+    body: t('ui.conversion.setlistAddAttempt.body'),
+    ctaPrimary: t('ui.conversion.setlistAddAttempt.ctaPrimary'),
+    ctaSecondary: t('ui.conversion.setlistAddAttempt.ctaSecondary'),
     coupon: 'TRIAL10',
     skipAfterAffiliate: true,
   },
   savedFirstRhythm: {
-    overline: 'Ritmo salvo',
-    title: 'Agora você tem um ritmo próprio.',
-    body: 'Ele fica na sua conta se você assinar antes do teste acabar. 10% OFF enquanto está quente.',
-    ctaPrimary: 'Manter com 10% OFF',
-    ctaSecondary: 'Depois',
+    overline: t('ui.conversion.savedFirstRhythm.overline'),
+    title: t('ui.conversion.savedFirstRhythm.title'),
+    body: t('ui.conversion.savedFirstRhythm.body'),
+    ctaPrimary: t('ui.conversion.savedFirstRhythm.ctaPrimary'),
+    ctaSecondary: t('ui.conversion.savedFirstRhythm.ctaSecondary'),
     coupon: 'TRIAL10',
     skipAfterAffiliate: true,
   },
   returningAfterAbsence: {
-    overline: 'Que bom te ver de volta',
-    title: 'Seu teste ainda está rolando.',
-    body: 'Aproveita que você voltou — 10% OFF pra fechar o plano antes do teste acabar.',
-    ctaPrimary: 'Aproveitar 10% OFF',
-    ctaSecondary: 'Agora não',
+    overline: t('ui.conversion.returningAfterAbsence.overline'),
+    title: t('ui.conversion.returningAfterAbsence.title'),
+    body: t('ui.conversion.returningAfterAbsence.body'),
+    ctaPrimary: t('ui.conversion.returningAfterAbsence.ctaPrimary'),
+    ctaSecondary: t('ui.conversion.returningAfterAbsence.ctaSecondary'),
     coupon: 'TRIAL10',
     skipAfterAffiliate: true,
   },
   trialHalfway: {
-    overline: 'Metade do teste já foi',
-    title: 'Você tem mais 24 horas.',
-    body: 'Muita gente decide nesse ponto — já testou o que precisava. Se for assinar, 10% OFF só no primeiro mês.',
-    ctaPrimary: 'Assinar com 10% OFF',
-    ctaSecondary: 'Continuar testando',
+    overline: t('ui.conversion.trialHalfway.overline'),
+    title: t('ui.conversion.trialHalfway.title'),
+    body: t('ui.conversion.trialHalfway.body'),
+    ctaPrimary: t('ui.conversion.trialHalfway.ctaPrimary'),
+    ctaSecondary: t('ui.conversion.trialHalfway.ctaSecondary'),
     coupon: 'TRIAL10',
     skipAfterAffiliate: true,
   },
   trialEndingSoon: {
-    overline: 'Últimas 12 horas',
-    title: 'Seu teste termina em breve.',
-    body: 'Depois que o período acaba, o acesso é pelo plano. Use 10% OFF pra não perder o momento.',
-    ctaPrimary: 'Assinar com 10% OFF',
-    ctaSecondary: 'Lembrar depois',
+    overline: t('ui.conversion.trialEndingSoon.overline'),
+    title: t('ui.conversion.trialEndingSoon.title'),
+    body: t('ui.conversion.trialEndingSoon.body'),
+    ctaPrimary: t('ui.conversion.trialEndingSoon.ctaPrimary'),
+    ctaSecondary: t('ui.conversion.trialEndingSoon.ctaSecondary'),
     coupon: 'TRIAL10',
     skipAfterAffiliate: true,
   },
   trialLastHour: {
-    overline: 'Última hora do teste',
-    title: 'Essa é a última janela.',
-    body: 'Última hora antes do acesso ser bloqueado. Pra não perder o que você configurou: 10% OFF só agora.',
-    ctaPrimary: 'Garantir com 10% OFF',
-    ctaSecondary: 'Tudo bem',
+    overline: t('ui.conversion.trialLastHour.overline'),
+    title: t('ui.conversion.trialLastHour.title'),
+    body: t('ui.conversion.trialLastHour.body'),
+    ctaPrimary: t('ui.conversion.trialLastHour.ctaPrimary'),
+    ctaSecondary: t('ui.conversion.trialLastHour.ctaSecondary'),
     coupon: 'TRIAL10',
     skipAfterAffiliate: true,
   },
@@ -411,13 +412,13 @@ export class ConversionManager {
     overlay.className = 'cv-modal-overlay';
     overlay.innerHTML = `
       <div class="cv-modal">
-        <button class="cv-close" aria-label="Fechar">×</button>
+        <button class="cv-close" aria-label="${t('ui.conversion.closeAriaLabel')}">×</button>
         <div class="cv-overline">${copy.overline}</div>
         <h2 class="cv-title">${copy.title}</h2>
         <p class="cv-body">${copy.body}</p>
         <div class="cv-price-block">
-          <span class="cv-price-amount">R$ 29</span>
-          <span class="cv-price-unit">por mês</span>
+          <span class="cv-price-amount">${t('ui.conversion.priceAmount')}</span>
+          <span class="cv-price-unit">${t('ui.conversion.priceUnit')}</span>
         </div>
         <button class="cv-primary">${copy.ctaPrimary}</button>
         <button class="cv-secondary">${copy.ctaSecondary}</button>

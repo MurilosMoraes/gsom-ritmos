@@ -1,5 +1,11 @@
 // Entry point principal - GSOM Rhythm Sequencer
 
+import { t, getLocale, setLocale, hydrate } from './i18n';
+import { flagSvg, showLanguageSelector } from './i18n/selector';
+
+// Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
+// pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
+hydrate();
 import { StateManager } from './core/StateManager';
 import type { IAudioEngine } from './core/audio/IAudioEngine';
 import { createAudioEngine } from './core/audio/engineFactory';
@@ -152,7 +158,7 @@ class RhythmSequencer {
       try {
         (navigator as any).mediaSession.metadata = new (window as any).MediaMetadata({
           title: 'GDrums',
-          artist: 'Sequenciador de Ritmos',
+          artist: t('main.mediaSession.artist'),
         });
         (navigator as any).mediaSession.setActionHandler('play', () => this.togglePlayStop());
         (navigator as any).mediaSession.setActionHandler('pause', () => this.togglePlayStop());
@@ -297,9 +303,9 @@ class RhythmSequencer {
         overlay.innerHTML = `
           <div style="text-align:center;max-width:360px;width:100%;">
             <img src="/img/logo.png" alt="GDrums" style="height:48px;opacity:0.9;margin-bottom:2rem;">
-            <h2 style="color:#fff;font-size:1.3rem;font-weight:700;margin:0 0 0.5rem;letter-spacing:-0.3px;">Tudo pronto</h2>
+            <h2 style="color:#fff;font-size:1.3rem;font-weight:700;margin:0 0 0.5rem;letter-spacing:-0.3px;">${t('main.iosStartup.title')}</h2>
             <p style="color:rgba(255,255,255,0.5);font-size:0.9rem;line-height:1.6;margin:0 0 2rem;">
-              Toque pra começar a tocar. Seu pedal Bluetooth já vai estar funcionando.
+              ${t('main.iosStartup.body')}
             </p>
             <button id="iosStartupBtn" style="
               width:100%;padding:1rem;border:none;border-radius:14px;
@@ -307,7 +313,7 @@ class RhythmSequencer {
               color:#fff;font-size:1rem;font-weight:700;
               font-family:inherit;cursor:pointer;
               box-shadow:0 8px 24px rgba(0,212,255,0.25);
-            ">Começar</button>
+            ">${t('main.iosStartup.cta')}</button>
           </div>
         `;
         document.body.appendChild(overlay);
@@ -642,7 +648,7 @@ class RhythmSequencer {
     // Atualizar status
     const statusUser = document.getElementById('statusUser');
     if (statusUser) {
-      statusUser.textContent = state.isPlaying ? 'Tocando' : 'Parado';
+      statusUser.textContent = state.isPlaying ? t('main.status.playing') : t('main.status.stopped');
     }
 
     // Atualizar posição atual
@@ -657,11 +663,11 @@ class RhythmSequencer {
     const nextEntryUser = document.getElementById('nextEntryUser');
     if (nextEntryUser) {
       const patternNames: Record<PatternType, string> = {
-        intro: 'Intro',
-        main: 'Principal',
-        fill: 'Virada',
-        end: 'Final',
-        transition: 'Transição'
+        intro: t('main.patternName.intro'),
+        main: t('main.patternName.main'),
+        fill: t('main.patternName.fill'),
+        end: t('main.patternName.end'),
+        transition: t('main.patternName.transition')
       };
       nextEntryUser.textContent = patternNames[state.activePattern] || '-';
     }
@@ -675,15 +681,14 @@ class RhythmSequencer {
         <div style="position:fixed;inset:0;background:#030014;display:flex;align-items:center;justify-content:center;padding:2rem;z-index:99999;">
           <div style="text-align:center;max-width:360px;">
             <img src="/img/logo.png" alt="GDrums" style="height:36px;opacity:0.7;margin-bottom:1.5rem;">
-            <h2 style="color:#fff;font-size:1.1rem;margin:0 0 0.75rem;">Abra no navegador</h2>
+            <h2 style="color:#fff;font-size:1.1rem;margin:0 0 0.75rem;">${t('main.webviewWarning.title')}</h2>
             <p style="color:rgba(255,255,255,0.5);font-size:0.85rem;line-height:1.6;margin:0 0 1.5rem;">
-              O GDrums precisa ser aberto no Safari ou Chrome pra funcionar corretamente.
-              Toque no icone de abrir no navegador (canto superior direito).
+              ${t('main.webviewWarning.body')}
             </p>
             <div style="background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.15);border-radius:12px;padding:0.85rem;margin-bottom:1rem;">
-              <p style="color:rgba(0,212,255,0.8);font-size:0.8rem;margin:0;">No iPhone: toque nos 3 pontinhos e depois em "Abrir no Safari"</p>
+              <p style="color:rgba(0,212,255,0.8);font-size:0.8rem;margin:0;">${t('main.webviewWarning.hint')}</p>
             </div>
-            <a href="https://gdrums.com.br" style="display:inline-block;padding:0.7rem 2rem;background:linear-gradient(135deg,#00D4FF,#8B5CF6);color:#fff;text-decoration:none;border-radius:12px;font-weight:700;font-size:0.9rem;">Copiar link</a>
+            <a href="https://gdrums.com.br" style="display:inline-block;padding:0.7rem 2rem;background:linear-gradient(135deg,#00D4FF,#8B5CF6);color:#fff;text-decoration:none;border-radius:12px;font-weight:700;font-size:0.9rem;">${t('main.webviewWarning.copyLink')}</a>
           </div>
         </div>
       `;
@@ -692,8 +697,8 @@ class RhythmSequencer {
         e.preventDefault();
         navigator.clipboard?.writeText('https://gdrums.com.br').catch(() => {});
         const btn = e.target as HTMLElement;
-        btn.textContent = 'Link copiado!';
-        setTimeout(() => { btn.textContent = 'Copiar link'; }, 2000);
+        btn.textContent = t('main.webviewWarning.copied');
+        setTimeout(() => { btn.textContent = t('main.webviewWarning.copyLink'); }, 2000);
       });
       return;
     }
@@ -774,34 +779,34 @@ class RhythmSequencer {
 
   private static readonly WHATS_NEW = {
     version: '3.3',
-    overline: 'Atualização',
-    title: '+17 ritmos, equalizador e pausa no tempo.',
-    subtitle: 'Leva grande: biblioteca em 155 ritmos, novos controles de som e um jeito mais firme de tocar no palco.',
+    overline: t('main.whatsNew.overline'),
+    title: t('main.whatsNew.title'),
+    subtitle: t('main.whatsNew.subtitle'),
     sections: [
       {
-        label: '+17 ritmos novos',
+        label: t('main.whatsNew.section1.label'),
         featured: true,
-        body: 'Arrocha baiano, Foxtrot, Lambadão, Marcha Schlager, New Wave, Percuteria 4/4, Percuteria 6/8, Percuteria Rock, Polka, Pop Funk, Reggae 3, Reggae Roots, Seresta 2, Soul & Swing, Train Beat, Vaneira e milonga e Worship (espontâneo). Agora são 155 no total. Também refinamos Anunciação, Pagode e Samba no pandeiro.',
+        body: t('main.whatsNew.section1.body'),
       },
       {
-        label: 'Pausa que te segura no tempo',
-        body: 'Ao pausar, entra uma contagem no chimbal e o botão pisca. Ao continuar, o ritmo volta cravado no tempo. Dá pra fazer virada ou finalizar direto da pausa, e segurar o botão de pausa ajusta o volume da contagem.',
+        label: t('main.whatsNew.section2.label'),
+        body: t('main.whatsNew.section2.body'),
       },
       {
-        label: 'Equalizador e Reverb',
-        body: 'Equalizador de 5 bandas e um reverb leve pra amaciar o som — nas configurações.',
+        label: t('main.whatsNew.section3.label'),
+        body: t('main.whatsNew.section3.body'),
       },
       {
-        label: 'Desative o que não usa',
-        body: 'Segure 1,5 segundo numa variação de ritmo ou virada pra desligá-la.',
+        label: t('main.whatsNew.section4.label'),
+        body: t('main.whatsNew.section4.body'),
       },
       {
-        label: 'Repertório no automático e até 30',
-        body: 'Botão AUTO pula pra próxima música ao finalizar. E agora dá pra ter até 30 repertórios.',
+        label: t('main.whatsNew.section5.label'),
+        body: t('main.whatsNew.section5.body'),
       },
       {
-        label: 'Mais som e Manual do Usuário',
-        body: 'Som geral mais alto, e um guia completo no app com todos os botões e o pedal (2 e 4 botões).',
+        label: t('main.whatsNew.section6.label'),
+        body: t('main.whatsNew.section6.body'),
       },
     ]
   };
@@ -855,13 +860,13 @@ class RhythmSequencer {
           <path d="M13.73 21a2 2 0 01-3.46 0"/>
         </svg>
         <div class="push-banner-text">
-          <strong>Receba avisos importantes</strong>
-          <span>Trial expirando, promoções e novidades — só o essencial.</span>
+          <strong>${t('main.pushBanner.title')}</strong>
+          <span>${t('main.pushBanner.subtitle')}</span>
         </div>
       </div>
       <div class="push-banner-actions">
-        <button class="push-banner-skip" id="pushBannerSkip">Agora não</button>
-        <button class="push-banner-allow" id="pushBannerAllow">Permitir</button>
+        <button class="push-banner-skip" id="pushBannerSkip">${t('main.pushBanner.skip')}</button>
+        <button class="push-banner-allow" id="pushBannerAllow">${t('main.pushBanner.allow')}</button>
       </div>
     `;
     document.body.appendChild(banner);
@@ -884,7 +889,7 @@ class RhythmSequencer {
     banner.querySelector('#pushBannerAllow')?.addEventListener('click', async () => {
       const allowBtn = banner.querySelector('#pushBannerAllow') as HTMLButtonElement;
       allowBtn.disabled = true;
-      allowBtn.textContent = 'Aguarde...';
+      allowBtn.textContent = t('main.pushBanner.waiting');
       let granted = false;
       try {
         const { requestPushPermission, syncSubscriptionId } = await import('./native/OneSignalService');
@@ -896,9 +901,9 @@ class RhythmSequencer {
           if (session?.user) {
             syncSubscriptionId(session.user.id, supabase).catch(() => {});
           }
-          Toast.show('Notificações ativadas! 🔔', { type: 'success' });
+          Toast.show(t('main.pushBanner.enabledToast'), { type: 'success' });
         } else {
-          Toast.show('Você pode ativar depois nas configurações do navegador.', { type: 'info' });
+          Toast.show(t('main.pushBanner.laterToast'), { type: 'info' });
         }
       } catch { /* noop */ }
       // Só marca como dismissed se permissão foi NEGADA — assim, se algo
@@ -1018,33 +1023,33 @@ class RhythmSequencer {
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
         </div>
-        <h2 class="offline-title">${isUpdate ? 'Conteúdo atualizado' : 'Pronto pro modo offline?'}</h2>
+        <h2 class="offline-title">${isUpdate ? t('main.offlineDownload.titleUpdate') : t('main.offlineDownload.titleFirst')}</h2>
         <p class="offline-sub">${isUpdate
-          ? 'Tem ritmos novos e melhorias. Baixar tudo agora pra usar offline?'
-          : 'Vamos baixar todos os ritmos e sons pro seu celular. Depois disso, o app funciona sem internet — perfeito pra palco, lugar sem sinal, no avião.'}</p>
+          ? t('main.offlineDownload.subUpdate')
+          : t('main.offlineDownload.subFirst')}</p>
 
         <div class="offline-stats" id="offlineStats" style="display:none;">
           <div class="offline-progress-bar">
             <div class="offline-progress-fill" id="offlineProgressFill" style="width:0%;"></div>
           </div>
-          <div class="offline-progress-text" id="offlineProgressText">Preparando…</div>
+          <div class="offline-progress-text" id="offlineProgressText">${t('main.offlineDownload.preparing')}</div>
           <div class="offline-current-file" id="offlineCurrentFile"></div>
         </div>
 
         <div class="offline-actions" id="offlineActions">
-          <button class="offline-btn offline-btn-skip" id="offlineSkipBtn">Agora não</button>
-          <button class="offline-btn offline-btn-go" id="offlineStartBtn">Baixar agora</button>
+          <button class="offline-btn offline-btn-skip" id="offlineSkipBtn">${t('main.offlineDownload.skip')}</button>
+          <button class="offline-btn offline-btn-go" id="offlineStartBtn">${t('main.offlineDownload.start')}</button>
         </div>
 
         <div class="offline-actions offline-actions-during" id="offlineActionsDuring" style="display:none;">
-          <button class="offline-btn offline-btn-skip" id="offlineCancelBtn">Cancelar</button>
-          <button class="offline-btn offline-btn-go" id="offlineBgBtn">Continuar em 2º plano</button>
+          <button class="offline-btn offline-btn-skip" id="offlineCancelBtn">${t('main.offlineDownload.cancel')}</button>
+          <button class="offline-btn offline-btn-go" id="offlineBgBtn">${t('main.offlineDownload.background')}</button>
         </div>
 
         <div class="offline-done" id="offlineDone" style="display:none;">
           <div class="offline-done-icon">✓</div>
-          <div class="offline-done-text">Tudo baixado! O app funciona offline agora.</div>
-          <button class="offline-btn offline-btn-go" id="offlineCloseBtn">Fechar</button>
+          <div class="offline-done-text">${t('main.offlineDownload.doneText')}</div>
+          <button class="offline-btn offline-btn-go" id="offlineCloseBtn">${t('main.offlineDownload.close')}</button>
         </div>
       </div>
     `;
@@ -1083,7 +1088,7 @@ class RhythmSequencer {
     bgBtn?.addEventListener('click', () => {
       inBackground = true;
       closeModal();
-      Toast.show('Baixando em 2º plano…', { type: 'info' });
+      Toast.show(t('main.offlineDownload.bgToast'), { type: 'info' });
     });
 
     closeBtn?.addEventListener('click', closeModal);
@@ -1099,15 +1104,15 @@ class RhythmSequencer {
           if (inBackground) return; // não atualiza UI se foi pra background
           const pct = Math.round((progress.current / progress.total) * 100);
           progressFill.style.width = pct + '%';
-          progressText.textContent = `${progress.current} de ${progress.total} (${pct}%)`;
+          progressText.textContent = t('main.offlineDownload.progress', { current: progress.current, total: progress.total, pct });
           currentFile.textContent = progress.currentFile;
         }, abortController.signal);
 
         if (inBackground) {
           if (result.success) {
-            Toast.show('Tudo pronto! O app funciona offline agora.', { type: 'success' });
+            Toast.show(t('main.offlineDownload.successToast'), { type: 'success' });
           } else if (result.failed.length > 0) {
-            Toast.show(`Download terminou com ${result.failed.length} falhas. Tente de novo no menu.`, { type: 'warn' });
+            Toast.show(t('main.offlineDownload.failedToast', { count: result.failed.length }), { type: 'warn' });
           }
           return;
         }
@@ -1122,12 +1127,12 @@ class RhythmSequencer {
           // Mostra opção de retry
           actionsDuring.style.display = 'none';
           actionsInitial.style.display = '';
-          progressText.textContent = `${result.failed.length} arquivos falharam — toque "Baixar agora" pra tentar de novo`;
-          startBtn.textContent = 'Tentar de novo';
+          progressText.textContent = t('main.offlineDownload.retryHint', { count: result.failed.length });
+          startBtn.textContent = t('main.offlineDownload.retry');
         }
       } catch (e) {
         if (!inBackground && !abortController.signal.aborted) {
-          progressText.textContent = 'Erro no download. Tente de novo.';
+          progressText.textContent = t('main.offlineDownload.errorText');
           actionsDuring.style.display = 'none';
           actionsInitial.style.display = '';
         }
@@ -1253,22 +1258,22 @@ class RhythmSequencer {
     overlay.className = 'wn-modal-overlay';
     overlay.innerHTML = `
       <div class="wn-modal">
-        <button class="wn-close" aria-label="Fechar">×</button>
-        <div class="wn-overline">${wn.overline} — versão ${wn.version}</div>
+        <button class="wn-close" aria-label="${t('main.whatsNew.closeAriaLabel')}">×</button>
+        <div class="wn-overline">${t('main.whatsNew.overlineVersion', { overline: wn.overline, version: wn.version })}</div>
         <h2 class="wn-title">${wn.title}</h2>
         <p class="wn-subtitle">${wn.subtitle}</p>
         <div class="wn-sections">
           ${wn.sections.map((s: any) => `
             <div class="wn-section${s.featured ? ' wn-section-featured' : ''}">
               <div class="wn-section-label">
-                ${s.featured ? '<span class="wn-badge">Destaque</span>' : ''}
+                ${s.featured ? `<span class="wn-badge">${t('main.whatsNew.badge')}</span>` : ''}
                 ${s.label}
               </div>
               <p class="wn-section-body">${s.body}</p>
             </div>
           `).join('')}
         </div>
-        <button class="wn-cta" id="whatsNewOk">Continuar</button>
+        <button class="wn-cta" id="whatsNewOk">${t('main.whatsNew.cta')}</button>
       </div>
     `;
     document.body.appendChild(overlay);
@@ -1454,16 +1459,16 @@ class RhythmSequencer {
 
       // Sem cache válido e sem rede — explicar o motivo
       const cached = OfflineCache.getProfile();
-      let reason = 'Você precisa estar conectado para acessar o GDrums.';
+      let reason = t('main.access.offlineReasonDefault');
       if (cached) {
         const expires = cached.subscriptionExpiresAt ? new Date(cached.subscriptionExpiresAt) : null;
         const cacheAge = Date.now() - cached.cachedAt;
         const maxAge = 7 * 24 * 60 * 60 * 1000;
 
         if (expires && expires <= new Date()) {
-          reason = 'Sua assinatura expirou. Conecte-se à internet para renovar seu plano.';
+          reason = t('main.access.offlineReasonExpired');
         } else if (cacheAge > maxAge) {
-          reason = 'Faz mais de 7 dias sem conexão. Conecte-se à internet para revalidar seu acesso.';
+          reason = t('main.access.offlineReasonStale');
         }
       }
 
@@ -1472,13 +1477,13 @@ class RhythmSequencer {
         <div style="position:fixed;inset:0;background:#030014;display:flex;align-items:center;justify-content:center;padding:2rem;">
           <div style="text-align:center;max-width:400px;">
             <div style="font-size:2.5rem;margin-bottom:1rem;">📡</div>
-            <h2 style="color:#fff;font-size:1.2rem;margin:0 0 0.75rem;">Sem conexão</h2>
+            <h2 style="color:#fff;font-size:1.2rem;margin:0 0 0.75rem;">${t('main.access.offlineTitle')}</h2>
             <p style="color:rgba(255,255,255,0.5);font-size:0.85rem;line-height:1.6;margin:0 0 1.5rem;">${reason}</p>
             <button onclick="window.location.reload()" style="
               padding:0.7rem 2rem;border:none;border-radius:12px;
               background:linear-gradient(135deg,#00D4FF,#8B5CF6);
               color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;
-            ">Tentar novamente</button>
+            ">${t('main.access.retryButton')}</button>
           </div>
         </div>
       `;
@@ -1716,9 +1721,9 @@ class RhythmSequencer {
       <div style="position:fixed;inset:0;background:#030014;display:flex;align-items:center;justify-content:center;padding:2rem;z-index:99999;">
         <div style="text-align:center;max-width:400px;width:100%;">
           <img src="/img/logo.png" alt="GDrums" style="height:40px;opacity:0.9;margin-bottom:1.5rem;">
-          <h2 style="color:#fff;font-size:1.2rem;font-weight:700;margin:0 0 0.75rem;letter-spacing:-0.3px;">Seu teste acabou</h2>
+          <h2 style="color:#fff;font-size:1.2rem;font-weight:700;margin:0 0 0.75rem;letter-spacing:-0.3px;">${t('main.subscribeNotice.title')}</h2>
           <p style="color:rgba(255,255,255,0.55);font-size:0.9rem;line-height:1.6;margin:0 0 1.75rem;">
-            Pra continuar tocando com sua banda, assine no nosso site. Depois é só voltar aqui e fazer login.
+            ${t('main.subscribeNotice.body')}
           </p>
           <button id="goToSiteBtn" style="
             width:100%;padding:1rem;border:none;border-radius:14px;
@@ -1726,14 +1731,14 @@ class RhythmSequencer {
             color:#fff;font-size:0.95rem;font-weight:700;
             font-family:inherit;cursor:pointer;margin-bottom:0.75rem;
             box-shadow:0 8px 24px rgba(0,212,255,0.25);
-          ">Abrir gdrums.com.br</button>
+          ">${t('main.subscribeNotice.openSite')}</button>
           <button id="logoutFromNoticeBtn" style="
             width:100%;padding:0.85rem;border:none;border-radius:12px;
             background:rgba(255,255,255,0.05);
             border:1px solid rgba(255,255,255,0.08);
             color:rgba(255,255,255,0.5);font-size:0.85rem;font-weight:600;
             font-family:inherit;cursor:pointer;
-          ">Sair da conta</button>
+          ">${t('main.subscribeNotice.logout')}</button>
         </div>
       </div>
     `;
@@ -1765,14 +1770,14 @@ class RhythmSequencer {
       sessionStorage.setItem('gdrums-renew-modal-shown', '1');
 
       let renewMsg: string;
-      if (daysLeft <= 0) renewMsg = 'Sua assinatura vence <strong>hoje</strong>.';
-      else if (daysLeft === 1) renewMsg = 'Sua assinatura vence <strong>amanhã</strong>.';
-      else renewMsg = `Sua assinatura vence em <strong>${daysLeft} dias</strong>.`;
+      if (daysLeft <= 0) renewMsg = t('main.renewal.dueToday');
+      else if (daysLeft === 1) renewMsg = t('main.renewal.dueTomorrow');
+      else renewMsg = t('main.renewal.dueInDays', { days: daysLeft });
 
       this.showRenewalSuggestionModal({
-        title: 'Sua assinatura tá perto de acabar',
-        message: renewMsg + ' Renove sem pressa pra não perder acesso aos ritmos.',
-        ctaLabel: 'Renovar agora',
+        title: t('main.renewal.title'),
+        message: renewMsg + t('main.renewal.messageSuffix'),
+        ctaLabel: t('main.renewal.cta'),
         // IAP compliance (Apple 3.1.1): nativo NUNCA abre site externo de
 // pagamento; usa /plans interno que aciona StoreKit no iOS.
 ctaUrl: '/plans?renew=true',
@@ -1793,13 +1798,13 @@ ctaUrl: '/plans?renew=true',
 
     const timeText = hoursLeft > 0 ? `${hoursLeft}h` : `${minutesLeft}min`;
     const trialMsg = hoursLeft <= 6
-      ? `Seu teste expira em <strong>${timeText}</strong>.`
-      : `Restam <strong>${timeText}</strong> do período de teste.`;
+      ? t('main.renewal.trialExpiresIn', { time: timeText })
+      : t('main.renewal.trialRemaining', { time: timeText });
 
     this.showRenewalSuggestionModal({
-      title: hoursLeft <= 6 ? 'Teste expirando' : 'Você ainda tá no teste',
-      message: trialMsg + ' Assine agora pra continuar tocando depois que acabar.',
-      ctaLabel: 'Ver planos',
+      title: hoursLeft <= 6 ? t('main.renewal.trialTitleUrgent') : t('main.renewal.trialTitleNormal'),
+      message: trialMsg + t('main.renewal.trialMessageSuffix'),
+      ctaLabel: t('main.renewal.trialCta'),
       // IAP compliance: nativo usa /plans interno (StoreKit).
       ctaUrl: '/plans',
     });
@@ -1821,11 +1826,11 @@ ctaUrl: '/plans?renew=true',
     overlay.className = 'renew-modal-overlay';
     overlay.innerHTML = `
       <div class="renew-modal">
-        <button class="renew-modal-close" aria-label="Fechar">×</button>
+        <button class="renew-modal-close" aria-label="${t('main.renewal.closeAriaLabel')}">×</button>
         <h3 class="renew-modal-title">${opts.title}</h3>
         <p class="renew-modal-message">${opts.message}</p>
         <div class="renew-modal-actions">
-          <button class="renew-modal-skip">Depois</button>
+          <button class="renew-modal-skip">${t('main.renewal.skip')}</button>
           <a href="${opts.ctaUrl}" class="renew-modal-cta" id="renewModalCta">${opts.ctaLabel}</a>
         </div>
       </div>
@@ -2026,9 +2031,9 @@ ctaUrl: '/plans?renew=true',
       const channelInfo = document.createElement('div');
       channelInfo.className = 'channel-info';
       channelInfo.innerHTML = `
-        <div class="channel-number">Canal ${channel + 1}</div>
+        <div class="channel-number">${t('main.channel.label', { number: channel + 1 })}</div>
         <select id="midiSelect${channel + 1}" class="channel-sound">
-          <option value="">Selecione...</option>
+          <option value="">${t('main.channel.selectOption')}</option>
         </select>
       `;
 
@@ -2210,7 +2215,7 @@ ctaUrl: '/plans?renew=true',
         if (filePath) {
           this.loadRhythmFromPath(filePath);
         } else {
-          this.uiManager.showAlert('Selecione um ritmo primeiro');
+          this.uiManager.showAlert(t('main.userMode.selectRhythmFirst'));
         }
       });
     }
@@ -2615,7 +2620,7 @@ ctaUrl: '/plans?renew=true',
       pedalInput.setAttribute('spellcheck', 'false');
       // DEVE ser visível e com tamanho real — iOS ignora inputs com opacity~0 ou height<2px
       pedalInput.style.cssText = 'position:fixed;bottom:0;left:0;right:0;width:100%;height:24px;font-size:10px;font-family:inherit;background:rgba(3,0,20,0.95);color:rgba(255,255,255,0.12);border:none;border-top:1px solid rgba(255,255,255,0.03);text-align:center;padding:0;margin:0;z-index:9998;outline:none;caret-color:transparent;';
-      pedalInput.placeholder = 'Pedal BT';
+      pedalInput.placeholder = t('main.pedalInput.placeholder');
       document.body.appendChild(pedalInput);
 
       const hasModalOpen = () => {
@@ -2780,8 +2785,8 @@ ctaUrl: '/plans?renew=true',
             const hasContent = variation?.pattern.some(row => row.some(step => step === true));
             if (!hasContent) {
               this.modalManager.show(
-                'Nenhum Ritmo Carregado',
-                'Selecione um ritmo na lista antes de iniciar a reprodução.',
+                t('main.modal.noRhythmLoadedTitle'),
+                t('main.modal.noRhythmLoadedBody'),
                 'warning'
               );
               return;
@@ -2844,7 +2849,7 @@ ctaUrl: '/plans?renew=true',
         this.persistDisabledVariations();
         this.uiManager.updatePerformanceGrid();
         HapticsService.heavy();
-        this.uiManager.showAlert(nowDisabled ? 'Variação desativada' : 'Variação reativada');
+        this.uiManager.showAlert(nowDisabled ? t('main.variation.disabledAlert') : t('main.variation.enabledAlert'));
       }, 1500);
     };
     const cancel = () => { if (timer !== null) { clearTimeout(timer); timer = null; } };
@@ -2937,15 +2942,15 @@ ctaUrl: '/plans?renew=true',
     if (fillsToggle) {
       fillsToggle.classList.toggle('active', this.useFills);
       fillsToggle.title = this.useFills
-        ? 'Viradas ao trocar de ritmo: ligadas'
-        : 'Viradas ao trocar de ritmo: desligadas (troca direto)';
+        ? t('main.toggle.fillsOnTitle')
+        : t('main.toggle.fillsOffTitle');
     }
     if (finalToggle) finalToggle.classList.toggle('active', this.useFinal);
     if (autoNextToggle) {
       autoNextToggle.classList.toggle('active', this.useAutoNext);
       autoNextToggle.title = this.useAutoNext
-        ? 'Auto-avançar repertório: ligado (ao finalizar, carrega a próxima música)'
-        : 'Auto-avançar repertório: desligado';
+        ? t('main.toggle.autoNextOnTitle')
+        : t('main.toggle.autoNextOffTitle');
     }
 
     introToggle?.addEventListener('click', () => {
@@ -2958,8 +2963,8 @@ ctaUrl: '/plans?renew=true',
       this.useFills = !this.useFills;
       fillsToggle.classList.toggle('active', this.useFills);
       fillsToggle.title = this.useFills
-        ? 'Viradas ao trocar de ritmo: ligadas'
-        : 'Viradas ao trocar de ritmo: desligadas (troca direto)';
+        ? t('main.toggle.fillsOnTitle')
+        : t('main.toggle.fillsOffTitle');
       localStorage.setItem('gdrums-toggle-fills', String(this.useFills));
     });
 
@@ -2973,8 +2978,8 @@ ctaUrl: '/plans?renew=true',
       this.useAutoNext = !this.useAutoNext;
       autoNextToggle.classList.toggle('active', this.useAutoNext);
       autoNextToggle.title = this.useAutoNext
-        ? 'Auto-avançar repertório: ligado (ao finalizar, carrega a próxima música)'
-        : 'Auto-avançar repertório: desligado';
+        ? t('main.toggle.autoNextOnTitle')
+        : t('main.toggle.autoNextOffTitle');
       localStorage.setItem('gdrums-toggle-autonext', String(this.useAutoNext));
     });
   }
@@ -3035,7 +3040,7 @@ ctaUrl: '/plans?renew=true',
     const newProjectBtn = document.getElementById('newProject');
     if (newProjectBtn) {
       newProjectBtn.addEventListener('click', async () => {
-        const confirmed = await this.uiManager.showConfirm('Novo Projeto', 'Isso vai limpar o editor. Deseja continuar?');
+        const confirmed = await this.uiManager.showConfirm(t('main.confirm.newProjectTitle'), t('main.confirm.newProjectBody'));
         if (confirmed) {
           if (this.stateManager.isPlaying()) this.stop();
           // Resetar state do editor sem afetar user mode
@@ -3062,7 +3067,7 @@ ctaUrl: '/plans?renew=true',
           this.updateProjectBar('');
           this.uiManager.refreshGridDisplay();
           this.uiManager.updateVariationButtons();
-          this.uiManager.showAlert('Novo projeto criado!');
+          this.uiManager.showAlert(t('main.alert.newProjectCreated'));
         }
       });
     }
@@ -3087,10 +3092,10 @@ ctaUrl: '/plans?renew=true',
             this.updateProjectBar(file.name.replace('.json', ''));
             this.uiManager.refreshGridDisplay();
             this.uiManager.updateVariationButtons();
-            this.uiManager.showAlert('Projeto carregado!');
+            this.uiManager.showAlert(t('main.alert.projectLoaded'));
           } catch (error) {
             void error;
-            this.uiManager.showAlert('Erro ao carregar projeto');
+            this.uiManager.showAlert(t('main.alert.projectLoadError'));
           }
         }
       });
@@ -3115,10 +3120,10 @@ ctaUrl: '/plans?renew=true',
           try {
             await this.fileManager.loadPatternFromFile(file);
             this.uiManager.refreshGridDisplay();
-            this.uiManager.showAlert('Padrão carregado com sucesso!');
+            this.uiManager.showAlert(t('main.alert.patternLoaded'));
           } catch (error) {
             console.error('Error loading pattern:', error);
-            this.uiManager.showAlert('Erro ao carregar padrão');
+            this.uiManager.showAlert(t('main.alert.patternLoadError'));
           }
         }
       });
@@ -3128,7 +3133,7 @@ ctaUrl: '/plans?renew=true',
     const clearPatternBtn = document.getElementById('clearPattern');
     if (clearPatternBtn) {
       clearPatternBtn.addEventListener('click', () => {
-        if (confirm('Tem certeza que deseja limpar o padrão atual?')) {
+        if (confirm(t('main.confirm.clearPattern'))) {
           const pattern = this.stateManager.getEditingPattern();
           const state = this.stateManager.getState();
           const numSteps = this.stateManager.getPatternSteps(pattern);
@@ -3147,7 +3152,7 @@ ctaUrl: '/plans?renew=true',
 
           this.uiManager.refreshGridDisplay();
           this.uiManager.updateVariationButtons();
-          this.uiManager.showAlert('Padrão limpo!');
+          this.uiManager.showAlert(t('main.alert.patternCleared'));
         }
       });
     }
@@ -3180,7 +3185,7 @@ ctaUrl: '/plans?renew=true',
     if (refreshRhythmsBtn) {
       refreshRhythmsBtn.addEventListener('click', () => {
         this.loadAvailableRhythms();
-        this.uiManager.showAlert('Lista de ritmos atualizada!');
+        this.uiManager.showAlert(t('main.alert.rhythmListRefreshed'));
       });
     }
   }
@@ -3220,6 +3225,18 @@ ctaUrl: '/plans?renew=true',
   }
 
   private setupModeToggle(): void {
+    // Seletor de idioma — o item do menu mostra a BANDEIRINHA do idioma
+    // atual + label traduzido. Bandeiras em SVG inline (emoji de bandeira
+    // NÃO renderiza no Windows — vira "BR"/"US"; SVG aparece em tudo).
+    const languageBtn = document.getElementById('languageBtn');
+    if (languageBtn) {
+      languageBtn.innerHTML = `${flagSvg(getLocale())} ${t('main.language.menuItem')}`;
+      languageBtn.style.display = 'flex';
+      languageBtn.style.alignItems = 'center';
+      languageBtn.style.gap = '0.5rem';
+      languageBtn.addEventListener('click', () => showLanguageSelector());
+    }
+
     // Manual do Usuário
     const userManualBtn = document.getElementById('userManualBtn');
     if (userManualBtn) {
@@ -3266,7 +3283,7 @@ ctaUrl: '/plans?renew=true',
         if (isNativeApp()) {
           const { markNativeReady } = await import('./native/OfflineDownloader');
           await markNativeReady();
-          Toast.show('Tudo offline! Os ritmos e sons já vêm dentro do app.', { type: 'success' });
+          Toast.show(t('main.toast.allOffline'), { type: 'success' });
           return;
         }
         // Limpa o "pulado" pra modal mostrar de novo
@@ -3278,7 +3295,7 @@ ctaUrl: '/plans?renew=true',
           const status = await getOfflineStatus();
           this.showOfflineDownloadModal(manifest.version || 0, status.ready);
         } catch {
-          Toast.show('Não foi possível verificar offline. Tente de novo.', { type: 'warn' });
+          Toast.show(t('main.toast.offlineCheckFailed'), { type: 'warn' });
         }
       });
     }
@@ -3325,7 +3342,7 @@ ctaUrl: '/plans?renew=true',
         // showAccountModal é async — captura erros pra não morrer silenciosamente
         this.showAccountModal().catch(err => {
           console.error('[gdrums] Erro ao abrir Minha Conta:', err);
-          this.modalManager.show('Erro', 'Não foi possível abrir sua conta. Tente recarregar a página.', 'warning');
+          this.modalManager.show(t('main.modal.accountErrorTitle'), t('main.modal.accountErrorBody'), 'warning');
         });
       });
     }
@@ -3349,7 +3366,7 @@ ctaUrl: '/plans?renew=true',
       // Android web: existe app oficial na Play Store. Label muda pra ficar
       // claro que vai abrir a loja, não instalar PWA.
       if (isAndroidWeb()) {
-        menuInstallBtn.textContent = 'Baixar app na Play Store';
+        menuInstallBtn.textContent = t('main.install.playStoreButton');
       }
 
       menuInstallBtn.addEventListener('click', () => {
@@ -3368,7 +3385,7 @@ ctaUrl: '/plans?renew=true',
           this.installPrompt.prompt();
           this.installPrompt.userChoice.then((choice: any) => {
             if (choice.outcome === 'accepted') {
-              this.modalManager.show('App', 'App instalado com sucesso!', 'success');
+              this.modalManager.show(t('main.modal.appInstalledTitle'), t('main.modal.appInstalledBody'), 'success');
               menuInstallBtn.style.display = 'none';
             }
             this.installPrompt = null;
@@ -3416,7 +3433,7 @@ ctaUrl: '/plans?renew=true',
         adminModeToggle.checked = true;
         userMode.classList.remove('active');
         adminMode.classList.add('active');
-        modeLabel.textContent = 'Modo Admin';
+        modeLabel.textContent = t('main.mode.admin');
       }
 
       adminModeToggle.addEventListener('change', (e) => {
@@ -3426,11 +3443,11 @@ ctaUrl: '/plans?renew=true',
         if (isAdmin) {
           userMode.classList.remove('active');
           adminMode.classList.add('active');
-          modeLabel.textContent = 'Modo Admin';
+          modeLabel.textContent = t('main.mode.admin');
         } else {
           adminMode.classList.remove('active');
           userMode.classList.add('active');
-          modeLabel.textContent = 'Modo Usuário';
+          modeLabel.textContent = t('main.mode.user');
         }
 
         this.saveAdminState(isAdmin);
@@ -3468,7 +3485,7 @@ ctaUrl: '/plans?renew=true',
           'bumbo.wav', 'caixa.wav', 'chimbal_fechado.wav', 'chimbal_aberto.wav',
           'prato.mp3', 'surdo.wav', 'tom_1.wav', 'tom_2.wav'
         ];
-        fillStartSelect.innerHTML = '<option value="">Nenhum</option>';
+        fillStartSelect.innerHTML = `<option value="">${t('main.select.none')}</option>`;
         midiFiles.forEach(file => {
           const option = document.createElement('option');
           option.value = `/midi/${file}`;
@@ -3525,7 +3542,7 @@ ctaUrl: '/plans?renew=true',
           'bumbo.wav', 'caixa.wav', 'chimbal_fechado.wav', 'chimbal_aberto.wav',
           'prato.mp3', 'surdo.wav', 'tom_1.wav', 'tom_2.wav'
         ];
-        fillReturnSelect.innerHTML = '<option value="">Nenhum</option>';
+        fillReturnSelect.innerHTML = `<option value="">${t('main.select.none')}</option>`;
         midiFiles.forEach(file => {
           const option = document.createElement('option');
           option.value = `/midi/${file}`;
@@ -3588,9 +3605,9 @@ ctaUrl: '/plans?renew=true',
       // Atualizar o texto do botão baseado no estado de reprodução
       this.stateManager.subscribe('playState', (state) => {
         if (state.isPlaying) {
-          testVariationBtn.innerHTML = '<span>Parar</span>';
+          testVariationBtn.innerHTML = `<span>${t('main.variation.stopButton')}</span>`;
         } else {
-          testVariationBtn.innerHTML = '<span>Testar</span>';
+          testVariationBtn.innerHTML = `<span>${t('main.variation.testButton')}</span>`;
         }
       });
     }
@@ -3670,7 +3687,7 @@ ctaUrl: '/plans?renew=true',
 
         // Atualizar display
         if (currentStepsDisplay) {
-          currentStepsDisplay.textContent = `${steps} steps`;
+          currentStepsDisplay.textContent = t('main.variation.stepsCount', { steps });
         }
 
         // Regenerar grid com novo número de steps
@@ -3711,7 +3728,7 @@ ctaUrl: '/plans?renew=true',
     }
 
     if (currentStepsDisplay) {
-      currentStepsDisplay.textContent = `${steps} steps`;
+      currentStepsDisplay.textContent = t('main.variation.stepsCount', { steps });
     }
   }
 
@@ -3720,7 +3737,7 @@ ctaUrl: '/plans?renew=true',
     const maxSlots = patternType === 'end' ? 1 : 3;
 
     if (slotIndex >= maxSlots) {
-      this.uiManager.showAlert(`O padrão ${patternType.toUpperCase()} permite apenas ${maxSlots} variações`);
+      this.uiManager.showAlert(t('main.alert.maxVariations', { pattern: patternType.toUpperCase(), max: maxSlots }));
       return;
     }
 
@@ -3759,14 +3776,14 @@ ctaUrl: '/plans?renew=true',
     const variation = state.variations[patternType][slotIndex];
 
     if (!variation || !variation.pattern) {
-      this.uiManager.showAlert('Nenhuma variação para testar neste slot');
+      this.uiManager.showAlert(t('main.alert.noVariationToTest'));
       return;
     }
 
     // Verificar se há conteúdo na variação
     const hasContent = variation.pattern.some(row => row.some(step => step === true));
     if (!hasContent) {
-      this.uiManager.showAlert('Esta variação está vazia');
+      this.uiManager.showAlert(t('main.alert.variationEmpty'));
       return;
     }
 
@@ -3864,14 +3881,14 @@ ctaUrl: '/plans?renew=true',
     const variation = state.variations[patternType][variationIndex];
 
     if (!variation || !variation.pattern) {
-      this.uiManager.showAlert(`${patternType.toUpperCase()} ${variationIndex + 1} não está disponível. Configure no modo Admin primeiro.`);
+      this.uiManager.showAlert(t('main.alert.variationNotAvailable', { pattern: patternType.toUpperCase(), index: variationIndex + 1 }));
       return;
     }
 
     // Verificar se tem conteúdo
     const hasContent = variation.pattern.some(row => row.some(step => step === true));
     if (!hasContent) {
-      this.uiManager.showAlert(`${patternType.toUpperCase()} ${variationIndex + 1} está vazio. Configure no modo Admin primeiro.`);
+      this.uiManager.showAlert(t('main.alert.variationEmptyConfigure', { pattern: patternType.toUpperCase(), index: variationIndex + 1 }));
       return;
     }
 
@@ -3909,8 +3926,8 @@ ctaUrl: '/plans?renew=true',
     banner.id = 'xStageBanner';
     banner.innerHTML = `
       <span class="x-stage-banner-dot"></span>
-      <span class="x-stage-banner-label">Modo Show</span>
-      <button class="x-stage-banner-exit" id="xStageExit" type="button">Sair</button>
+      <span class="x-stage-banner-label">${t('main.stageMode.label')}</span>
+      <button class="x-stage-banner-exit" id="xStageExit" type="button">${t('main.stageMode.exit')}</button>
     `;
     document.body.appendChild(banner);
 
@@ -3921,7 +3938,7 @@ ctaUrl: '/plans?renew=true',
     if (sw) sw.checked = true;
 
     HapticsService.success();
-    Toast.show('Modo Show ativo · tela não vai apagar', { type: 'success' });
+    Toast.show(t('main.stageMode.activeToast'), { type: 'success' });
   }
 
   private exitStageMode(): void {
@@ -3949,48 +3966,40 @@ ctaUrl: '/plans?renew=true',
 
     overlay.innerHTML = `
       <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:2rem;max-width:440px;width:100%;max-height:85vh;overflow-y:auto;">
-        <h2 style="font-size:1.2rem;font-weight:700;color:#fff;margin:0 0 0.5rem;text-align:center;">Controles do Pedal</h2>
-        <p style="font-size:0.75rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.25rem;">Configure as setas do teclado no seu pedal</p>
+        <h2 style="font-size:1.2rem;font-weight:700;color:#fff;margin:0 0 0.5rem;text-align:center;">${t('main.pedalInfo.title')}</h2>
+        <p style="font-size:0.75rem;color:rgba(255,255,255,0.3);text-align:center;margin:0 0 1.25rem;">${t('main.pedalInfo.subtitle')}</p>
 
         <div style="display:flex;flex-direction:column;gap:1rem;">
           <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:1rem;">
-            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(139,92,246,0.7);margin-bottom:0.5rem;">Pedal Esquerdo</div>
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(139,92,246,0.7);margin-bottom:0.5rem;">${t('main.pedalInfo.leftLabel')}</div>
             <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.7;">
-              <strong style="color:#fff;">Parado:</strong> Inicia a música<br>
-              <strong style="color:#fff;">1 toque:</strong> Faz virada e vai pro próximo ritmo<br>
-              <strong style="color:#fff;">2 toques rápidos:</strong> Faz virada e volta pro ritmo anterior
+              ${t('main.pedalInfo.leftBody')}
             </div>
           </div>
 
           <div style="background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.2);border-radius:12px;padding:1rem;">
-            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(249,115,22,0.7);margin-bottom:0.5rem;">Pedal Direito</div>
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(249,115,22,0.7);margin-bottom:0.5rem;">${t('main.pedalInfo.rightLabel')}</div>
             <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.7;">
-              <strong style="color:#fff;">Parado:</strong> Toca prato<br>
-              <strong style="color:#fff;">1 toque:</strong> Faz uma virada<br>
-              <strong style="color:#fff;">2 toques rápidos:</strong> Finaliza e para a música
+              ${t('main.pedalInfo.rightBody')}
             </div>
           </div>
 
           <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:12px;padding:1rem;">
-            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,212,255,0.6);margin-bottom:0.5rem;">Configuração do Pedal BT</div>
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,212,255,0.6);margin-bottom:0.5rem;">${t('main.pedalInfo.configLabel')}</div>
             <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.7;">
-              <strong style="color:#fff;">M-VAVE / similares:</strong> Use o modo <strong style="color:var(--cyan,#00D4FF);">Left/Right</strong> (4º LED)<br>
-              <strong style="color:#fff;">Outros pedais:</strong> Coloque no modo que emita setas (←→)<br>
-              <strong style="color:#fff;">Não funciona?</strong> Vá em "Mapear pedal" e pise no pedal para ver o que ele envia. Use qualquer modo que o app detectar.
+              ${t('main.pedalInfo.configBody')}
             </div>
           </div>
 
           <div style="background:rgba(0,230,140,0.05);border:1px solid rgba(0,230,140,0.15);border-radius:12px;padding:1rem;">
-            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,230,140,0.6);margin-bottom:0.5rem;">Dicas</div>
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,230,140,0.6);margin-bottom:0.5rem;">${t('main.pedalInfo.tipsLabel')}</div>
             <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.7;">
-              <strong style="color:#fff;">INTRO ligado:</strong> Toca contagem antes de iniciar<br>
-              <strong style="color:#fff;">FINAL ligado:</strong> Toca finalização antes de parar<br>
-              <strong style="color:#fff;">Desligados:</strong> Início e parada instantâneos
+              ${t('main.pedalInfo.tipsBody')}
             </div>
           </div>
         </div>
 
-        <button id="closePedalInfo" style="width:100%;margin-top:1.25rem;padding:0.7rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">Entendi</button>
+        <button id="closePedalInfo" style="width:100%;margin-top:1.25rem;padding:0.7rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">${t('main.pedalInfo.closeButton')}</button>
       </div>
     `;
 
@@ -4020,174 +4029,174 @@ ctaUrl: '/plans?renew=true',
       <div class="manual-card">
         <div class="manual-head">
           <div>
-            <div class="manual-title">Manual do Usuário</div>
-            <div class="manual-sub">Guia completo dos recursos do GDrums</div>
+            <div class="manual-title">${t('main.manual.title')}</div>
+            <div class="manual-sub">${t('main.manual.subtitle')}</div>
           </div>
-          <button class="manual-close" id="manualClose" aria-label="Fechar">&#10005;</button>
+          <button class="manual-close" id="manualClose" aria-label="${t('main.manual.closeAriaLabel')}">&#10005;</button>
         </div>
         <div class="manual-body">
 
           <div class="m-sec">
-            <div class="m-sec-title">Ritmos e variações</div>
+            <div class="m-sec-title">${t('main.manual.section.rhythms')}</div>
             <div class="m-row">
               <div class="m-visual m-visual-trio"><span class="mb-pad cyan">1</span><span class="mb-pad cyan">2</span><span class="mb-pad cyan">3</span></div>
-              <div class="m-text"><div class="m-name">Variações de ritmo</div><div class="m-desc">Cada ritmo tem até 3 variações. Toque em uma pra trocar na hora (com virada, se o controle VIRADAS estiver ligado).</div></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.rhythms.item1.name')}</div><div class="m-desc">${t('main.manual.rhythms.item1.desc')}</div></div>
             </div>
             <div class="m-row">
               <div class="m-visual m-visual-trio"><span class="mb-pad purple">1</span><span class="mb-pad purple">2</span><span class="mb-pad purple">3</span></div>
-              <div class="m-text"><div class="m-name">Viradas</div><div class="m-desc">Toque para fazer a virada e voltar ao ritmo. Use para dar dinâmica entre as partes da música.</div></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.rhythms.item2.name')}</div><div class="m-desc">${t('main.manual.rhythms.item2.desc')}</div></div>
             </div>
             <div class="m-row">
-              <div class="m-visual m-visual-trio"><span class="mb-pad orange wide">FINAL</span></div>
-              <div class="m-text"><div class="m-name">Final</div><div class="m-desc">Toca a finalização e encerra a música.</div></div>
+              <div class="m-visual m-visual-trio"><span class="mb-pad orange wide">${t('main.manual.badge.finalWide')}</span></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.rhythms.item3.name')}</div><div class="m-desc">${t('main.manual.rhythms.item3.desc')}</div></div>
             </div>
             <div class="m-row">
               <div class="m-visual m-visual-trio"><span class="mb-pad cyan hold">1</span></div>
-              <div class="m-text"><div class="m-name">Desativar variação</div><div class="m-desc">Segure 1,5 segundo em uma variação de ritmo ou virada para desativá-la: ela fica sem cor, deixa de tocar e é pulada na troca e no pedal. Segure 1,5 segundo novamente para reativar. A desativação é salva junto do seu ritmo salvo.</div></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.rhythms.item4.name')}</div><div class="m-desc">${t('main.manual.rhythms.item4.desc')}</div></div>
             </div>
           </div>
 
           <div class="m-sec">
-            <div class="m-sec-title">Controles</div>
+            <div class="m-sec-title">${t('main.manual.section.controls')}</div>
             <div class="m-row">
-              <div class="m-visual">${toggle('INTRO')}</div>
-              <div class="m-text"><div class="m-name">Intro</div><div class="m-desc">Liga ou desliga a introdução (contagem tocada antes de iniciar).</div></div>
+              <div class="m-visual">${toggle(t('main.manual.badge.intro'))}</div>
+              <div class="m-text"><div class="m-name">${t('main.manual.controls.item1.name')}</div><div class="m-desc">${t('main.manual.controls.item1.desc')}</div></div>
             </div>
             <div class="m-row">
-              <div class="m-visual">${toggle('VIRADAS')}</div>
-              <div class="m-text"><div class="m-name">Viradas na troca</div><div class="m-desc">Ligado: ao trocar de ritmo, entra uma virada antes. Desligado: troca direto.</div></div>
+              <div class="m-visual">${toggle(t('main.manual.badge.viradas'))}</div>
+              <div class="m-text"><div class="m-name">${t('main.manual.controls.item2.name')}</div><div class="m-desc">${t('main.manual.controls.item2.desc')}</div></div>
             </div>
             <div class="m-row">
-              <div class="m-visual">${toggle('FINAL')}</div>
-              <div class="m-text"><div class="m-name">Finalização</div><div class="m-desc">Ligado: ao parar, toca a finalização. Desligado: para imediatamente.</div></div>
+              <div class="m-visual">${toggle(t('main.manual.badge.final'))}</div>
+              <div class="m-text"><div class="m-name">${t('main.manual.controls.item3.name')}</div><div class="m-desc">${t('main.manual.controls.item3.desc')}</div></div>
             </div>
             <div class="m-row">
-              <div class="m-visual">${toggle('AUTO')}</div>
-              <div class="m-text"><div class="m-name">Auto-avançar repertório</div><div class="m-desc">Ao finalizar uma música, carrega automaticamente a próxima do repertório, pronta para você dar play.</div></div>
+              <div class="m-visual">${toggle(t('main.manual.badge.auto'))}</div>
+              <div class="m-text"><div class="m-name">${t('main.manual.controls.item4.name')}</div><div class="m-desc">${t('main.manual.controls.item4.desc')}</div></div>
             </div>
           </div>
 
           <div class="m-sec">
-            <div class="m-sec-title">Pausa</div>
+            <div class="m-sec-title">${t('main.manual.section.pause')}</div>
             <div class="m-row">
               <div class="m-visual"><span class="mb mb-pause">${iconPause}</span></div>
-              <div class="m-text"><div class="m-name">Pausar e continuar</div><div class="m-desc">Ao pausar, o app marca o tempo com o chimbal (uma batida por tempo) pra você não se perder. Aperte de novo para continuar, cravado no tempo.</div></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.pause.item1.name')}</div><div class="m-desc">${t('main.manual.pause.item1.desc')}</div></div>
             </div>
             <div class="m-row">
               <div class="m-visual"><span class="mb mb-pause hold">${iconPause}</span></div>
-              <div class="m-text"><div class="m-name">Volume da marcação</div><div class="m-desc">Segure 1,5 segundo no botão de pausa para abrir o controle de volume do chimbal da marcação.</div></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.pause.item2.name')}</div><div class="m-desc">${t('main.manual.pause.item2.desc')}</div></div>
             </div>
           </div>
 
           <div class="m-sec">
-            <div class="m-sec-title">Repertório</div>
+            <div class="m-sec-title">${t('main.manual.section.setlist')}</div>
             <div class="m-row">
               <div class="m-visual"><span class="mb-pad cyan wide">30</span></div>
-              <div class="m-text"><div class="m-name">Até 30 repertórios</div><div class="m-desc">Monte até 30 repertórios com suas músicas na ordem do show.</div></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.setlist.item1.name')}</div><div class="m-desc">${t('main.manual.setlist.item1.desc')}</div></div>
             </div>
             <div class="m-row">
               <div class="m-visual"><span class="mb mb-save">${iconSave}</span></div>
-              <div class="m-text"><div class="m-name">Salvar do seu jeito</div><div class="m-desc">Salve o ritmo com o nome e o BPM que você quiser.</div></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.setlist.item2.name')}</div><div class="m-desc">${t('main.manual.setlist.item2.desc')}</div></div>
             </div>
             <div class="m-row">
               <div class="m-visual"><span class="mb-arrow">${iconUp}</span><span class="mb-arrow">${iconDown}</span></div>
-              <div class="m-text"><div class="m-name">Reordenar as músicas</div><div class="m-desc">Use os botões de subir e descer, ao lado de cada música, para alterar a ordem dentro do repertório.</div></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.setlist.item3.name')}</div><div class="m-desc">${t('main.manual.setlist.item3.desc')}</div></div>
             </div>
           </div>
 
           <div class="m-sec">
-            <div class="m-sec-title">Pedal Bluetooth de 2 botões</div>
+            <div class="m-sec-title">${t('main.manual.section.pedal2')}</div>
             <div class="m-row">
               <div class="m-visual">${pedal('1')}</div>
-              <div class="m-text"><div class="m-name">Botão 1 (esquerdo)</div>
+              <div class="m-text"><div class="m-name">${t('main.manual.pedalBtn1.name')}</div>
                 <ul class="m-list">
-                  <li><b>Parado:</b> inicia a música</li>
-                  <li><b>Um toque:</b> faz virada e vai para o próximo ritmo</li>
-                  <li><b>Dois toques rápidos:</b> faz virada e volta para o ritmo anterior</li>
+                  <li>${t('main.manual.pedalBtn1.li1')}</li>
+                  <li>${t('main.manual.pedalBtn1.li2')}</li>
+                  <li>${t('main.manual.pedalBtn1.li3')}</li>
                 </ul>
               </div>
             </div>
             <div class="m-row">
               <div class="m-visual">${pedal('2')}</div>
-              <div class="m-text"><div class="m-name">Botão 2 (direito)</div>
+              <div class="m-text"><div class="m-name">${t('main.manual.pedalBtn2.name')}</div>
                 <ul class="m-list">
-                  <li><b>Parado:</b> toca prato</li>
-                  <li><b>Um toque:</b> faz uma virada</li>
-                  <li><b>Dois toques rápidos:</b> finaliza a música</li>
+                  <li>${t('main.manual.pedalBtn2.li1')}</li>
+                  <li>${t('main.manual.pedalBtn2.li2')}</li>
+                  <li>${t('main.manual.pedalBtn2.li3TwoButtons')}</li>
                 </ul>
               </div>
             </div>
           </div>
 
           <div class="m-sec">
-            <div class="m-sec-title">Pedal Bluetooth de 4 botões</div>
+            <div class="m-sec-title">${t('main.manual.section.pedal4')}</div>
             <div class="m-row">
               <div class="m-visual">${pedal('1')}</div>
-              <div class="m-text"><div class="m-name">Botão 1 (esquerdo)</div>
+              <div class="m-text"><div class="m-name">${t('main.manual.pedalBtn1.name')}</div>
                 <ul class="m-list">
-                  <li><b>Parado:</b> inicia a música</li>
-                  <li><b>Um toque:</b> faz virada e vai para o próximo ritmo</li>
-                  <li><b>Dois toques rápidos:</b> faz virada e volta para o ritmo anterior</li>
+                  <li>${t('main.manual.pedalBtn1.li1')}</li>
+                  <li>${t('main.manual.pedalBtn1.li2')}</li>
+                  <li>${t('main.manual.pedalBtn1.li3')}</li>
                 </ul>
               </div>
             </div>
             <div class="m-row">
               <div class="m-visual">${pedal('2')}</div>
-              <div class="m-text"><div class="m-name">Botão 2 (direito)</div>
+              <div class="m-text"><div class="m-name">${t('main.manual.pedalBtn2.name')}</div>
                 <ul class="m-list">
-                  <li><b>Parado:</b> toca prato</li>
-                  <li><b>Um toque:</b> faz uma virada</li>
+                  <li>${t('main.manual.pedalBtn2.li1')}</li>
+                  <li>${t('main.manual.pedalBtn2.li2')}</li>
                 </ul>
               </div>
             </div>
             <div class="m-row">
               <div class="m-visual">${pedal('3')}</div>
-              <div class="m-text"><div class="m-name">Botão 3</div>
+              <div class="m-text"><div class="m-name">${t('main.manual.pedalBtn3.name')}</div>
                 <ul class="m-list">
-                  <li><b>Um toque:</b> pausar e continuar</li>
+                  <li>${t('main.manual.pedalBtn3.li1')}</li>
                 </ul>
               </div>
             </div>
             <div class="m-row">
               <div class="m-visual">${pedal('4')}</div>
-              <div class="m-text"><div class="m-name">Botão 4</div>
+              <div class="m-text"><div class="m-name">${t('main.manual.pedalBtn4.name')}</div>
                 <ul class="m-list">
-                  <li><b>Um toque:</b> finaliza a música</li>
-                  <li><b>Durante a pausa:</b> finaliza também</li>
+                  <li>${t('main.manual.pedalBtn4.li1')}</li>
+                  <li>${t('main.manual.pedalBtn4.li2')}</li>
                 </ul>
               </div>
             </div>
             <div class="m-row">
-              <div class="m-visual"><span class="mb-pad cyan wide">MAPEAR</span></div>
-              <div class="m-text"><div class="m-name">Mapear pedal</div><div class="m-desc">Se o pedal não responder, use "Mapear pedal" no menu e pise em cada botão para o app aprender as teclas que ele envia.</div></div>
+              <div class="m-visual"><span class="mb-pad cyan wide">${t('main.manual.badge.mapear')}</span></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.pedal4.mapear.name')}</div><div class="m-desc">${t('main.manual.pedal4.mapear.desc')}</div></div>
             </div>
           </div>
 
           <div class="m-sec">
-            <div class="m-sec-title">Volume, Tempo e Modo Show</div>
+            <div class="m-sec-title">${t('main.manual.section.volume')}</div>
             <div class="m-row">
-              <div class="m-visual"><span class="mb-pad cyan wide">VOL</span></div>
-              <div class="m-text"><div class="m-name">Volume geral</div><div class="m-desc">Ajuste o volume geral no controle deslizante da tela.</div></div>
+              <div class="m-visual"><span class="mb-pad cyan wide">${t('main.manual.badge.vol')}</span></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.volume.item1.name')}</div><div class="m-desc">${t('main.manual.volume.item1.desc')}</div></div>
             </div>
             <div class="m-row">
               <div class="m-visual"><span class="mb-bpm">&minus;</span><span class="mb-bpm">+</span></div>
-              <div class="m-text"><div class="m-name">Tempo (BPM)</div><div class="m-desc">Use os botões menos e mais do BPM para deixar a música mais lenta ou mais rápida.</div></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.volume.item2.name')}</div><div class="m-desc">${t('main.manual.volume.item2.desc')}</div></div>
             </div>
             <div class="m-row">
-              <div class="m-visual"><span class="mb-pad orange wide">SHOW</span></div>
-              <div class="m-text"><div class="m-name">Modo Show</div><div class="m-desc">Deixa a tela cheia e sempre ligada, para tocar sem a tela apagar no meio do show.</div></div>
+              <div class="m-visual"><span class="mb-pad orange wide">${t('main.manual.badge.show')}</span></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.volume.item3.name')}</div><div class="m-desc">${t('main.manual.volume.item3.desc')}</div></div>
             </div>
           </div>
 
           <div class="m-sec">
-            <div class="m-sec-title">Equalizador e Reverb</div>
+            <div class="m-sec-title">${t('main.manual.section.eq')}</div>
             <div class="m-row">
-              <div class="m-visual"><span class="mb-pad cyan wide">EQ</span></div>
-              <div class="m-text"><div class="m-name">Equalizador (5 bandas)</div><div class="m-desc">Ajuste graves, médios e agudos em cinco faixas para moldar o som ao seu gosto e ao ambiente onde você toca. Cada faixa reforça ou corta uma parte do som.</div></div>
+              <div class="m-visual"><span class="mb-pad cyan wide">${t('main.manual.badge.eq')}</span></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.eq.item1.name')}</div><div class="m-desc">${t('main.manual.eq.item1.desc')}</div></div>
             </div>
             <div class="m-row">
-              <div class="m-visual"><span class="mb-pad orange wide">REV</span></div>
-              <div class="m-text"><div class="m-name">Reverb</div><div class="m-desc">Um controle deslizante que adiciona um reverb leve para amaciar o som, com realce nos médios e um rastro curto. Deixe no zero para o som totalmente seco.</div></div>
+              <div class="m-visual"><span class="mb-pad orange wide">${t('main.manual.badge.rev')}</span></div>
+              <div class="m-text"><div class="m-name">${t('main.manual.eq.item2.name')}</div><div class="m-desc">${t('main.manual.eq.item2.desc')}</div></div>
             </div>
           </div>
 
@@ -4220,7 +4229,7 @@ ctaUrl: '/plans?renew=true',
     if (dd) dd.style.display = 'none';
     document.querySelectorAll('.eq-overlay').forEach(el => el.remove());
 
-    const labels = ['Graves', 'Médio-grave', 'Médios', 'Médio-agudo', 'Agudos'];
+    const labels = [t('main.eq.band1'), t('main.eq.band2'), t('main.eq.band3'), t('main.eq.band4'), t('main.eq.band5')];
     const freqs = ['80 Hz', '250 Hz', '1 kHz', '3.5 kHz', '10 kHz'];
     let eq: number[] = [0, 0, 0, 0, 0];
     try { const s = JSON.parse(localStorage.getItem('gdrums-eq') || 'null'); if (Array.isArray(s)) eq = s.map((x: any) => Number(x) || 0); } catch { /* noop */ }
@@ -4240,13 +4249,13 @@ ctaUrl: '/plans?renew=true',
     overlay.innerHTML = `
       <div class="eq-card">
         <div class="eq-head">
-          <div class="eq-title">Equalizador e Reverb</div>
-          <button class="eq-close" id="eqClose" aria-label="Fechar">&#10005;</button>
+          <div class="eq-title">${t('main.eq.title')}</div>
+          <button class="eq-close" id="eqClose" aria-label="${t('main.eq.closeAriaLabel')}">&#10005;</button>
         </div>
         <div class="eq-body">
           ${bandsHtml}
           <div class="eq-band eq-reverb">
-            <div class="eq-band-head"><span class="eq-band-name">Reverb</span><span class="eq-band-freq">suaviza o som</span></div>
+            <div class="eq-band-head"><span class="eq-band-name">${t('main.eq.reverbLabel')}</span><span class="eq-band-freq">${t('main.eq.reverbHint')}</span></div>
             <div class="eq-band-row">
               <input type="range" min="0" max="100" step="1" value="${Math.round(reverb * 100)}" id="eqReverb" class="eq-slider">
               <span class="eq-val" id="eqReverbVal">${Math.round(reverb * 100)}%</span>
@@ -4254,8 +4263,8 @@ ctaUrl: '/plans?renew=true',
           </div>
         </div>
         <div class="eq-actions">
-          <button class="eq-reset" id="eqReset">Resetar</button>
-          <button class="eq-done" id="eqDone">Pronto</button>
+          <button class="eq-reset" id="eqReset">${t('main.eq.resetButton')}</button>
+          <button class="eq-done" id="eqDone">${t('main.eq.doneButton')}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -4306,12 +4315,12 @@ ctaUrl: '/plans?renew=true',
   private showPedalMapper(): void {
     const keyLabels: Record<string, string> = {
       // e.code values
-      'ArrowLeft': 'Seta Esquerda', 'ArrowRight': 'Seta Direita',
-      'ArrowUp': 'Seta Cima', 'ArrowDown': 'Seta Baixo',
-      'Space': 'Espaco', 'Enter': 'Enter',
-      'PageUp': 'Page Up', 'PageDown': 'Page Down',
+      'ArrowLeft': t('main.pedalMapper.key.arrowLeft'), 'ArrowRight': t('main.pedalMapper.key.arrowRight'),
+      'ArrowUp': t('main.pedalMapper.key.arrowUp'), 'ArrowDown': t('main.pedalMapper.key.arrowDown'),
+      'Space': t('main.pedalMapper.key.space'), 'Enter': t('main.pedalMapper.key.enter'),
+      'PageUp': t('main.pedalMapper.key.pageUp'), 'PageDown': t('main.pedalMapper.key.pageDown'),
       // e.key values (fallback iOS pedais BT)
-      ' ': 'Espaco',
+      ' ': t('main.pedalMapper.key.space'),
     };
     const getLabel = (code: string) => keyLabels[code] || code;
 
@@ -4342,14 +4351,14 @@ ctaUrl: '/plans?renew=true',
 
     const render = () => {
       const buttons: string[] = [
-        pedalButton('left', 'Esquerdo', tempLeft, '139,92,246', 'Play / virada<br>2x: ritmo anterior'),
-        pedalButton('right', 'Direito', tempRight, '249,115,22', 'Prato / virada<br>2x: finaliza'),
+        pedalButton('left', t('main.pedalMapper.label.left'), tempLeft, '139,92,246', t('main.pedalMapper.hint.left')),
+        pedalButton('right', t('main.pedalMapper.label.right'), tempRight, '249,115,22', t('main.pedalMapper.hint.right')),
       ];
       if (tempCount >= 3) {
-        buttons.push(pedalButton('playPause', 'Pausar/Continuar', tempPlayPause, '0,210,255', 'Pausa instantânea<br>(barzinho)'));
+        buttons.push(pedalButton('playPause', t('main.pedalMapper.label.playPause'), tempPlayPause, '0,210,255', t('main.pedalMapper.hint.playPause')));
       }
       if (tempCount >= 4) {
-        buttons.push(pedalButton('end', 'Finalizar', tempEnd, '255,90,90', 'Toca final + para'));
+        buttons.push(pedalButton('end', t('main.pedalMapper.label.end'), tempEnd, '255,90,90', t('main.pedalMapper.hint.end')));
       }
 
       // Layout flex centralizado com wrap natural — funciona pra 2/3/4 botões.
@@ -4362,22 +4371,22 @@ ctaUrl: '/plans?renew=true',
 
       overlay.innerHTML = `
         <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:1.25rem;max-width:340px;width:100%;max-height:92vh;overflow-y:auto;">
-          <h2 style="font-size:1.05rem;font-weight:700;color:#fff;margin:0 0 0.25rem;text-align:center;">Mapear Pedal</h2>
-          <p style="font-size:0.62rem;color:rgba(255,255,255,0.35);text-align:center;margin:0 0 0.9rem;">Toque no botão e pise no pedal correspondente</p>
+          <h2 style="font-size:1.05rem;font-weight:700;color:#fff;margin:0 0 0.25rem;text-align:center;">${t('main.pedalMapper.title')}</h2>
+          <p style="font-size:0.62rem;color:rgba(255,255,255,0.35);text-align:center;margin:0 0 0.9rem;">${t('main.pedalMapper.subtitle')}</p>
 
           <div style="display:flex;gap:0.4rem;justify-content:center;margin-bottom:1rem;">
             ${[2,3,4].map(n => `
-              <button data-count="${n}" class="pedalCountBtn" style="flex:1;max-width:90px;padding:0.45rem 0.4rem;border:1px solid ${tempCount === n ? 'rgba(0,230,140,0.6)' : 'rgba(255,255,255,0.1)'};background:${tempCount === n ? 'rgba(0,230,140,0.12)' : 'rgba(255,255,255,0.03)'};color:${tempCount === n ? 'rgba(0,230,140,0.9)' : 'rgba(255,255,255,0.5)'};border-radius:9px;font-size:0.7rem;font-weight:700;font-family:inherit;cursor:pointer;">${n} botões</button>
+              <button data-count="${n}" class="pedalCountBtn" style="flex:1;max-width:90px;padding:0.45rem 0.4rem;border:1px solid ${tempCount === n ? 'rgba(0,230,140,0.6)' : 'rgba(255,255,255,0.1)'};background:${tempCount === n ? 'rgba(0,230,140,0.12)' : 'rgba(255,255,255,0.03)'};color:${tempCount === n ? 'rgba(0,230,140,0.9)' : 'rgba(255,255,255,0.5)'};border-radius:9px;font-size:0.7rem;font-weight:700;font-family:inherit;cursor:pointer;">${t('main.pedalMapper.buttonsCount', { n })}</button>
             `).join('')}
           </div>
 
           ${gridHtml}
 
-          <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(0,210,255,0.7);min-height:1.4rem;margin-bottom:0.9rem;">${listening ? `Pise no pedal "${listening === 'playPause' ? 'Pausar/Continuar' : listening === 'end' ? 'Finalizar' : listening === 'left' ? 'Esquerdo' : 'Direito'}"...` : ''}</div>
+          <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(0,210,255,0.7);min-height:1.4rem;margin-bottom:0.9rem;">${listening ? t('main.pedalMapper.listeningStatus', { label: listening === 'playPause' ? t('main.pedalMapper.label.playPause') : listening === 'end' ? t('main.pedalMapper.label.end') : listening === 'left' ? t('main.pedalMapper.label.left') : t('main.pedalMapper.label.right') }) : ''}</div>
 
           <div style="display:flex;gap:0.5rem;">
-            <button id="pedalReset" style="flex:1;padding:0.6rem;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">Resetar</button>
-            <button id="pedalSave" style="flex:2;padding:0.6rem;border-radius:10px;background:rgba(0,230,140,0.12);border:1px solid rgba(0,230,140,0.25);color:rgba(0,230,140,0.9);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">Salvar</button>
+            <button id="pedalReset" style="flex:1;padding:0.6rem;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">${t('main.pedalMapper.resetButton')}</button>
+            <button id="pedalSave" style="flex:2;padding:0.6rem;border-radius:10px;background:rgba(0,230,140,0.12);border:1px solid rgba(0,230,140,0.25);color:rgba(0,230,140,0.9);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">${t('main.pedalMapper.saveButton')}</button>
           </div>
         </div>
       `;
@@ -4428,7 +4437,7 @@ ctaUrl: '/plans?renew=true',
           count: tempCount,
         }));
         close();
-        this.modalManager.show('Pedal', 'Mapeamento salvo! Recarregue se nao funcionar.', 'success');
+        this.modalManager.show(t('main.pedalMapper.savedTitle'), t('main.pedalMapper.savedBody'), 'success');
       });
 
       // Qualquer toque no overlay refoca o input (user gesture)
@@ -4447,7 +4456,7 @@ ctaUrl: '/plans?renew=true',
     mapperInput.setAttribute('autocorrect', 'off');
     mapperInput.setAttribute('autocapitalize', 'off');
     mapperInput.setAttribute('spellcheck', 'false');
-    mapperInput.placeholder = 'Pise no pedal...';
+    mapperInput.placeholder = t('main.pedalMapper.inputPlaceholder');
     mapperInput.style.cssText = 'position:fixed;bottom:0;left:0;right:0;width:100%;height:36px;font-size:12px;font-family:inherit;background:rgba(0,0,0,0.9);color:rgba(0,212,255,0.5);border:none;border-top:1px solid rgba(0,212,255,0.2);text-align:center;padding:0;margin:0;z-index:999999;outline:none;caret-color:transparent;';
     document.body.appendChild(mapperInput);
 
@@ -4481,7 +4490,7 @@ ctaUrl: '/plans?renew=true',
 
       const statusEl = overlay.querySelector('#pedalStatus');
       if (statusEl) {
-        statusEl.innerHTML = `<span style="color:rgba(0,230,140,0.8);">Mapeado! ${debugInfo}</span>`;
+        statusEl.innerHTML = `<span style="color:rgba(0,230,140,0.8);">${t('main.pedalMapper.mappedPrefix', { debugInfo })}</span>`;
       }
 
       listening = null;
@@ -4557,10 +4566,10 @@ ctaUrl: '/plans?renew=true',
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.88);backdrop-filter:blur(16px);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:1rem;';
 
     // Android: oferece Play Store em vez de PWA (app nativo é o canal oficial).
-    const headline = isAndroid ? 'Baixe o app oficial' : 'Instale o GDrums';
+    const headline = isAndroid ? t('main.installSuggestion.headlineAndroid') : t('main.installSuggestion.headlineDefault');
     const subline = isAndroid
-      ? 'Versão completa na Play Store — performance nativa e notificações'
-      : 'Acesso rapido, tela cheia e funciona offline';
+      ? t('main.installSuggestion.sublineAndroid')
+      : t('main.installSuggestion.sublineDefault');
 
     overlay.innerHTML = `
       <div style="background:rgba(10,10,30,0.97);border:1px solid rgba(255,255,255,0.08);border-radius:20px 20px 0 0;padding:1.5rem 1.5rem 2rem;max-width:400px;width:100%;animation:slideUp 0.3s ease-out;">
@@ -4573,37 +4582,37 @@ ctaUrl: '/plans?renew=true',
 
         ${isAndroid ? `
         <div style="font-size:0.78rem;color:rgba(255,255,255,0.5);text-align:center;margin-bottom:1rem;">
-          Toque em <strong style="color:#fff;">Abrir Play Store</strong> para instalar
+          ${t('main.installSuggestion.androidStep')}
         </div>
         ` : isIOS ? `
         <div style="display:flex;flex-direction:column;gap:0.55rem;margin-bottom:1rem;">
           <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.55);">
             <span style="width:22px;height:22px;border-radius:6px;background:rgba(0,212,255,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.68rem;font-weight:700;color:rgba(0,212,255,0.85);">1</span>
-            Toque em <strong style="color:#fff;">Compartilhar</strong> <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.7)" stroke-width="2" style="flex-shrink:0;"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            ${t('main.installSuggestion.iosStep1')} <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(0,212,255,0.7)" stroke-width="2" style="flex-shrink:0;"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
           </div>
           <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.55);">
             <span style="width:22px;height:22px;border-radius:6px;background:rgba(139,92,246,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.68rem;font-weight:700;color:rgba(139,92,246,0.85);">2</span>
-            No menu do iOS, toque em <strong style="color:#fff;">Ver mais</strong> e role
+            ${t('main.installSuggestion.iosStep2')}
           </div>
           <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.78rem;color:rgba(255,255,255,0.55);">
             <span style="width:22px;height:22px;border-radius:6px;background:rgba(62,232,167,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.68rem;font-weight:700;color:rgba(62,232,167,0.9);">3</span>
-            <strong style="color:#fff;">Adicionar à Tela de Início</strong>
+            ${t('main.installSuggestion.iosStep3')}
           </div>
         </div>
         ` : `
         <div style="font-size:0.78rem;color:rgba(255,255,255,0.5);text-align:center;margin-bottom:1rem;">
-          Toque em <strong style="color:#fff;">Instalar</strong> abaixo para adicionar a tela inicial
+          ${t('main.installSuggestion.desktopStep')}
         </div>
         `}
 
         <div style="display:flex;gap:0.5rem;">
-          <button id="installDismiss" style="flex:1;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">Agora nao</button>
+          <button id="installDismiss" style="flex:1;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.8rem;font-weight:600;font-family:inherit;cursor:pointer;">${t('main.installSuggestion.dismissButton')}</button>
           ${isAndroid ? `
-          <button id="installPlayStore" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(62,232,167,0.15);border:1px solid rgba(62,232,167,0.3);color:rgba(62,232,167,0.95);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">Abrir Play Store</button>
+          <button id="installPlayStore" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(62,232,167,0.15);border:1px solid rgba(62,232,167,0.3);color:rgba(62,232,167,0.95);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">${t('main.installSuggestion.playStoreButton')}</button>
           ` : !isIOS && this.installPrompt ? `
-          <button id="installAccept" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.3);color:rgba(0,212,255,0.9);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">Instalar App</button>
+          <button id="installAccept" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.3);color:rgba(0,212,255,0.9);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">${t('main.installSuggestion.installButton')}</button>
           ` : `
-          <button id="installDismiss2" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.3);color:rgba(0,212,255,0.9);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">Entendi</button>
+          <button id="installDismiss2" style="flex:2;padding:0.65rem;border:none;border-radius:12px;background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.3);color:rgba(0,212,255,0.9);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">${t('main.installSuggestion.dismissButton2')}</button>
           `}
         </div>
       </div>
@@ -4671,34 +4680,34 @@ ctaUrl: '/plans?renew=true',
 
     const stepsBy: Record<TutKey, TutStep[]> = {
       'ios-safari': [
-        { n: '01', body: 'Toque no botão <strong>Compartilhar</strong> na barra do Safari (ícone de caixa com seta pra cima).' },
-        { n: '02', body: 'Vai abrir o menu do iOS. Toque em <strong>Ver mais</strong> e role até encontrar <strong>Adicionar à Tela de Início</strong>.' },
-        { n: '03', body: 'Toque em <strong>Adicionar à Tela de Início</strong>.' },
-        { n: '04', body: 'Confirme tocando em <strong>Adicionar</strong> no canto superior direito.' },
+        { n: '01', body: t('main.installTutorial.iosSafari.step1') },
+        { n: '02', body: t('main.installTutorial.iosShared.step2') },
+        { n: '03', body: t('main.installTutorial.iosShared.step3') },
+        { n: '04', body: t('main.installTutorial.iosShared.step4') },
       ],
       'ios-chrome': [
-        { n: '01', body: 'Toque no botão <strong>Compartilhar</strong> no canto direito da barra de endereço do Chrome.' },
-        { n: '02', body: 'Vai abrir o menu do iOS. Toque em <strong>Ver mais</strong> e role até encontrar <strong>Adicionar à Tela de Início</strong>.' },
-        { n: '03', body: 'Toque em <strong>Adicionar à Tela de Início</strong>.' },
-        { n: '04', body: 'Confirme tocando em <strong>Adicionar</strong> no canto superior direito.' },
+        { n: '01', body: t('main.installTutorial.iosChrome.step1') },
+        { n: '02', body: t('main.installTutorial.iosShared.step2') },
+        { n: '03', body: t('main.installTutorial.iosShared.step3') },
+        { n: '04', body: t('main.installTutorial.iosShared.step4') },
       ],
       'android': [
-        { n: '01', body: 'Toque no menu <strong>⋮</strong> (três pontos) no canto superior do Chrome.' },
-        { n: '02', body: 'Toque em <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.' },
-        { n: '03', body: 'Confirme e o GDrums vai aparecer como app normal no seu celular.' },
+        { n: '01', body: t('main.installTutorial.android.step1') },
+        { n: '02', body: t('main.installTutorial.android.step2') },
+        { n: '03', body: t('main.installTutorial.android.step3') },
       ],
     };
 
     const tabsDef = isIOS
       ? [
-          { key: 'ios-safari' as TutKey, label: 'Safari' },
-          { key: 'ios-chrome' as TutKey, label: 'Chrome' },
+          { key: 'ios-safari' as TutKey, label: t('main.installTutorial.tab.safari') },
+          { key: 'ios-chrome' as TutKey, label: t('main.installTutorial.tab.chrome') },
         ]
       : [
-          { key: 'android' as TutKey, label: 'Chrome / Android' },
+          { key: 'android' as TutKey, label: t('main.installTutorial.tab.chromeAndroid') },
         ];
 
-    const deviceLabel = isIOS ? 'no seu iPhone' : 'no seu celular';
+    const deviceLabel = isIOS ? t('main.installTutorial.deviceIphone') : t('main.installTutorial.deviceGeneric');
 
     const renderTabs = (): string => {
       if (tabsDef.length <= 1) return '';
@@ -4726,16 +4735,15 @@ ctaUrl: '/plans?renew=true',
     const render = (): void => {
       overlay.innerHTML = `
         <div class="install-tut-modal">
-          <button class="install-tut-close" aria-label="Fechar">×</button>
-          <div class="install-tut-overline">Instalar o app</div>
-          <h2 class="install-tut-title">Tenha o GDrums ${deviceLabel}.</h2>
+          <button class="install-tut-close" aria-label="${t('main.installTutorial.closeAriaLabel')}">×</button>
+          <div class="install-tut-overline">${t('main.installTutorial.overline')}</div>
+          <h2 class="install-tut-title">${t('main.installTutorial.title', { device: deviceLabel })}</h2>
           <p class="install-tut-body">
-            O app fica na tela inicial como qualquer outro. Abre rápido,
-            funciona offline e não precisa de loja.
+            ${t('main.installTutorial.body')}
           </p>
           ${renderTabs()}
           <ul class="install-tut-steps">${renderSteps()}</ul>
-          <button class="install-tut-cta" id="installTutorialClose">Entendi</button>
+          <button class="install-tut-cta" id="installTutorialClose">${t('main.installTutorial.cta')}</button>
         </div>
       `;
 
@@ -4919,7 +4927,7 @@ ctaUrl: '/plans?renew=true',
   private updateProjectBar(name: string): void {
     const nameEl = document.getElementById('projectName') as HTMLInputElement;
     const dotEl = document.getElementById('projectDot');
-    if (nameEl) nameEl.value = name || 'Novo Projeto';
+    if (nameEl) nameEl.value = name || t('main.project.defaultName');
     if (dotEl) {
       dotEl.classList.toggle('loaded', !!name);
     }
@@ -4963,8 +4971,8 @@ ctaUrl: '/plans?renew=true',
     this.stopBackgroundAudioService();
     const statusAdmin = document.getElementById('status');
     const statusUser = document.getElementById('statusUser');
-    if (statusAdmin) statusAdmin.textContent = 'Pausado';
-    if (statusUser) statusUser.textContent = 'Pausado';
+    if (statusAdmin) statusAdmin.textContent = t('main.status.paused');
+    if (statusUser) statusUser.textContent = t('main.status.paused');
     this.uiManager.updatePerformanceGrid();
     this.updatePauseButtonUI();
     // Pausa NÃO fica muda: começa a contagem (chimbal) em loop, no tempo.
@@ -5163,13 +5171,13 @@ ctaUrl: '/plans?renew=true',
     overlay.className = 'count-vol-overlay';
     overlay.innerHTML = `
       <div class="count-vol-card">
-        <div class="count-vol-title">Volume da contagem</div>
-        <div class="count-vol-sub">Chimbal usado na pausa</div>
+        <div class="count-vol-title">${t('main.countVolume.title')}</div>
+        <div class="count-vol-sub">${t('main.countVolume.subtitle')}</div>
         <div class="count-vol-row">
           <input type="range" min="0" max="100" step="1" value="${pct}" id="countVolSlider" class="count-vol-slider">
           <span class="count-vol-value" id="countVolValue">${pct}%</span>
         </div>
-        <button class="count-vol-done" id="countVolDone">Pronto</button>
+        <button class="count-vol-done" id="countVolDone">${t('main.countVolume.doneButton')}</button>
       </div>
     `;
     document.body.appendChild(overlay);
@@ -5191,7 +5199,7 @@ ctaUrl: '/plans?renew=true',
     const cell = document.getElementById('pauseBtnUser');
     const label = document.getElementById('pauseBtnLabel');
     if (cell) cell.classList.toggle('active', this.isPaused);
-    if (label) label.textContent = this.isPaused ? 'CONTINUAR' : 'PAUSAR';
+    if (label) label.textContent = this.isPaused ? t('main.pauseButton.continue') : t('main.pauseButton.pause');
   }
 
   /** Toggle exclusivo de pause/resume — botão e pedal usam esse. */
@@ -5228,8 +5236,8 @@ ctaUrl: '/plans?renew=true',
     } else {
       if (!this.hasRhythmLoaded()) {
         this.modalManager.show(
-          'Nenhum Ritmo Carregado',
-          'Por favor, carregue um ritmo antes de iniciar a reprodução.',
+          t('main.modal.noRhythmLoadedTitle'),
+          t('main.modal.noRhythmLoadedBody2'),
           'warning'
         );
         return;
@@ -5326,17 +5334,16 @@ ctaUrl: '/plans?renew=true',
     overlay.innerHTML = `
       <div style="background:rgba(10,10,30,0.95);border:1px solid rgba(255,180,32,0.2);border-radius:20px;padding:2rem 1.5rem;max-width:340px;width:100%;text-align:center;">
         <div style="font-size:2.5rem;margin-bottom:0.75rem;">🔇</div>
-        <h3 style="color:#fff;font-size:1.1rem;font-weight:700;margin:0 0 0.5rem;">Sem som?</h3>
+        <h3 style="color:#fff;font-size:1.1rem;font-weight:700;margin:0 0 0.5rem;">${t('main.silentMode.title')}</h3>
         <p style="color:rgba(255,255,255,0.5);font-size:0.85rem;line-height:1.6;margin:0 0 1.25rem;">
-          Verifique a <strong style="color:#FFB420;">chave de silencioso</strong> na lateral do seu iPhone.
-          Ela precisa estar desativada (sem a faixa laranja visivel) para o som funcionar.
+          ${t('main.silentMode.body')}
         </p>
         <div style="background:rgba(255,180,32,0.06);border:1px solid rgba(255,180,32,0.15);border-radius:10px;padding:0.75rem;margin-bottom:1.25rem;">
           <p style="color:rgba(255,255,255,0.4);font-size:0.75rem;margin:0;line-height:1.5;">
-            Tambem verifique se o volume do aparelho nao esta no minimo.
+            ${t('main.silentMode.hint')}
           </p>
         </div>
-        <button id="silentModeOk" style="width:100%;padding:0.75rem;border:none;border-radius:12px;background:linear-gradient(135deg,#FFB420,#F97316);color:#fff;font-size:0.9rem;font-weight:700;font-family:inherit;cursor:pointer;">Entendi</button>
+        <button id="silentModeOk" style="width:100%;padding:0.75rem;border:none;border-radius:12px;background:linear-gradient(135deg,#FFB420,#F97316);color:#fff;font-size:0.9rem;font-weight:700;font-family:inherit;cursor:pointer;">${t('main.silentMode.closeButton')}</button>
       </div>
     `;
 
@@ -5455,8 +5462,8 @@ ctaUrl: '/plans?renew=true',
 
     const statusAdmin = document.getElementById('status');
     const statusUser = document.getElementById('statusUser');
-    if (statusAdmin) statusAdmin.textContent = 'Parado';
-    if (statusUser) statusUser.textContent = 'Parado';
+    if (statusAdmin) statusAdmin.textContent = t('main.status.stopped');
+    if (statusUser) statusUser.textContent = t('main.status.stopped');
 
     this.uiManager.clearQueuedCells();
     this.uiManager.updatePerformanceGrid();
@@ -5646,7 +5653,7 @@ ctaUrl: '/plans?renew=true',
    */
   private showSaveRhythmModal(): void {
     if (!this.currentRhythmName && !this.stateManager.getState().patterns.main.some(r => r.some(s => s))) {
-      this.modalManager.show('Meus Ritmos', 'Carregue um ritmo antes de salvar.', 'warning');
+      this.modalManager.show(t('main.modal.myRhythmsTitle'), t('main.modal.loadRhythmBeforeSave'), 'warning');
       return;
     }
 
@@ -5671,7 +5678,7 @@ ctaUrl: '/plans?renew=true',
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
-    const base = this.currentRhythmName || 'Meu ritmo';
+    const base = this.currentRhythmName || t('main.saveRhythm.defaultRhythmName');
     const suggestedName = editing ? editing.name : `${base} · ${hh}:${mm}`;
 
     // Destino: chips de repertório. Default = ATIVO (modo novo) / nenhum
@@ -5682,14 +5689,14 @@ ctaUrl: '/plans?renew=true',
     const overlay = document.createElement('div');
     overlay.className = 'x-overlay';
     overlay.innerHTML = `
-      <div class="x-sheet" role="dialog" aria-label="Salvar ritmo">
+      <div class="x-sheet" role="dialog" aria-label="${t('main.saveRhythm.dialogAriaLabel')}">
         <div class="x-grip"></div>
         <div class="x-head">
           <div>
-            <h2 class="x-head-title">${editing ? 'Salvar alterações' : 'Salvar ritmo'}</h2>
-            <div class="x-head-sub">${editing ? `Editando "${esc(editing.name)}"` : 'Crie sua versão com nome e BPM'}</div>
+            <h2 class="x-head-title">${editing ? t('main.saveRhythm.titleEdit') : t('main.saveRhythm.titleNew')}</h2>
+            <div class="x-head-sub">${editing ? t('main.saveRhythm.subEditing', { name: esc(editing.name) }) : t('main.saveRhythm.subNew')}</div>
           </div>
-          <button class="x-close" id="xSaveClose" aria-label="Fechar">
+          <button class="x-close" id="xSaveClose" aria-label="${t('main.saveRhythm.closeAriaLabel')}">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -5697,22 +5704,22 @@ ctaUrl: '/plans?renew=true',
         <div class="x-body">
           <div class="x-save-fields">
             <div class="x-save-field">
-              <label for="xSaveName">Nome do ritmo</label>
-              <input type="text" id="xSaveName" class="x-save-input" value="${esc(suggestedName)}" maxlength="60" placeholder="Ex: Vaneira do João" autocomplete="off" />
-              <div class="x-save-hint">Vai aparecer na sua lista de "Meus Ritmos"</div>
+              <label for="xSaveName">${t('main.saveRhythm.nameLabel')}</label>
+              <input type="text" id="xSaveName" class="x-save-input" value="${esc(suggestedName)}" maxlength="60" placeholder="${t('main.saveRhythm.namePlaceholder')}" autocomplete="off" />
+              <div class="x-save-hint">${t('main.saveRhythm.nameHint')}</div>
             </div>
             <div class="x-save-field">
-              <label>BPM</label>
+              <label>${t('main.saveRhythm.bpmLabel')}</label>
               <div class="x-bpm-ctrl x-bpm-ctrl-lg" id="xSaveBpmCtrl">
-                <button class="x-bpm-btn" data-step="-1" type="button" aria-label="Diminuir BPM">&minus;</button>
-                <span class="x-bpm-val" id="xSaveBpmVal" role="button" title="Toque pra digitar">${Math.round(currentBpm)}</span>
-                <button class="x-bpm-btn" data-step="1" type="button" aria-label="Aumentar BPM">+</button>
+                <button class="x-bpm-btn" data-step="-1" type="button" aria-label="${t('main.saveRhythm.bpmDecreaseAriaLabel')}">&minus;</button>
+                <span class="x-bpm-val" id="xSaveBpmVal" role="button" title="${t('main.saveRhythm.bpmTapHint')}">${Math.round(currentBpm)}</span>
+                <button class="x-bpm-btn" data-step="1" type="button" aria-label="${t('main.saveRhythm.bpmIncreaseAriaLabel')}">+</button>
               </div>
             </div>
             <div class="x-save-field">
-              <label>Adicionar ao repertório</label>
+              <label>${t('main.saveRhythm.addToSetlistLabel')}</label>
               <div class="x-save-dest">
-                <button class="x-dest-chip ${destId === null ? 'active' : ''}" data-dest="" type="button">Não adicionar</button>
+                <button class="x-dest-chip ${destId === null ? 'active' : ''}" data-dest="" type="button">${t('main.saveRhythm.noAddButton')}</button>
                 ${setlists.map(l => `
                   <button class="x-dest-chip ${destId === l.id ? 'active' : ''}" data-dest="${esc(l.id)}" type="button">
                     ${esc(l.name)} <span class="x-dest-count">${l.count}</span>
@@ -5723,10 +5730,10 @@ ctaUrl: '/plans?renew=true',
           </div>
           <div class="x-save-actions">
             ${editing
-              ? `<button class="x-btn x-btn-ghost" id="xSaveAsNew" type="button">Salvar como novo</button>
-                 <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">Atualizar "${esc(editing.name.length > 18 ? editing.name.slice(0, 18) + '…' : editing.name)}"</button>`
-              : `<button class="x-btn x-btn-ghost" id="xSaveCancel" type="button">Cancelar</button>
-                 <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">Salvar ritmo</button>`}
+              ? `<button class="x-btn x-btn-ghost" id="xSaveAsNew" type="button">${t('main.saveRhythm.saveAsNewButton')}</button>
+                 <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">${t('main.saveRhythm.updateButton', { name: esc(editing.name.length > 18 ? editing.name.slice(0, 18) + '…' : editing.name) })}</button>`
+              : `<button class="x-btn x-btn-ghost" id="xSaveCancel" type="button">${t('main.saveRhythm.cancelButton')}</button>
+                 <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">${t('main.saveRhythm.saveButton')}</button>`}
           </div>
         </div>
       </div>
@@ -5796,7 +5803,7 @@ ctaUrl: '/plans?renew=true',
       if (!name) {
         nameInput.focus();
         nameInput.style.borderColor = 'rgba(255, 107, 131, 0.5)';
-        Toast.show('Dê um nome ao ritmo', { type: 'warn' });
+        Toast.show(t('main.saveRhythm.nameRequiredToast'), { type: 'warn' });
         return null;
       }
       // bpmValue é sempre válido por construção (clamp 40-240 no stepper)
@@ -5815,7 +5822,7 @@ ctaUrl: '/plans?renew=true',
         bpm,
       });
       this.updateSetlistUI();
-      return ` e adicionado em "${dest.name}"`;
+      return t('main.saveRhythm.addedToSuffix', { name: dest.name });
     };
 
     const doSaveAsNew = async (): Promise<void> => {
@@ -5835,11 +5842,11 @@ ctaUrl: '/plans?renew=true',
       close();
       HapticsService.success();
 
-      Toast.show(`"${v.name}" salvo${destMsg}`, {
+      Toast.show(t('main.saveRhythm.savedToast', { name: v.name, destMsg }), {
         type: 'success',
         durationMs: 5000,
         action: {
-          label: 'Renomear',
+          label: t('main.saveRhythm.renameAction'),
           onClick: () => this.renameRhythmInline(saved.id),
         },
       });
@@ -5857,7 +5864,7 @@ ctaUrl: '/plans?renew=true',
       const destMsg = addToDest(editing.id, v.name, v.bpm, editing.base_rhythm_name || undefined);
       close();
       HapticsService.success();
-      Toast.show(`"${v.name}" atualizado${destMsg}`, { type: 'success' });
+      Toast.show(t('main.saveRhythm.updatedToast', { name: v.name, destMsg }), { type: 'success' });
     };
 
     overlay.querySelector('#xSaveConfirm')?.addEventListener('click', editing ? doUpdate : doSaveAsNew);
@@ -5939,13 +5946,13 @@ ctaUrl: '/plans?renew=true',
         ? (q
             ? `<div class="x-empty">
                  <svg class="x-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                 <div class="x-empty-title">Nada achado</div>
-                 <div class="x-empty-desc">Tenta outro nome ou limpa a busca.</div>
+                 <div class="x-empty-title">${t('main.myRhythms.emptySearchTitle')}</div>
+                 <div class="x-empty-desc">${t('main.myRhythms.emptySearchDesc')}</div>
                </div>`
             : `<div class="x-empty">
                  <svg class="x-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                 <div class="x-empty-title">Nenhum ritmo salvo</div>
-                 <div class="x-empty-desc">Carregue um ritmo da biblioteca, ajuste do seu jeito e use o botão de salvar pra criar seu primeiro.</div>
+                 <div class="x-empty-title">${t('main.myRhythms.emptyTitle')}</div>
+                 <div class="x-empty-desc">${t('main.myRhythms.emptyDesc')}</div>
                </div>`)
         : `<div class="x-rhythms-list">${
             filtered.map(r => `
@@ -5955,23 +5962,23 @@ ctaUrl: '/plans?renew=true',
                   <div class="x-rhythm-top">
                     <div class="x-rhythm-name" data-name="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
                     <div class="x-rhythm-actions">
-                      <button class="x-rhythm-action" data-rename="${r.id}" aria-label="Renomear">
+                      <button class="x-rhythm-action" data-rename="${r.id}" aria-label="${t('main.myRhythms.renameAriaLabel')}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                       </button>
-                      <button class="x-rhythm-action danger" data-delete="${r.id}" aria-label="Deletar">
+                      <button class="x-rhythm-action danger" data-delete="${r.id}" aria-label="${t('main.myRhythms.deleteAriaLabel')}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                       </button>
                     </div>
                   </div>
                   <div class="x-rhythm-bottom">
                     <div class="x-rhythm-meta">
-                      ${r.base_rhythm_name ? `<span class="x-rhythm-base">baseado em ${escapeHtml(r.base_rhythm_name)}</span>` : ''}
-                      ${!r.synced ? `${r.base_rhythm_name ? '<span class="x-rhythm-meta-dot"></span>' : ''}<button class="x-rhythm-pending" data-sync-one="${r.id}" title="Toque pra sincronizar agora">pendente sync ↻</button>` : ''}
+                      ${r.base_rhythm_name ? `<span class="x-rhythm-base">${t('main.myRhythms.basedOn', { name: escapeHtml(r.base_rhythm_name) })}</span>` : ''}
+                      ${!r.synced ? `${r.base_rhythm_name ? '<span class="x-rhythm-meta-dot"></span>' : ''}<button class="x-rhythm-pending" data-sync-one="${r.id}" title="${t('main.myRhythms.syncTooltip')}">${t('main.myRhythms.pendingSync')}</button>` : ''}
                     </div>
-                    <div class="x-bpm-ctrl" data-bpm-ctrl="${r.id}" aria-label="BPM do ritmo">
-                      <button class="x-bpm-btn" data-bpm-step="-1" aria-label="Diminuir BPM">&minus;</button>
-                      <span class="x-bpm-val" data-bpm-val="${r.id}" role="button" title="Toque pra digitar">${r.bpm}</span>
-                      <button class="x-bpm-btn" data-bpm-step="1" aria-label="Aumentar BPM">+</button>
+                    <div class="x-bpm-ctrl" data-bpm-ctrl="${r.id}" aria-label="${t('main.myRhythms.bpmAriaLabel')}">
+                      <button class="x-bpm-btn" data-bpm-step="-1" aria-label="${t('main.myRhythms.bpmDecreaseAriaLabel')}">&minus;</button>
+                      <span class="x-bpm-val" data-bpm-val="${r.id}" role="button" title="${t('main.myRhythms.bpmTapHint')}">${r.bpm}</span>
+                      <button class="x-bpm-btn" data-bpm-step="1" aria-label="${t('main.myRhythms.bpmIncreaseAriaLabel')}">+</button>
                     </div>
                   </div>
                 </div>
@@ -5980,14 +5987,14 @@ ctaUrl: '/plans?renew=true',
           }</div>`;
 
       overlay.innerHTML = `
-        <div class="x-sheet x-myrh-sheet" role="dialog" aria-label="Meus Ritmos">
+        <div class="x-sheet x-myrh-sheet" role="dialog" aria-label="${t('main.myRhythms.dialogAriaLabel')}">
           <div class="x-grip"></div>
           <div class="x-head">
             <div>
-              <h2 class="x-head-title">Meus Ritmos</h2>
-              <div class="x-head-sub">${total === 0 ? 'Nada salvo ainda' : `${total} ritmo${total !== 1 ? 's' : ''} ${total !== 1 ? 'salvos' : 'salvo'}`}</div>
+              <h2 class="x-head-title">${t('main.myRhythms.title')}</h2>
+              <div class="x-head-sub">${total === 0 ? t('main.myRhythms.countZero') : (total === 1 ? t('main.myRhythms.countSingular', { total }) : t('main.myRhythms.countPlural', { total }))}</div>
             </div>
-            <button class="x-close" id="xMyRhClose" aria-label="Fechar">
+            <button class="x-close" id="xMyRhClose" aria-label="${t('main.myRhythms.closeAriaLabel')}">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
@@ -5997,8 +6004,8 @@ ctaUrl: '/plans?renew=true',
               <div class="x-search-wrap">
                 <div class="x-search-input-wrap">
                   <svg class="x-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  <input type="text" class="x-search-input" id="xMyRhSearch" placeholder="Buscar no meu acervo..." value="${escapeHtml(searchQuery)}" autocomplete="off" />
-                  <button class="x-search-clear ${searchQuery ? 'visible' : ''}" id="xMyRhSearchClear" aria-label="Limpar busca">
+                  <input type="text" class="x-search-input" id="xMyRhSearch" placeholder="${t('main.myRhythms.searchPlaceholder')}" value="${escapeHtml(searchQuery)}" autocomplete="off" />
+                  <button class="x-search-clear ${searchQuery ? 'visible' : ''}" id="xMyRhSearchClear" aria-label="${t('main.myRhythms.clearSearchAriaLabel')}">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 </div>
@@ -6061,14 +6068,14 @@ ctaUrl: '/plans?renew=true',
       overlay.querySelectorAll<HTMLElement>('[data-sync-one]').forEach(badge => {
         badge.addEventListener('click', async (e) => {
           e.stopPropagation();
-          badge.textContent = 'sincronizando...';
+          badge.textContent = t('main.myRhythms.syncingLabel');
           const result = await this.userRhythmService.syncOne(badge.dataset.syncOne!);
           if (result.ok) {
-            Toast.show('Ritmo sincronizado', { type: 'success' });
+            Toast.show(t('main.myRhythms.syncedToast'), { type: 'success' });
             renderList();
           } else {
-            badge.textContent = 'pendente sync ↻';
-            Toast.show(`Sync falhou: ${result.error}`, { type: 'warn', durationMs: 8000 });
+            badge.textContent = t('main.myRhythms.pendingSync');
+            Toast.show(t('main.myRhythms.syncFailedToast', { error: result.error ?? '' }), { type: 'warn', durationMs: 8000 });
           }
         });
       });
@@ -6158,7 +6165,7 @@ ctaUrl: '/plans?renew=true',
             const newName = input.value.trim();
             if (save && newName && newName !== originalName) {
               await this.userRhythmService.update(id, newName, rhythm.bpm);
-              Toast.show(`"${newName}" salvo`, { type: 'success' });
+              Toast.show(t('main.myRhythms.renamedToast', { name: newName }), { type: 'success' });
             }
             renderList();
           };
@@ -6185,7 +6192,7 @@ ctaUrl: '/plans?renew=true',
           if (!btn.dataset.confirming) {
             btn.dataset.confirming = '1';
             btn.classList.add('confirming');
-            btn.innerHTML = '<span class="x-delete-confirm-label">Excluir?</span>';
+            btn.innerHTML = `<span class="x-delete-confirm-label">${t('main.myRhythms.deleteConfirmLabel')}</span>`;
             // Cancela sozinho se o user não confirmar em 3s
             window.setTimeout(() => {
               if (!btn.isConnected || !btn.dataset.confirming) return;
@@ -6211,11 +6218,11 @@ ctaUrl: '/plans?renew=true',
           renderList();
           HapticsService.medium();
 
-          Toast.show(`"${snapshot.name}" deletado`, {
+          Toast.show(t('main.myRhythms.deletedToast', { name: snapshot.name }), {
             type: 'info',
             durationMs: 5000,
             action: {
-              label: 'Desfazer',
+              label: t('main.myRhythms.undoAction'),
               onClick: async () => {
                 await this.userRhythmService.save(snapshot.name, snapshot.bpm, snapshot.data, snapshot.base);
                 renderList();
@@ -6269,9 +6276,9 @@ ctaUrl: '/plans?renew=true',
       const saveBtn = document.getElementById('saveAsMyRhythmBtn');
       if (saveBtn) saveBtn.style.display = 'flex';
 
-      this.modalManager.show('Meus Ritmos', `${name} carregado!`, 'success');
+      this.modalManager.show(t('main.modal.myRhythmsTitle'), t('main.loadRhythm.loadedToast', { name }), 'success');
     } catch (err) {
-      this.modalManager.show('Erro', 'Não foi possível carregar o ritmo.', 'error');
+      this.modalManager.show(t('main.loadRhythm.errorTitle'), t('main.loadRhythm.errorBody'), 'error');
     }
   }
 
@@ -6284,15 +6291,15 @@ ctaUrl: '/plans?renew=true',
           <div class="account-avatar" style="width:48px;height:48px;font-size:1.2rem;margin-bottom:0.5rem;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
           </div>
-          <div class="account-name">Atualize seu WhatsApp</div>
-          <div class="account-email" style="max-width:280px;">Precisamos do seu número para enviar novidades e suporte. Leva 5 segundos.</div>
+          <div class="account-name">${t('main.phoneModal.title')}</div>
+          <div class="account-email" style="max-width:280px;">${t('main.phoneModal.body')}</div>
         </div>
 
         <div style="padding:0 0.5rem;">
-          <input type="tel" id="phoneModalInput" class="account-password-input" placeholder="(00) 00000-0000" inputmode="tel" maxlength="15" style="text-align:center;font-size:1.1rem;margin-bottom:0.5rem;" />
+          <input type="tel" id="phoneModalInput" class="account-password-input" placeholder="${t('main.phoneModal.placeholder')}" inputmode="tel" maxlength="15" style="text-align:center;font-size:1.1rem;margin-bottom:0.5rem;" />
           <div id="phoneModalStatus" style="font-size:0.72rem;min-height:1rem;text-align:center;"></div>
-          <button id="phoneModalSave" class="account-action-btn" style="margin-top:0.5rem;">Salvar</button>
-          <button id="phoneModalSkip" style="width:100%;background:none;border:none;color:rgba(255,255,255,0.2);font-size:0.72rem;font-family:inherit;cursor:pointer;padding:0.6rem 0;margin-top:0.25rem;">Depois</button>
+          <button id="phoneModalSave" class="account-action-btn" style="margin-top:0.5rem;">${t('main.phoneModal.saveButton')}</button>
+          <button id="phoneModalSkip" style="width:100%;background:none;border:none;color:rgba(255,255,255,0.2);font-size:0.72rem;font-family:inherit;cursor:pointer;padding:0.6rem 0;margin-top:0.25rem;">${t('main.phoneModal.skipButton')}</button>
         </div>
       </div>
     `;
@@ -6331,12 +6338,12 @@ ctaUrl: '/plans?renew=true',
     overlay.querySelector('#phoneModalSave')!.addEventListener('click', async () => {
       const phone = input.value.replace(/\D/g, '');
       if (phone.length < 10 || phone.length > 11) {
-        statusEl.textContent = 'Número inválido';
+        statusEl.textContent = t('main.phoneModal.invalidNumber');
         statusEl.style.color = '#FF4466';
         return;
       }
 
-      statusEl.textContent = 'Salvando...';
+      statusEl.textContent = t('main.phoneModal.saving');
       statusEl.style.color = 'rgba(255,255,255,0.4)';
 
       const { supabase } = await import('./auth/supabase');
@@ -6346,10 +6353,10 @@ ctaUrl: '/plans?renew=true',
         .eq('id', userId);
 
       if (error) {
-        statusEl.textContent = 'Erro ao salvar. Tente novamente.';
+        statusEl.textContent = t('main.phoneModal.saveError');
         statusEl.style.color = '#FF4466';
       } else {
-        statusEl.textContent = 'Salvo!';
+        statusEl.textContent = t('main.phoneModal.saved');
         statusEl.style.color = '#00E68C';
         setTimeout(close, 800);
       }
@@ -6382,14 +6389,14 @@ ctaUrl: '/plans?renew=true',
     const overlay = document.createElement('div');
     overlay.className = 'x-overlay';
     overlay.innerHTML = `
-      <div class="x-sheet" role="dialog" aria-label="Ajustar BPM">
+      <div class="x-sheet" role="dialog" aria-label="${t('main.bpmModal.dialogAriaLabel')}">
         <div class="x-grip"></div>
         <div class="x-head">
           <div>
-            <h2 class="x-head-title">BPM · Tap Tempo</h2>
-            <div class="x-head-sub">Toque no pad no ritmo da música</div>
+            <h2 class="x-head-title">${t('main.bpmModal.title')}</h2>
+            <div class="x-head-sub">${t('main.bpmModal.subtitle')}</div>
           </div>
-          <button class="x-close" id="xBpmClose" aria-label="Fechar">
+          <button class="x-close" id="xBpmClose" aria-label="${t('main.bpmModal.closeAriaLabel')}">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -6401,24 +6408,24 @@ ctaUrl: '/plans?renew=true',
               <div class="x-tap-unit">BPM</div>
             </div>
 
-            <button class="x-tap-pad" id="xTapPad" type="button" aria-label="Tocar no ritmo">
-              TAP
+            <button class="x-tap-pad" id="xTapPad" type="button" aria-label="${t('main.bpmModal.tapAriaLabel')}">
+              ${t('main.bpmModal.tapButton')}
             </button>
 
-            <div class="x-tap-hint" id="xTapHint">Toque 2 vezes no ritmo pra calcular</div>
+            <div class="x-tap-hint" id="xTapHint">${t('main.bpmModal.tapHintInitial')}</div>
 
             <div class="x-tap-nudge">
-              <button class="x-tap-nudge-btn" data-nudge="-5" aria-label="Diminuir 5 BPM">−5</button>
-              <button class="x-tap-nudge-btn" data-nudge="-1" aria-label="Diminuir 1 BPM">−1</button>
+              <button class="x-tap-nudge-btn" data-nudge="-5" aria-label="${t('main.bpmModal.nudgeMinus5AriaLabel')}">−5</button>
+              <button class="x-tap-nudge-btn" data-nudge="-1" aria-label="${t('main.bpmModal.nudgeMinus1AriaLabel')}">−1</button>
               <input type="number" class="x-tap-nudge-input" id="xBpmInput" min="40" max="240" inputmode="numeric" value="${currentBpm}" aria-label="BPM" />
-              <button class="x-tap-nudge-btn" data-nudge="1" aria-label="Aumentar 1 BPM">+1</button>
-              <button class="x-tap-nudge-btn" data-nudge="5" aria-label="Aumentar 5 BPM">+5</button>
+              <button class="x-tap-nudge-btn" data-nudge="1" aria-label="${t('main.bpmModal.nudgePlus1AriaLabel')}">+1</button>
+              <button class="x-tap-nudge-btn" data-nudge="5" aria-label="${t('main.bpmModal.nudgePlus5AriaLabel')}">+5</button>
             </div>
 
-            <input type="range" class="x-tap-slider" id="xBpmSlider" min="40" max="240" value="${currentBpm}" aria-label="Ajuste fino do BPM" />
+            <input type="range" class="x-tap-slider" id="xBpmSlider" min="40" max="240" value="${currentBpm}" aria-label="${t('main.bpmModal.sliderAriaLabel')}" />
 
             ${this.currentRhythmOriginalBpm > 0 && currentBpm !== this.currentRhythmOriginalBpm
-              ? `<button class="x-tap-restore" id="xBpmRestore">Restaurar ${this.currentRhythmOriginalBpm} BPM</button>`
+              ? `<button class="x-tap-restore" id="xBpmRestore">${t('main.bpmModal.restoreButton', { bpm: this.currentRhythmOriginalBpm })}</button>`
               : ''}
           </div>
         </div>
@@ -6471,7 +6478,7 @@ ctaUrl: '/plans?renew=true',
 
     const resetHint = (): void => {
       tapTimes.length = 0;
-      hintEl.innerHTML = 'Toque 2 vezes no ritmo pra calcular';
+      hintEl.innerHTML = t('main.bpmModal.tapHintInitial');
     };
 
     const handleTap = (): void => {
@@ -6500,7 +6507,7 @@ ctaUrl: '/plans?renew=true',
 
       // Precisa 2+ taps
       if (tapTimes.length < 2) {
-        hintEl.innerHTML = 'Continue tocando — mais <strong>1 tap</strong>';
+        hintEl.innerHTML = t('main.bpmModal.tapHintOneMore');
         return;
       }
 
@@ -6514,8 +6521,8 @@ ctaUrl: '/plans?renew=true',
         applyBpm(bpm, 'tap');
         const taps = tapTimes.length;
         hintEl.innerHTML = taps >= 4
-          ? `<strong>${bpm}</strong> BPM · ${taps} taps`
-          : `<strong>${bpm}</strong> BPM · continue pra afinar`;
+          ? t('main.bpmModal.tapResultCounted', { bpm, taps })
+          : t('main.bpmModal.tapResultContinue', { bpm });
       }
     };
 
@@ -6574,7 +6581,7 @@ ctaUrl: '/plans?renew=true',
     if (userErr || !user) {
       // Sessão perdida — manda pro login em vez de ficar em silêncio
       console.warn('[account] sessão não recuperada:', userErr);
-      this.modalManager.show('Sessão expirada', 'Entre novamente pra acessar sua conta.', 'warning');
+      this.modalManager.show(t('main.accountModal.sessionExpiredTitle'), t('main.accountModal.sessionExpiredBody'), 'warning');
       return;
     }
 
@@ -6599,14 +6606,14 @@ ctaUrl: '/plans?renew=true',
 
     // Info do plano
     const currentPlan = PLANS.find(p => p.id === planId);
-    const planName = currentPlan?.displayName || (planId === 'trial' ? 'Teste Grátis' : planId);
+    const planName = currentPlan?.displayName || (planId === 'trial' ? t('main.accountModal.trialPlanName') : planId);
 
     // Status formatado
     const statusMap: Record<string, { label: string; color: string }> = {
-      active: { label: 'Ativo', color: '#00E68C' },
-      trial: { label: 'Teste Grátis', color: '#FFB420' },
-      expired: { label: 'Expirado', color: '#FF4466' },
-      canceled: { label: 'Cancelado', color: '#FF4466' },
+      active: { label: t('main.accountModal.status.active'), color: '#00E68C' },
+      trial: { label: t('main.accountModal.status.trial'), color: '#FFB420' },
+      expired: { label: t('main.accountModal.status.expired'), color: '#FF4466' },
+      canceled: { label: t('main.accountModal.status.canceled'), color: '#FF4466' },
     };
     const statusInfo = statusMap[status] || statusMap.expired;
 
@@ -6625,9 +6632,9 @@ ctaUrl: '/plans?renew=true',
     if (expiresAt) {
       daysLeft = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
       if (daysLeft > 0) {
-        daysText = `${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''}`;
+        daysText = daysLeft === 1 ? t('main.accountModal.daysLeftSingular', { days: daysLeft }) : t('main.accountModal.daysLeftPlural', { days: daysLeft });
       } else {
-        daysText = 'Expirado';
+        daysText = t('main.accountModal.daysLeftExpired');
       }
     }
 
@@ -6674,13 +6681,13 @@ ctaUrl: '/plans?renew=true',
     const ios = isIOSNative();
     let actionBtn = '';
     if (status === 'expired' || status === 'canceled') {
-      const label = ios ? 'Renovar Assinatura' : (native ? 'Renovar no site' : 'Renovar Assinatura');
+      const label = ios ? t('main.accountModal.renewButton') : (native ? t('main.accountModal.renewSiteButton') : t('main.accountModal.renewButton'));
       actionBtn = `<button class="account-action-btn" id="accountActionBtn">${label}</button>`;
     } else if (status === 'trial') {
-      const label = ios ? 'Assinar Agora' : (native ? 'Assinar no site' : 'Assinar Agora');
+      const label = ios ? t('main.accountModal.subscribeButton') : (native ? t('main.accountModal.subscribeSiteButton') : t('main.accountModal.subscribeButton'));
       actionBtn = `<button class="account-action-btn" id="accountActionBtn">${label}</button>`;
     } else if (upgradeAvailable) {
-      const label = ios ? 'Fazer upgrade de plano' : (native ? 'Fazer upgrade no site' : 'Fazer upgrade de plano');
+      const label = ios ? t('main.accountModal.upgradeButton') : (native ? t('main.accountModal.upgradeSiteButton') : t('main.accountModal.upgradeButton'));
       actionBtn = `<button class="account-action-btn account-action-upgrade" id="accountActionBtn">${label}</button>`;
     }
 
@@ -6697,22 +6704,22 @@ ctaUrl: '/plans?renew=true',
         <button class="account-modal-close" id="accountModalClose">&times;</button>
         <div class="account-header">
           <div class="account-avatar">${(name || email).charAt(0).toUpperCase()}</div>
-          <div class="account-name">${name || 'Usuário'}</div>
+          <div class="account-name">${name || t('main.accountModal.userFallback')}</div>
           <div class="account-email">${email}</div>
         </div>
 
         <div class="account-card">
           <div class="account-row">
-            <span class="account-label">Plano</span>
+            <span class="account-label">${t('main.accountModal.planLabel')}</span>
             <span class="account-value">${planName}</span>
           </div>
           <div class="account-row">
-            <span class="account-label">Status</span>
+            <span class="account-label">${t('main.accountModal.statusLabel')}</span>
             <span class="account-status" style="color:${statusInfo.color}">${statusInfo.label}</span>
           </div>
           ${expiresAt ? `
           <div class="account-row">
-            <span class="account-label">Expira em</span>
+            <span class="account-label">${t('main.accountModal.expiresLabel')}</span>
             <span class="account-value">${expiresFormatted}</span>
           </div>
           ${daysLeft > 0 && currentPlan ? `
@@ -6725,7 +6732,7 @@ ctaUrl: '/plans?renew=true',
           ` : ''}
           ` : ''}
           <div class="account-row">
-            <span class="account-label">Membro desde</span>
+            <span class="account-label">${t('main.accountModal.memberSinceLabel')}</span>
             <span class="account-value">${memberSince}</span>
           </div>
         </div>
@@ -6733,12 +6740,12 @@ ctaUrl: '/plans?renew=true',
         ${actionBtn ? `<div class="account-actions">${actionBtn}</div>` : ''}
 
         <div class="account-password-section">
-          <button class="account-password-toggle" id="accountPasswordToggle">Alterar senha</button>
+          <button class="account-password-toggle" id="accountPasswordToggle">${t('main.accountModal.changePasswordButton')}</button>
           <div class="account-password-form" id="accountPasswordForm" style="display:none;">
-            <input type="password" class="account-password-input" id="accountNewPassword" placeholder="Nova senha (mín. 6 caracteres)" minlength="6" />
-            <input type="password" class="account-password-input" id="accountConfirmPassword" placeholder="Confirmar nova senha" minlength="6" />
+            <input type="password" class="account-password-input" id="accountNewPassword" placeholder="${t('main.accountModal.newPasswordPlaceholder')}" minlength="6" />
+            <input type="password" class="account-password-input" id="accountConfirmPassword" placeholder="${t('main.accountModal.confirmPasswordPlaceholder')}" minlength="6" />
             <div class="account-password-status" id="accountPasswordStatus"></div>
-            <button class="account-password-save" id="accountPasswordSave">Salvar nova senha</button>
+            <button class="account-password-save" id="accountPasswordSave">${t('main.accountModal.savePasswordButton')}</button>
           </div>
         </div>
 
@@ -6749,14 +6756,13 @@ ctaUrl: '/plans?renew=true',
             background:transparent;
             color:rgba(255,68,102,0.6);font-size:0.75rem;font-weight:600;
             font-family:inherit;cursor:pointer;text-align:center;
-          ">Excluir minha conta</button>
+          ">${t('main.accountModal.deleteAccountButton')}</button>
           <div id="accountDeleteConfirm" style="display:none;margin-top:0.75rem;padding:0.85rem;background:rgba(255,68,102,0.06);border:1px solid rgba(255,68,102,0.2);border-radius:10px;">
             <p style="color:rgba(255,255,255,0.7);font-size:0.78rem;line-height:1.5;margin:0 0 0.5rem;">
-              <strong style="color:#FF4466;">Esta ação é irreversível.</strong>
-              Seus ritmos pessoais, favoritos e dados de cadastro serão apagados. Você não poderá recuperar a conta depois.
+              ${t('main.accountModal.deleteWarning')}
             </p>
             <p style="color:rgba(255,255,255,0.4);font-size:0.7rem;line-height:1.4;margin:0 0 0.75rem;">
-              Se você tem assinatura ativa, ela não é automaticamente cancelada — fale conosco pelo WhatsApp pra solicitar reembolso se aplicável.
+              ${t('main.accountModal.deleteWarningRefund')}
             </p>
             <div id="accountDeleteStatus" style="font-size:0.72rem;min-height:1rem;margin-bottom:0.5rem;text-align:center;"></div>
             <div style="display:flex;gap:0.5rem;">
@@ -6766,13 +6772,13 @@ ctaUrl: '/plans?renew=true',
                 border:1px solid rgba(255,255,255,0.08);
                 color:rgba(255,255,255,0.55);font-size:0.75rem;font-weight:600;
                 font-family:inherit;cursor:pointer;
-              ">Cancelar</button>
+              ">${t('main.accountModal.deleteCancelButton')}</button>
               <button id="accountDeleteConfirmBtn" style="
                 flex:1.3;padding:0.55rem;border:none;border-radius:8px;
                 background:#FF4466;color:#fff;
                 font-size:0.75rem;font-weight:700;
                 font-family:inherit;cursor:pointer;
-              ">Excluir para sempre</button>
+              ">${t('main.accountModal.deleteConfirmButton')}</button>
             </div>
           </div>
         </div>
@@ -6805,7 +6811,7 @@ ctaUrl: '/plans?renew=true',
         this.installPrompt.prompt();
         this.installPrompt.userChoice.then((choice: any) => {
           if (choice.outcome === 'accepted') {
-            this.modalManager.show('App', 'App instalado com sucesso!', 'success');
+            this.modalManager.show(t('main.modal.appInstalledTitle'), t('main.modal.appInstalledBody'), 'success');
           }
           this.installPrompt = null;
         });
@@ -6821,11 +6827,11 @@ ctaUrl: '/plans?renew=true',
       const toggle = overlay.querySelector('#accountPasswordToggle') as HTMLElement;
       if (form.style.display === 'none') {
         form.style.display = 'flex';
-        toggle.textContent = 'Cancelar';
+        toggle.textContent = t('main.accountModal.passwordToggleCancel');
         toggle.classList.add('cancel');
       } else {
         form.style.display = 'none';
-        toggle.textContent = 'Alterar senha';
+        toggle.textContent = t('main.accountModal.changePasswordButton');
         toggle.classList.remove('cancel');
       }
     });
@@ -6837,26 +6843,26 @@ ctaUrl: '/plans?renew=true',
       const statusEl = overlay.querySelector('#accountPasswordStatus') as HTMLElement;
 
       if (!newPass || newPass.length < 6) {
-        statusEl.textContent = 'A senha deve ter pelo menos 6 caracteres';
+        statusEl.textContent = t('main.accountModal.passwordTooShort');
         statusEl.style.color = 'var(--adm-red, #FF4466)';
         return;
       }
       if (newPass !== confirmPass) {
-        statusEl.textContent = 'As senhas não coincidem';
+        statusEl.textContent = t('main.accountModal.passwordMismatch');
         statusEl.style.color = 'var(--adm-red, #FF4466)';
         return;
       }
 
-      statusEl.textContent = 'Salvando...';
+      statusEl.textContent = t('main.accountModal.passwordSaving');
       statusEl.style.color = 'rgba(255,255,255,0.4)';
 
       const { error } = await supabase.auth.updateUser({ password: newPass });
 
       if (error) {
-        statusEl.textContent = error.message || 'Erro ao alterar senha';
+        statusEl.textContent = error.message || t('main.accountModal.passwordChangeError');
         statusEl.style.color = 'var(--adm-red, #FF4466)';
       } else {
-        statusEl.textContent = 'Senha alterada com sucesso!';
+        statusEl.textContent = t('main.accountModal.passwordChangedSuccess');
         statusEl.style.color = 'var(--adm-green, #00E68C)';
         (overlay.querySelector('#accountNewPassword') as HTMLInputElement).value = '';
         (overlay.querySelector('#accountConfirmPassword') as HTMLInputElement).value = '';
@@ -6864,7 +6870,7 @@ ctaUrl: '/plans?renew=true',
           const form = overlay.querySelector('#accountPasswordForm') as HTMLElement;
           const toggle = overlay.querySelector('#accountPasswordToggle') as HTMLElement;
           form.style.display = 'none';
-          toggle.textContent = 'Alterar senha';
+          toggle.textContent = t('main.accountModal.changePasswordButton');
           toggle.classList.remove('cancel');
         }, 2000);
       }
@@ -6885,7 +6891,7 @@ ctaUrl: '/plans?renew=true',
       const btn = overlay.querySelector('#accountDeleteConfirmBtn') as HTMLButtonElement;
       btn.disabled = true;
       btn.style.opacity = '0.6';
-      statusEl.textContent = 'Excluindo conta...';
+      statusEl.textContent = t('main.accountModal.deletingAccount');
       statusEl.style.color = 'rgba(255,255,255,0.5)';
 
       try {
@@ -6893,7 +6899,7 @@ ctaUrl: '/plans?renew=true',
         const { error } = await supabase.rpc('delete_my_account');
         if (error) throw error;
 
-        statusEl.textContent = 'Conta excluída. Até mais!';
+        statusEl.textContent = t('main.accountModal.accountDeleted');
         statusEl.style.color = '#00E68C';
 
         // Logout + redirect pro login
@@ -6902,7 +6908,7 @@ ctaUrl: '/plans?renew=true',
           await authService.logout();
         }, 1200);
       } catch (e: any) {
-        statusEl.textContent = 'Erro ao excluir. Tente novamente ou contate o suporte.';
+        statusEl.textContent = t('main.accountModal.deleteAccountError');
         statusEl.style.color = '#FF4466';
         btn.disabled = false;
         btn.style.opacity = '1';
@@ -6971,24 +6977,24 @@ ctaUrl: '/plans?renew=true',
       return `
         <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1rem;margin-bottom:0.6rem;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-            <span style="font-size:0.9rem;font-weight:700;color:#fff;">${plan.displayName}${plan.durationMonths >= 36 ? ' — 3 Anos' : ''}</span>
-            <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);">R$ ${perMonth}/mês</span>
+            <span style="font-size:0.9rem;font-weight:700;color:#fff;">${plan.displayName}${plan.durationMonths >= 36 ? t('main.upgradeModal.threeYearsSuffix') : ''}</span>
+            <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);">${t('main.upgradeModal.perMonthPrice', { price: perMonth })}</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:0.2rem;font-size:0.72rem;color:rgba(255,255,255,0.5);margin-bottom:0.6rem;">
             <div style="display:flex;justify-content:space-between;">
-              <span>Valor do plano</span>
-              <span>R$ ${originalDisplay}</span>
+              <span>${t('main.upgradeModal.planValueLabel')}</span>
+              <span>${t('main.upgradeModal.priceDisplay', { price: originalDisplay })}</span>
             </div>
             ${credit > 0 ? `<div style="display:flex;justify-content:space-between;color:#00E68C;">
-              <span>Crédito (${daysLeft}d restantes)</span>
-              <span>- R$ ${creditDisplay}</span>
+              <span>${t('main.upgradeModal.creditLabel', { days: daysLeft })}</span>
+              <span>${t('main.upgradeModal.creditPriceDisplay', { price: creditDisplay })}</span>
             </div>` : ''}
             <div style="display:flex;justify-content:space-between;font-weight:700;color:#fff;font-size:0.82rem;padding-top:0.3rem;border-top:1px solid rgba(255,255,255,0.06);">
-              <span>Você paga</span>
-              <span>R$ ${totalDisplay}</span>
+              <span>${t('main.upgradeModal.youPayLabel')}</span>
+              <span>${t('main.upgradeModal.priceDisplay', { price: totalDisplay })}</span>
             </div>
           </div>
-          <button class="account-action-btn" data-upgrade-plan="${plan.id}" data-upgrade-price="${finalPrice}" style="font-size:0.8rem;padding:0.6rem;">Fazer upgrade</button>
+          <button class="account-action-btn" data-upgrade-plan="${plan.id}" data-upgrade-price="${finalPrice}" style="font-size:0.8rem;padding:0.6rem;">${t('main.upgradeModal.upgradeCardButton')}</button>
         </div>
       `;
     }).join('');
@@ -6997,8 +7003,8 @@ ctaUrl: '/plans?renew=true',
       <div class="account-modal" style="max-width:420px;max-height:85vh;overflow-y:auto;">
         <button class="account-modal-close" id="upgradeClose">&times;</button>
         <div class="account-header">
-          <div class="account-name">Upgrade de plano</div>
-          <div class="account-email">Escolha o plano que deseja migrar</div>
+          <div class="account-name">${t('main.upgradeModal.title')}</div>
+          <div class="account-email">${t('main.upgradeModal.subtitle')}</div>
         </div>
         <div style="padding:0 0.25rem;" id="upgradeCards">
           ${buildCards()}
@@ -7029,7 +7035,7 @@ ctaUrl: '/plans?renew=true',
         if (!targetPlan) return;
 
         const statusEl = overlay.querySelector('#upgradeStatus') as HTMLElement;
-        statusEl.textContent = 'Gerando checkout...';
+        statusEl.textContent = t('main.upgradeModal.generatingCheckout');
         statusEl.style.color = 'rgba(255,255,255,0.4)';
 
         // Desabilitar todos os botões
@@ -7062,7 +7068,7 @@ ctaUrl: '/plans?renew=true',
           if (result.success && result.url) {
             window.location.href = result.url;
           } else {
-            statusEl.textContent = result.error || 'Erro ao gerar pagamento';
+            statusEl.textContent = result.error || t('main.upgradeModal.paymentError');
             statusEl.style.color = '#FF4466';
             overlay.querySelectorAll('[data-upgrade-plan]').forEach(b => {
               (b as HTMLButtonElement).disabled = false;
@@ -7070,7 +7076,7 @@ ctaUrl: '/plans?renew=true',
             });
           }
         } catch (e) {
-          statusEl.textContent = 'Erro ao processar. Tente novamente.';
+          statusEl.textContent = t('main.upgradeModal.processError');
           statusEl.style.color = '#FF4466';
           overlay.querySelectorAll('[data-upgrade-plan]').forEach(b => {
             (b as HTMLButtonElement).disabled = false;
@@ -7143,16 +7149,16 @@ ctaUrl: '/plans?renew=true',
     popup.className = 'volume-popup';
     popup.innerHTML = `
       <div class="volume-popup-content">
-        <label>Volume: <span id="volumeValue">${Math.round(currentVolume * 100)}%</span></label>
+        <label>${t('main.volumePopup.volumeLabel')} <span id="volumeValue">${Math.round(currentVolume * 100)}%</span></label>
         <div class="volume-presets">
-          <button class="preset-btn" data-volume="20">Ghost</button>
-          <button class="preset-btn" data-volume="50">Médio</button>
-          <button class="preset-btn" data-volume="80">Alto</button>
-          <button class="preset-btn" data-volume="100">Max</button>
+          <button class="preset-btn" data-volume="20">${t('main.volumePopup.presetGhost')}</button>
+          <button class="preset-btn" data-volume="50">${t('main.volumePopup.presetMedium')}</button>
+          <button class="preset-btn" data-volume="80">${t('main.volumePopup.presetHigh')}</button>
+          <button class="preset-btn" data-volume="100">${t('main.volumePopup.presetMax')}</button>
         </div>
         <input type="range" id="volumeSlider" min="0" max="100" value="${currentVolume * 100}" step="1">
 
-        <label style="margin-top:0.8rem;display:block;">Groove: <span id="offsetValue">${currentOffset > 0 ? '+' : ''}${Math.round(currentOffset * 100)}%</span></label>
+        <label style="margin-top:0.8rem;display:block;">${t('main.volumePopup.grooveLabel')} <span id="offsetValue">${currentOffset > 0 ? '+' : ''}${Math.round(currentOffset * 100)}%</span></label>
         <div class="volume-presets">
           <button class="preset-btn" data-offset="-50">←½</button>
           <button class="preset-btn" data-offset="-25">←¼</button>
@@ -7162,10 +7168,10 @@ ctaUrl: '/plans?renew=true',
         </div>
         <input type="range" id="offsetSlider" min="-50" max="50" value="${currentOffset * 100}" step="1">
         <div style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-align:center;margin-top:0.3rem;">
-          Adianta ou atrasa em até meio step
+          ${t('main.volumePopup.grooveHint')}
         </div>
 
-        <button class="volume-close">Fechar</button>
+        <button class="volume-close">${t('main.volumePopup.closeButton')}</button>
       </div>
     `;
 
@@ -7298,7 +7304,7 @@ ctaUrl: '/plans?renew=true',
       this.uiManager.updateVariationButtons();
     } catch (error) {
       console.error('Error loading MIDI:', error);
-      this.uiManager.showAlert('Erro ao carregar arquivo MIDI');
+      this.uiManager.showAlert(t('main.alert.midiLoadError'));
       select.value = '';
     }
   }
@@ -7320,7 +7326,7 @@ ctaUrl: '/plans?renew=true',
       void file.name;
     } catch (error) {
       console.error('Error loading audio:', error);
-      this.uiManager.showAlert('Erro ao carregar arquivo de áudio');
+      this.uiManager.showAlert(t('main.alert.audioLoadError'));
     }
   }
 
@@ -7337,7 +7343,7 @@ ctaUrl: '/plans?renew=true',
       this.updateBeatsPerBarUI();
       this.uiManager.refreshGridDisplay();
       this.uiManager.updateVariationButtons();
-      this.uiManager.showAlert('Ritmo carregado com sucesso!');
+      this.uiManager.showAlert(t('main.alert.rhythmLoaded'));
 
       // Resetar selects para permitir re-seleção do mesmo ritmo
       const rhythmSelect = document.getElementById('rhythmSelect') as HTMLSelectElement;
@@ -7346,7 +7352,7 @@ ctaUrl: '/plans?renew=true',
       if (rhythmSelectUser) rhythmSelectUser.value = '';
     } catch (error) {
       console.error('Error loading rhythm:', error);
-      this.uiManager.showAlert('Erro ao carregar ritmo');
+      this.uiManager.showAlert(t('main.alert.rhythmLoadError'));
     }
   }
 
@@ -7444,7 +7450,7 @@ ctaUrl: '/plans?renew=true',
           // Guardar valor atual antes de limpar
           const currentValue = select.value;
 
-          select.innerHTML = '<option value="">Selecione...</option>';
+          select.innerHTML = `<option value="">${t('main.channel.selectOption')}</option>`;
 
           midiFiles.forEach(file => {
             const option = document.createElement('option');
@@ -7609,7 +7615,7 @@ ctaUrl: '/plans?renew=true',
         ? `<span class="x-picker-personal">${escapeHtml(item.name)}</span>`
         : escapeHtml(item.name);
       const metaParts: string[] = [];
-      if (item.baseRhythmName) metaParts.push(`base: ${escapeHtml(item.baseRhythmName)}`);
+      if (item.baseRhythmName) metaParts.push(t('main.setlistPicker.baseLabel', { name: escapeHtml(item.baseRhythmName) }));
       if (item.bpm) metaParts.push(`${item.bpm} BPM`);
       const metaHtml = metaParts.length
         ? `<span class="x-picker-meta">${metaParts.join(' · ')}</span>`
@@ -7622,21 +7628,21 @@ ctaUrl: '/plans?renew=true',
             ${metaHtml}
           </span>
           ${isCurrent
-            ? '<span class="x-picker-now"><span class="x-picker-now-dot"></span>tocando</span>'
+            ? `<span class="x-picker-now"><span class="x-picker-now-dot"></span>${t('main.setlistPicker.nowPlayingLabel')}</span>`
             : '<svg class="x-picker-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'}
         </button>
       `;
     }).join('');
 
     overlay.innerHTML = `
-      <div class="x-sheet" role="dialog" aria-label="Repertório">
+      <div class="x-sheet" role="dialog" aria-label="${t('main.setlistPicker.dialogAriaLabel')}">
         <div class="x-grip"></div>
         <div class="x-head">
           <div>
-            <h2 class="x-head-title">Repertório</h2>
-            <div class="x-head-sub">${items.length} ritmo${items.length !== 1 ? 's' : ''} · toque pra pular</div>
+            <h2 class="x-head-title">${t('main.setlistPicker.title')}</h2>
+            <div class="x-head-sub">${items.length === 1 ? t('main.setlistPicker.countSingular', { count: items.length }) : t('main.setlistPicker.countPlural', { count: items.length })}</div>
           </div>
-          <button class="x-close" id="xPickerClose" aria-label="Fechar">
+          <button class="x-close" id="xPickerClose" aria-label="${t('main.setlistPicker.closeAriaLabel')}">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -7644,7 +7650,7 @@ ctaUrl: '/plans?renew=true',
         <div class="x-body x-picker-body-wrap">
           <div class="catg-search-wrap">
             <svg class="catg-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" class="catg-search-input" id="xPickerSearch" placeholder="Buscar no repertório..." autocomplete="off" />
+            <input type="text" class="catg-search-input" id="xPickerSearch" placeholder="${t('main.setlistPicker.searchPlaceholder')}" autocomplete="off" />
           </div>
           <div class="x-picker-list">${rows}</div>
         </div>
@@ -7652,7 +7658,7 @@ ctaUrl: '/plans?renew=true',
         <div class="x-picker-foot">
           <button class="x-btn x-btn-ghost x-btn-full" id="xPickerEditBtn" type="button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-            Editar repertório
+            ${t('main.setlistPicker.editButton')}
           </button>
         </div>
       </div>
@@ -7803,7 +7809,7 @@ ctaUrl: '/plans?renew=true',
         // item ficou no setlist. Antes isso deixava o app aberto sem nada
         // carregado (grid esmaecido) e o user achava que travou.
         // Fix: remove o item do setlist e tenta o próximo (ou default).
-        this.uiManager.showAlert(`Ritmo "${item.name}" foi removido (não existe mais)`);
+        this.uiManager.showAlert(t('main.alert.rhythmRemoved', { name: item.name }));
         const idx = this.setlistManager.getCurrentIndex();
         this.setlistManager.removeItem(idx);
         const next = this.setlistManager.getCurrentItem();
@@ -7823,7 +7829,7 @@ ctaUrl: '/plans?renew=true',
         // Ritmo do catálogo não carregou (arquivo deletado, manifest novo,
         // versão antiga do APK). Mesmo tratamento: avisa e não trava.
         console.warn('[setlist] falhou ao carregar', item.path, e);
-        this.uiManager.showAlert(`Ritmo "${item.name}" não pôde ser carregado`);
+        this.uiManager.showAlert(t('main.alert.rhythmLoadFailed', { name: item.name }));
         await this.loadDefaultRhythmIfNoSetlist();
         loaded = true;
       }
@@ -7890,14 +7896,14 @@ ctaUrl: '/plans?renew=true',
         // sumia inteira e o user tocava "no escuro".
         if (favBar) favBar.style.display = '';
         if (numEl) numEl.textContent = '♪';
-        if (positionEl) positionEl.textContent = 'sem repertório';
+        if (positionEl) positionEl.textContent = t('main.setlistUI.noSetlistLabel');
         if (nameEl) nameEl.textContent = this.currentRhythmName;
         if (metaEl) metaEl.textContent = `${Math.round(this.stateManager.getTempo())} BPM`;
       } else {
         if (favBar) favBar.style.display = 'none';
         if (numEl) numEl.textContent = '#';
         if (positionEl) positionEl.textContent = '';
-        if (nameEl) nameEl.textContent = 'Monte seus favoritos';
+        if (nameEl) nameEl.textContent = t('main.setlistUI.emptyPrompt');
         if (metaEl) metaEl.textContent = '';
       }
       if (prevNameEl) prevNameEl.textContent = '--';
@@ -7923,11 +7929,11 @@ ctaUrl: '/plans?renew=true',
       // ele — não finge que o item do repertório continua. Anterior/
       // próximo seguem navegando o repertório (voltar é 1 toque).
       if (numEl) numEl.textContent = '♪';
-      if (positionEl) positionEl.textContent = 'fora do repertório';
+      if (positionEl) positionEl.textContent = t('main.setlistUI.outsideSetlistLabel');
       if (nameEl) nameEl.textContent = this.currentRhythmName;
     } else {
       if (numEl) numEl.textContent = `${idx + 1}`;
-      if (positionEl) positionEl.textContent = `de ${total}`;
+      if (positionEl) positionEl.textContent = t('main.setlistUI.ofTotal', { total });
       if (nameEl && current) nameEl.textContent = current.name;
     }
     if (prevNameEl) prevNameEl.textContent = prev ? prev.name : '--';
@@ -8016,7 +8022,7 @@ ctaUrl: '/plans?renew=true',
       // Atualizar select do modo admin
       const select = document.getElementById('rhythmSelect') as HTMLSelectElement;
       if (select) {
-        select.innerHTML = '<option value="">Selecione um ritmo...</option>';
+        select.innerHTML = `<option value="">${t('main.rhythmSelect.placeholder')}</option>`;
       }
 
       // Guardar versão pra cache bust
@@ -8091,7 +8097,7 @@ ctaUrl: '/plans?renew=true',
       if (!localStorage.getItem(seenKey)) {
         setTimeout(() => {
           this.uiManager.showAlert?.(
-            'Carregamos o Pop pra você começar. Escolha outro ritmo na lista abaixo 👇',
+            t('main.alert.defaultRhythmHint'),
             'info'
           );
           localStorage.setItem(seenKey, '1');
@@ -8157,26 +8163,26 @@ ctaUrl: '/plans?renew=true',
     };
 
     overlay.innerHTML = `
-      <div class="x-sheet catg-sheet" role="dialog" aria-label="Todos os ritmos">
+      <div class="x-sheet catg-sheet" role="dialog" aria-label="${t('main.allRhythms.dialogAriaLabel')}">
         <div class="x-grip"></div>
         <div class="x-head">
           <div>
-            <h2 class="x-head-title">Todos os ritmos</h2>
-            <div class="x-head-sub">${all.length} ritmos</div>
+            <h2 class="x-head-title">${t('main.allRhythms.title')}</h2>
+            <div class="x-head-sub">${t('main.allRhythms.count', { count: all.length })}</div>
           </div>
-          <button class="x-close" id="catgClose" aria-label="Fechar">
+          <button class="x-close" id="catgClose" aria-label="${t('main.allRhythms.closeAriaLabel')}">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="x-body catg-body-wrap">
           <div class="catg-search-wrap">
             <svg class="catg-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" class="catg-search-input" id="catgSearch" placeholder="Buscar ritmo..." autocomplete="off" />
+            <input type="text" class="catg-search-input" id="catgSearch" placeholder="${t('main.rhythmSearch.placeholder')}" autocomplete="off" />
           </div>
           <div class="catg-pills">
             ${pills.map(c => `
               <button class="catg-pill ${c === activeCat ? 'active' : ''}" data-cat="${esc(c)}">
-                ${esc(c)} <span class="catg-pill-count">${countOf(c)}</span>
+                ${esc(c === 'Todos' ? t('main.rhythmCategory.all') : c === 'Outros' ? t('main.rhythmCategory.others') : c)} <span class="catg-pill-count">${countOf(c)}</span>
               </button>
             `).join('')}
           </div>
@@ -8200,11 +8206,11 @@ ctaUrl: '/plans?renew=true',
       if (q) list = list.filter(r => norm(r.name).includes(q));
 
       const titleHtml = activeCat !== 'Todos'
-        ? `<div class="catg-title">${esc(activeCat)} <span class="catg-count">${list.length}</span></div>`
+        ? `<div class="catg-title">${esc(activeCat === 'Outros' ? t('main.rhythmCategory.others') : activeCat)} <span class="catg-count">${list.length}</span></div>`
         : '';
 
       body.innerHTML = list.length === 0
-        ? `${titleHtml}<div class="catg-empty">Nada achado${q ? ` pra "${esc(searchInput!.value)}"` : ''}</div>`
+        ? `${titleHtml}<div class="catg-empty">${q ? t('main.allRhythms.emptyResultsQuery', { query: esc(searchInput!.value) }) : t('main.allRhythms.emptyResults')}</div>`
         : `${titleHtml}
            <div class="catg-row">
              ${list.map(r => `
@@ -8284,7 +8290,7 @@ ctaUrl: '/plans?renew=true',
 
       const gridHtml = (list: Array<{ name: string; path: string }>): string =>
         list.length === 0
-          ? '<div class="desk-empty">Nada achado</div>'
+          ? `<div class="desk-empty">${t('main.allRhythms.emptyResults')}</div>`
           : list.map(r => `
               <button class="desk-r-card ${r.name === this.currentRhythmName ? 'active' : ''}"
                       data-name="${esc(r.name)}" data-path="${esc(r.path)}">${esc(r.name)}</button>
@@ -8310,12 +8316,12 @@ ctaUrl: '/plans?renew=true',
         ${!isIOSDevice ? `
           <div class="desk-search-wrap">
             <svg class="desk-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" class="desk-search-input" id="deskRhythmSearch" placeholder="Buscar ritmo..." autocomplete="off" value="${esc(this.deskSearch)}" />
+            <input type="text" class="desk-search-input" id="deskRhythmSearch" placeholder="${t('main.rhythmSearch.placeholder')}" autocomplete="off" value="${esc(this.deskSearch)}" />
           </div>` : ''}
         <div class="desk-cat-pills">
           ${allCats.map(c => `
             <button class="desk-cat-pill ${c === this.deskCategory && !this.deskSearch ? 'active' : ''}" data-cat="${esc(c)}">
-              ${esc(c)} <span class="desk-cat-count">${countOf(c)}</span>
+              ${esc(c === 'Todos' ? t('main.rhythmCategory.all') : c === 'Outros' ? t('main.rhythmCategory.others') : c)} <span class="desk-cat-count">${countOf(c)}</span>
             </button>
           `).join('')}
         </div>
@@ -8366,7 +8372,7 @@ ctaUrl: '/plans?renew=true',
       ` : '';
 
       const itemsHtml = items.length === 0
-        ? '<div class="desk-empty">Repertório vazio.<br>Monte no botão REPERTÓRIO.</div>'
+        ? `<div class="desk-empty">${t('main.desktopPanel.setlistEmptyHint')}</div>`
         : `<div class="desk-setlist-list">${items.map((item, i) => `
             <button class="desk-setlist-item ${i === cur ? 'active' : ''}" data-idx="${i}">
               <span class="desk-setlist-num">${i + 1}</span>
@@ -8515,7 +8521,7 @@ ctaUrl: '/plans?renew=true',
       }
     } catch (error) {
       console.error(`Error loading rhythm ${name}:`, error);
-      this.uiManager.showAlert(`Erro ao carregar ritmo "${name}"`);
+      this.uiManager.showAlert(t('main.alert.rhythmLoadFailedNamed', { name }));
     } finally {
       this.isLoadingRhythm = false;
       this.hideRhythmLoader();
@@ -8528,13 +8534,13 @@ ctaUrl: '/plans?renew=true',
     // Limitar variação de origem baseado no tipo
     const updateSlotOptions = (typeSelect: HTMLSelectElement, slotSelect: HTMLSelectElement) => {
       typeSelect.addEventListener('change', () => {
-        const t = typeSelect.value;
+        const selectedType = typeSelect.value;
         slotSelect.innerHTML = '';
-        const max = (t === 'end' || t === 'intro') ? 1 : 3;
+        const max = (selectedType === 'end' || selectedType === 'intro') ? 1 : 3;
         for (let i = 0; i < max; i++) {
           const o = document.createElement('option');
           o.value = String(i);
-          o.textContent = `Var ${i + 1}`;
+          o.textContent = t('main.duplicateFrom.varOption', { n: i + 1 });
           slotSelect.appendChild(o);
         }
       });
@@ -8580,7 +8586,7 @@ ctaUrl: '/plans?renew=true',
     const sourceSlotIndex = parseInt(variationSlotSelect.value, 10);
 
     if (!rhythmPath) {
-      this.uiManager.showAlert('Selecione um ritmo para duplicar.');
+      this.uiManager.showAlert(t('main.duplicateFrom.selectRhythmAlert'));
       return;
     }
 
@@ -8596,7 +8602,7 @@ ctaUrl: '/plans?renew=true',
       const sourceVariation = data.variations?.[sourcePatternType]?.[sourceSlotIndex];
 
       if (!sourceVariation || !sourceVariation.pattern) {
-        this.uiManager.showAlert('A variação selecionada não existe ou não tem padrão.');
+        this.uiManager.showAlert(t('main.duplicateFrom.noVariationAlert'));
         return;
       }
 
@@ -8655,10 +8661,10 @@ ctaUrl: '/plans?renew=true',
       this.uiManager.refreshGridDisplay();
       this.uiManager.updateVariationButtons();
 
-      this.uiManager.showAlert(`Copiado para ${targetPatternType.toUpperCase()} Var ${targetSlot + 1}!`);
+      this.uiManager.showAlert(t('main.duplicateFrom.copiedAlert', { pattern: targetPatternType.toUpperCase(), slot: targetSlot + 1 }));
     } catch (error) {
       console.error('Erro ao duplicar variação:', error);
-      this.uiManager.showAlert('Erro ao duplicar variação do ritmo.');
+      this.uiManager.showAlert(t('main.duplicateFrom.duplicateError'));
     }
   }
 
@@ -8666,7 +8672,7 @@ ctaUrl: '/plans?renew=true',
     const select = document.getElementById('duplicateRhythmSelect') as HTMLSelectElement;
     if (!select) return;
 
-    select.innerHTML = '<option value="">Selecione um ritmo...</option>';
+    select.innerHTML = `<option value="">${t('main.rhythmSelect.placeholder')}</option>`;
 
     this.availableRhythms.forEach(rhythm => {
       const option = document.createElement('option');
@@ -8679,7 +8685,7 @@ ctaUrl: '/plans?renew=true',
   private async cloneEntireRhythm(): Promise<void> {
     const select = document.getElementById('cloneRhythmSelect') as HTMLSelectElement;
     if (!select || !select.value) {
-      this.uiManager.showAlert('Selecione um ritmo para clonar.');
+      this.uiManager.showAlert(t('main.cloneRhythm.selectAlert'));
       return;
     }
 
@@ -8687,7 +8693,7 @@ ctaUrl: '/plans?renew=true',
 
     try {
       await this.fileManager.loadProjectFromPath(select.value);
-      const rhythmName = select.options[select.selectedIndex].textContent || 'Projeto';
+      const rhythmName = select.options[select.selectedIndex].textContent || t('main.cloneRhythm.defaultName');
 
       // Carregar a primeira variação e atualizar tudo
       this.stateManager.setCurrentVariation('main', 0);
@@ -8705,10 +8711,10 @@ ctaUrl: '/plans?renew=true',
       this.uiManager.refreshGridDisplay();
       this.uiManager.updateVariationButtons();
 
-      this.updateProjectBar(rhythmName + ' (cópia)');
-      this.uiManager.showAlert(`"${rhythmName}" clonado! Edite e salve.`);
+      this.updateProjectBar(rhythmName + t('main.cloneRhythm.copySuffix'));
+      this.uiManager.showAlert(t('main.cloneRhythm.clonedAlert', { name: rhythmName }));
     } catch {
-      this.uiManager.showAlert('Erro ao clonar ritmo.');
+      this.uiManager.showAlert(t('main.cloneRhythm.cloneError'));
     }
   }
 
@@ -8719,13 +8725,13 @@ ctaUrl: '/plans?renew=true',
     const source = state.variations[patternType][currentSlot];
 
     if (!source || !source.pattern.some(row => row.some(s => s))) {
-      this.uiManager.showAlert('Slot atual está vazio.');
+      this.uiManager.showAlert(t('main.duplicateSlot.emptySlotAlert'));
       return;
     }
 
     const maxSlots = (patternType === 'end' || patternType === 'intro') ? 1 : 3;
     if (maxSlots <= 1) {
-      this.uiManager.showAlert('Este padrão só tem uma variação.');
+      this.uiManager.showAlert(t('main.duplicateSlot.onlyOneVariationAlert'));
       return;
     }
 
@@ -8734,7 +8740,7 @@ ctaUrl: '/plans?renew=true',
     const destination = state.variations[patternType][targetSlot];
     const destinationHasData = !!destination?.pattern?.some(row => row.some(s => s));
     if (destinationHasData) {
-      this.uiManager.showAlert('O slot de destino já tem conteúdo. Ele será sobrescrito.');
+      this.uiManager.showAlert(t('main.duplicateSlot.overwriteWarningAlert'));
     }
 
     // Deep copy
@@ -8762,14 +8768,14 @@ ctaUrl: '/plans?renew=true',
     this.uiManager.refreshGridDisplay();
     this.uiManager.updateVariationButtons();
 
-    this.uiManager.showAlert(`Copiado para ${patternType.toUpperCase()} Var ${targetSlot + 1}. Edite à vontade!`);
+    this.uiManager.showAlert(t('main.duplicateSlot.copiedAlert', { pattern: patternType.toUpperCase(), slot: targetSlot + 1 }));
   }
 
   private populateCloneRhythmSelect(): void {
     const select = document.getElementById('cloneRhythmSelect') as HTMLSelectElement;
     if (!select) return;
 
-    select.innerHTML = '<option value="">Selecione um ritmo...</option>';
+    select.innerHTML = `<option value="">${t('main.rhythmSelect.placeholder')}</option>`;
     this.availableRhythms.forEach(rhythm => {
       const option = document.createElement('option');
       option.value = rhythm.path;

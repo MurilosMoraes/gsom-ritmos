@@ -4,6 +4,7 @@ import { supabase } from './supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { OfflineCache } from '../native/OfflineCache';
 import { internalNav } from '../native/Platform';
+import { t } from '../i18n';
 
 export interface GDrumsProfile {
   id: string;
@@ -79,7 +80,7 @@ class AuthService {
       }
 
       if (!data.user) {
-        return { success: false, message: 'Erro ao fazer login.' };
+        return { success: false, message: t('auth.errors.loginGenericFailed') };
       }
 
       const profile = await this.getProfile(data.user.id);
@@ -87,7 +88,7 @@ class AuthService {
 
       return { success: true, token: data.session?.access_token, user };
     } catch {
-      return { success: false, message: 'Erro ao conectar com o servidor.' };
+      return { success: false, message: t('auth.errors.connectionServerError') };
     }
   }
 
@@ -106,7 +107,7 @@ class AuthService {
       }
 
       if (!data.user) {
-        return { success: false, message: 'Erro ao criar conta.' };
+        return { success: false, message: t('auth.errors.accountCreationFailed') };
       }
 
       // Aguardar um momento para o trigger criar o profile
@@ -117,7 +118,7 @@ class AuthService {
 
       return { success: true, token: data.session?.access_token, user };
     } catch {
-      return { success: false, message: 'Erro ao conectar com o servidor.' };
+      return { success: false, message: t('auth.errors.connectionServerError') };
     }
   }
 
@@ -272,12 +273,12 @@ class AuthService {
 
   private translateError(message: string): string {
     const translations: Record<string, string> = {
-      'Invalid login credentials': 'Email ou senha incorretos.',
-      'Email not confirmed': 'Confirme seu email antes de fazer login.',
-      'User already registered': 'Este email já está cadastrado.',
-      'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres.',
-      'Signup requires a valid password': 'Informe uma senha válida.',
-      'Unable to validate email address: invalid format': 'Formato de email inválido.',
+      'Invalid login credentials': t('auth.errors.invalidCredentials'),
+      'Email not confirmed': t('auth.errors.emailNotConfirmed'),
+      'User already registered': t('auth.errors.userAlreadyRegistered'),
+      'Password should be at least 6 characters': t('auth.errors.passwordTooShortServer'),
+      'Signup requires a valid password': t('auth.errors.invalidPasswordServer'),
+      'Unable to validate email address: invalid format': t('auth.errors.invalidEmailFormat'),
     };
     return translations[message] || message;
   }

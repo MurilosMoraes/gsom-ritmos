@@ -17,6 +17,7 @@
 import { NativePurchases, PURCHASE_TYPE } from '@capgo/native-purchases';
 import { supabase } from '../auth/supabase';
 import { isIOSNative } from './Platform';
+import { t } from '../i18n';
 
 const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
 const ANON_KEY = 'sb_publishable_qjW2fGXMHtQvqVKgyyiiUg_HczRwmXy';
@@ -105,19 +106,19 @@ export async function loadProducts(): Promise<IAPProductInfo[]> {
  */
 export async function purchasePlan(planId: string): Promise<IAPPurchaseResult> {
   if (!isIOSNative()) {
-    return { success: false, error: 'IAP só disponível no app iOS' };
+    return { success: false, error: t('plans.iap.notAvailablePurchase') };
   }
 
   const productId = getAppleProductId(planId);
   if (!productId) {
-    return { success: false, error: `Plano desconhecido: ${planId}` };
+    return { success: false, error: t('plans.iap.unknownPlan', { planId }) };
   }
 
   // appAccountToken vincula a compra ao user do Supabase. Apple recomenda
   // (StoreKit 2) — chega no webhook V2 e ajuda a evitar fraude.
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { success: false, error: 'Faça login antes de comprar' };
+    return { success: false, error: t('plans.iap.loginBeforeBuy') };
   }
 
   try {
@@ -140,7 +141,7 @@ export async function purchasePlan(planId: string): Promise<IAPPurchaseResult> {
     if (!jws && !receipt) {
       return {
         success: false,
-        error: 'Compra retornou sem token. Tente Restaurar Compras.',
+        error: t('plans.iap.noTokenError'),
       };
     }
 
@@ -158,7 +159,7 @@ export async function purchasePlan(planId: string): Promise<IAPPurchaseResult> {
       return {
         success: false,
         verificationFailed: true,
-        error: verified.error || 'Falha na verificação. Tente Restaurar Compras.',
+        error: verified.error || t('plans.iap.verificationFailedRetry'),
       };
     }
 
@@ -183,7 +184,7 @@ export async function purchasePlan(planId: string): Promise<IAPPurchaseResult> {
  */
 export async function restorePurchases(): Promise<IAPPurchaseResult> {
   if (!isIOSNative()) {
-    return { success: false, error: 'Restore só disponível no app iOS' };
+    return { success: false, error: t('plans.iap.notAvailableRestore') };
   }
 
   try {
@@ -203,18 +204,18 @@ export async function restorePurchases(): Promise<IAPPurchaseResult> {
     });
 
     if (!active) {
-      return { success: false, error: 'Nenhuma assinatura ativa encontrada' };
+      return { success: false, error: t('plans.iap.noActiveSubscription') };
     }
 
     const productId = active.productIdentifier || active.identifier;
     const planId = getPlanIdFromAppleProduct(productId);
     if (!planId) {
-      return { success: false, error: 'Produto restaurado não reconhecido' };
+      return { success: false, error: t('plans.iap.productNotRecognized') };
     }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return { success: false, error: 'Faça login antes de restaurar' };
+      return { success: false, error: t('plans.iap.loginBeforeRestore') };
     }
 
     const verified = await verifyOnBackend({
@@ -230,7 +231,7 @@ export async function restorePurchases(): Promise<IAPPurchaseResult> {
       return {
         success: false,
         verificationFailed: true,
-        error: verified.error || 'Falha na verificação',
+        error: verified.error || t('plans.iap.verificationFailed'),
       };
     }
 
@@ -287,7 +288,7 @@ async function verifyOnBackend(args: VerifyArgs): Promise<VerifyResponse> {
 
     const data = await response.json();
     if (!data.success) {
-      return { success: false, error: data.error || 'Backend rejeitou' };
+      return { success: false, error: data.error || t('plans.iap.backendRejected') };
     }
     return { success: true };
   } catch (e) {

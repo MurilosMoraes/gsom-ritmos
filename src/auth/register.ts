@@ -10,6 +10,13 @@ import { updateRhythmCountInDom } from '../utils/rhythmCount';
 import { redirectIfRecoveryHash } from './recoveryGuard';
 import { setupPasswordToggle } from '../utils/passwordToggle';
 import { trackLead } from '../utils/metaTracking';
+import { t, hydrate } from '../i18n';
+import { injectLanguagePill } from '../i18n/selector';
+
+// Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
+// pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
+hydrate();
+injectLanguagePill();
 
 class RegisterPage {
   private form: HTMLFormElement;
@@ -273,10 +280,10 @@ class RegisterPage {
       if (!response.ok || !result.success) {
         // Mapeia erros estruturados pra mensagens claras
         const code = result.code;
-        let msg = result.error || 'Erro ao criar conta. Tente novamente.';
-        if (code === 'cpf_duplicate') msg = 'Este CPF já possui uma conta cadastrada. Se não consegue acessar, fale com o suporte.';
-        else if (code === 'phone_duplicate') msg = 'Este WhatsApp já possui uma conta cadastrada. Se não consegue acessar, fale com o suporte.';
-        else if (code === 'email_duplicate') msg = 'Este e-mail já está cadastrado. Faça login normalmente.';
+        let msg = result.error || t('auth.register.genericError');
+        if (code === 'cpf_duplicate') msg = t('auth.register.cpfDuplicate');
+        else if (code === 'phone_duplicate') msg = t('auth.register.phoneDuplicate');
+        else if (code === 'email_duplicate') msg = t('auth.register.emailDuplicate');
         this.showAlert(msg, 'error');
         this.setLoading(false);
         return;
@@ -301,7 +308,7 @@ class RegisterPage {
       if (signIn.error || !signIn.data.session) {
         // Servidor criou tudo mas signIn falhou — improvável. User pode
         // fazer login manual.
-        this.showAlert('Conta criada! Faça login pra entrar.', 'success');
+        this.showAlert(t('auth.register.accountCreatedLoginNeeded'), 'success');
         setTimeout(() => { window.location.href = '/login.html'; }, 1500);
         return;
       }
@@ -319,13 +326,13 @@ class RegisterPage {
       // ⚠️ SÓ NA WEB. No app NATIVO (Capacitor) o cara JÁ tem o app —
       // mostrar 'baixe na loja' seria absurdo. Lá entra direto no app.
       if (isNativeApp()) {
-        this.showAlert('Conta criada! Teste grátis por 48h ativado!', 'success');
+        this.showAlert(t('auth.register.accountCreatedTrial'), 'success');
         setTimeout(() => { window.location.href = '/'; }, 1000);
       } else {
         this.showWelcomeDownload();
       }
     } catch (err) {
-      this.showAlert('Erro de conexão. Verifique sua internet e tente novamente.', 'error');
+      this.showAlert(t('auth.register.connectionError'), 'error');
       this.setLoading(false);
     }
   }
@@ -345,12 +352,12 @@ class RegisterPage {
     const appStoreBtn = `
       <a href="${APP_STORE}" class="wd-store-btn ${isIOS ? 'wd-store-primary' : ''}" target="_blank" rel="noopener">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 12.04c-.03-2.6 2.13-3.85 2.23-3.91-1.21-1.78-3.1-2.02-3.77-2.05-1.6-.16-3.13.94-3.94.94-.81 0-2.07-.92-3.4-.9-1.75.03-3.36 1.02-4.26 2.58-1.82 3.16-.47 7.83 1.3 10.39.86 1.25 1.89 2.66 3.23 2.61 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.39.81 1.4-.02 2.28-1.28 3.14-2.54.99-1.46 1.4-2.87 1.42-2.94-.03-.01-2.72-1.04-2.75-4.13l.32.02-.02-.02M14.53 4.42c.72-.87 1.2-2.08 1.07-3.29-1.03.04-2.28.69-3.02 1.56-.66.77-1.24 2-1.09 3.18 1.15.09 2.32-.58 3.04-1.45"/></svg>
-        <span class="wd-store-txt"><small>Baixar na</small>App Store</span>
+        <span class="wd-store-txt">${t('auth.register.appStoreLabel')}</span>
       </a>`;
     const playStoreBtn = `
       <a href="${PLAY_STORE}" class="wd-store-btn ${isAndroid ? 'wd-store-primary' : ''}" target="_blank" rel="noopener">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3.6 2.2c-.3.3-.5.8-.5 1.4v16.8c0 .6.2 1.1.5 1.4l.1.1 9.4-9.4v-.2L3.6 2.2M16.5 15.3l-3.1-3.1 3.1-3.1 3.7 2.1c1.1.6 1.1 1.6 0 2.2l-3.7 1.9M12.9 11.9l-9 9c.4.4 1 .4 1.7 0l10.6-6-3.3-3M5.6 2.9c-.7-.4-1.3-.4-1.7 0l9 9 3.3-3L5.6 2.9"/></svg>
-        <span class="wd-store-txt"><small>Baixar no</small>Google Play</span>
+        <span class="wd-store-txt">${t('auth.register.playStoreLabel')}</span>
       </a>`;
     // Aparelho conhecido → mostra a loja certa primeiro
     const stores = isIOS ? appStoreBtn + playStoreBtn
@@ -364,11 +371,11 @@ class RegisterPage {
         <div class="wd-check">
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <h1 class="wd-title">Conta criada! 🎉</h1>
-        <div class="wd-badge">✓ 48 horas grátis — sem cartão</div>
-        <p class="wd-sub">Agora <strong>baixe o app</strong> pra tocar com tudo: pedal Bluetooth, mais de 130 ritmos e seu repertório no palco.</p>
+        <h1 class="wd-title">${t('auth.register.welcomeTitle')}</h1>
+        <div class="wd-badge">${t('auth.register.welcomeBadge')}</div>
+        <p class="wd-sub">${t('auth.register.welcomeSub')}</p>
         <div class="wd-stores">${stores}</div>
-        <button class="wd-continue" id="wdContinue">Continuar no navegador por enquanto</button>
+        <button class="wd-continue" id="wdContinue">${t('auth.register.continueInBrowserBtn')}</button>
       </div>`;
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('wd-visible'));
@@ -474,7 +481,7 @@ class RegisterPage {
       const input = this.getInputByKey(firstErrorField);
       input?.focus();
       // Alert genérico no topo só pra reforçar que algo tá errado
-      this.showAlert('Verifique os campos destacados em vermelho.', 'error');
+      this.showAlert(t('auth.register.fieldsHighlightedError'), 'error');
     }
     return false;
   }
@@ -520,9 +527,9 @@ class RegisterPage {
       // Só mostra se tem números significativos (>100) pra não parecer vazio
       if (ativos < 100) return;
       el.innerHTML = `
-        <span><strong>${ativos.toLocaleString('pt-BR')}</strong> músicos usando agora</span>
+        <span><strong>${ativos.toLocaleString('pt-BR')}</strong> ${t('auth.register.socialProofActive')}</span>
         <span class="sp-sep"></span>
-        <span><strong>${cad30.toLocaleString('pt-BR')}</strong> cadastros este mês</span>
+        <span><strong>${cad30.toLocaleString('pt-BR')}</strong> ${t('auth.register.socialProofSignups')}</span>
       `;
       el.classList.add('sp-ready');
     } catch {

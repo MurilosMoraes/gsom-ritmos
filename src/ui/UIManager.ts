@@ -3,6 +3,7 @@
 import type { StateManager } from '../core/StateManager';
 import { MAX_CHANNELS, type PatternType } from '../types';
 import { ModalManager } from './ModalManager';
+import { t } from '../i18n';
 
 export class UIManager {
   private stateManager: StateManager;
@@ -21,20 +22,20 @@ export class UIManager {
     if (playBtn) {
       if (isPlaying) {
         playBtn.classList.add('playing');
-        playBtn.innerHTML = '<span class="icon">⏸️</span><span>STOP</span>';
+        playBtn.innerHTML = `<span class="icon">⏸️</span><span>${t('ui.playback.adminStop')}</span>`;
       } else {
         playBtn.classList.remove('playing');
-        playBtn.innerHTML = '<span class="icon">▶️</span><span>PLAY</span>';
+        playBtn.innerHTML = `<span class="icon">▶️</span><span>${t('ui.playback.adminPlay')}</span>`;
       }
     }
 
     if (playBtnUser) {
       if (isPlaying) {
         playBtnUser.classList.add('playing');
-        playBtnUser.innerHTML = '<span class="play-icon">&#9632;</span><span class="play-label">PARAR</span>';
+        playBtnUser.innerHTML = `<span class="play-icon">&#9632;</span><span class="play-label">${t('ui.playback.userStop')}</span>`;
       } else {
         playBtnUser.classList.remove('playing');
-        playBtnUser.innerHTML = '<span class="play-icon">&#9654;</span><span class="play-label">TOCAR</span>';
+        playBtnUser.innerHTML = `<span class="play-icon">&#9654;</span><span class="play-label">${t('ui.playback.userPlay')}</span>`;
       }
     }
   }
@@ -44,18 +45,18 @@ export class UIManager {
     const statusUser = document.getElementById('statusUser');
 
     const statusMap: Record<PatternType, { admin: string; user: string }> = {
-      main: { admin: 'Tocando - MAIN', user: 'Tocando' },
-      fill: { admin: 'Tocando - FILL', user: 'Virada' },
-      end: { admin: 'Tocando - END', user: 'Finalizando' },
-      intro: { admin: 'Tocando - INTRO', user: 'Introdução' },
-      transition: { admin: 'Tocando - TRANSITION', user: 'Transição' }
+      main: { admin: t('ui.pattern.adminMain'), user: t('ui.pattern.main') },
+      fill: { admin: t('ui.pattern.adminFill'), user: t('ui.pattern.fill') },
+      end: { admin: t('ui.pattern.adminEnd'), user: t('ui.pattern.end') },
+      intro: { admin: t('ui.pattern.adminIntro'), user: t('ui.pattern.intro') },
+      transition: { admin: t('ui.pattern.adminTransition'), user: t('ui.pattern.transition') }
     };
 
     if (statusAdmin) {
-      statusAdmin.textContent = statusMap[pattern]?.admin || 'Parado';
+      statusAdmin.textContent = statusMap[pattern]?.admin || t('ui.pattern.stopped');
     }
     if (statusUser) {
-      statusUser.textContent = statusMap[pattern]?.user || 'Parado';
+      statusUser.textContent = statusMap[pattern]?.user || t('ui.pattern.stopped');
     }
   }
 
@@ -293,9 +294,9 @@ export class UIManager {
 
     if (nextEntryUser) {
       if (state.pendingFill) {
-        nextEntryUser.textContent = `Step ${state.pendingFill.entryPoint}`;
+        nextEntryUser.textContent = t('ui.pattern.nextEntryStep', { entryPoint: state.pendingFill.entryPoint });
       } else if (state.pendingEnd) {
-        nextEntryUser.textContent = `Step ${state.pendingEnd.entryPoint}`;
+        nextEntryUser.textContent = t('ui.pattern.nextEntryStep', { entryPoint: state.pendingEnd.entryPoint });
       } else {
         nextEntryUser.textContent = '-';
       }
@@ -313,7 +314,7 @@ export class UIManager {
   }
 
   showAlert(message: string, type: 'info' | 'error' | 'warning' | 'success' = 'info'): void {
-    this.modalManager.show('Aviso', message, type);
+    this.modalManager.show(t('ui.alert.title'), message, type);
   }
 
   showConfirm(title: string, message: string): Promise<boolean> {

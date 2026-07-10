@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-i18n-doc-title="htmlAuth.docTitleRegister">
 <head>
   <meta charset="UTF-8" />
   <!-- Meta Pixel -->
@@ -17,7 +17,7 @@
   <!-- End Meta Pixel -->
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Criar conta no GDrums — 48h Grátis</title>
+  <title>Criar conta no GDrums | 48h Grátis</title>
   <meta name="description" content="Crie sua conta no GDrums. 48 horas de teste grátis, sem cartão. 155 ritmos brasileiros, suporte a pedal Bluetooth, modo offline, iOS e Android.">
   <meta name="author" content="Murilo Moraes, Staner Goulart">
   <meta name="robots" content="index, follow, max-image-preview:large">
@@ -30,14 +30,14 @@
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="GDrums">
-  <meta property="og:title" content="Criar conta no GDrums — 48h Grátis">
+  <meta property="og:title" content="Criar conta no GDrums - 48h Grátis">
   <meta property="og:description" content="48 horas de teste grátis sem cartão. 155 ritmos, suporte a pedal Bluetooth, apps iOS e Android.">
   <meta property="og:image" content="https://gdrums.com.br/img/icon-512.png">
   <meta property="og:url" content="https://gdrums.com.br/register">
   <meta property="og:locale" content="pt_BR">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Criar conta no GDrums — 48h Grátis">
+  <meta name="twitter:title" content="Criar conta no GDrums - 48h Grátis">
   <meta name="twitter:description" content="48h de teste grátis. 155 ritmos, suporte a pedal Bluetooth, apps iOS e Android.">
   <meta name="twitter:image" content="https://gdrums.com.br/img/icon-512.png">
   <link rel="stylesheet" href="auth-styles.css" />
@@ -536,7 +536,7 @@
     }
 
     /* Mantém os IDs/classes que o register.ts espera mas esconde
-       visualmente — limpeza solicitada. Sem remover o nó pra não
+       visualmente, limpeza solicitada. Sem remover o nó pra não
        quebrar lógica de animação/fadeIn do TS. */
     .social-proof, .register-benefits, .reg-trial-note, .reg-glory,
     .register-brand, .register-overline { display: none !important; }
@@ -557,8 +557,8 @@
         <img src="/img/new-icon-bg.png" alt="GDrums" class="register-logo" />
       </div>
       <div class="register-pitch">
-        <div class="register-pitch-title">Sua banda no celular.</div>
-        <p class="register-pitch-sub">
+        <div class="register-pitch-title" data-i18n="htmlAuth.register.pitchTitle">Sua banda no celular.</div>
+        <p class="register-pitch-sub" data-i18n="htmlAuth.register.pitchSub">
           Mais de 120 ritmos brasileiros pra tocar ao vivo com qualidade de banda completa.
           48h grátis pra testar, sem cartão.
         </p>
@@ -567,41 +567,41 @@
 
     <!-- CARD com form -->
     <section class="register-card">
-      <h1 class="register-title">Crie sua conta.</h1>
-      <p class="register-sub">48h grátis pra testar tudo. Sem cartão.</p>
+      <h1 class="register-title" data-i18n="htmlAuth.register.title">Crie sua conta.</h1>
+      <p class="register-sub" data-i18n="htmlAuth.register.subtitle">48h grátis pra testar tudo. Sem cartão.</p>
 
       <form id="registerForm" class="reg-form" novalidate>
         <div class="reg-field">
-          <label for="name">Nome</label>
-          <input type="text" id="name" name="name" required placeholder="Seu nome" autocomplete="name" />
+          <label for="name" data-i18n="htmlAuth.register.nameLabel">Nome</label>
+          <input type="text" id="name" name="name" required placeholder="Seu nome" data-i18n-placeholder="htmlAuth.register.namePlaceholder" autocomplete="name" />
         </div>
         <div class="reg-field">
-          <label for="cpf">CPF</label>
-          <input type="text" id="cpf" name="cpf" required placeholder="000.000.000-00" autocomplete="off" inputmode="numeric" maxlength="14" />
+          <label for="cpf" data-i18n="htmlAuth.cpfLabel">CPF</label>
+          <input type="text" id="cpf" name="cpf" required placeholder="000.000.000-00" data-i18n-placeholder="htmlAuth.cpfPlaceholder" autocomplete="off" inputmode="numeric" maxlength="14" />
         </div>
         <div class="reg-field">
-          <label for="phone">WhatsApp <span style="opacity:0.55;font-weight:500;text-transform:none;letter-spacing:0;">(opcional)</span></label>
-          <input type="tel" id="phone" name="phone" placeholder="(00) 00000-0000" autocomplete="tel" inputmode="tel" maxlength="15" />
+          <label for="phone" data-i18n="htmlAuth.register.phoneLabel">WhatsApp <span style="opacity:0.55;font-weight:500;text-transform:none;letter-spacing:0;">(opcional)</span></label>
+          <input type="tel" id="phone" name="phone" placeholder="(00) 00000-0000" data-i18n-placeholder="main.phoneModal.placeholder" autocomplete="tel" inputmode="tel" maxlength="15" />
         </div>
         <div class="reg-field">
-          <label for="email">E-mail</label>
-          <input type="email" id="email" name="email" required placeholder="seu@email.com" autocomplete="email" />
+          <label for="email" data-i18n="htmlAuth.emailLabel">E-mail</label>
+          <input type="email" id="email" name="email" required placeholder="seu@email.com" data-i18n-placeholder="auth.login.forgotEmailPlaceholder" autocomplete="email" />
         </div>
         <div class="reg-field">
-          <label for="password">Senha</label>
-          <input type="password" id="password" name="password" required placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+          <label for="password" data-i18n="htmlAuth.passwordLabel">Senha</label>
+          <input type="password" id="password" name="password" required placeholder="Mínimo 6 caracteres" data-i18n-placeholder="auth.login.newPasswordPlaceholder" autocomplete="new-password" />
           <div class="strength-bar-wrap" id="passwordStrength"><div class="strength-bar"></div></div>
         </div>
         <div class="reg-field">
-          <label for="confirmPassword">Confirmar senha</label>
-          <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Repita a senha" autocomplete="new-password" />
+          <label for="confirmPassword" data-i18n="auth.login.confirmPasswordFieldLabel">Confirmar senha</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Repita a senha" data-i18n-placeholder="auth.login.confirmPasswordPlaceholder" autocomplete="new-password" />
         </div>
         <div class="reg-check" id="regCheckBox">
           <input type="checkbox" id="acceptTerms" required />
-          <span class="reg-check-text">Aceito os <a href="/terms">termos de uso</a> e a <a href="/privacy">política de privacidade</a></span>
+          <span class="reg-check-text" data-i18n="htmlAuth.register.termsCheckbox">Aceito os <a href="/terms">termos de uso</a> e a <a href="/privacy">política de privacidade</a></span>
         </div>
         <button type="submit" class="reg-btn" id="registerBtn">
-          <span class="btn-text">Começar grátis</span>
+          <span class="btn-text" data-i18n="htmlAuth.register.submitBtn">Começar grátis</span>
           <span class="btn-loader"><div class="spinner-sm"></div></span>
         </button>
       </form>
@@ -611,7 +611,7 @@
 
       <div class="reg-alert" id="alertMessage"></div>
 
-      <p class="reg-footer">
+      <p class="reg-footer" data-i18n="htmlAuth.register.footerText">
         Já tem conta? <a href="login.html">Entrar</a>
       </p>
     </section>

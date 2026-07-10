@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-i18n-doc-title="htmlPlans.demoDocTitle">
 <head>
   <meta charset="UTF-8">
   <!-- Meta Pixel -->
@@ -17,8 +17,9 @@
   <!-- End Meta Pixel -->
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>GDrums — Teste Grátis sem Cadastro | Baterista Virtual</title>
-  <meta name="description" content="Teste o GDrums agora sem cadastro. 3 ritmos liberados, acompanhamento profissional pra tocar ao vivo. Biblioteca com 155 ritmos brasileiros.">
+  <title>GDrums | Teste Grátis sem Cadastro | Baterista Virtual</title>
+  <meta name="description" content="Teste o GDrums agora sem cadastro. 5 ritmos liberados, acompanhamento profissional pra tocar ao vivo. Biblioteca com 155 ritmos brasileiros." data-i18n-content="htmlPlans.demoMetaDescription">
+
   <meta name="author" content="Murilo Moraes, Staner Goulart">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#030014">
@@ -30,20 +31,20 @@
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="GDrums">
-  <meta property="og:title" content="GDrums — Teste Grátis sem Cadastro">
-  <meta property="og:description" content="3 ritmos liberados sem cadastro. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth, viradas e finalizações.">
+  <meta property="og:title" content="GDrums - Teste Grátis sem Cadastro" data-i18n-content="htmlPlans.demoOgTitle">
+  <meta property="og:description" content="5 ritmos liberados sem cadastro. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth, viradas e finalizações." data-i18n-content="htmlPlans.demoOgDescription">
   <meta property="og:image" content="https://gdrums.com.br/img/icon-512.png">
   <meta property="og:url" content="https://gdrums.com.br/demo">
   <meta property="og:locale" content="pt_BR">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="GDrums — Teste Grátis sem Cadastro">
-  <meta name="twitter:description" content="3 ritmos liberados. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth.">
+  <meta name="twitter:title" content="GDrums - Teste Grátis sem Cadastro" data-i18n-content="htmlPlans.demoOgTitle">
+  <meta name="twitter:description" content="5 ritmos liberados. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth." data-i18n-content="htmlPlans.demoTwitterDescription">
   <meta name="twitter:image" content="https://gdrums.com.br/img/icon-512.png">
   <link rel="stylesheet" href="styles.css">
   <style>
     /* ─── Topbar de conversão ───
-       Não é só identidade visual — é uma peça ativa que vende o trial.
+       Não é só identidade visual, é uma peça ativa que vende o trial.
        Hierarquia: headline de valor > progresso > CTA gordo com brilho.
        Em mobile vira compacto de 1 linha; desktop tem mais ar e peso. */
     .demo-topbar {
@@ -136,11 +137,6 @@
     }
     .demo-topbar-cta:hover { opacity: 0.92; transform: translateY(-1px); }
     .demo-topbar-cta:active { transform: translateY(0) scale(0.98); }
-    .demo-topbar-cta-arrow {
-      font-size: 0.95em;
-      line-height: 1;
-      transform: translateY(-0.5px);
-    }
 
     /* Barra de progresso na base — mais visível que antes */
     .demo-topbar-bar {
@@ -170,7 +166,6 @@
         padding: 0.5rem 0.85rem;
         font-size: 0.76rem;
       }
-      .demo-topbar-cta-arrow { display: none; }
     }
     /* Banner de valor — fica logo abaixo do topbar. Tom editorial,
        não vendedor. Clique no CTA vai direto pra cadastro. */
@@ -233,14 +228,21 @@
       }
     }
 
-    /* Empurra o conteúdo pra baixo do topbar. Banner adiciona padding
-       quando fica visível via classe .with-banner no body */
+    /* Espaço do topbar (3.5rem) + do banner (2.4rem), reservado SEMPRE —
+       inclusive com o banner escondido.
+       Antes o banner só reservava espaço ao aparecer (classe .with-banner),
+       com transition no padding-top: a página reflowava, descia e ainda
+       estourava a viewport (o .user-layout do styles.css pede
+       min-height: 100vh - 4rem, que não conhece esse padding), o que criava
+       rolagem e o justify-content:center recentralizava tudo.
+       Reservando de saída, o banner surge dentro do próprio espaço e NADA
+       se move. */
     .app-container {
-      padding-top: 3.5rem;
-      transition: padding-top 0.25s ease;
-    }
-    body.with-banner .app-container {
       padding-top: calc(3.5rem + 2.4rem);
+    }
+    /* Desconta o topbar + banner pra caber na tela sem gerar rolagem. */
+    .user-layout {
+      min-height: calc(100vh - 3.5rem - 2.4rem - 1rem);
     }
 
     /* Esconder elementos que nao existem no demo */
@@ -488,7 +490,7 @@
 
     /* ─── Tour guiado ───
        Tooltip apontando pro elemento + pulse no target.
-       Nunca bloqueia a UI — só reforça a ação. */
+       Nunca bloqueia a UI, só reforça a ação. */
     .demo-tour-tip {
       position: absolute;
       z-index: 9500;
@@ -508,11 +510,14 @@
       opacity: 1;
       transform: translateY(0) scale(1);
     }
+    /* A seta aponta pro centro REAL do alvo: o JS grava --arrow-x (px a partir
+       da borda esquerda do balão). Alvo na coluna da esquerda → seta na
+       esquerda; coluna da direita → seta na direita. */
     .demo-tour-tip::after {
       content: '';
       position: absolute;
       bottom: -6px;
-      left: 50%;
+      left: var(--arrow-x, 50%);
       transform: translateX(-50%) rotate(45deg);
       width: 12px;
       height: 12px;
@@ -544,19 +549,83 @@
       color: rgba(255, 255, 255, 0.8);
     }
 
+    /* ─── Alvo em foco ───
+       Fica ACIMA da máscara de desfoque (z-index), então é o único elemento
+       nítido e clicável enquanto o passo não é cumprido. Brilho ciano do app,
+       com anel que expande, bem mais chamativo que o pulse branco anterior. */
     .demo-tour-pulse {
-      animation: demoTourPulse 1.6s ease-in-out infinite;
-      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45);
+      position: relative;
+      z-index: 9450;
       border-radius: 14px;
+      animation: demoTourPulse 1.35s ease-out infinite;
     }
     @keyframes demoTourPulse {
-      0%, 100% {
-        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.0);
+      0% {
+        box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.6),
+                    0 0 20px 3px rgba(0, 212, 255, 0.45);
+        filter: brightness(1.08);
       }
-      50% {
-        box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08),
-                    0 0 24px rgba(255, 255, 255, 0.18);
+      70% {
+        box-shadow: 0 0 0 14px rgba(0, 212, 255, 0),
+                    0 0 38px 10px rgba(0, 212, 255, 0.7);
+        filter: brightness(1.22);
       }
+      100% {
+        box-shadow: 0 0 0 0 rgba(0, 212, 255, 0),
+                    0 0 20px 3px rgba(0, 212, 255, 0.45);
+        filter: brightness(1.08);
+      }
+    }
+
+    /* ─── Máscara: desfoca e escurece TUDO em volta do alvo ───
+       Quatro painéis (cima/baixo/esq/dir) contornando o alvo, em vez de um
+       overlay com furo, funciona em todo browser e deixa o alvo intacto e
+       clicável. O JS posiciona os painéis a partir do rect do alvo. */
+    .demo-tour-mask-panel {
+      position: fixed;
+      z-index: 9400;
+      background: rgba(3, 0, 20, 0.55);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      transition: opacity 0.2s ease;
+    }
+
+    /* ─── Janela do fim do tour ───
+       Reaproveita o card/ações do modal de conversão, mas com lista de
+       recursos em vez do bloco de oferta. */
+    .demo-tourend-list {
+      list-style: none;
+      margin: 0.9rem 0 0.2rem;
+      padding: 0;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+    .demo-tourend-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.55rem;
+      font-size: 0.85rem;
+      line-height: 1.35;
+      color: rgba(255, 255, 255, 0.78);
+    }
+    .demo-tourend-list svg {
+      flex-shrink: 0;
+      margin-top: 0.15rem;
+      color: #00D4FF;
+    }
+    .demo-tourend-close {
+      margin: 1rem 0 0.2rem;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: #fff;
+      text-align: center;
+    }
+    /* Respiro entre a linha de fecho e o card verde de oferta. Escopado no
+       irmão adjacente pra não mexer no card do modal "Isso é só uma prévia". */
+    .demo-tourend-close + .demo-convert-offer {
+      margin-top: 0.9rem;
     }
 
     /* ─── Modal de conversão progressivo ───
@@ -693,25 +762,87 @@
       transition: color 0.15s;
     }
     .demo-convert-secondary:hover { color: rgba(255, 255, 255, 0.85); }
+
+    /* ─── Controles (BPM/VOL) mais perto dos quadros de ação ───
+       Só na demo. No styles.css a .user-grid-section tem flex:1 1 auto, então
+       ela cresce e empurra a barra de controles pro rodapé da tela. Aqui a
+       grade toma só a altura dela e os controles encostam logo abaixo. */
+    .user-grid-section {
+      flex: 0 0 auto;
+      min-height: 300px;
+    }
+    .controls-bar {
+      margin-top: 0.3rem;
+    }
+
+    /* ─── Tira dos 5 ritmos: TODOS visíveis, sem rolar pro lado ───
+       No app a .rhythm-cards-wrap é flex nowrap + overflow-x:auto (biblioteca
+       grande, rola). Na demo são só 5 cards: quebram em linha e ficam todos
+       à vista de cara. */
+    .rhythm-cards-wrap {
+      flex-wrap: wrap;
+      justify-content: center;
+      overflow-x: visible;
+      overflow-y: visible;
+      scroll-snap-type: none;
+    }
+    .rhythm-cards-wrap .rhythm-card-btn {
+      flex: 0 1 auto;
+      padding: 0.55rem 0.85rem;
+      font-size: 0.8rem;
+      min-height: 40px;
+    }
+
+    /* ─── Botão do catálogo, sozinho e centralizado ───
+       A demo não mostra o nome do ritmo tocando, então a .fav-bar tem só o
+       botão, centralizado no eixo horizontal. */
+    .fav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .demo-all-btn {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.1rem;
+      border-radius: 10px;
+      border: 1.5px solid rgba(0, 212, 255, 0.35);
+      background: rgba(0, 212, 255, 0.06);
+      color: #00D4FF;
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .demo-all-btn:hover {
+      border-color: rgba(0, 212, 255, 0.65);
+      background: rgba(0, 212, 255, 0.12);
+    }
   </style>
 </head>
 <body>
   <!-- Topbar ativo de conversão -->
-  <div class="demo-topbar">
+  <div class="demo-topbar" id="demoTopbar">
     <div class="demo-topbar-brand">
       <img src="/img/logo.png" alt="GDrums" class="demo-topbar-logo">
       <span class="demo-topbar-brand-text">GDrums</span>
     </div>
     <span class="demo-topbar-sep"></span>
     <div class="demo-topbar-mid">
-      <span class="demo-topbar-headline">
+      <span class="demo-topbar-headline" data-i18n="htmlPlans.demoTopbarHeadline">
         Cadastre e tenha <strong>48h grátis</strong> pra tocar tudo
       </span>
-      <span class="demo-topbar-progress" id="demoCounter">Prévia com 3 ritmos · <strong>100 no catálogo</strong></span>
+      <span class="demo-topbar-progress" id="demoCounter" data-i18n="htmlPlans.demoCounterFallback">Prévia com 5 ritmos · <strong>155 no catálogo</strong></span>
     </div>
     <a href="/register" class="demo-topbar-cta">
-      <span>Começar grátis</span>
-      <span class="demo-topbar-cta-arrow">→</span>
+      <span data-i18n="htmlPlans.demoTopbarCtaLabel">Começar grátis</span>
     </a>
     <div class="demo-topbar-bar" id="demoBar" style="width:100%;"></div>
   </div>
@@ -720,8 +851,8 @@
        (evita redundância com o header quando ele acabou de chegar). -->
   <div class="demo-value-banner" id="demoValueBanner" style="display:none;">
     <span class="demo-value-dot"></span>
-    <span>Essa é a banda real. <strong>Cadastra grátis</strong> pra liberar tudo.</span>
-    <a href="/register" class="demo-value-cta">Começar</a>
+    <span data-i18n="htmlPlans.demoValueBannerText">Essa é a banda real. <strong>Cadastra grátis</strong> pra liberar tudo.</span>
+    <a href="/register" class="demo-value-cta" data-i18n="htmlPlans.demoValueCtaLabel">Começar</a>
   </div>
 
   <div class="app-container">
@@ -729,12 +860,17 @@
       <div id="userMode" class="mode-container active">
         <div class="user-layout">
 
-          <!-- 1. Nome do ritmo -->
+          <!-- 1. Botão do catálogo completo, centralizado -->
           <div class="fav-section">
             <div class="fav-bar">
-              <div class="fav-center">
-                <span class="fav-current-name" id="currentRhythmName">Selecione um ritmo</span>
-              </div>
+              <button class="demo-all-btn" id="demoAllRhythmsBtn" aria-label="Ver todos os ritmos" data-i18n-aria="htmlPlans.demoAllRhythmsBtnAria" data-i18n="htmlPlans.demoAllRhythmsBtnContent">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+                  <line x1="4" y1="6" x2="20" y2="6"></line>
+                  <line x1="4" y1="12" x2="20" y2="12"></line>
+                  <line x1="4" y1="18" x2="20" y2="18"></line>
+                </svg>
+                Ver todos os ritmos
+              </button>
             </div>
             <div class="rhythm-strip-cards" id="rhythmStripCards" style="display:block">
               <div class="rhythm-cards-wrap" id="demoRhythmStrip"></div>
@@ -756,40 +892,44 @@
             <div class="user-performance-grid" id="performanceGrid">
               <div class="grid-cell rhythm-cell" data-type="main" data-variation="0">
                 <span class="cell-number">1</span>
-                <span class="cell-label">RITMO</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellRitmo">RITMO</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell rhythm-cell" data-type="main" data-variation="1">
                 <span class="cell-number">2</span>
-                <span class="cell-label">RITMO</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellRitmo">RITMO</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell rhythm-cell" data-type="main" data-variation="2">
                 <span class="cell-number">3</span>
-                <span class="cell-label">RITMO</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellRitmo">RITMO</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell fill-cell" data-type="fill" data-variation="0">
                 <span class="cell-number">1</span>
-                <span class="cell-label">VIRADA</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellVirada">VIRADA</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell fill-cell" data-type="fill" data-variation="1">
                 <span class="cell-number">2</span>
-                <span class="cell-label">VIRADA</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellVirada">VIRADA</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell fill-cell" data-type="fill" data-variation="2">
                 <span class="cell-number">3</span>
-                <span class="cell-label">VIRADA</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellVirada">VIRADA</span>
+                <div class="cell-indicator"></div>
+              </div>
+              <div class="grid-cell pause-cell" id="pauseBtnUser">
+                <span class="cell-label" id="pauseBtnLabel" data-i18n="demo.pause.pauseLabel">PAUSAR</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell end-cell" data-type="end" data-variation="0">
-                <span class="cell-label">FINAL</span>
+                <span class="cell-label" data-i18n="main.manual.badge.final">FINAL</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell cymbal-cell" id="cymbalBtn">
-                <span class="cell-label">PRATO</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellPrato">PRATO</span>
                 <div class="cell-indicator"></div>
               </div>
             </div>
@@ -798,7 +938,7 @@
           <!-- 4. Controles (identico ao app) -->
           <div class="controls-bar">
             <div class="ctrl-group">
-              <span class="ctrl-label">BPM</span>
+              <span class="ctrl-label" data-i18n="main.saveRhythm.bpmLabel">BPM</span>
               <div class="ctrl-row">
                 <button id="tempoDownUser" class="ctrl-btn ctrl-btn-bpm">&minus;</button>
                 <button id="tempoDisplayUser" class="ctrl-value ctrl-value-tap">80</button>
@@ -807,7 +947,7 @@
             </div>
             <div class="ctrl-divider"></div>
             <div class="ctrl-group ctrl-group-vol">
-              <span class="ctrl-label">VOL</span>
+              <span class="ctrl-label" data-i18n="main.manual.badge.vol">VOL</span>
               <div class="ctrl-row">
                 <input type="range" id="masterVolumeUser" min="0" max="200" value="200" step="5" class="ctrl-slider">
                 <span class="ctrl-value ctrl-value-sm" id="volumeDisplayUser">100%</span>

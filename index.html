@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-i18n-doc-title="htmlApp.docTitle">
 <head>
   <meta charset="UTF-8">
   <!-- Meta Pixel -->
@@ -19,7 +19,7 @@
   <!-- maximum-scale=1 + user-scalable=no: trava pinch/double-tap zoom no
        WKWebView (Capacitor). Em app de performance ao vivo, zoom acidental
        tocando células rápido é desastre de palco. Safari web ignora
-       user-scalable por acessibilidade — lá quem cobre é o
+       user-scalable por acessibilidade, lá quem cobre é o
        touch-action:manipulation global no CSS. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>GDrums | Baterista Virtual com 155 Ritmos</title>
@@ -38,7 +38,7 @@
   <!-- Open Graph (Facebook, WhatsApp, LinkedIn, Discord) -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="GDrums">
-  <meta property="og:title" content="GDrums — Baterista Virtual Compatível com Pedal Bluetooth">
+  <meta property="og:title" content="GDrums - Baterista Virtual Compatível com Pedal Bluetooth">
   <meta property="og:description" content="155 ritmos brasileiros, suporte a pedal Bluetooth, viradas e finalizações no seu controle. Tocar ao vivo nunca foi tão profissional.">
   <meta property="og:image" content="https://gdrums.com.br/img/icon-512.png">
   <meta property="og:image:width" content="512">
@@ -48,7 +48,7 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="GDrums — Baterista Virtual Compatível com Pedal Bluetooth">
+  <meta name="twitter:title" content="GDrums - Baterista Virtual Compatível com Pedal Bluetooth">
   <meta name="twitter:description" content="155 ritmos brasileiros, suporte a pedal Bluetooth, viradas e finalizações no seu controle.">
   <meta name="twitter:image" content="https://gdrums.com.br/img/icon-512.png">
 
@@ -61,7 +61,7 @@
         "@type": "Organization",
         "@id": "https://gdrums.com.br/#organization",
         "name": "GDrums",
-        "alternateName": "GDrums — Sequenciador de Ritmos",
+        "alternateName": "GDrums - Sequenciador de Ritmos",
         "url": "https://gdrums.com.br",
         "logo": {
           "@type": "ImageObject",
@@ -194,7 +194,7 @@
             "name": "O GDrums funciona com pedal Bluetooth?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Sim. O GDrums funciona com pedais Bluetooth musicais (que se registram como teclado) tanto no iOS quanto no Android e web. É possível mudar de ritmo, acionar viradas e finalizações sem tocar na tela — o diferencial principal para músicos que tocam ao vivo."
+              "text": "Sim. O GDrums funciona com pedais Bluetooth musicais (que se registram como teclado) tanto no iOS quanto no Android e web. É possível mudar de ritmo, acionar viradas e finalizações sem tocar na tela, o diferencial principal para músicos que tocam ao vivo."
             }
           },
           {
@@ -226,7 +226,7 @@
             "name": "O GDrums funciona offline?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Sim. O GDrums é uma PWA (Progressive Web App) com cache persistente de samples de áudio e ritmos. Uma vez acessado, funciona offline — ideal para palcos e shows onde a conexão é instável."
+              "text": "Sim. O GDrums é uma PWA (Progressive Web App) com cache persistente de samples de áudio e ritmos. Uma vez acessado, funciona offline, ideal para palcos e shows onde a conexão é instável."
             }
           }
         ]
@@ -249,7 +249,7 @@
       <div class="global-topbar-actions">
         <!-- Baixar app nas lojas — PRIMEIROS botões; só em clientes NÃO-nativos
              (web/PWA); o main.ts mostra via isNativeApp(). -->
-        <button class="hdr-btn hdr-btn-store" id="hdrPlayStoreBtn" aria-label="Baixar na Play Store" title="Baixar na Play Store" style="display:none">
+        <button class="hdr-btn hdr-btn-store" id="hdrPlayStoreBtn" aria-label="Baixar na Play Store" title="Baixar na Play Store" data-i18n-aria="htmlApp.topbar.downloadPlayStore" data-i18n-title="htmlApp.topbar.downloadPlayStore" style="display:none">
           <svg class="hdr-btn-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <defs>
               <linearGradient id="gp-hdr-blue" x1="3" y1="2" x2="13" y2="12" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#00A0FF"/><stop offset="1" stop-color="#00DFFF"/></linearGradient>
@@ -263,7 +263,7 @@
             <path d="M16 7.6L5.1 2.2c-.7-.4-1.2-.4-1.6 0l9.4 9.1L16 7.6z" fill="url(#gp-hdr-green)"/>
           </svg>
         </button>
-        <button class="hdr-btn hdr-btn-store" id="hdrAppStoreBtn" aria-label="Baixar na App Store" title="Baixar na App Store" style="display:none">
+        <button class="hdr-btn hdr-btn-store" id="hdrAppStoreBtn" aria-label="Baixar na App Store" title="Baixar na App Store" data-i18n-aria="htmlApp.topbar.downloadAppStore" data-i18n-title="htmlApp.topbar.downloadAppStore" style="display:none">
           <svg class="hdr-btn-icon" width="19" height="19" viewBox="0 0 24 24" fill="#f5f5f7" aria-hidden="true">
             <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
           </svg>
@@ -271,7 +271,7 @@
         <!-- Modo Show — botão neon quadrado (estilo mockup). O input
              checkbox continua (a lógica do main.ts depende do id),
              só o visual virou botão com borda ciano viva + glow. -->
-        <label class="hdr-btn hdr-btn-show" title="Modo Show — palco com tela cheia e tela sempre ligada">
+        <label class="hdr-btn hdr-btn-show" title="Modo Show - palco com tela cheia e tela sempre ligada" data-i18n-title="htmlApp.topbar.stageModeTitle">
           <input type="checkbox" id="stageModeSwitch" class="hdr-btn-input">
           <!-- Violão: hora de tocar -->
           <svg class="hdr-btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -281,9 +281,9 @@
             <path d="M8.2 9.9C8.7 8.8 9.8 8 11 8c2.8 0 5 2.2 5 5 0 1.2-.8 2.3-1.9 2.8l-.9.4A2 2 0 0 0 12 18a4 4 0 0 1-4 4c-3.3 0-6-2.7-6-6a4 4 0 0 1 4-4 2 2 0 0 0 1.8-1.2z"/>
             <circle cx="10" cy="14" r="2"/>
           </svg>
-          <span class="hdr-btn-exit-label">SAIR</span>
+          <span class="hdr-btn-exit-label" data-i18n="htmlApp.topbar.exitLabel">SAIR</span>
         </label>
-        <button class="hdr-btn hdr-btn-menu" id="fabMenu" aria-label="Menu">
+        <button class="hdr-btn hdr-btn-menu" id="fabMenu" aria-label="Menu" data-i18n-aria="htmlApp.topbar.menuAria">
           <svg class="hdr-btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
           </svg>
@@ -291,29 +291,30 @@
       </div>
       <div class="topbar-dropdown" id="fabDropdown" style="display:none">
         <div class="topbar-dropdown-item">
-          <span class="topbar-item-label" id="modeLabel">Modo Admin</span>
+          <span class="topbar-item-label" id="modeLabel" data-i18n="main.mode.admin">Modo Admin</span>
           <label class="switch">
             <input type="checkbox" id="adminModeToggle">
             <span class="slider"></span>
           </label>
         </div>
         <div class="topbar-dropdown-divider"></div>
-        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="userManualBtn">Manual do Usuário</button>
-        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="eqBtn">Equalizador e Reverb</button>
-        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="pedalInfoBtn">Como usar o pedal</button>
-        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="pedalMapBtn">Mapear pedal</button>
-        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="menuOfflineBtn">Baixar pra usar offline</button>
-        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="menuInstallBtn" style="display:none;">Instalar app</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="languageBtn" data-i18n="htmlApp.topbar.languageBtn">🌎 Idioma</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="userManualBtn" data-i18n="main.manual.title">Manual do Usuário</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="eqBtn" data-i18n="main.eq.title">Equalizador e Reverb</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="pedalInfoBtn" data-i18n="htmlApp.topbar.pedalInfoBtn">Como usar o pedal</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="pedalMapBtn" data-i18n="main.manual.pedal4.mapear.name">Mapear pedal</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="menuOfflineBtn" data-i18n="htmlApp.topbar.offlineBtn">Baixar pra usar offline</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="menuInstallBtn" style="display:none;" data-i18n="htmlApp.topbar.installBtn">Instalar app</button>
         <div class="topbar-dropdown-divider"></div>
-        <button class="topbar-dropdown-btn topbar-dropdown-btn-account" id="myAccountBtn">Minha Conta</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-account" id="myAccountBtn" data-i18n="htmlApp.topbar.myAccountBtn">Minha Conta</button>
         <div class="topbar-dropdown-divider"></div>
-        <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank" class="topbar-dropdown-btn topbar-dropdown-btn-info" style="color:rgba(0,230,140,0.7);">Suporte / Comunidade</a>
+        <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank" class="topbar-dropdown-btn topbar-dropdown-btn-info" style="color:rgba(0,230,140,0.7);" data-i18n="htmlApp.topbar.supportLink">Suporte / Comunidade</a>
         <div class="topbar-dropdown-divider"></div>
-        <button class="topbar-dropdown-btn" id="logoutBtn">Sair da conta</button>
+        <button class="topbar-dropdown-btn" id="logoutBtn" data-i18n="main.subscribeNotice.logout">Sair da conta</button>
         <span class="mode-icon" id="modeIcon" style="display:none"></span>
         <div class="topbar-dropdown-divider"></div>
-        <span id="appVersionLabel" style="display:block;text-align:center;font-size:0.65rem;color:rgba(255,255,255,0.32);padding:0.2rem 0 0.05rem;letter-spacing:0.02em;">v—</span>
-        <span style="display:block;text-align:center;font-size:0.7rem;color:rgba(255,255,255,0.4);font-style:italic;padding:0.05rem 0 0.3rem;">Pra honra e glória de Deus</span>
+        <span id="appVersionLabel" style="display:block;text-align:center;font-size:0.65rem;color:rgba(255,255,255,0.32);padding:0.2rem 0 0.05rem;letter-spacing:0.02em;">v…</span>
+        <span style="display:block;text-align:center;font-size:0.7rem;color:rgba(255,255,255,0.4);font-style:italic;padding:0.05rem 0 0.3rem;" data-i18n="htmlApp.topbar.footerCredit">Pra honra e glória de Deus</span>
       </div>
     </div>
 
@@ -322,8 +323,8 @@
       <div id="userMode" class="mode-container active">
         <!-- Painel esquerdo DESKTOP (≥1024px): catálogo categorizado sempre
              aberto. Escondido em mobile/tablet via CSS. -->
-        <aside class="desk-panel desk-panel-left" aria-label="Todos os ritmos">
-          <div class="desk-panel-title">Ritmos</div>
+        <aside class="desk-panel desk-panel-left" aria-label="Todos os ritmos" data-i18n-aria="main.allRhythms.dialogAriaLabel">
+          <div class="desk-panel-title" data-i18n="htmlApp.userMode.desktopRhythmsTitle">Ritmos</div>
           <div class="desk-panel-body" id="deskRhythmsBody"></div>
         </aside>
 
@@ -333,17 +334,17 @@
           <div class="fav-section">
             <div class="fav-bar">
               <button class="fav-side fav-prev" id="setlistPrev">
-                <span class="fav-side-label">Anterior</span>
+                <span class="fav-side-label" data-i18n="htmlApp.userMode.prevLabel">Anterior</span>
                 <span class="fav-side-name" id="favPrevName">--</span>
               </button>
               <div class="fav-center" id="favCenter">
                 <span class="fav-num" id="setlistNum">#</span>
-                <span class="fav-current-name" id="currentRhythmName">Monte seus favoritos</span>
+                <span class="fav-current-name" id="currentRhythmName" data-i18n="main.setlistUI.emptyPrompt">Monte seus favoritos</span>
                 <span class="fav-current-meta" id="currentRhythmMeta"></span>
                 <span class="fav-position" id="setlistPosition"></span>
               </div>
               <button class="fav-side fav-next" id="setlistNext">
-                <span class="fav-side-label">Proximo</span>
+                <span class="fav-side-label" data-i18n="htmlApp.userMode.nextLabel">Proximo</span>
                 <span class="fav-side-name" id="favNextName">--</span>
               </button>
             </div>
@@ -353,17 +354,17 @@
             <div class="pills-row">
               <button class="fav-edit-btn" id="setlistEditBtn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" opacity="0.7"/></svg>
-                REPERTÓRIO
+                <span data-i18n="htmlApp.userMode.repertoireTabLabel">REPERTÓRIO</span>
               </button>
               <button class="fav-edit-btn" id="allRhythmsBtn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
-                TODOS
+                <span data-i18n="htmlApp.userMode.allTabLabel">TODOS</span>
               </button>
               <button class="fav-edit-btn fav-edit-btn-purple" id="myRhythmsBtn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/></svg>
-                MEUS RITMOS
+                <span data-i18n="htmlApp.userMode.myRhythmsTabLabel">MEUS RITMOS</span>
               </button>
-              <button class="fav-icon-btn fav-icon-btn-green" id="saveAsMyRhythmBtn" style="display:none;" title="Salvar como meu ritmo" aria-label="Salvar como meu ritmo">
+              <button class="fav-icon-btn fav-icon-btn-green" id="saveAsMyRhythmBtn" style="display:none;" title="Salvar como meu ritmo" aria-label="Salvar como meu ritmo" data-i18n-title="htmlApp.userMode.saveAsMyRhythm" data-i18n-aria="htmlApp.userMode.saveAsMyRhythm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2"/></svg>
               </button>
             </div>
@@ -394,44 +395,44 @@
             <div class="user-performance-grid">
               <div class="grid-cell rhythm-cell" data-type="main" data-variation="0">
                 <span class="cell-number">1</span>
-                <span class="cell-label">RITMO</span>
+                <span class="cell-label" data-i18n="htmlApp.userMode.cellLabelRhythm">RITMO</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell rhythm-cell" data-type="main" data-variation="1">
                 <span class="cell-number">2</span>
-                <span class="cell-label">RITMO</span>
+                <span class="cell-label" data-i18n="htmlApp.userMode.cellLabelRhythm">RITMO</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell rhythm-cell" data-type="main" data-variation="2">
                 <span class="cell-number">3</span>
-                <span class="cell-label">RITMO</span>
+                <span class="cell-label" data-i18n="htmlApp.userMode.cellLabelRhythm">RITMO</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell fill-cell" data-type="fill" data-variation="0">
                 <span class="cell-number">1</span>
-                <span class="cell-label">VIRADA</span>
+                <span class="cell-label" data-i18n="htmlApp.common.viradaLabel">VIRADA</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell fill-cell" data-type="fill" data-variation="1">
                 <span class="cell-number">2</span>
-                <span class="cell-label">VIRADA</span>
+                <span class="cell-label" data-i18n="htmlApp.common.viradaLabel">VIRADA</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell fill-cell" data-type="fill" data-variation="2">
                 <span class="cell-number">3</span>
-                <span class="cell-label">VIRADA</span>
+                <span class="cell-label" data-i18n="htmlApp.common.viradaLabel">VIRADA</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell pause-cell" id="pauseBtnUser">
-                <span class="cell-label" id="pauseBtnLabel">PAUSAR</span>
+                <span class="cell-label" id="pauseBtnLabel" data-i18n="main.pauseButton.pause">PAUSAR</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell end-cell" data-type="end" data-variation="0">
-                <span class="cell-label">FINAL</span>
+                <span class="cell-label" data-i18n="main.manual.badge.final">FINAL</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell cymbal-cell" id="cymbalBtn">
-                <span class="cell-label">PRATO</span>
+                <span class="cell-label" data-i18n="htmlApp.userMode.cellLabelCymbal">PRATO</span>
                 <div class="cell-indicator"></div>
               </div>
             </div>
@@ -440,7 +441,7 @@
           <!-- 4. Controles -->
           <div class="controls-bar">
             <div class="ctrl-group">
-              <span class="ctrl-label">BPM</span>
+              <span class="ctrl-label" data-i18n="htmlApp.common.bpmLabel">BPM</span>
               <div class="ctrl-row">
                 <button id="tempoDownUser" class="ctrl-btn ctrl-btn-bpm">&minus;</button>
                 <button id="tempoDisplayUser" class="ctrl-value ctrl-value-tap">80</button>
@@ -449,7 +450,7 @@
             </div>
             <div class="ctrl-divider"></div>
             <div class="ctrl-group ctrl-group-vol">
-              <span class="ctrl-label">VOL</span>
+              <span class="ctrl-label" data-i18n="htmlApp.userMode.volLabel">VOL</span>
               <div class="ctrl-row">
                 <input type="range" id="masterVolumeUser" min="0" max="200" value="200" step="5" class="ctrl-slider">
                 <span class="ctrl-value ctrl-value-sm" id="volumeDisplayUser">100%</span>
@@ -457,21 +458,21 @@
             </div>
             <div class="ctrl-divider"></div>
             <div class="ctrl-toggles">
-              <button class="ctrl-toggle active" id="toggleIntro" title="Intro ligada">
+              <button class="ctrl-toggle active" id="toggleIntro" title="Intro ligada" data-i18n-title="htmlApp.userMode.introToggleTitle">
                 <span class="ctrl-toggle-dot"></span>
-                <span class="ctrl-toggle-label">INTRO</span>
+                <span class="ctrl-toggle-label" data-i18n="main.manual.badge.intro">INTRO</span>
               </button>
-              <button class="ctrl-toggle active" id="toggleFills" title="Viradas ao trocar de ritmo: ligadas">
+              <button class="ctrl-toggle active" id="toggleFills" title="Viradas ao trocar de ritmo: ligadas" data-i18n-title="main.toggle.fillsOnTitle">
                 <span class="ctrl-toggle-dot"></span>
-                <span class="ctrl-toggle-label">VIRADAS</span>
+                <span class="ctrl-toggle-label" data-i18n="main.manual.badge.viradas">VIRADAS</span>
               </button>
-              <button class="ctrl-toggle active" id="toggleFinal" title="Final ligado">
+              <button class="ctrl-toggle active" id="toggleFinal" title="Final ligado" data-i18n-title="htmlApp.userMode.finalToggleTitle">
                 <span class="ctrl-toggle-dot"></span>
-                <span class="ctrl-toggle-label">FINAL</span>
+                <span class="ctrl-toggle-label" data-i18n="main.manual.badge.final">FINAL</span>
               </button>
-              <button class="ctrl-toggle" id="toggleAutoNext" title="Auto-avançar repertório: desligado">
+              <button class="ctrl-toggle" id="toggleAutoNext" title="Auto-avançar repertório: desligado" data-i18n-title="main.toggle.autoNextOffTitle">
                 <span class="ctrl-toggle-dot"></span>
-                <span class="ctrl-toggle-label">AUTO</span>
+                <span class="ctrl-toggle-label" data-i18n="main.manual.badge.auto">AUTO</span>
               </button>
             </div>
             <button id="playStopUser" style="display:none"></button>
@@ -481,8 +482,8 @@
 
         <!-- Painel direito DESKTOP (≥1024px): repertório ativo sempre
              visível. Escondido em mobile/tablet via CSS. -->
-        <aside class="desk-panel desk-panel-right" aria-label="Repertório">
-          <div class="desk-panel-title" id="deskSetlistTitle">Repertório</div>
+        <aside class="desk-panel desk-panel-right" aria-label="Repertório" data-i18n-aria="main.setlistPicker.dialogAriaLabel">
+          <div class="desk-panel-title" id="deskSetlistTitle" data-i18n="main.setlistPicker.title">Repertório</div>
           <div class="desk-panel-body" id="deskSetlistBody"></div>
         </aside>
       </div>
@@ -497,78 +498,78 @@
             <input type="text" class="project-name-input" id="projectName" value="Novo Projeto" spellcheck="false" />
           </div>
           <div class="project-actions">
-            <button id="newProject" class="admin-btn">Novo</button>
-            <button id="saveAll" class="admin-btn admin-btn-primary">Salvar Projeto</button>
-            <button id="loadAll" class="admin-btn">Abrir Projeto</button>
+            <button id="newProject" class="admin-btn" data-i18n="ui.setlist.newLabel">Novo</button>
+            <button id="saveAll" class="admin-btn admin-btn-primary" data-i18n="htmlApp.admin.saveProjectBtn">Salvar Projeto</button>
+            <button id="loadAll" class="admin-btn" data-i18n="htmlApp.admin.openProjectBtn">Abrir Projeto</button>
             <input type="file" id="loadAllFile" accept=".json" class="file-input-hidden">
           </div>
         </div>
 
         <!-- Clonar ritmo inteiro -->
         <div class="admin-panel admin-panel-clone">
-          <span class="admin-label">Clonar Ritmo Inteiro</span>
+          <span class="admin-label" data-i18n="htmlApp.admin.cloneWholeLabel">Clonar Ritmo Inteiro</span>
           <div class="admin-duplicate-row">
-            <select id="cloneRhythmSelect" class="admin-select"><option value="">Selecione um ritmo...</option></select>
-            <button id="cloneRhythmBtn" class="admin-btn admin-btn-primary">Clonar Tudo</button>
+            <select id="cloneRhythmSelect" class="admin-select"><option value="" data-i18n="main.rhythmSelect.placeholder">Selecione um ritmo...</option></select>
+            <button id="cloneRhythmBtn" class="admin-btn admin-btn-primary" data-i18n="htmlApp.admin.cloneAllBtn">Clonar Tudo</button>
           </div>
-          <span class="admin-hint">Copia tudo pro seu projeto: ritmos, viradas, final, intro, tempo e sons</span>
+          <span class="admin-hint" data-i18n="htmlApp.admin.cloneHint">Copia tudo pro seu projeto: ritmos, viradas, final, intro, tempo e sons</span>
         </div>
 
         <!-- Copiar variação específica -->
         <div class="admin-panel admin-panel-duplicate">
-          <span class="admin-label">Copiar variação de outro ritmo</span>
+          <span class="admin-label" data-i18n="htmlApp.admin.copyVariationLabel">Copiar variação de outro ritmo</span>
           <div class="admin-duplicate-grid">
             <!-- Origem -->
             <div class="dup-col">
-              <span class="dup-col-title">Origem</span>
-              <select id="duplicateRhythmSelect" class="admin-select"><option value="">Ritmo...</option></select>
+              <span class="dup-col-title" data-i18n="htmlApp.admin.originLabel">Origem</span>
+              <select id="duplicateRhythmSelect" class="admin-select"><option value="" data-i18n="htmlApp.admin.rhythmEllipsis">Ritmo...</option></select>
               <select id="duplicatePatternType" class="admin-select">
-                <option value="main">Principal</option>
-                <option value="fill">Virada</option>
-                <option value="end">Final</option>
-                <option value="intro">Intro</option>
+                <option value="main" data-i18n="main.patternName.main">Principal</option>
+                <option value="fill" data-i18n="main.patternName.fill">Virada</option>
+                <option value="end" data-i18n="main.patternName.end">Final</option>
+                <option value="intro" data-i18n="main.patternName.intro">Intro</option>
               </select>
               <select id="duplicateVariationSlot" class="admin-select">
-                <option value="0">Var 1</option>
-                <option value="1">Var 2</option>
-                <option value="2">Var 3</option>
+                <option value="0" data-i18n="htmlApp.admin.var1">Var 1</option>
+                <option value="1" data-i18n="htmlApp.admin.var2">Var 2</option>
+                <option value="2" data-i18n="htmlApp.admin.var3">Var 3</option>
               </select>
             </div>
             <!-- Seta -->
             <div class="dup-arrow">→</div>
             <!-- Destino -->
             <div class="dup-col">
-              <span class="dup-col-title">Destino</span>
+              <span class="dup-col-title" data-i18n="htmlApp.admin.destinationLabel">Destino</span>
               <select id="dupDestPatternType" class="admin-select">
-                <option value="main">Principal</option>
-                <option value="fill">Virada</option>
-                <option value="end">Final</option>
-                <option value="intro">Intro</option>
+                <option value="main" data-i18n="main.patternName.main">Principal</option>
+                <option value="fill" data-i18n="main.patternName.fill">Virada</option>
+                <option value="end" data-i18n="main.patternName.end">Final</option>
+                <option value="intro" data-i18n="main.patternName.intro">Intro</option>
               </select>
               <select id="dupDestVariationSlot" class="admin-select">
-                <option value="0">Var 1</option>
-                <option value="1">Var 2</option>
-                <option value="2">Var 3</option>
+                <option value="0" data-i18n="htmlApp.admin.var1">Var 1</option>
+                <option value="1" data-i18n="htmlApp.admin.var2">Var 2</option>
+                <option value="2" data-i18n="htmlApp.admin.var3">Var 3</option>
               </select>
             </div>
             <!-- Botão -->
-            <button id="duplicateBtn" class="admin-btn admin-btn-duplicate">Copiar</button>
+            <button id="duplicateBtn" class="admin-btn admin-btn-duplicate" data-i18n="htmlApp.admin.copyBtn">Copiar</button>
           </div>
         </div>
 
         <!-- Toolbar -->
         <div class="admin-panel admin-toolbar">
-          <button class="pattern-tab active" data-pattern="intro">INTRO</button>
-          <button class="pattern-tab" data-pattern="main">PRINCIPAL</button>
-          <button class="pattern-tab" data-pattern="fill">VIRADA</button>
-          <button class="pattern-tab" data-pattern="end">FINAL</button>
+          <button class="pattern-tab active" data-pattern="intro" data-i18n="main.manual.badge.intro">INTRO</button>
+          <button class="pattern-tab" data-pattern="main" data-i18n="htmlApp.admin.tabMain">PRINCIPAL</button>
+          <button class="pattern-tab" data-pattern="fill" data-i18n="htmlApp.common.viradaLabel">VIRADA</button>
+          <button class="pattern-tab" data-pattern="end" data-i18n="main.manual.badge.final">FINAL</button>
           <span class="toolbar-divider"></span>
           <button class="variation-slot active" data-slot="0"><span class="slot-number">1</span></button>
           <button class="variation-slot" data-slot="1"><span class="slot-number">2</span></button>
           <button class="variation-slot" data-slot="2"><span class="slot-number">3</span></button>
           <span class="toolbar-divider"></span>
-          <button id="testVariation" class="admin-btn admin-btn-primary">Testar</button>
-          <button id="duplicateSlotBtn" class="admin-btn" title="Copiar slot atual para outro">Duplicar slot</button>
+          <button id="testVariation" class="admin-btn admin-btn-primary" data-i18n="main.variation.testButton">Testar</button>
+          <button id="duplicateSlotBtn" class="admin-btn" title="Copiar slot atual para outro" data-i18n="htmlApp.admin.duplicateSlotBtn" data-i18n-title="htmlApp.admin.duplicateSlotTitle">Duplicar slot</button>
           <select id="patternStepsSelect" class="admin-select">
             <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16" selected>16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option><option value="32">32</option>
           </select>
@@ -585,17 +586,17 @@
           <div class="admin-col">
             <!-- Transport -->
             <div class="admin-panel">
-              <span class="admin-label">Transporte</span>
+              <span class="admin-label" data-i18n="htmlApp.admin.transportLabel">Transporte</span>
               <div class="admin-config-row">
-                <button id="playStop" class="admin-btn admin-btn-primary">PLAY</button>
-                <button id="pauseInstant" class="admin-btn">PAUSE</button>
-                <button id="fill" class="admin-btn">FILL</button>
-                <button id="end" class="admin-btn">END</button>
+                <button id="playStop" class="admin-btn admin-btn-primary" data-i18n="ui.playback.adminPlay">PLAY</button>
+                <button id="pauseInstant" class="admin-btn" data-i18n="htmlApp.admin.pauseBtn">PAUSE</button>
+                <button id="fill" class="admin-btn" data-i18n="htmlApp.admin.fillLabel">FILL</button>
+                <button id="end" class="admin-btn" data-i18n="htmlApp.admin.endLabel">END</button>
               </div>
             </div>
             <!-- BPM -->
             <div class="admin-panel">
-              <span class="admin-label">BPM</span>
+              <span class="admin-label" data-i18n="htmlApp.common.bpmLabel">BPM</span>
               <div class="admin-config-row">
                 <button id="tempoDown" class="admin-btn">&minus;</button>
                 <input type="number" id="tempo" value="80" min="40" max="240" step="1" class="admin-input-num">
@@ -606,19 +607,19 @@
             </div>
             <!-- Compasso -->
             <div class="admin-panel">
-              <span class="admin-label">Compasso</span>
+              <span class="admin-label" data-i18n="htmlApp.admin.beatsPerBarLabel">Compasso</span>
               <div class="admin-config-row">
                 <select id="beatsPerBarSelect" class="admin-select">
-                  <option value="2">2/4 (Binário)</option>
-                  <option value="3">3/4 (Ternário)</option>
-                  <option value="4" selected>4/4 (Quaternário)</option>
-                  <option value="6">6/8 (Ternário composto)</option>
+                  <option value="2" data-i18n="htmlApp.admin.beats2">2/4 (Binário)</option>
+                  <option value="3" data-i18n="htmlApp.admin.beats3">3/4 (Ternário)</option>
+                  <option value="4" selected data-i18n="htmlApp.admin.beats4">4/4 (Quaternário)</option>
+                  <option value="6" data-i18n="htmlApp.admin.beats6">6/8 (Ternário composto)</option>
                 </select>
               </div>
             </div>
             <!-- Variation Speed -->
             <div class="admin-panel">
-              <span class="admin-label">Velocidade da Variação <span id="variationSpeedDisplay" class="admin-highlight">1x</span></span>
+              <span class="admin-label"><span data-i18n="htmlApp.admin.variationSpeedLabel">Velocidade da Variação </span><span id="variationSpeedDisplay" class="admin-highlight">1x</span></span>
               <input type="range" id="variationSpeed" min="0.25" max="4" step="0.25" value="1" class="admin-range">
               <div class="admin-config-row" style="margin-top:0.4rem">
                 <button class="speed-preset admin-btn" data-speed="0.5">0.5x</button>
@@ -629,29 +630,29 @@
             </div>
             <!-- Fill / End speeds -->
             <div class="admin-panel">
-              <span class="admin-label">Vel. Fill / End</span>
+              <span class="admin-label" data-i18n="htmlApp.admin.fillEndSpeedLabel">Vel. Fill / End</span>
               <div class="admin-config-row">
-                <span class="admin-config-label">FILL</span>
+                <span class="admin-config-label" data-i18n="htmlApp.admin.fillLabel">FILL</span>
                 <button id="fillSpeedDown" class="admin-btn">&minus;</button>
                 <input type="number" id="fillSpeed" value="1" min="0.25" max="4" step="0.25" class="admin-input-num">
                 <button id="fillSpeedUp" class="admin-btn">+</button>
                 <span class="admin-value" id="fillSpeedDisplay">1x</span>
               </div>
               <div class="admin-config-row">
-                <span class="admin-config-label">END</span>
+                <span class="admin-config-label" data-i18n="htmlApp.admin.endLabel">END</span>
                 <button id="endSpeedDown" class="admin-btn">&minus;</button>
                 <input type="number" id="endSpeed" value="1" min="0.25" max="4" step="0.25" class="admin-input-num">
                 <button id="endSpeedUp" class="admin-btn">+</button>
                 <span class="admin-value" id="endSpeedDisplay">1x</span>
               </div>
               <div class="admin-config-row">
-                <span class="admin-config-label">Tam.</span>
+                <span class="admin-config-label" data-i18n="htmlApp.admin.sizeLabel">Tam.</span>
                 <select id="fillSteps" class="admin-select"><option value="4">4</option><option value="8">8</option><option value="16" selected>16</option><option value="32">32</option></select>
               </div>
             </div>
             <!-- Master Volume -->
             <div class="admin-panel">
-              <span class="admin-label">Volume Master</span>
+              <span class="admin-label" data-i18n="htmlApp.admin.masterVolumeLabel">Volume Master</span>
               <div class="admin-config-row">
                 <input type="range" id="masterVolume" min="0" max="200" value="100" step="5" class="admin-range">
                 <span class="admin-value" id="masterVolumeDisplay">100%</span>
@@ -662,19 +663,19 @@
           <div class="admin-col">
             <!-- Special Sounds -->
             <div class="admin-panel">
-              <span class="admin-label">Sons Especiais</span>
+              <span class="admin-label" data-i18n="htmlApp.admin.specialSoundsLabel">Sons Especiais</span>
               <div class="admin-config-row">
-                <span class="admin-config-label">Início</span>
-                <select id="fillStartSelect" class="admin-select"><option value="">Nenhum</option></select>
+                <span class="admin-config-label" data-i18n="htmlApp.admin.startLabel">Início</span>
+                <select id="fillStartSelect" class="admin-select"><option value="" data-i18n="main.select.none">Nenhum</option></select>
                 <input type="file" id="fillStartCustomInput" accept="audio/*" class="file-input-hidden">
-                <button id="fillStartCustomBtn" class="admin-btn">Procurar</button>
+                <button id="fillStartCustomBtn" class="admin-btn" data-i18n="htmlApp.admin.browseBtn">Procurar</button>
               </div>
               <span id="fillStartFileName" class="admin-file-name"></span>
               <div class="admin-config-row">
-                <span class="admin-config-label">Retorno</span>
-                <select id="fillReturnSelect" class="admin-select"><option value="">Nenhum</option></select>
+                <span class="admin-config-label" data-i18n="htmlApp.admin.returnLabel">Retorno</span>
+                <select id="fillReturnSelect" class="admin-select"><option value="" data-i18n="main.select.none">Nenhum</option></select>
                 <input type="file" id="fillReturnCustomInput" accept="audio/*" class="file-input-hidden">
-                <button id="fillReturnCustomBtn" class="admin-btn">Procurar</button>
+                <button id="fillReturnCustomBtn" class="admin-btn" data-i18n="htmlApp.admin.browseBtn">Procurar</button>
               </div>
               <span id="fillReturnFileName" class="admin-file-name"></span>
             </div>
@@ -692,10 +693,10 @@
 
         <!-- Status Strip -->
         <div class="admin-panel admin-status-strip">
-          <span class="admin-config-label">Status:</span>
-          <span id="status" class="admin-value">Parado</span>
+          <span class="admin-config-label" data-i18n="htmlApp.admin.statusLabel">Status:</span>
+          <span id="status" class="admin-value" data-i18n="main.status.stopped">Parado</span>
           <span class="toolbar-divider"></span>
-          <span class="admin-config-label">Posição:</span>
+          <span class="admin-config-label" data-i18n="htmlApp.admin.positionLabel">Posição:</span>
           <span id="currentStep" class="admin-value">0</span>
         </div>
 

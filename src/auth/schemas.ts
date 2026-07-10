@@ -5,29 +5,30 @@
 
 import { z } from 'zod';
 import { validateCPF } from '../utils/cpf';
+import { t } from '../i18n';
 
 // ─── Campos reutilizáveis ──────────────────────────────────────────────
 
 const nameSchema = z
-  .string({ error: 'Informe seu nome' })
+  .string({ error: t('auth.schemas.nameRequired') })
   .trim()
-  .min(3, { error: 'Nome precisa ter ao menos 3 letras' })
-  .max(80, { error: 'Nome longo demais (máx 80 caracteres)' })
+  .min(3, { error: t('auth.schemas.nameMinLength') })
+  .max(80, { error: t('auth.schemas.nameMaxLength') })
   .refine(v => /^[a-zA-ZÀ-ÿ\s'.-]+$/.test(v), {
-    error: 'Use só letras, espaços e acentos',
+    error: t('auth.schemas.nameLettersOnly'),
   })
   .refine(v => v.trim().split(/\s+/).length >= 2, {
-    error: 'Informe nome e sobrenome',
+    error: t('auth.schemas.nameNeedsSurname'),
   });
 
 const cpfSchema = z
-  .string({ error: 'Informe seu CPF' })
+  .string({ error: t('auth.schemas.cpfRequired') })
   .trim()
   .refine(v => v.replace(/\D/g, '').length === 11, {
-    error: 'CPF precisa ter 11 dígitos',
+    error: t('auth.schemas.cpfLength'),
   })
   .refine(v => validateCPF(v.replace(/\D/g, '')), {
-    error: 'CPF inválido — verifique os dígitos',
+    error: t('auth.schemas.cpfInvalid'),
   });
 
 // Telefone OPCIONAL (Apple 5.1.1 — sequenciador de bateria não precisa
@@ -41,7 +42,7 @@ const phoneSchema = z
     const digits = v.replace(/\D/g, '');
     return digits.length === 10 || digits.length === 11;
   }, {
-    error: 'WhatsApp precisa ter 10 ou 11 dígitos',
+    error: t('auth.schemas.phoneLength'),
   })
   .refine(v => {
     if (!v) return true;
@@ -49,7 +50,7 @@ const phoneSchema = z
     if (digits.length === 11) return digits[2] === '9';
     return true;
   }, {
-    error: 'Celular precisa começar com 9 após o DDD',
+    error: t('auth.schemas.phoneMobileNine'),
   })
   .refine(v => {
     if (!v) return true;
@@ -57,27 +58,27 @@ const phoneSchema = z
     const ddd = parseInt(digits.slice(0, 2));
     return ddd >= 11 && ddd <= 99;
   }, {
-    error: 'DDD inválido',
+    error: t('auth.schemas.phoneDddInvalid'),
   });
 
 const emailSchema = z
-  .string({ error: 'Informe seu e-mail' })
+  .string({ error: t('auth.schemas.emailRequired') })
   .trim()
   .toLowerCase()
-  .min(5, { error: 'E-mail muito curto' })
-  .max(120, { error: 'E-mail longo demais' })
+  .min(5, { error: t('auth.schemas.emailTooShort') })
+  .max(120, { error: t('auth.schemas.emailTooLong') })
   .refine(v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v), {
-    error: 'E-mail inválido — precisa ser tipo seu@email.com',
+    error: t('auth.schemas.emailInvalid'),
   })
-  .refine(v => !v.endsWith('.con'), { error: 'Você quis dizer .com?' })
-  .refine(v => !v.includes('..'), { error: 'E-mail tem pontos duplicados' });
+  .refine(v => !v.endsWith('.con'), { error: t('auth.schemas.emailTypoCon') })
+  .refine(v => !v.includes('..'), { error: t('auth.schemas.emailDoubleDots') });
 
 const passwordSchema = z
-  .string({ error: 'Informe uma senha' })
-  .min(6, { error: 'Senha precisa ter no mínimo 6 caracteres' })
-  .max(72, { error: 'Senha longa demais (máx 72)' })
+  .string({ error: t('auth.schemas.passwordRequired') })
+  .min(6, { error: t('auth.schemas.passwordMinLength') })
+  .max(72, { error: t('auth.schemas.passwordTooLong') })
   .refine(v => !/^\s+|\s+$/.test(v), {
-    error: 'Senha não pode começar ou terminar com espaço',
+    error: t('auth.schemas.passwordNoEdgeSpaces'),
   });
 
 // ─── Schemas compostos ────────────────────────────────────────────────
@@ -89,13 +90,13 @@ export const registerSchema = z
     phone: phoneSchema,
     email: emailSchema,
     password: passwordSchema,
-    confirmPassword: z.string({ error: 'Confirme sua senha' }),
+    confirmPassword: z.string({ error: t('auth.schemas.confirmPasswordRequired') }),
     acceptTerms: z.boolean().refine(v => v === true, {
-      error: 'Você precisa aceitar os termos para continuar',
+      error: t('auth.schemas.acceptTermsRequired'),
     }),
   })
   .refine(d => d.password === d.confirmPassword, {
-    error: 'As senhas não conferem',
+    error: t('auth.errors.passwordsDontMatch'),
     path: ['confirmPassword'],
   });
 
@@ -103,16 +104,16 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 
 export const loginSchema = z.object({
   email: emailSchema,
-  password: z.string({ error: 'Informe sua senha' }).min(1, { error: 'Informe sua senha' }),
+  password: z.string({ error: t('auth.schemas.loginPasswordRequired') }).min(1, { error: t('auth.schemas.loginPasswordRequired') }),
 });
 
 export const recoveryPasswordSchema = z
   .object({
     password: passwordSchema,
-    confirmPassword: z.string({ error: 'Confirme a nova senha' }),
+    confirmPassword: z.string({ error: t('auth.schemas.confirmNewPasswordRequired') }),
   })
   .refine(d => d.password === d.confirmPassword, {
-    error: 'As senhas não conferem',
+    error: t('auth.errors.passwordsDontMatch'),
     path: ['confirmPassword'],
   });
 

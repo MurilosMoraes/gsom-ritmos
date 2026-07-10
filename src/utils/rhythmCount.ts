@@ -10,7 +10,7 @@
 export const RHYTHM_COUNT = 155;
 
 /** Quantidade liberada no demo sem cadastro. */
-export const DEMO_RHYTHM_COUNT = 3;
+export const DEMO_RHYTHM_COUNT = 5;
 
 /** Quantidade bloqueada atrás do cadastro (= total - demo). */
 export const LOCKED_RHYTHM_COUNT = RHYTHM_COUNT - DEMO_RHYTHM_COUNT;

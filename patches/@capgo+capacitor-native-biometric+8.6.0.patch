@@ -1,0 +1,40 @@
+diff --git a/node_modules/@capgo/capacitor-native-biometric/android/src/main/java/ee/forgr/biometric/AuthActivity.java b/node_modules/@capgo/capacitor-native-biometric/android/src/main/java/ee/forgr/biometric/AuthActivity.java
+index 8eafb39..357235f 100644
+--- a/node_modules/@capgo/capacitor-native-biometric/android/src/main/java/ee/forgr/biometric/AuthActivity.java
++++ b/node_modules/@capgo/capacitor-native-biometric/android/src/main/java/ee/forgr/biometric/AuthActivity.java
+@@ -52,9 +52,11 @@ public class AuthActivity extends AppCompatActivity {
+     private static final String AUTH_KEY_AUTH_TYPES = "auth_key_auth_types";
+ 
+     // Mirrors KeyProperties auth-type flags when older compile stubs omit symbols.
+-    private static final int KEY_AUTH_BIOMETRIC_STRONG = 1;
++    // PATCHED (GDrums): valores corrigidos pros reais do KeyProperties
++    // (DEVICE_CREDENTIAL=1, BIOMETRIC_STRONG=2). Ver BiometricAuthenticatorConfig.
++    private static final int KEY_AUTH_BIOMETRIC_STRONG = 2;
+     private static final int KEY_AUTH_BIOMETRIC_WEAK = 2;
+-    private static final int KEY_AUTH_DEVICE_CREDENTIAL = 4;
++    private static final int KEY_AUTH_DEVICE_CREDENTIAL = 1;
+ 
+     private boolean isSecureStorageMode() {
+         return (
+diff --git a/node_modules/@capgo/capacitor-native-biometric/android/src/main/java/ee/forgr/biometric/BiometricAuthenticatorConfig.java b/node_modules/@capgo/capacitor-native-biometric/android/src/main/java/ee/forgr/biometric/BiometricAuthenticatorConfig.java
+index d0f7703..ff7c103 100644
+--- a/node_modules/@capgo/capacitor-native-biometric/android/src/main/java/ee/forgr/biometric/BiometricAuthenticatorConfig.java
++++ b/node_modules/@capgo/capacitor-native-biometric/android/src/main/java/ee/forgr/biometric/BiometricAuthenticatorConfig.java
+@@ -17,9 +17,15 @@ public final class BiometricAuthenticatorConfig {
+     private static final int DEVICE_CREDENTIAL = 7;
+ 
+     // Mirrors KeyProperties auth-type flags when older compile stubs omit symbols.
+-    private static final int KEY_AUTH_BIOMETRIC_STRONG = 1;
++    // PATCHED (GDrums): os valores originais (1/2/4) NÃO batem com os reais do
++    // KeyProperties (AUTH_DEVICE_CREDENTIAL=1<<0=1, AUTH_BIOMETRIC_STRONG=1<<1=2;
++    // Keystore não tem "WEAK"). Como esses flags vão CRUS pro
++    // setUserAuthenticationParameters(), STRONG=1 criava chave atrelada a
++    // DEVICE_CREDENTIAL — a digital autenticava mas o doFinal falhava
++    // ("Biometric security check failed") e o login nunca completava.
++    private static final int KEY_AUTH_BIOMETRIC_STRONG = 2;
+     private static final int KEY_AUTH_BIOMETRIC_WEAK = 2;
+-    private static final int KEY_AUTH_DEVICE_CREDENTIAL = 4;
++    private static final int KEY_AUTH_DEVICE_CREDENTIAL = 1;
+ 
+     public static final int PROMPT_BIOMETRIC_ANY =
+         BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK;
