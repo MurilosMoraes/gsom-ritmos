@@ -62,56 +62,77 @@ class LoginPage {
     //   (a) já processado (sessão criada antes desse JS rodar)
     //   (b) processando (vai disparar PASSWORD_RECOVERY no onAuthStateChange)
     //   (c) inválido/expirado (nada acontece — timeout)
+    // Esta tela é o destino de DOIS links de e-mail que usam o mesmo
+    // token_hash: RESET DE SENHA (type=recovery) e CONFIRMAÇÃO DE
+    // CADASTRO (type=signup/email — usado só no cadastro INTERNACIONAL).
+    // O roteamento pós-token difere: recovery abre o form de nova senha;
+    // signup/email já loga e manda pro app. Antes, TODO token_hash caía
+    // no form de nova senha — um link de confirmação de cadastro cairia
+    // na tela errada.
     const hash = window.location.hash || '';
     const search = window.location.search || '';
-    const looksLikeRecovery =
-      hash.includes('type=recovery') ||
-      hash.includes('type=magiclink') ||
+    // Tipo do link: query (?type=) tem prioridade; senão hash (#type=).
+    const typeMatch = search.match(/[?&]type=([^&]+)/) || hash.match(/type=([^&]+)/);
+    const authType = (typeMatch?.[1] || '').toLowerCase();
+    const KNOWN_TYPES = ['recovery', 'signup', 'email', 'magiclink', 'invite'];
+
+    const looksLikeAuthLink =
+      KNOWN_TYPES.some(tp => hash.includes('type=' + tp)) ||
       hash.includes('access_token=') ||
-      // PKCE: code= na query string. Confirma que é recovery pelo type
-      // que o Supabase agora também passa como query param.
+      // PKCE: code= na query string (fluxo default do supabase-js v2).
       /[?&]code=/.test(search) ||
       // token_hash: formato do template com {{ .TokenHash }} — validado
-      // via verifyOtp, INDEPENDE de onde o reset foi pedido (o PKCE
-      // ?code= só valida no browser/app que INICIOU o reset; como os
-      // App Links do Android forçam o link do email a abrir no APP,
-      // reset pedido na web + link aberto no app = exchange falhava e
-      // caía no form de login em vez do form de senha nova).
+      // via verifyOtp, INDEPENDE de onde o link foi pedido (o PKCE
+      // ?code= só valida no browser/app que INICIOU; os App Links forçam
+      // o link do e-mail a abrir no APP, então pedir na web + abrir no
+      // app quebrava o exchange e caía no form errado).
       /[?&]token_hash=/.test(search);
 
-    if (looksLikeRecovery) {
-      // token_hash primeiro (formato robusto, independente de contexto)
+    if (looksLikeAuthLink) {
+      // token_hash primeiro (formato robusto, independente de contexto).
+      // Passa o TIPO real do link — signup confirma o e-mail e loga;
+      // recovery abre a sessão de reset.
       const tokenHashMatch = search.match(/[?&]token_hash=([^&]+)/);
       if (tokenHashMatch) {
         try {
-          const typeMatch = search.match(/[?&]type=([^&]+)/);
+          const otpType = (KNOWN_TYPES.includes(authType) ? authType : 'recovery') as 'recovery' | 'signup' | 'email' | 'magiclink' | 'invite';
           await supabase.auth.verifyOtp({
-            type: (typeMatch?.[1] as 'recovery') || 'recovery',
+            type: otpType,
             token_hash: decodeURIComponent(tokenHashMatch[1]),
           });
         } catch (e) {
-          console.warn('[recovery] verifyOtp(token_hash) falhou:', e);
+          console.warn('[auth-link] verifyOtp(token_hash) falhou:', e);
         }
       }
 
-      // PKCE: precisa trocar code → session antes de continuar. Implicit já
-      // processa sozinho no detectSessionInUrl do supabase-js.
+      // PKCE: troca code → session. Implicit já processa no detectSessionInUrl.
       const codeMatch = search.match(/[?&]code=([^&]+)/);
       if (codeMatch) {
         try {
           await supabase.auth.exchangeCodeForSession(codeMatch[1]);
         } catch (e) {
-          console.warn('[recovery] exchangeCodeForSession falhou:', e);
+          console.warn('[auth-link] exchangeCodeForSession falhou:', e);
         }
       }
 
       const ok = await this.waitForRecoverySession();
       if (ok) {
-        await this.handlePasswordRecovery();
+        if (authType === 'recovery') {
+          // Reset de senha → form de nova senha.
+          await this.handlePasswordRecovery();
+        } else {
+          // Confirmação de cadastro / magic link → e-mail confirmado e
+          // sessão criada. Limpa o token da URL e manda pro destino
+          // (getDestination decide app x planos conforme a assinatura).
+          history.replaceState(null, '', '/login');
+          this.showAlert(t('auth.login.emailConfirmedRedirect'), 'success');
+          const dest = await this.getDestination();
+          setTimeout(() => { window.location.href = dest; }, 800);
+        }
         return;
       }
-      // Token inválido/expirado → mostra erro mas deixa o form de login
-      this.showAlert(t('auth.login.recoveryInvalid'), 'error');
+      // Token inválido/expirado → erro, mas deixa o form de login utilizável.
+      this.showAlert(authType === 'recovery' ? t('auth.login.recoveryInvalid') : t('auth.login.confirmInvalid'), 'error');
       this.setupEventListeners();
       this.setupNativeRegisterLink();
       return;

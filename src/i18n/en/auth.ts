@@ -2,6 +2,8 @@
 export const auth: Record<string, string> = {
   // ─── login.ts ───────────────────────────────────────────────────────
   'auth.login.recoveryInvalid': 'Recovery link invalid or expired. Request a new one.',
+  'auth.login.emailConfirmedRedirect': 'Email confirmed! Signing in...',
+  'auth.login.confirmInvalid': 'Confirmation link invalid or expired. Request a new one at sign-up.',
   'auth.login.newPasswordTitle': 'New password',
   'auth.login.newPasswordSub': 'Enter your new password below',
   'auth.login.newPasswordFieldLabel': 'New password',
