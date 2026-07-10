@@ -20,6 +20,7 @@ import { SetlistEditorUI } from './ui/SetlistEditorUI';
 import { ConversionManager } from './ui/ConversionManager';
 import { MAX_CHANNELS, AUTO_CYMBAL_GAIN, type PatternType, type SequencerState } from './types';
 import { expandPattern, expandVolumes, normalizeMidiPath } from './utils/helpers';
+import { withNetTimeout } from './utils/netTimeout';
 import { KeepAwake } from '@capacitor-community/keep-awake';
 import { HapticsService } from './native/HapticsService';
 import { OfflineCache } from './native/OfflineCache';
@@ -44,6 +45,11 @@ import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 // vercel.json pro mesmo plans.html, fora da lista de interceptação — abre
 // no Chrome de verdade, sem precisar de release nas lojas.
 const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/assinar';
+
+// withNetTimeout: corta promises de rede penduradas (navigator.onLine
+// mente offline). Movido pra ./utils/netTimeout pra ser compartilhado com
+// SetlistManager/UserRhythmService — os initWithUser deles também penduravam
+// o boot. Ver o doc completo lá.
 
 /** Roteia ação de "ir pros planos" respeitando compliance:
  *  - iOS nativo → /plans interno (StoreKit/IAP)
@@ -709,7 +715,11 @@ class RhythmSequencer {
       // Inicializar favoritos — online: Supabase, offline: cache local
       try {
         const { supabase } = await import('./auth/supabase');
-        const { data: { session } } = await supabase.auth.getSession();
+        // getSession normalmente é local, mas pode disparar refresh de rede
+        // (token expirado) e pendurar se navigator.onLine mentir. Timeout
+        // pra não travar o boot — sem sessão, cai pro cache local via catch.
+        const sessRes = await withNetTimeout(supabase.auth.getSession());
+        const session = sessRes.data.session;
         if (session?.user) {
           await this.setlistManager.initWithUser(session.user.id, supabase);
           await this.userRhythmService.initWithUser(session.user.id, supabase);
@@ -1495,7 +1505,7 @@ class RhythmSequencer {
     // ─── Modo online: autenticação normal ───────────────────────────
     let session;
     try {
-      const result = await supabase.auth.getSession();
+      const result = await withNetTimeout(supabase.auth.getSession());
       session = result.data.session;
     } catch {
       // Falha de rede — navigator.onLine mentiu (comum no Capacitor)
@@ -1528,15 +1538,18 @@ class RhythmSequencer {
     // Validar token
     let userError;
     try {
-      const result = await supabase.auth.getUser();
+      const result = await withNetTimeout(supabase.auth.getUser());
       userError = result.error;
     } catch {
-      // Rede caiu durante validação — usar cache
+      // Rede caiu/pendurou durante validação — usar cache E re-armar a
+      // revalidação pra quando a net voltar (senão o acesso/assinatura
+      // não atualiza sozinho na reconexão).
       if (OfflineCache.hasValidOfflineAccess()) {
         const cached = OfflineCache.getProfile();
         if (cached?.subscriptionExpiresAt) {
           this.showSubscriptionBanner(cached.subscriptionStatus, new Date(cached.subscriptionExpiresAt), cached.subscriptionPlan);
         }
+        window.addEventListener('online', () => this.checkAccess(), { once: true });
         return true;
       }
       internalNav('/login');
@@ -1544,28 +1557,65 @@ class RhythmSequencer {
     }
 
     if (userError) {
-      // Tentar refresh do token antes de deslogar
-      const { error: refreshError } = await supabase.auth.refreshSession();
+      // Tentar refresh do token antes de deslogar. Timeout + try/catch:
+      // offline com onLine mentindo, o refresh também penduraria.
+      let refreshError: unknown = null;
+      try {
+        const r = await withNetTimeout(supabase.auth.refreshSession());
+        refreshError = r.error;
+      } catch {
+        refreshError = new Error('net-timeout');
+      }
       if (refreshError) {
-        // Refresh falhou — se tem cache offline valido, usar
+        // Refresh falhou/pendurou — cache offline + re-arma reconexão.
         if (OfflineCache.hasValidOfflineAccess()) {
           const cached = OfflineCache.getProfile();
           if (cached?.subscriptionExpiresAt) {
             this.showSubscriptionBanner(cached.subscriptionStatus, new Date(cached.subscriptionExpiresAt), cached.subscriptionPlan);
           }
+          window.addEventListener('online', () => this.checkAccess(), { once: true });
           return true;
         }
-        await supabase.auth.signOut();
+        // Só desloga se o refresh REJEITOU de verdade (token inválido).
+        // Se foi TIMEOUT de rede (offline mentindo), NÃO desloga: manda
+        // pro login sem signOut, pra não perder a sessão por causa de
+        // rede ruim no meio do show.
+        if ((refreshError as Error)?.message !== 'net-timeout') {
+          await supabase.auth.signOut();
+        }
         internalNav('/login');
         return false;
       }
     }
 
-    const { data: profile } = await supabase
-      .from('gdrums_profiles')
-      .select('role, subscription_status, subscription_expires_at, subscription_plan, active_session_id, cpf_hash, phone')
-      .eq('id', session.user.id)
-      .single();
+    // Perfil do banco. Com timeout + fallback: essa query também
+    // penduraria offline (onLine mentindo) e travava o boot — era a
+    // pior porque nem try/catch tinha. Se pendurar/falhar e existir
+    // cache offline válido, entra com o cache em vez de travar.
+    let profile: any = null;
+    try {
+      const res = await withNetTimeout(Promise.resolve(
+        supabase
+          .from('gdrums_profiles')
+          .select('role, subscription_status, subscription_expires_at, subscription_plan, active_session_id, cpf_hash, phone')
+          .eq('id', session.user.id)
+          .single()
+      ));
+      profile = (res as { data: any }).data;
+    } catch {
+      if (OfflineCache.hasValidOfflineAccess()) {
+        const cached = OfflineCache.getProfile();
+        if (cached?.subscriptionExpiresAt) {
+          this.showSubscriptionBanner(cached.subscriptionStatus, new Date(cached.subscriptionExpiresAt), cached.subscriptionPlan);
+        }
+        this.userRole = cached?.role === 'admin' ? 'admin' : 'user';
+        window.addEventListener('online', () => this.checkAccess(), { once: true });
+        return true;
+      }
+      // Sem cache — não trava: manda pro login (com rede o login funciona).
+      internalNav('/login');
+      return false;
+    }
 
     // Guardar role do usuário (vindo do banco, não do client)
     this.userRole = (profile?.role === 'admin') ? 'admin' : 'user';

@@ -1,6 +1,6 @@
 // Gerenciamento de arquivos (salvar/carregar projetos)
 
-import { MAX_CHANNELS, type SavedProject, type SavedPattern, type AudioFileData, type PatternType } from '../types';
+import { MAX_CHANNELS, type SavedProject, type SavedVariation, type SavedPattern, type AudioFileData, type PatternType } from '../types';
 import type { StateManager } from '../core/StateManager';
 import type { IAudioEngine } from '../core/audio/IAudioEngine';
 import { arrayBufferToBase64, expandPattern, expandVolumes, expandOffsets, normalizeMidiPath } from '../utils/helpers';
@@ -14,19 +14,26 @@ export class FileManager {
     this.audioManager = audioManager;
   }
 
-  async saveProject(): Promise<void> {
-    const state = this.stateManager.getState();
-    // Helper: só inclui offsets se tiver ao menos uma célula != 0
-    // (mantém JSONs enxutos e diffs de git limpos nos 72 ritmos oficiais)
-    const hasOffsets = (grid?: number[][]): boolean => {
-      if (!grid) return false;
-      for (const row of grid) for (const v of row) if (v && Math.abs(v) > 0.001) return true;
-      return false;
-    };
-    const mapVar = (v: any) => ({
+  // Helper: só inclui offsets se tiver ao menos uma célula != 0
+  // (mantém JSONs enxutos e diffs de git limpos nos ritmos oficiais)
+  private hasOffsets(grid?: number[][]): boolean {
+    if (!grid) return false;
+    for (const row of grid) for (const v of row) if (v && Math.abs(v) > 0.001) return true;
+    return false;
+  }
+
+  // Serialização ÚNICA de uma variação — usada tanto no export pra ARQUIVO
+  // (saveProject) quanto no salvar em Meus Ritmos / repertório
+  // (exportProjectAsJSON). Antes eram dois mapeamentos duplicados que
+  // DIVERGIRAM: o de arquivo incluía `offsets` (o groove/swing por célula,
+  // v1.6) e o de Meus Ritmos NÃO — então ritmo salvo ou posto no repertório
+  // perdia o swing e tocava reto. Um serializador só garante que ritmo
+  // salvo == ritmo normal, pra sempre.
+  private serializeVariation(v: any): SavedVariation {
+    return {
       pattern: v.pattern,
       volumes: v.volumes,
-      ...(hasOffsets(v.offsets) ? { offsets: v.offsets } : {}),
+      ...(this.hasOffsets(v.offsets) ? { offsets: v.offsets } : {}),
       audioFiles: v.channels.map((ch: any) => ({
         fileName: ch.fileName,
         audioData: '',
@@ -34,17 +41,23 @@ export class FileManager {
       })),
       steps: v.steps,
       speed: v.speed
-    });
-    const project: SavedProject = {
+    };
+  }
+
+  // Snapshot completo do estado no formato v1.6 (com offsets/groove).
+  // Fonte única pro download de arquivo E pro salvar em Meus Ritmos.
+  private buildProjectSnapshot(): SavedProject {
+    const state = this.stateManager.getState();
+    return {
       version: '1.6',
       tempo: state.tempo,
       beatsPerBar: state.beatsPerBar,
       patternSteps: state.patternSteps,
       variations: {
-        main: state.variations.main.map(mapVar),
-        fill: state.variations.fill.map(mapVar),
-        end: state.variations.end.map(mapVar),
-        intro: state.variations.intro.map(mapVar)
+        main: state.variations.main.map(v => this.serializeVariation(v)),
+        fill: state.variations.fill.map(v => this.serializeVariation(v)),
+        end: state.variations.end.map(v => this.serializeVariation(v)),
+        intro: state.variations.intro.map(v => this.serializeVariation(v))
       },
       fillStartSound: {
         fileName: state.fillStartSound.fileName,
@@ -56,7 +69,10 @@ export class FileManager {
       },
       timestamp: new Date().toISOString()
     };
+  }
 
+  async saveProject(): Promise<void> {
+    const project = this.buildProjectSnapshot();
     const json = JSON.stringify(project, null, 2);
     this.downloadFile(json, 'projeto-ritmo.json', 'application/json');
   }
@@ -391,69 +407,13 @@ export class FileManager {
 
   // ─── Export/Import como JSON (para ritmos pessoais) ────────────────
 
+  // Snapshot pra Meus Ritmos / repertório. IDÊNTICO ao saveProject (mesmo
+  // v1.6 com offsets/groove) — um ritmo salvo tem que ter TUDO que o ritmo
+  // normal tem: pattern, volumes, offsets (swing/groove), steps, speed,
+  // áudios, sons de virada. Sem paridade, o ritmo tocava diferente do
+  // original ao vir do repertório.
   exportProjectAsJSON(): SavedProject {
-    const state = this.stateManager.getState();
-    return {
-      version: '1.5',
-      tempo: state.tempo,
-      beatsPerBar: state.beatsPerBar,
-      patternSteps: state.patternSteps,
-      variations: {
-        main: state.variations.main.map(v => ({
-          pattern: v.pattern,
-          volumes: v.volumes,
-          audioFiles: v.channels.map(ch => ({
-            fileName: ch.fileName,
-            audioData: '',
-            midiPath: ch.midiPath
-          })),
-          steps: v.steps,
-          speed: v.speed
-        })),
-        fill: state.variations.fill.map(v => ({
-          pattern: v.pattern,
-          volumes: v.volumes,
-          audioFiles: v.channels.map(ch => ({
-            fileName: ch.fileName,
-            audioData: '',
-            midiPath: ch.midiPath
-          })),
-          steps: v.steps,
-          speed: v.speed
-        })),
-        end: state.variations.end.map(v => ({
-          pattern: v.pattern,
-          volumes: v.volumes,
-          audioFiles: v.channels.map(ch => ({
-            fileName: ch.fileName,
-            audioData: '',
-            midiPath: ch.midiPath
-          })),
-          steps: v.steps,
-          speed: v.speed
-        })),
-        intro: state.variations.intro.map(v => ({
-          pattern: v.pattern,
-          volumes: v.volumes,
-          audioFiles: v.channels.map(ch => ({
-            fileName: ch.fileName,
-            audioData: '',
-            midiPath: ch.midiPath
-          })),
-          steps: v.steps,
-          speed: v.speed
-        }))
-      },
-      fillStartSound: {
-        fileName: state.fillStartSound.fileName,
-        midiPath: state.fillStartSound.midiPath
-      },
-      fillReturnSound: {
-        fileName: state.fillReturnSound.fileName,
-        midiPath: state.fillReturnSound.midiPath
-      },
-      timestamp: new Date().toISOString()
-    };
+    return this.buildProjectSnapshot();
   }
 
   async loadProjectFromData(data: SavedProject): Promise<void> {

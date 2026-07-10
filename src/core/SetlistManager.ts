@@ -23,6 +23,7 @@
 
 import type { Setlist, SetlistItem } from '../types';
 import { persistSet, persistGet, requestPersistentStorage } from '../utils/persistentStore';
+import { withNetTimeout } from '../utils/netTimeout';
 import { t } from '../i18n';
 
 const LOCAL_KEY_V2 = 'gdrums-setlists-v2';
@@ -220,18 +221,26 @@ export class SetlistManager {
     this.isolateFromOtherAccounts(userId);
 
     // Offline: mantém local. Quando voltar online, saveRemote vai sincronizar.
-    if (!navigator.onLine) return;
+    if (!navigator.onLine) { if (this.totalItemCount() > 0) this.remoteDirty = true; return; }
 
     try {
-      const { data, error } = await supabase
-        .from('gdrums_favorites')
-        .select('items, current_index, setlists, updated_at')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // withNetTimeout: navigator.onLine MENTE offline (Android WebView / PC
+      // com WiFi-sem-internet). Sem timeout, esta query pendura no TCP do SO
+      // e como isto é AWAITED no boot (main.ts), o app trava eternamente no
+      // "carregando" — mesmo com o checkAccess já corrigido. O builder do
+      // Supabase é thenable, por isso o Promise.resolve(...).
+      const { data, error } = await withNetTimeout(Promise.resolve(
+        supabase
+          .from('gdrums_favorites')
+          .select('items, current_index, setlists, updated_at')
+          .eq('user_id', userId)
+          .maybeSingle()
+      )) as { data: any; error: any };
 
       // Erro de rede — preserva local intacto
       if (error) {
         console.warn('[SetlistManager] Falha ao ler banco:', error);
+        if (this.totalItemCount() > 0) this.remoteDirty = true;
         return;
       }
 
@@ -330,7 +339,11 @@ export class SetlistManager {
       }
       // Caso 5: ambos vazios — nada a fazer
     } catch (e) {
-      console.warn('[SetlistManager] Erro no initWithUser, preservando local:', e);
+      // Timeout de rede (onLine mentiu) ou erro — preserva local e marca
+      // dirty pra o retry (evento 'online' / intervalo 20s) ressincronizar
+      // quando a rede voltar de verdade.
+      console.warn('[SetlistManager] Erro/timeout no initWithUser, preservando local:', e);
+      if (this.totalItemCount() > 0) this.remoteDirty = true;
     }
   }
 
