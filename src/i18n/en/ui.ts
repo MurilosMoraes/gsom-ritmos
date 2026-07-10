@@ -30,7 +30,7 @@ export const ui: Record<string, string> = {
   // ─── ConversionManager.ts — upsell triggers (48h trial) ────────────
   'ui.conversion.firstRhythmTouch.overline': 'Real accompaniment',
   'ui.conversion.firstRhythmTouch.title': "That's a real band.",
-  'ui.conversion.firstRhythmTouch.body': "You just played with professional fills, intros, and endings. Lock in access while you're trying it out — 10% OFF for new subscribers.",
+  'ui.conversion.firstRhythmTouch.body': "You just played with professional fills, intros, and endings. Lock in access while you're trying it out, 10% OFF for new subscribers.",
   'ui.conversion.firstRhythmTouch.ctaPrimary': 'See plans with 10% OFF',
   'ui.conversion.firstRhythmTouch.ctaSecondary': 'Keep exploring',
 
@@ -72,13 +72,13 @@ export const ui: Record<string, string> = {
 
   'ui.conversion.returningAfterAbsence.overline': 'Great to see you back',
   'ui.conversion.returningAfterAbsence.title': 'Your trial is still going.',
-  'ui.conversion.returningAfterAbsence.body': "Since you're back — get 10% OFF to lock in your plan before the trial ends.",
+  'ui.conversion.returningAfterAbsence.body': "Since you're back, get 10% OFF to lock in your plan before the trial ends.",
   'ui.conversion.returningAfterAbsence.ctaPrimary': 'Grab 10% OFF',
   'ui.conversion.returningAfterAbsence.ctaSecondary': 'Not now',
 
   'ui.conversion.trialHalfway.overline': 'Halfway through your trial',
   'ui.conversion.trialHalfway.title': "You've got 24 hours left.",
-  'ui.conversion.trialHalfway.body': "A lot of people decide around now — you've already tried what you needed to. If you're subscribing, it's 10% OFF your first month.",
+  'ui.conversion.trialHalfway.body': "A lot of people decide around now, you've already tried what you needed to. If you're subscribing, it's 10% OFF your first month.",
   'ui.conversion.trialHalfway.ctaPrimary': 'Subscribe with 10% OFF',
   'ui.conversion.trialHalfway.ctaSecondary': 'Keep exploring',
 
@@ -90,7 +90,7 @@ export const ui: Record<string, string> = {
 
   'ui.conversion.trialLastHour.overline': 'Last hour of your trial',
   'ui.conversion.trialLastHour.title': 'This is your last window.',
-  'ui.conversion.trialLastHour.body': "One hour left before access locks. Don't lose what you set up — 10% OFF, right now only.",
+  'ui.conversion.trialLastHour.body': "One hour left before access locks. Don't lose what you set up, 10% OFF, right now only.",
   'ui.conversion.trialLastHour.ctaPrimary': 'Lock it in with 10% OFF',
   'ui.conversion.trialLastHour.ctaSecondary': "That's fine",
 

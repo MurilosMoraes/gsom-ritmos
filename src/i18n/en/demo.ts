@@ -26,7 +26,7 @@ export const demo: Record<string, string> = {
   'demo.convert.body': 'You just played with professional accompaniment. Create an account to unlock the other {count} rhythms, connect a Bluetooth pedal, and build your setlist.',
   'demo.convert.offerSub': '✓ No card required · ✓ No automatic charges',
   'demo.convert.secondary': 'Keep exploring',
-  'demo.convert.reassure': "It's really free — just create your account and start playing.",
+  'demo.convert.reassure': "It's really free, just create your account and start playing.",
 
   // Shared between conversion modal and expired preview screen
   'demo.offer.badge': '100% Free',

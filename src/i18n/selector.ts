@@ -108,13 +108,14 @@ export function injectLanguagePill(anchorId?: string): void {
     // esquerda, longe do CTA "Começar grátis" na direita
     anchor.insertBefore(pill, anchor.firstChild);
   } else {
-    // FLUTUANTE: canto superior ESQUERDO. A direita das páginas de auth
-    // tem o CTA "Criar conta grátis" — a pílula batia em cima dele. A
-    // esquerda (logo é centralizada) fica sempre livre.
+    // FLUTUANTE: canto superior DIREITO (mais visível que a esquerda).
+    // Antes batia no CTA de cadastro porque o CSS de botão da página
+    // esticava a pílula (width:100%); com o width:auto !important acima
+    // ela é só um botãozinho no canto e não sobrepõe mais nada.
     pill.style.setProperty('position', 'fixed', 'important');
     pill.style.setProperty('top', 'calc(env(safe-area-inset-top, 0px) + 12px)', 'important');
-    pill.style.setProperty('left', 'calc(env(safe-area-inset-left, 0px) + 14px)', 'important');
-    pill.style.setProperty('right', 'auto', 'important');
+    pill.style.setProperty('right', 'calc(env(safe-area-inset-right, 0px) + 14px)', 'important');
+    pill.style.setProperty('left', 'auto', 'important');
     pill.style.setProperty('z-index', '99990', 'important');
     document.body.appendChild(pill);
   }
