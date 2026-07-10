@@ -30,7 +30,7 @@ export const ui: Record<string, string> = {
   // ─── ConversionManager.ts — gatilhos de upsell (trial 48h) ─────────
   'ui.conversion.firstRhythmTouch.overline': 'Acompañamiento real',
   'ui.conversion.firstRhythmTouch.title': 'Esto es una banda de verdad.',
-  'ui.conversion.firstRhythmTouch.body': 'Acabas de tocar con fills, intros y finales profesionales. Asegura tu acceso mientras estás probando — 10% OFF para suscriptores nuevos.',
+  'ui.conversion.firstRhythmTouch.body': 'Acabas de tocar con fills, intros y finales profesionales. Asegura tu acceso mientras estás probando, 10% OFF para suscriptores nuevos.',
   'ui.conversion.firstRhythmTouch.ctaPrimary': 'Ver planes con 10% OFF',
   'ui.conversion.firstRhythmTouch.ctaSecondary': 'Seguir probando',
 
@@ -54,7 +54,7 @@ export const ui: Record<string, string> = {
 
   'ui.conversion.saveRhythmAttempt.overline': 'Ritmos personalizados',
   'ui.conversion.saveRhythmAttempt.title': 'Estás armando tu propio ritmo.',
-  'ui.conversion.saveRhythmAttempt.body': 'Los ritmos guardados quedan en tu cuenta después de la prueba — siempre que el plan esté activo. 10% OFF si te suscribes ahora.',
+  'ui.conversion.saveRhythmAttempt.body': 'Los ritmos guardados quedan en tu cuenta después de la prueba, siempre que el plan esté activo. 10% OFF si te suscribes ahora.',
   'ui.conversion.saveRhythmAttempt.ctaPrimary': 'Suscribirse con 10% OFF',
   'ui.conversion.saveRhythmAttempt.ctaSecondary': 'Volver al ritmo',
 
@@ -72,13 +72,13 @@ export const ui: Record<string, string> = {
 
   'ui.conversion.returningAfterAbsence.overline': 'Qué bueno verte de vuelta',
   'ui.conversion.returningAfterAbsence.title': 'Tu prueba todavía sigue activa.',
-  'ui.conversion.returningAfterAbsence.body': 'Aprovecha que volviste — 10% OFF para cerrar el plan antes de que termine la prueba.',
+  'ui.conversion.returningAfterAbsence.body': 'Aprovecha que volviste, 10% OFF para cerrar el plan antes de que termine la prueba.',
   'ui.conversion.returningAfterAbsence.ctaPrimary': 'Aprovechar 10% OFF',
   'ui.conversion.returningAfterAbsence.ctaSecondary': 'Ahora no',
 
   'ui.conversion.trialHalfway.overline': 'Ya pasó la mitad de la prueba',
   'ui.conversion.trialHalfway.title': 'Te quedan 24 horas más.',
-  'ui.conversion.trialHalfway.body': 'Mucha gente decide en este punto — ya probó lo que necesitaba. Si vas a suscribirte, 10% OFF solo en el primer mes.',
+  'ui.conversion.trialHalfway.body': 'Mucha gente decide en este punto, ya probó lo que necesitaba. Si vas a suscribirte, 10% OFF solo en el primer mes.',
   'ui.conversion.trialHalfway.ctaPrimary': 'Suscribirse con 10% OFF',
   'ui.conversion.trialHalfway.ctaSecondary': 'Seguir probando',
 

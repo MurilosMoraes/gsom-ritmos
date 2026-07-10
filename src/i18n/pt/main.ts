@@ -27,7 +27,7 @@ export const main: Record<string, string> = {
 
   // ── Push notification banner ──
   'main.pushBanner.title': 'Receba avisos importantes',
-  'main.pushBanner.subtitle': 'Trial expirando, promoções e novidades — só o essencial.',
+  'main.pushBanner.subtitle': 'Trial expirando, promoções e novidades, só o essencial.',
   'main.pushBanner.skip': 'Agora não',
   'main.pushBanner.allow': 'Permitir',
   'main.pushBanner.waiting': 'Aguarde...',
@@ -38,7 +38,7 @@ export const main: Record<string, string> = {
   'main.offlineDownload.titleUpdate': 'Conteúdo atualizado',
   'main.offlineDownload.titleFirst': 'Pronto pro modo offline?',
   'main.offlineDownload.subUpdate': 'Tem ritmos novos e melhorias. Baixar tudo agora pra usar offline?',
-  'main.offlineDownload.subFirst': 'Vamos baixar todos os ritmos e sons pro seu celular. Depois disso, o app funciona sem internet — perfeito pra palco, lugar sem sinal, no avião.',
+  'main.offlineDownload.subFirst': 'Vamos baixar todos os ritmos e sons pro seu celular. Depois disso, o app funciona sem internet, perfeito pra palco, lugar sem sinal, no avião.',
   'main.offlineDownload.preparing': 'Preparando…',
   'main.offlineDownload.skip': 'Agora não',
   'main.offlineDownload.start': 'Baixar agora',
@@ -50,7 +50,7 @@ export const main: Record<string, string> = {
   'main.offlineDownload.progress': '{current} de {total} ({pct}%)',
   'main.offlineDownload.successToast': 'Tudo pronto! O app funciona offline agora.',
   'main.offlineDownload.failedToast': 'Download terminou com {count} falhas. Tente de novo no menu.',
-  'main.offlineDownload.retryHint': '{count} arquivos falharam — toque "Baixar agora" pra tentar de novo',
+  'main.offlineDownload.retryHint': '{count} arquivos falharam, toque "Baixar agora" pra tentar de novo',
   'main.offlineDownload.retry': 'Tentar de novo',
   'main.offlineDownload.errorText': 'Erro no download. Tente de novo.',
 
@@ -63,7 +63,7 @@ export const main: Record<string, string> = {
   'main.whatsNew.section2.label': 'Pausa que te segura no tempo',
   'main.whatsNew.section2.body': 'Ao pausar, entra uma contagem no chimbal e o botão pisca. Ao continuar, o ritmo volta cravado no tempo. Dá pra fazer virada ou finalizar direto da pausa, e segurar o botão de pausa ajusta o volume da contagem.',
   'main.whatsNew.section3.label': 'Equalizador e Reverb',
-  'main.whatsNew.section3.body': 'Equalizador de 5 bandas e um reverb leve pra amaciar o som — nas configurações.',
+  'main.whatsNew.section3.body': 'Equalizador de 5 bandas e um reverb leve pra amaciar o som, nas configurações.',
   'main.whatsNew.section4.label': 'Desative o que não usa',
   'main.whatsNew.section4.body': 'Segure 1,5 segundo numa variação de ritmo ou virada pra desligá-la.',
   'main.whatsNew.section5.label': 'Repertório no automático e até 30',
@@ -73,7 +73,7 @@ export const main: Record<string, string> = {
   'main.whatsNew.closeAriaLabel': 'Fechar',
   'main.whatsNew.badge': 'Destaque',
   'main.whatsNew.cta': 'Continuar',
-  'main.whatsNew.overlineVersion': '{overline} — versão {version}',
+  'main.whatsNew.overlineVersion': '{overline}, versão {version}',
 
   // ── Access control / offline gating ──
   'main.access.offlineReasonDefault': 'Você precisa estar conectado para acessar o GDrums.',
@@ -293,7 +293,7 @@ export const main: Record<string, string> = {
   // ── Install suggestion (bottom sheet) ──
   'main.installSuggestion.headlineAndroid': 'Baixe o app oficial',
   'main.installSuggestion.headlineDefault': 'Instale o GDrums',
-  'main.installSuggestion.sublineAndroid': 'Versão completa na Play Store — performance nativa e notificações',
+  'main.installSuggestion.sublineAndroid': 'Versão completa na Play Store, performance nativa e notificações',
   'main.installSuggestion.sublineDefault': 'Acesso rapido, tela cheia e funciona offline',
   'main.installSuggestion.androidStep': 'Toque em <strong style="color:#fff;">Abrir Play Store</strong> para instalar',
   'main.installSuggestion.iosStep1': 'Toque em <strong style="color:#fff;">Compartilhar</strong>',
@@ -428,7 +428,7 @@ export const main: Record<string, string> = {
   'main.bpmModal.nudgePlus5AriaLabel': 'Aumentar 5 BPM',
   'main.bpmModal.sliderAriaLabel': 'Ajuste fino do BPM',
   'main.bpmModal.restoreButton': 'Restaurar {bpm} BPM',
-  'main.bpmModal.tapHintOneMore': 'Continue tocando — mais <strong>1 tap</strong>',
+  'main.bpmModal.tapHintOneMore': 'Continue tocando, mais <strong>1 tap</strong>',
   'main.bpmModal.tapResultCounted': '<strong>{bpm}</strong> BPM · {taps} taps',
   'main.bpmModal.tapResultContinue': '<strong>{bpm}</strong> BPM · continue pra afinar',
 
@@ -460,7 +460,7 @@ export const main: Record<string, string> = {
   'main.accountModal.savePasswordButton': 'Salvar nova senha',
   'main.accountModal.deleteAccountButton': 'Excluir minha conta',
   'main.accountModal.deleteWarning': '<strong style="color:#FF4466;">Esta ação é irreversível.</strong> Seus ritmos pessoais, favoritos e dados de cadastro serão apagados. Você não poderá recuperar a conta depois.',
-  'main.accountModal.deleteWarningRefund': 'Se você tem assinatura ativa, ela não é automaticamente cancelada — fale conosco pelo WhatsApp pra solicitar reembolso se aplicável.',
+  'main.accountModal.deleteWarningRefund': 'Se você tem assinatura ativa, ela não é automaticamente cancelada, fale conosco pelo WhatsApp pra solicitar reembolso se aplicável.',
   'main.accountModal.deleteCancelButton': 'Cancelar',
   'main.accountModal.deleteConfirmButton': 'Excluir para sempre',
   'main.accountModal.passwordToggleCancel': 'Cancelar',
@@ -474,7 +474,7 @@ export const main: Record<string, string> = {
   'main.accountModal.deleteAccountError': 'Erro ao excluir. Tente novamente ou contate o suporte.',
 
   // ── Upgrade modal ──
-  'main.upgradeModal.threeYearsSuffix': ' — 3 Anos',
+  'main.upgradeModal.threeYearsSuffix': ', 3 Anos',
   'main.upgradeModal.perMonthPrice': 'R$ {price}/mês',
   'main.upgradeModal.planValueLabel': 'Valor do plano',
   'main.upgradeModal.priceDisplay': 'R$ {price}',

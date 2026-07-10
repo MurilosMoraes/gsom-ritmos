@@ -4,11 +4,11 @@ export const demo: Record<string, string> = {
   'demo.tour.step1.title': 'Empieza tocando',
   'demo.tour.step1.body': 'Toca el Ritmo 1 para escuchar entrar a la banda.',
   'demo.tour.step2.title': 'Ahora suelta un fill',
-  'demo.tour.step2.body': 'Toca el Fill 2 — entra en el tiempo justo, como un baterista de verdad.',
+  'demo.tour.step2.body': 'Toca el Fill 2, entra en el tiempo justo, como un baterista de verdad.',
   'demo.tour.step3.title': 'Cambia de ritmo',
   'demo.tour.step3.body': 'Toca el Ritmo 3. La app hace el fill automático en la transición.',
   'demo.tour.step4.title': 'Finaliza la canción',
-  'demo.tour.step4.body': 'El Final cierra la canción en el tiempo justo — con platillo de salida incluido. Tócalo para ver.',
+  'demo.tour.step4.body': 'El Final cierra la canción en el tiempo justo, con platillo de salida incluido. Tócalo para ver.',
   'demo.tour.skip': 'Saltar tour',
 
   // Contador da prévia (header)
@@ -65,7 +65,7 @@ export const demo: Record<string, string> = {
   'demo.expired.overline': 'Tocaste bien',
   'demo.expired.title': 'Ahora es momento de tener la banda completa.',
   'demo.expired.bodyPre': 'Tocaste {count} ritmos. La biblioteca tiene',
-  'demo.expired.bodyPost': '— Vaneira, Sertanejo, Gospel, Pagode, Forró, Reggae, Rock y mucho más, cada uno con fills, intros y finales listos para el escenario.',
+  'demo.expired.bodyPost': ': Vaneira, Sertanejo, Gospel, Pagode, Forró, Reggae, Rock y mucho más, cada uno con fills, intros y finales listos para el escenario.',
   'demo.expired.featureRhythmsCount': 'ritmos completos',
   'demo.expired.featureBluetoothBadge': 'BT',
   'demo.expired.featureBluetoothLabel': 'pedal Bluetooth',

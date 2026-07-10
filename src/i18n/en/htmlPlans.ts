@@ -3,7 +3,7 @@ export const htmlPlans: Record<string, string> = {
   // ─── plans.html ───────────────────────────────────────────────────
   'htmlPlans.plansDocTitle': 'GDrums Plans | Starting at R$ 9,90',
   'htmlPlans.plansMetaDescription': 'GDrums plans with access to 155 rhythms, Bluetooth pedal support (sold separately), and iOS/Android apps. Monthly R$ 29, Annual R$ 228, King of the Stage (3 years) R$ 522.',
-  'htmlPlans.plansOgTitle': 'GDrums Plans — Starting at R$ 9,90',
+  'htmlPlans.plansOgTitle': 'GDrums Plans - Starting at R$ 9,90',
   'htmlPlans.plansOgDescription': 'Full access: 155 rhythms, Bluetooth pedal support, iOS/Android apps. 48h free trial, no card required.',
   'htmlPlans.plansTwitterDescription': 'Full access: 155 rhythms, Bluetooth pedal support, iOS/Android apps.',
   'htmlPlans.plansSupportLink': 'Support',
@@ -28,7 +28,7 @@ export const htmlPlans: Record<string, string> = {
   // ─── demo.html ────────────────────────────────────────────────────
   'htmlPlans.demoDocTitle': 'GDrums | Free Trial, No Sign-Up | Virtual Drummer',
   'htmlPlans.demoMetaDescription': 'Try GDrums now with no sign-up. 5 rhythms unlocked, professional accompaniment for live playing. Library with 155 Brazilian rhythms.',
-  'htmlPlans.demoOgTitle': 'GDrums — Free Trial, No Sign-Up',
+  'htmlPlans.demoOgTitle': 'GDrums - Free Trial, No Sign-Up',
   'htmlPlans.demoOgDescription': '5 rhythms unlocked, no sign-up. Library with 155 Brazilian rhythms, Bluetooth pedal, fills, and endings.',
   'htmlPlans.demoTwitterDescription': '5 rhythms unlocked. Library with 155 Brazilian rhythms, Bluetooth pedal.',
   'htmlPlans.demoTopbarHeadline': `

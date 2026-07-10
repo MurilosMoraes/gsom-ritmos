@@ -31,20 +31,20 @@
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="GDrums">
-  <meta property="og:title" content="GDrums — Teste Grátis sem Cadastro" data-i18n-content="htmlPlans.demoOgTitle">
+  <meta property="og:title" content="GDrums - Teste Grátis sem Cadastro" data-i18n-content="htmlPlans.demoOgTitle">
   <meta property="og:description" content="5 ritmos liberados sem cadastro. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth, viradas e finalizações." data-i18n-content="htmlPlans.demoOgDescription">
   <meta property="og:image" content="https://gdrums.com.br/img/icon-512.png">
   <meta property="og:url" content="https://gdrums.com.br/demo">
   <meta property="og:locale" content="pt_BR">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="GDrums — Teste Grátis sem Cadastro" data-i18n-content="htmlPlans.demoOgTitle">
+  <meta name="twitter:title" content="GDrums - Teste Grátis sem Cadastro" data-i18n-content="htmlPlans.demoOgTitle">
   <meta name="twitter:description" content="5 ritmos liberados. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth." data-i18n-content="htmlPlans.demoTwitterDescription">
   <meta name="twitter:image" content="https://gdrums.com.br/img/icon-512.png">
   <link rel="stylesheet" href="styles.css">
   <style>
     /* ─── Topbar de conversão ───
-       Não é só identidade visual — é uma peça ativa que vende o trial.
+       Não é só identidade visual, é uma peça ativa que vende o trial.
        Hierarquia: headline de valor > progresso > CTA gordo com brilho.
        Em mobile vira compacto de 1 linha; desktop tem mais ar e peso. */
     .demo-topbar {
@@ -137,11 +137,6 @@
     }
     .demo-topbar-cta:hover { opacity: 0.92; transform: translateY(-1px); }
     .demo-topbar-cta:active { transform: translateY(0) scale(0.98); }
-    .demo-topbar-cta-arrow {
-      font-size: 0.95em;
-      line-height: 1;
-      transform: translateY(-0.5px);
-    }
 
     /* Barra de progresso na base — mais visível que antes */
     .demo-topbar-bar {
@@ -171,7 +166,6 @@
         padding: 0.5rem 0.85rem;
         font-size: 0.76rem;
       }
-      .demo-topbar-cta-arrow { display: none; }
     }
     /* Banner de valor — fica logo abaixo do topbar. Tom editorial,
        não vendedor. Clique no CTA vai direto pra cadastro. */
@@ -496,7 +490,7 @@
 
     /* ─── Tour guiado ───
        Tooltip apontando pro elemento + pulse no target.
-       Nunca bloqueia a UI — só reforça a ação. */
+       Nunca bloqueia a UI, só reforça a ação. */
     .demo-tour-tip {
       position: absolute;
       z-index: 9500;
@@ -558,7 +552,7 @@
     /* ─── Alvo em foco ───
        Fica ACIMA da máscara de desfoque (z-index), então é o único elemento
        nítido e clicável enquanto o passo não é cumprido. Brilho ciano do app,
-       com anel que expande — bem mais chamativo que o pulse branco anterior. */
+       com anel que expande, bem mais chamativo que o pulse branco anterior. */
     .demo-tour-pulse {
       position: relative;
       z-index: 9450;
@@ -585,7 +579,7 @@
 
     /* ─── Máscara: desfoca e escurece TUDO em volta do alvo ───
        Quatro painéis (cima/baixo/esq/dir) contornando o alvo, em vez de um
-       overlay com furo — funciona em todo browser e deixa o alvo intacto e
+       overlay com furo, funciona em todo browser e deixa o alvo intacto e
        clicável. O JS posiciona os painéis a partir do rect do alvo. */
     .demo-tour-mask-panel {
       position: fixed;
@@ -801,7 +795,7 @@
 
     /* ─── Botão do catálogo, sozinho e centralizado ───
        A demo não mostra o nome do ritmo tocando, então a .fav-bar tem só o
-       botão — centralizado no eixo horizontal. */
+       botão, centralizado no eixo horizontal. */
     .fav-bar {
       display: flex;
       align-items: center;
@@ -849,7 +843,6 @@
     </div>
     <a href="/register" class="demo-topbar-cta">
       <span data-i18n="htmlPlans.demoTopbarCtaLabel">Começar grátis</span>
-      <span class="demo-topbar-cta-arrow">→</span>
     </a>
     <div class="demo-topbar-bar" id="demoBar" style="width:100%;"></div>
   </div>

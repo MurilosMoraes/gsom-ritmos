@@ -6,7 +6,7 @@ export const htmlApp: Record<string, string> = {
   // ── Topbar global ──
   'htmlApp.topbar.downloadPlayStore': 'Baixar na Play Store',
   'htmlApp.topbar.downloadAppStore': 'Baixar na App Store',
-  'htmlApp.topbar.stageModeTitle': 'Modo Show — palco com tela cheia e tela sempre ligada',
+  'htmlApp.topbar.stageModeTitle': 'Modo Show - palco com tela cheia e tela sempre ligada',
   'htmlApp.topbar.exitLabel': 'SAIR',
   'htmlApp.topbar.menuAria': 'Menu',
   'htmlApp.topbar.languageBtn': '🌎 Idioma',

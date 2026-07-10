@@ -4,7 +4,7 @@ export const htmlPlans: Record<string, string> = {
   // ─── plans.html ───────────────────────────────────────────────────
   'htmlPlans.plansDocTitle': 'Planos GDrums | A partir de R$ 9,90',
   'htmlPlans.plansMetaDescription': 'Planos do GDrums com acesso a 155 ritmos, suporte a pedal Bluetooth (vendido separadamente) e apps iOS/Android. Mensal R$ 29, Anual R$ 228, Rei dos Palcos (3 anos) R$ 522.',
-  'htmlPlans.plansOgTitle': 'Planos GDrums — A partir de R$ 9,90',
+  'htmlPlans.plansOgTitle': 'Planos GDrums - A partir de R$ 9,90',
   'htmlPlans.plansOgDescription': 'Acesso total: 155 ritmos, suporte a pedal Bluetooth, apps iOS/Android. Trial 48h grátis sem cartão.',
   'htmlPlans.plansTwitterDescription': 'Acesso total: 155 ritmos, suporte a pedal Bluetooth, apps iOS/Android.',
   'htmlPlans.plansSupportLink': 'Suporte',
@@ -29,7 +29,7 @@ export const htmlPlans: Record<string, string> = {
   // ─── demo.html ────────────────────────────────────────────────────
   'htmlPlans.demoDocTitle': 'GDrums | Teste Grátis sem Cadastro | Baterista Virtual',
   'htmlPlans.demoMetaDescription': 'Teste o GDrums agora sem cadastro. 5 ritmos liberados, acompanhamento profissional pra tocar ao vivo. Biblioteca com 155 ritmos brasileiros.',
-  'htmlPlans.demoOgTitle': 'GDrums — Teste Grátis sem Cadastro',
+  'htmlPlans.demoOgTitle': 'GDrums - Teste Grátis sem Cadastro',
   'htmlPlans.demoOgDescription': '5 ritmos liberados sem cadastro. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth, viradas e finalizações.',
   'htmlPlans.demoTwitterDescription': '5 ritmos liberados. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth.',
   'htmlPlans.demoTopbarHeadline': `

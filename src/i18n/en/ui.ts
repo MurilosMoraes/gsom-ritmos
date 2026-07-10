@@ -54,7 +54,7 @@ export const ui: Record<string, string> = {
 
   'ui.conversion.saveRhythmAttempt.overline': 'Custom rhythms',
   'ui.conversion.saveRhythmAttempt.title': "You're building your own rhythm.",
-  'ui.conversion.saveRhythmAttempt.body': 'Saved rhythms stay on your account after the trial — as long as your plan is active. 10% OFF if you subscribe now.',
+  'ui.conversion.saveRhythmAttempt.body': 'Saved rhythms stay on your account after the trial, as long as your plan is active. 10% OFF if you subscribe now.',
   'ui.conversion.saveRhythmAttempt.ctaPrimary': 'Subscribe with 10% OFF',
   'ui.conversion.saveRhythmAttempt.ctaSecondary': 'Back to the rhythm',
 

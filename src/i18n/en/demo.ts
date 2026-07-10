@@ -4,11 +4,11 @@ export const demo: Record<string, string> = {
   'demo.tour.step1.title': 'Start playing',
   'demo.tour.step1.body': 'Tap Rhythm 1 to hear the band kick in.',
   'demo.tour.step2.title': 'Now drop a fill',
-  'demo.tour.step2.body': 'Play Fill 2 — it lands right on beat, just like a real drummer.',
+  'demo.tour.step2.body': 'Play Fill 2, it lands right on beat, just like a real drummer.',
   'demo.tour.step3.title': 'Switch rhythms',
   'demo.tour.step3.body': 'Tap Rhythm 3. The app handles the fill automatically on the transition.',
   'demo.tour.step4.title': 'End the song',
-  'demo.tour.step4.body': 'The Ending wraps up the song right on time — complete with an outro cymbal. Tap it to see.',
+  'demo.tour.step4.body': 'The Ending wraps up the song right on time, complete with an outro cymbal. Tap it to see.',
   'demo.tour.skip': 'Skip tour',
 
   // Preview counter (header)
@@ -65,7 +65,7 @@ export const demo: Record<string, string> = {
   'demo.expired.overline': 'You played well',
   'demo.expired.title': "Now it's time to get the full band.",
   'demo.expired.bodyPre': 'You played {count} rhythms. The library has',
-  'demo.expired.bodyPost': '— Vaneira, Sertanejo, Gospel, Pagode, Forró, Reggae, Rock, and more, each with fills, intros, and endings ready for the stage.',
+  'demo.expired.bodyPost': ': Vaneira, Sertanejo, Gospel, Pagode, Forró, Reggae, Rock, and more, each with fills, intros, and endings ready for the stage.',
   'demo.expired.featureRhythmsCount': 'full rhythms',
   'demo.expired.featureBluetoothBadge': 'BT',
   'demo.expired.featureBluetoothLabel': 'Bluetooth pedal',

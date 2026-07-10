@@ -27,7 +27,7 @@ export const main: Record<string, string> = {
 
   // ── Push notification banner ──
   'main.pushBanner.title': 'Recibe avisos importantes',
-  'main.pushBanner.subtitle': 'Prueba por vencer, promociones y novedades — solo lo esencial.',
+  'main.pushBanner.subtitle': 'Prueba por vencer, promociones y novedades, solo lo esencial.',
   'main.pushBanner.skip': 'Ahora no',
   'main.pushBanner.allow': 'Permitir',
   'main.pushBanner.waiting': 'Espera...',
@@ -38,7 +38,7 @@ export const main: Record<string, string> = {
   'main.offlineDownload.titleUpdate': 'Contenido actualizado',
   'main.offlineDownload.titleFirst': '¿Listo para el modo offline?',
   'main.offlineDownload.subUpdate': 'Hay ritmos nuevos y mejoras. ¿Descargar todo ahora para usar offline?',
-  'main.offlineDownload.subFirst': 'Vamos a descargar todos los ritmos y sonidos a tu celular. Después de eso, la app funciona sin internet — perfecta para el escenario, lugares sin señal, en el avión.',
+  'main.offlineDownload.subFirst': 'Vamos a descargar todos los ritmos y sonidos a tu celular. Después de eso, la app funciona sin internet, perfecta para el escenario, lugares sin señal, en el avión.',
   'main.offlineDownload.preparing': 'Preparando…',
   'main.offlineDownload.skip': 'Ahora no',
   'main.offlineDownload.start': 'Descargar ahora',
@@ -50,7 +50,7 @@ export const main: Record<string, string> = {
   'main.offlineDownload.progress': '{current} de {total} ({pct}%)',
   'main.offlineDownload.successToast': '¡Todo listo! Ahora la app funciona offline.',
   'main.offlineDownload.failedToast': 'La descarga terminó con {count} fallas. Intenta de nuevo desde el menú.',
-  'main.offlineDownload.retryHint': '{count} archivos fallaron — toca "Descargar ahora" para intentar de nuevo',
+  'main.offlineDownload.retryHint': '{count} archivos fallaron, toca "Descargar ahora" para intentar de nuevo',
   'main.offlineDownload.retry': 'Intentar de nuevo',
   'main.offlineDownload.errorText': 'Error en la descarga. Intenta de nuevo.',
 
@@ -63,7 +63,7 @@ export const main: Record<string, string> = {
   'main.whatsNew.section2.label': 'Pausa que te mantiene en tiempo',
   'main.whatsNew.section2.body': 'Al pausar, entra un conteo en el hi-hat y el botón parpadea. Al continuar, el ritmo vuelve clavado en tiempo. Puedes hacer un fill o finalizar directo desde la pausa, y mantener presionado el botón de pausa ajusta el volumen del conteo.',
   'main.whatsNew.section3.label': 'Ecualizador y Reverb',
-  'main.whatsNew.section3.body': 'Ecualizador de 5 bandas y un reverb ligero para suavizar el sonido — en la configuración.',
+  'main.whatsNew.section3.body': 'Ecualizador de 5 bandas y un reverb ligero para suavizar el sonido, en la configuración.',
   'main.whatsNew.section4.label': 'Desactiva lo que no usas',
   'main.whatsNew.section4.body': 'Mantén presionado 1,5 segundos en una variación de ritmo o fill para desactivarla.',
   'main.whatsNew.section5.label': 'Repertorio automático y hasta 30',
@@ -73,7 +73,7 @@ export const main: Record<string, string> = {
   'main.whatsNew.closeAriaLabel': 'Cerrar',
   'main.whatsNew.badge': 'Destacado',
   'main.whatsNew.cta': 'Continuar',
-  'main.whatsNew.overlineVersion': '{overline} — versión {version}',
+  'main.whatsNew.overlineVersion': '{overline}, versión {version}',
 
   // ── Access control / offline gating ──
   'main.access.offlineReasonDefault': 'Necesitas estar conectado para acceder a GDrums.',
@@ -293,7 +293,7 @@ export const main: Record<string, string> = {
   // ── Install suggestion (bottom sheet) ──
   'main.installSuggestion.headlineAndroid': 'Descarga la app oficial',
   'main.installSuggestion.headlineDefault': 'Instala GDrums',
-  'main.installSuggestion.sublineAndroid': 'Versión completa en Play Store — rendimiento nativo y notificaciones',
+  'main.installSuggestion.sublineAndroid': 'Versión completa en Play Store, rendimiento nativo y notificaciones',
   'main.installSuggestion.sublineDefault': 'Acceso rápido, pantalla completa y funciona offline',
   'main.installSuggestion.androidStep': 'Toca en <strong style="color:#fff;">Abrir Play Store</strong> para instalar',
   'main.installSuggestion.iosStep1': 'Toca en <strong style="color:#fff;">Compartir</strong>',
@@ -428,7 +428,7 @@ export const main: Record<string, string> = {
   'main.bpmModal.nudgePlus5AriaLabel': 'Aumentar 5 BPM',
   'main.bpmModal.sliderAriaLabel': 'Ajuste fino del BPM',
   'main.bpmModal.restoreButton': 'Restaurar {bpm} BPM',
-  'main.bpmModal.tapHintOneMore': 'Sigue tocando — <strong>1 tap</strong> más',
+  'main.bpmModal.tapHintOneMore': 'Sigue tocando, <strong>1 tap</strong> más',
   'main.bpmModal.tapResultCounted': '<strong>{bpm}</strong> BPM · {taps} taps',
   'main.bpmModal.tapResultContinue': '<strong>{bpm}</strong> BPM · sigue para afinar',
 
@@ -460,7 +460,7 @@ export const main: Record<string, string> = {
   'main.accountModal.savePasswordButton': 'Guardar nueva contraseña',
   'main.accountModal.deleteAccountButton': 'Eliminar mi cuenta',
   'main.accountModal.deleteWarning': '<strong style="color:#FF4466;">Esta acción es irreversible.</strong> Tus ritmos personales, favoritos y datos de registro se van a borrar. No vas a poder recuperar la cuenta después.',
-  'main.accountModal.deleteWarningRefund': 'Si tienes suscripción activa, no se cancela automáticamente — escríbenos por WhatsApp para solicitar el reembolso si aplica.',
+  'main.accountModal.deleteWarningRefund': 'Si tienes suscripción activa, no se cancela automáticamente, escríbenos por WhatsApp para solicitar el reembolso si aplica.',
   'main.accountModal.deleteCancelButton': 'Cancelar',
   'main.accountModal.deleteConfirmButton': 'Eliminar para siempre',
   'main.accountModal.passwordToggleCancel': 'Cancelar',
@@ -474,7 +474,7 @@ export const main: Record<string, string> = {
   'main.accountModal.deleteAccountError': 'Error al eliminar. Intenta de nuevo o contacta a soporte.',
 
   // ── Upgrade modal ──
-  'main.upgradeModal.threeYearsSuffix': ' — 3 Años',
+  'main.upgradeModal.threeYearsSuffix': ', 3 Años',
   'main.upgradeModal.perMonthPrice': 'R$ {price}/mes',
   'main.upgradeModal.planValueLabel': 'Valor del plan',
   'main.upgradeModal.priceDisplay': 'R$ {price}',

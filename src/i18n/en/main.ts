@@ -27,7 +27,7 @@ export const main: Record<string, string> = {
 
   // ── Push notification banner ──
   'main.pushBanner.title': 'Get the important alerts',
-  'main.pushBanner.subtitle': 'Trial ending, deals, and updates — just the essentials.',
+  'main.pushBanner.subtitle': 'Trial ending, deals, and updates, just the essentials.',
   'main.pushBanner.skip': 'Not now',
   'main.pushBanner.allow': 'Allow',
   'main.pushBanner.waiting': 'Hang on...',
@@ -50,7 +50,7 @@ export const main: Record<string, string> = {
   'main.offlineDownload.progress': '{current} of {total} ({pct}%)',
   'main.offlineDownload.successToast': 'All set! The app works offline now.',
   'main.offlineDownload.failedToast': 'Download finished with {count} failures. Try again from the menu.',
-  'main.offlineDownload.retryHint': '{count} files failed — tap "Download now" to try again',
+  'main.offlineDownload.retryHint': '{count} files failed, tap "Download now" to try again',
   'main.offlineDownload.retry': 'Try again',
   'main.offlineDownload.errorText': 'Download error. Try again.',
 
@@ -63,7 +63,7 @@ export const main: Record<string, string> = {
   'main.whatsNew.section2.label': 'A pause that keeps you on beat',
   'main.whatsNew.section2.body': 'When you pause, a hi-hat count-in kicks in and the button blinks. When you resume, the rhythm locks back in right on beat. You can fill or end straight from a pause, and holding the pause button adjusts the count-in volume.',
   'main.whatsNew.section3.label': 'Equalizer and Reverb',
-  'main.whatsNew.section3.body': 'A 5-band equalizer and a light reverb to smooth out the sound — in settings.',
+  'main.whatsNew.section3.body': 'A 5-band equalizer and a light reverb to smooth out the sound, in settings.',
   'main.whatsNew.section4.label': "Turn off what you don't use",
   'main.whatsNew.section4.body': 'Hold for 1.5 seconds on a rhythm variation or fill to turn it off.',
   'main.whatsNew.section5.label': 'Setlist on autopilot, up to 30',
@@ -73,7 +73,7 @@ export const main: Record<string, string> = {
   'main.whatsNew.closeAriaLabel': 'Close',
   'main.whatsNew.badge': 'Highlight',
   'main.whatsNew.cta': 'Continue',
-  'main.whatsNew.overlineVersion': '{overline} — version {version}',
+  'main.whatsNew.overlineVersion': '{overline}, version {version}',
 
   // ── Access control / offline gating ──
   'main.access.offlineReasonDefault': 'You need to be online to access GDrums.',
@@ -93,7 +93,7 @@ export const main: Record<string, string> = {
   'main.renewal.dueTomorrow': "Your subscription's due <strong>tomorrow</strong>.",
   'main.renewal.dueInDays': "Your subscription's due in <strong>{days} days</strong>.",
   'main.renewal.title': "Your subscription's almost up",
-  'main.renewal.messageSuffix': ' No rush — just renew before you lose access to your rhythms.',
+  'main.renewal.messageSuffix': ' No rush, just renew before you lose access to your rhythms.',
   'main.renewal.cta': 'Renew now',
   'main.renewal.trialExpiresIn': 'Your trial expires in <strong>{time}</strong>.',
   'main.renewal.trialRemaining': '<strong>{time}</strong> left in your trial.',
@@ -293,7 +293,7 @@ export const main: Record<string, string> = {
   // ── Install suggestion (bottom sheet) ──
   'main.installSuggestion.headlineAndroid': 'Get the official app',
   'main.installSuggestion.headlineDefault': 'Install GDrums',
-  'main.installSuggestion.sublineAndroid': 'Full version on Google Play — native performance and notifications',
+  'main.installSuggestion.sublineAndroid': 'Full version on Google Play, native performance and notifications',
   'main.installSuggestion.sublineDefault': 'Quick access, full screen, and works offline',
   'main.installSuggestion.androidStep': 'Tap <strong style="color:#fff;">Open Google Play</strong> to install',
   'main.installSuggestion.iosStep1': 'Tap <strong style="color:#fff;">Share</strong>',
@@ -428,7 +428,7 @@ export const main: Record<string, string> = {
   'main.bpmModal.nudgePlus5AriaLabel': 'Increase 5 BPM',
   'main.bpmModal.sliderAriaLabel': 'Fine-tune BPM',
   'main.bpmModal.restoreButton': 'Restore {bpm} BPM',
-  'main.bpmModal.tapHintOneMore': 'Keep tapping — <strong>1 more tap</strong>',
+  'main.bpmModal.tapHintOneMore': 'Keep tapping, <strong>1 more tap</strong>',
   'main.bpmModal.tapResultCounted': '<strong>{bpm}</strong> BPM · {taps} taps',
   'main.bpmModal.tapResultContinue': '<strong>{bpm}</strong> BPM · keep tapping to fine-tune',
 
@@ -474,7 +474,7 @@ export const main: Record<string, string> = {
   'main.accountModal.deleteAccountError': 'Error deleting account. Try again or contact support.',
 
   // ── Upgrade modal ──
-  'main.upgradeModal.threeYearsSuffix': ' — 3 Years',
+  'main.upgradeModal.threeYearsSuffix': ', 3 Years',
   'main.upgradeModal.perMonthPrice': 'R$ {price}/mo',
   'main.upgradeModal.planValueLabel': 'Plan value',
   'main.upgradeModal.priceDisplay': 'R$ {price}',
