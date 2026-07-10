@@ -6,6 +6,7 @@ import { parseOrderNsu, getPlan } from './PaymentService';
 import { internalNav } from '../native/Platform';
 import { redirectIfRecoveryHash } from './recoveryGuard';
 import { trackPurchase } from '../utils/metaTracking';
+import { t } from '../i18n';
 
 const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
 
@@ -42,8 +43,8 @@ class PaymentSuccessPage {
         .single();
 
       if (iapProfile?.subscription_status === 'active' || iapProfile?.subscription_status === 'trial') {
-        const planLabel = getPlan(iapProfile.subscription_plan || '')?.displayName || 'GDrums Pro';
-        await this.showSuccess(isRestore ? `${planLabel} (restaurada)` : planLabel);
+        const planLabel = getPlan(iapProfile.subscription_plan || '')?.displayName || t('plans.success.fallbackProLabel');
+        await this.showSuccess(isRestore ? t('plans.success.restoredLabel', { plan: planLabel }) : planLabel);
         return;
       }
 
@@ -56,7 +57,7 @@ class PaymentSuccessPage {
           .eq('id', user.id)
           .single();
         if (retry?.subscription_status === 'active' || retry?.subscription_status === 'trial') {
-          const planLabel = getPlan(retry.subscription_plan || '')?.displayName || 'GDrums Pro';
+          const planLabel = getPlan(retry.subscription_plan || '')?.displayName || t('plans.success.fallbackProLabel');
           await this.showSuccess(planLabel);
           return;
         }
@@ -87,14 +88,14 @@ class PaymentSuccessPage {
       .single();
 
     if (profile?.subscription_status === 'active' && profile?.subscription_plan !== 'trial' && profile?.subscription_plan !== 'free') {
-      await this.showSuccess(planName || profile.subscription_plan || 'seu plano');
+      await this.showSuccess(planName || profile.subscription_plan || t('plans.success.fallbackPlanName'));
       localStorage.removeItem('gdrums-pending-order');
       return;
     }
 
     // 2. Se temos dados do redirect, salvar no banco e chamar o webhook
     if (finalOrderNsu && (transactionNsu || slug)) {
-      this.updateProgress('Verificando pagamento...');
+      this.updateProgress(t('plans.success.verifyingPayment'));
 
       // Salvar transaction_nsu e slug no banco pra recuperação futura
       await supabase.from('gdrums_transactions')
@@ -119,7 +120,7 @@ class PaymentSuccessPage {
         const result = await webhookResponse.json();
 
         if (result.success) {
-          await this.showSuccess(planName || 'seu plano');
+          await this.showSuccess(planName || t('plans.success.fallbackPlanName'));
           localStorage.removeItem('gdrums-pending-order');
           return;
         }
@@ -132,7 +133,7 @@ class PaymentSuccessPage {
     const maxAttempts = 5;
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(r => setTimeout(r, 2000));
-      this.updateProgress(`Confirmando pagamento... (${i + 1}/${maxAttempts})`);
+      this.updateProgress(t('plans.success.confirmingProgress', { attempt: i + 1, max: maxAttempts }));
 
       const { data: updated } = await supabase
         .from('gdrums_profiles')
@@ -141,7 +142,7 @@ class PaymentSuccessPage {
         .single();
 
       if (updated?.subscription_status === 'active' && updated?.subscription_plan !== 'trial' && updated?.subscription_plan !== 'free') {
-        await this.showSuccess(planName || updated.subscription_plan || 'seu plano');
+        await this.showSuccess(planName || updated.subscription_plan || t('plans.success.fallbackPlanName'));
         localStorage.removeItem('gdrums-pending-order');
         return;
       }
@@ -164,8 +165,8 @@ class PaymentSuccessPage {
 
     icon.className = 'success-icon ok';
     icon.innerHTML = '&#10003;';
-    title.textContent = 'Pagamento confirmado!';
-    msg.textContent = `Plano ${planName} ativado. Bora fazer música!`;
+    title.textContent = t('plans.success.title');
+    msg.textContent = t('plans.success.activated', { plan: planName });
     btn.classList.add('visible');
 
     // Incrementar uso do cupom (se teve)
@@ -286,8 +287,8 @@ class PaymentSuccessPage {
 
     icon.className = 'success-icon ok';
     icon.innerHTML = '&#8987;';
-    title.textContent = 'Pagamento em processamento';
-    msg.textContent = 'Seu pagamento foi recebido e está sendo processado. Pode levar alguns minutos. Tente acessar o app.';
+    title.textContent = t('plans.pending.title');
+    msg.textContent = t('plans.pending.message');
     btn.classList.add('visible');
     retry.classList.add('visible');
   }

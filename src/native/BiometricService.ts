@@ -18,6 +18,7 @@
 // No browser tudo aqui vira no-op — a web nem vê essa feature.
 
 import { Capacitor } from '@capacitor/core';
+import { t } from '../i18n';
 
 const SERVER = 'gdrums.com.br'; // chave do cofre no Keychain/Keystore
 const ENABLED_KEY = 'gdrums-biometric-enabled';
@@ -53,7 +54,7 @@ export const BiometricService = {
 
   /** Rótulo humano pro tipo ("Face ID" / "digital"). */
   label(kind: BiometricKind): string {
-    return kind === 'face' ? 'Face ID' : 'digital';
+    return kind === 'face' ? t('core.bio.labelFace') : t('core.bio.labelFingerprint');
   },
 
   isEnabled(): boolean {
@@ -112,9 +113,9 @@ export const BiometricService = {
       const { NativeBiometric, BiometryType } = await plugin();
       const kind = await this.availableKind();
       const opts: NonNullable<Parameters<typeof NativeBiometric.verifyIdentity>[0]> = {
-        reason: 'Entrar no GDrums',
-        title: 'Entrar no GDrums',
-        subtitle: kind === 'face' ? 'Use o Face ID pra entrar' : 'Use sua digital pra entrar',
+        reason: t('core.bio.title'),
+        title: t('core.bio.title'),
+        subtitle: kind === 'face' ? t('core.bio.subtitleFace') : t('core.bio.subtitleFingerprint'),
         maxAttempts: 3,
       };
       // ANDROID: o BiometricPrompt do plugin autentica com CryptoObject (Keystore),

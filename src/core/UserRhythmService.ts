@@ -2,6 +2,7 @@
 // Salva no localStorage (offline) + IndexedDB (backup) + Supabase (sync online)
 
 import { persistSet, persistGet, requestPersistentStorage } from '../utils/persistentStore';
+import { t } from '../i18n';
 
 export interface UserRhythm {
   id: string;
@@ -383,10 +384,10 @@ export class UserRhythmService {
    *  usado pelo badge "pendente sync" (tap = tentar agora + ver erro). */
   async syncOne(id: string): Promise<{ ok: boolean; error?: string }> {
     const r = this.rhythms.find(x => x.id === id);
-    if (!r) return { ok: false, error: 'ritmo não encontrado' };
+    if (!r) return { ok: false, error: t('core.sync.rhythmNotFound') };
     if (r.synced) return { ok: true };
-    if (!navigator.onLine) return { ok: false, error: 'sem internet' };
-    if (!this.supabase || !this.userId) return { ok: false, error: 'sessão não iniciada' };
+    if (!navigator.onLine) return { ok: false, error: t('core.sync.noInternet') };
+    if (!this.supabase || !this.userId) return { ok: false, error: t('core.sync.sessionNotStarted') };
 
     try {
       const payload: Record<string, any> = {
@@ -407,7 +408,7 @@ export class UserRhythmService {
       this.saveLocal();
       return { ok: true };
     } catch (e: any) {
-      return { ok: false, error: e?.message || 'falha de rede' };
+      return { ok: false, error: e?.message || t('core.sync.networkFailure') };
     }
   }
 

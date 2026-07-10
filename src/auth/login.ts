@@ -7,6 +7,7 @@ import { loginSchema, zodErrorsToFieldMap } from './schemas';
 import { isNativeApp, openExternal, internalNav } from '../native/Platform';
 import { setupPasswordToggle } from '../utils/passwordToggle';
 import { OfflineCache } from '../native/OfflineCache';
+import { t } from '../i18n';
 
 class LoginPage {
   private form: HTMLFormElement;
@@ -104,7 +105,7 @@ class LoginPage {
         return;
       }
       // Token inválido/expirado → mostra erro mas deixa o form de login
-      this.showAlert('Link de recuperação inválido ou expirado. Peça outro.', 'error');
+      this.showAlert(t('auth.login.recoveryInvalid'), 'error');
       this.setupEventListeners();
       this.setupNativeRegisterLink();
       return;
@@ -198,20 +199,20 @@ class LoginPage {
     const title = card.querySelector('.login-title') as HTMLElement;
     const sub = card.querySelector('.login-sub') as HTMLElement;
 
-    title.textContent = 'Nova senha';
-    sub.textContent = 'Digite sua nova senha abaixo';
+    title.textContent = t('auth.login.newPasswordTitle');
+    sub.textContent = t('auth.login.newPasswordSub');
 
     this.form.innerHTML = `
       <div class="login-field">
-        <label for="newPassword">Nova senha</label>
-        <input type="password" id="newPassword" required placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+        <label for="newPassword">${t('auth.login.newPasswordFieldLabel')}</label>
+        <input type="password" id="newPassword" required placeholder="${t('auth.login.newPasswordPlaceholder')}" autocomplete="new-password" />
       </div>
       <div class="login-field">
-        <label for="confirmPassword">Confirmar senha</label>
-        <input type="password" id="confirmPassword" required placeholder="Repita a senha" autocomplete="new-password" />
+        <label for="confirmPassword">${t('auth.login.confirmPasswordFieldLabel')}</label>
+        <input type="password" id="confirmPassword" required placeholder="${t('auth.login.confirmPasswordPlaceholder')}" autocomplete="new-password" />
       </div>
       <button type="submit" class="login-btn" id="resetBtn">
-        <span class="btn-text">Salvar nova senha</span>
+        <span class="btn-text">${t('auth.login.saveNewPasswordBtn')}</span>
         <span class="btn-loader"><div class="spinner-sm"></div></span>
       </button>
     `;
@@ -231,11 +232,11 @@ class LoginPage {
       const btn = document.getElementById('resetBtn') as HTMLButtonElement;
 
       if (newPass.length < 6) {
-        this.showAlert('A senha precisa ter pelo menos 6 caracteres', 'error');
+        this.showAlert(t('auth.login.passwordMinLengthAlert'), 'error');
         return;
       }
       if (newPass !== confirm) {
-        this.showAlert('As senhas não conferem', 'error');
+        this.showAlert(t('auth.errors.passwordsDontMatch'), 'error');
         return;
       }
 
@@ -248,7 +249,7 @@ class LoginPage {
       const { error } = await supabase.auth.updateUser({ password: newPass });
 
       if (error) {
-        this.showAlert('Erro ao atualizar senha. Tente novamente.', 'error');
+        this.showAlert(t('auth.login.updatePasswordError'), 'error');
         btn.disabled = false;
         if (btnText) btnText.style.display = 'block';
         if (btnLoader) btnLoader.style.display = 'none';
@@ -258,7 +259,7 @@ class LoginPage {
         import('../native/BiometricService')
           .then(({ BiometricService }) => BiometricService.disable())
           .catch(() => {});
-        this.showAlert('Senha atualizada! Redirecionando...', 'success');
+        this.showAlert(t('auth.login.passwordUpdatedSuccess'), 'success');
         // Limpar hash da URL
         history.replaceState(null, '', '/login');
         setTimeout(async () => {
@@ -313,23 +314,22 @@ class LoginPage {
     modal.className = 'fp-modal-backdrop';
     modal.innerHTML = `
       <div class="fp-modal-card" role="dialog" aria-modal="true" aria-labelledby="fpModalTitle">
-        <h2 id="fpModalTitle" class="fp-modal-title">Recuperar senha</h2>
+        <h2 id="fpModalTitle" class="fp-modal-title">${t('auth.login.forgotModalTitle')}</h2>
         <p class="fp-modal-sub">
-          Vamos enviar um link no seu e-mail pra você criar uma senha nova.
-          Confere o e-mail e clica em "Enviar link".
+          ${t('auth.login.forgotModalSub')}
         </p>
 
         <div class="fp-field">
-          <label for="fpEmailInput">Seu e-mail</label>
-          <input type="email" id="fpEmailInput" placeholder="seu@email.com" autocomplete="email" />
+          <label for="fpEmailInput">${t('auth.login.forgotEmailLabel')}</label>
+          <input type="email" id="fpEmailInput" placeholder="${t('auth.login.forgotEmailPlaceholder')}" autocomplete="email" />
         </div>
 
         <div class="fp-modal-alert" id="fpAlert" role="alert"></div>
 
         <div class="fp-modal-actions">
-          <button type="button" class="fp-btn-cancel" id="fpCancelBtn">Cancelar</button>
+          <button type="button" class="fp-btn-cancel" id="fpCancelBtn">${t('auth.login.cancelBtn')}</button>
           <button type="button" class="fp-btn-send" id="fpSendBtn">
-            <span class="fp-btn-text">Enviar link</span>
+            <span class="fp-btn-text">${t('auth.login.sendLinkBtn')}</span>
             <span class="fp-btn-loader"><div class="spinner-sm"></div></span>
           </button>
         </div>
@@ -382,7 +382,7 @@ class LoginPage {
 
       const email = emailInput.value.trim();
       if (!email || !email.includes('@')) {
-        this.fpAlert(alertEl, 'Digite um e-mail válido', 'error');
+        this.fpAlert(alertEl, t('auth.login.invalidEmail'), 'error');
         emailInput.focus();
         return;
       }
@@ -403,11 +403,11 @@ class LoginPage {
       if (error) {
         this.fpSetLoading(sendBtn, false);
         sending = false;
-        this.fpAlert(alertEl, 'Não foi possível enviar. Confere o e-mail e tenta de novo.', 'error');
+        this.fpAlert(alertEl, t('auth.login.forgotSendError'), 'error');
         return;
       }
 
-      this.fpAlert(alertEl, 'Link enviado! Verifica seu e-mail (e a caixa de spam).', 'success');
+      this.fpAlert(alertEl, t('auth.login.forgotSendSuccess'), 'success');
       // Espera o user ler antes de fechar
       setTimeout(() => {
         closeModal();
@@ -460,7 +460,7 @@ class LoginPage {
   private async handleEmailStep(): Promise<void> {
     const email = this.emailInput.value.trim().toLowerCase();
     if (!email || !email.includes('@')) {
-      this.showAlert('Digite um e-mail válido', 'error');
+      this.showAlert(t('auth.login.invalidEmail'), 'error');
       this.emailInput.focus();
       return;
     }
@@ -486,7 +486,7 @@ class LoginPage {
       this.advanceToPasswordStep(email, status === 'incomplete');
       this.setLoading(false);
     } catch (err) {
-      this.showAlert('Não foi possível verificar o e-mail. Tente novamente.', 'error');
+      this.showAlert(t('auth.login.emailCheckError'), 'error');
       this.setLoading(false);
     }
   }
@@ -521,10 +521,10 @@ class LoginPage {
     `;
     box.innerHTML = `
       <div style="font-weight:700;color:#FFB85C;margin-bottom:0.35rem;font-size:0.9rem;">
-        Esse e-mail ainda não tem cadastro
+        ${t('auth.login.emailNotFoundTitle')}
       </div>
       <div style="color:rgba(255,255,255,0.7);font-size:0.8rem;margin-bottom:0.85rem;">
-        Confere se digitou certo. Se for novo por aqui, dá pra criar conta agora.
+        ${t('auth.login.emailNotFoundSub')}
       </div>
       <div style="display:flex;flex-direction:column;gap:0.5rem;">
         <button type="button" id="loginNotFoundRetry" style="
@@ -532,14 +532,14 @@ class LoginPage {
           border-radius:10px;background:transparent;color:rgba(255,255,255,0.92);
           font-family:inherit;font-size:0.88rem;font-weight:600;cursor:pointer;
           transition:background 0.15s;
-        ">Tentar com outro e-mail</button>
+        ">${t('auth.login.retryOtherEmailBtn')}</button>
         <button type="button" id="loginNotFoundCreate" style="
           width:100%;padding:0.75rem;border:none;
           border-radius:10px;background:linear-gradient(135deg,#00E68C,#00C470);
           color:#051a10;font-family:inherit;font-size:0.9rem;font-weight:700;
           cursor:pointer;letter-spacing:-0.005em;
           box-shadow:0 3px 14px rgba(0,230,140,0.22);
-        ">Criar conta com esse e-mail</button>
+        ">${t('auth.login.createAccountBtn')}</button>
       </div>
     `;
 
@@ -588,7 +588,7 @@ class LoginPage {
     if (passwordField) passwordField.style.display = '';
     if (options) options.style.display = '';
     if (backBtn) backBtn.style.display = '';
-    if (btnText) btnText.textContent = 'Entrar';
+    if (btnText) btnText.textContent = t('auth.login.enterBtnText');
 
     // Pill mostrando o email travado, com botão pra trocar
     let pill = document.getElementById('loginEmailPill');
@@ -610,7 +610,7 @@ class LoginPage {
 
     // Aviso se conta incompleta
     if (incomplete) {
-      this.showAlert('Sua conta precisa de uns dados extras. Após entrar a gente termina o cadastro.', 'success');
+      this.showAlert(t('auth.login.incompleteAccountNotice'), 'success');
     }
 
     // Foca o campo senha
@@ -633,7 +633,7 @@ class LoginPage {
     if (passwordField) passwordField.style.display = 'none';
     if (options) options.style.display = 'none';
     if (backBtn) backBtn.style.display = 'none';
-    if (btnText) btnText.textContent = 'Continuar';
+    if (btnText) btnText.textContent = t('auth.login.continueBtnText');
     if (pill) pill.remove();
     this.passwordInput.value = '';
     this.hideAlert();
@@ -645,7 +645,7 @@ class LoginPage {
     // Validação via Zod (email já tá ok do step 1, valida senha)
     const password = this.passwordInput.value;
     if (!password || password.length < 6) {
-      this.showAlert('Digite sua senha (mínimo 6 caracteres)', 'error');
+      this.showAlert(t('auth.login.passwordRequiredAlert'), 'error');
       this.passwordInput.focus();
       return;
     }
@@ -666,7 +666,7 @@ class LoginPage {
       await this.maybeOfferBiometric(this.emailInput.value.trim(), password);
       await this.finishLogin(response.user.id);
     } else {
-      this.showAlert(response.message || 'Erro ao fazer login', 'error');
+      this.showAlert(response.message || t('auth.login.loginFailedFallback'), 'error');
       this.setLoading(false);
     }
   }
@@ -683,12 +683,12 @@ class LoginPage {
 
     // Se conta incompleta, vai pra /completar-cadastro em vez do app
     if (this.incompleteAccount) {
-      this.showAlert('Login feito! Falta um passo...', 'success');
+      this.showAlert(t('auth.login.incompleteRedirect'), 'success');
       setTimeout(() => { window.location.href = '/completar-cadastro.html'; }, 600);
       return;
     }
 
-    this.showAlert('Login realizado! Redirecionando...', 'success');
+    this.showAlert(t('auth.login.loginSuccess'), 'success');
     const dest = await this.getDestination();
     setTimeout(() => { window.location.href = dest; }, 600);
   }
@@ -733,10 +733,10 @@ class LoginPage {
         display:flex;align-items:center;justify-content:center;gap:0.6rem;
       ">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 11c0 3-1 5.5-2.5 7.5"/><path d="M15.5 10.5c0 4-1 7-2 8.5"/><path d="M8.5 11.5C8.5 9 10 7.5 12 7.5s3.5 1.5 3.5 3"/><path d="M5.5 13c0-4.5 2.5-8 6.5-8 2.5 0 4.5 1.2 5.6 3"/><path d="M4 9.5C5.5 6 8.5 4 12 4c2 0 3.8.6 5.3 1.6"/></svg>
-        Entrar com ${label}
+        ${t('auth.bio.enterWith', { label })}
       </button>
       <div style="text-align:center;color:rgba(255,255,255,0.35);font-size:0.78rem;margin-bottom:1rem;">
-        ou entre com e-mail e senha
+        ${t('auth.bio.orEmailPassword')}
       </div>
     `;
     this.form.parentElement?.insertBefore(wrap, this.form);
@@ -754,7 +754,7 @@ class LoginPage {
       // entrar do jeito clássico).
       if (!creds) return;
 
-      this.showAlert('Entrando...', 'success');
+      this.showAlert(t('auth.bio.entering'), 'success');
       const response = await authService.login({
         email: creds.email,
         password: creds.password,
@@ -767,7 +767,7 @@ class LoginPage {
         // Senha mudou em outro lugar — credencial guardada ficou velha.
         // Apaga e orienta: login clássico reativa a biometria com a nova.
         await BiometricService.disable();
-        this.showAlert('Sua senha mudou. Entre com e-mail e senha pra reativar a biometria.', 'error');
+        this.showAlert(t('auth.bio.passwordChanged'), 'error');
       }
     } catch { /* nunca quebrar o login clássico por causa da biometria */ }
     finally { this.bioBusy = false; }
@@ -792,14 +792,13 @@ class LoginPage {
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(3,0,20,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem;';
         overlay.innerHTML = `
           <div style="background:#0d0a24;border:1px solid rgba(139,92,246,0.35);border-radius:18px;padding:1.8rem;max-width:340px;text-align:center;">
-            <div style="font-size:2rem;margin-bottom:0.6rem;">${kind === 'face' ? '🙂' : '👆'}</div>
-            <h2 style="color:#fff;font-size:1.05rem;margin:0 0 0.5rem;">Entrar mais rápido?</h2>
+            <div style="font-size:2rem;margin-bottom:0.6rem;">${kind === 'face' ? t('auth.bio.iconFace') : t('auth.bio.iconFinger')}</div>
+            <h2 style="color:#fff;font-size:1.05rem;margin:0 0 0.5rem;">${t('auth.bio.offerTitle')}</h2>
             <p style="color:rgba(255,255,255,0.55);font-size:0.85rem;line-height:1.55;margin:0 0 1.2rem;">
-              Ative o login com ${label} e entre no GDrums sem digitar a senha.
-              Sua senha fica guardada só no cofre seguro deste aparelho.
+              ${t('auth.bio.offerBody', { label })}
             </p>
-            <button id="bioYes" style="width:100%;padding:0.85rem;border:none;border-radius:12px;background:linear-gradient(135deg,#00D4FF,#8B5CF6);color:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:inherit;margin-bottom:0.6rem;">Ativar ${label}</button>
-            <button id="bioNo" style="width:100%;padding:0.7rem;border:none;border-radius:12px;background:transparent;color:rgba(255,255,255,0.45);font-size:0.85rem;cursor:pointer;font-family:inherit;">Agora não</button>
+            <button id="bioYes" style="width:100%;padding:0.85rem;border:none;border-radius:12px;background:linear-gradient(135deg,#00D4FF,#8B5CF6);color:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:inherit;margin-bottom:0.6rem;">${t('auth.bio.activateBtn', { label })}</button>
+            <button id="bioNo" style="width:100%;padding:0.7rem;border:none;border-radius:12px;background:transparent;color:rgba(255,255,255,0.45);font-size:0.85rem;cursor:pointer;font-family:inherit;">${t('auth.bio.notNowBtn')}</button>
           </div>
         `;
         document.body.appendChild(overlay);

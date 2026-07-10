@@ -23,6 +23,7 @@
 
 import type { Setlist, SetlistItem } from '../types';
 import { persistSet, persistGet, requestPersistentStorage } from '../utils/persistentStore';
+import { t } from '../i18n';
 
 const LOCAL_KEY_V2 = 'gdrums-setlists-v2';
 const LOCAL_BACKUP_KEY_V2 = 'gdrums-setlists-v2-backup';
@@ -61,7 +62,7 @@ function genId(): string {
 function emptyState(): MultiSetlistState {
   const id = genId();
   return {
-    setlists: [{ id, name: 'Meu repertório', items: [], currentIndex: 0 }],
+    setlists: [{ id, name: t('core.setlist.defaultName'), items: [], currentIndex: 0 }],
     activeId: id,
     lastModified: 0,
   };
@@ -153,7 +154,7 @@ export class SetlistManager {
         console.warn('[SetlistManager] Recuperando setlist v1 do IndexedDB:', legacy.items.length, 'itens');
         const id = genId();
         this.state = {
-          setlists: [{ id, name: legacy.name || 'Meu repertório', items: legacy.items, currentIndex: legacy.currentIndex || 0 }],
+          setlists: [{ id, name: legacy.name || t('core.setlist.defaultName'), items: legacy.items, currentIndex: legacy.currentIndex || 0 }],
           activeId: id,
           lastModified: legacy.lastModified || 0,
         };
@@ -286,7 +287,7 @@ export class SetlistManager {
       } else if (Array.isArray(data.items) && data.items.length > 0) {
         const id = genId();
         remoteState = {
-          setlists: [{ id, name: 'Meu repertório', items: data.items, currentIndex: typeof data.current_index === 'number' ? data.current_index : 0 }],
+          setlists: [{ id, name: t('core.setlist.defaultName'), items: data.items, currentIndex: typeof data.current_index === 'number' ? data.current_index : 0 }],
           activeId: id,
         };
       }
@@ -376,7 +377,7 @@ export class SetlistManager {
   createSetlist(name: string): string | null {
     if (this.state.setlists.length >= MAX_SETLISTS) return null;
     const id = genId();
-    const cleanName = (name || '').trim() || `Repertório ${this.state.setlists.length + 1}`;
+    const cleanName = (name || '').trim() || t('core.setlist.numbered', { n: this.state.setlists.length + 1 });
     this.state.setlists.push({ id, name: cleanName.slice(0, 40), items: [], currentIndex: 0 });
     this.state.activeId = id;
     this.notify();
@@ -416,7 +417,7 @@ export class SetlistManager {
     const newId = genId();
     this.state.setlists.push({
       id: newId,
-      name: `${src.name} (cópia)`.slice(0, 40),
+      name: t('core.setlist.copyName', { name: src.name }).slice(0, 40),
       items: src.items.map(i => ({ ...i })),
       currentIndex: 0,
     });
@@ -585,7 +586,7 @@ export class SetlistManager {
       console.warn('[SetlistManager] Migrando setlist v1 → v2 (' + legacy.items.length + ' itens)');
       const id = genId();
       const migrated: MultiSetlistState = {
-        setlists: [{ id, name: legacy.name || 'Meu repertório', items: legacy.items, currentIndex: legacy.currentIndex || 0 }],
+        setlists: [{ id, name: legacy.name || t('core.setlist.defaultName'), items: legacy.items, currentIndex: legacy.currentIndex || 0 }],
         activeId: id,
         lastModified: legacy.lastModified || 0,
       };
@@ -612,7 +613,7 @@ export class SetlistManager {
       .slice(0, MAX_SETLISTS)
       .map((s: any, i: number) => ({
         id: typeof s.id === 'string' && s.id ? s.id : genId(),
-        name: typeof s.name === 'string' && s.name.trim() ? s.name.slice(0, 40) : `Repertório ${i + 1}`,
+        name: typeof s.name === 'string' && s.name.trim() ? s.name.slice(0, 40) : t('core.setlist.numbered', { n: i + 1 }),
         items: Array.isArray(s.items) ? s.items : [],
         currentIndex: typeof s.currentIndex === 'number' ? s.currentIndex : 0,
       }));
@@ -632,7 +633,7 @@ export class SetlistManager {
     try {
       const parsed = JSON.parse(raw);
       return {
-        name: parsed.name || 'Meu repertório',
+        name: parsed.name || t('core.setlist.defaultName'),
         items: Array.isArray(parsed.items) ? parsed.items : [],
         currentIndex: typeof parsed.currentIndex === 'number' ? parsed.currentIndex : 0,
         lastModified: typeof parsed.lastModified === 'number' ? parsed.lastModified : 0,

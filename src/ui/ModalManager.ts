@@ -1,5 +1,7 @@
 // Sistema de modais — glass morphism design
 
+import { t } from '../i18n';
+
 export class ModalManager {
   private overlay: HTMLElement | null = null;
   private styleInjected = false;
@@ -25,7 +27,7 @@ export class ModalManager {
       const titleEl = this.el('h3', 'gm-title', title);
       const messageEl = this.el('p', 'gm-message', message);
 
-      const btn = this.el('button', 'gm-btn gm-btn-primary', 'Entendi') as HTMLButtonElement;
+      const btn = this.el('button', 'gm-btn gm-btn-primary', t('ui.modal.gotIt')) as HTMLButtonElement;
       btn.style.setProperty('--btn-color', this.getColor(type));
       btn.onclick = () => { this.dismiss(modal, resolve); };
 
@@ -61,10 +63,10 @@ export class ModalManager {
 
       const btnRow = this.el('div', 'gm-btn-row');
 
-      const cancelBtn = this.el('button', 'gm-btn gm-btn-ghost', 'Cancelar') as HTMLButtonElement;
+      const cancelBtn = this.el('button', 'gm-btn gm-btn-ghost', t('ui.modal.cancel')) as HTMLButtonElement;
       cancelBtn.onclick = () => { this.dismiss(modal, () => resolve(false)); };
 
-      const confirmBtn = this.el('button', 'gm-btn gm-btn-primary', 'Confirmar') as HTMLButtonElement;
+      const confirmBtn = this.el('button', 'gm-btn gm-btn-primary', t('ui.modal.confirm')) as HTMLButtonElement;
       confirmBtn.style.setProperty('--btn-color', this.getColor('info'));
       confirmBtn.onclick = () => { this.dismiss(modal, () => resolve(true)); };
 

@@ -12,6 +12,7 @@ import { HapticsService } from './native/HapticsService';
 import { AttributionService } from './native/AttributionService';
 import { RHYTHM_COUNT, LOCKED_RHYTHM_COUNT, updateRhythmCountInDom } from './utils/rhythmCount';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
+import { t } from './i18n';
 
 // Só 3 ritmos ficam liberados. O resto aparece bloqueado na tira
 // pra mostrar ao user o tamanho REAL da biblioteca — peça central pra
@@ -61,29 +62,29 @@ type TourStep = {
 const TOUR_STEPS: TourStep[] = [
   {
     target: '.grid-cell[data-type="main"][data-variation="0"]',
-    title: 'Comece tocando',
-    body: 'Aperte o Ritmo 1 pra ouvir a banda entrar.',
+    title: t('demo.tour.step1.title'),
+    body: t('demo.tour.step1.body'),
     advanceOn: 'click',
     position: 'top',
   },
   {
     target: '.grid-cell[data-type="fill"][data-variation="1"]',
-    title: 'Agora solte uma virada',
-    body: 'Toque a Virada 2 — ela entra no tempo certo, como baterista de verdade.',
+    title: t('demo.tour.step2.title'),
+    body: t('demo.tour.step2.body'),
     advanceOn: 'click',
     position: 'top',
   },
   {
     target: '.grid-cell[data-type="main"][data-variation="2"]',
-    title: 'Troque de ritmo',
-    body: 'Aperte o Ritmo 3. O app faz a virada automática na transição.',
+    title: t('demo.tour.step3.title'),
+    body: t('demo.tour.step3.body'),
     advanceOn: 'click',
     position: 'top',
   },
   {
     target: '.grid-cell[data-type="end"][data-variation="0"]',
-    title: 'Finalize a música',
-    body: 'O Final encerra a música no tempo certo — com direito a prato de saída. Aperte pra ver.',
+    title: t('demo.tour.step4.title'),
+    body: t('demo.tour.step4.body'),
     advanceOn: 'click',
     position: 'top',
   },
@@ -244,7 +245,7 @@ class DemoPlayer {
   private showOneMinuteWarning(): void {
     const el = document.getElementById('demoCounter');
     if (!el) return;
-    el.innerHTML = `<strong>1 min restante da prévia</strong> · crie conta pra continuar`;
+    el.innerHTML = `<strong>${t('demo.counter.oneMinLeft')}</strong> · ${t('demo.counter.createAccountToContinue')}`;
     el.classList.add('low');
   }
 
@@ -275,11 +276,11 @@ class DemoPlayer {
       // cota da demo. Usuário precisa saber que tem muito mais esperando.
       // Quando resta 1 ou acabou, muda pra tom de pressão.
       if (remaining <= 0) {
-        el.innerHTML = `Prévia encerrada · <strong>${total} ritmos no plano</strong>`;
+        el.innerHTML = `${t('demo.counter.ended')} · <strong>${t('demo.counter.endedPlanCount', { total })}</strong>`;
       } else if (remaining === 1) {
-        el.innerHTML = `Último ritmo da prévia · <strong>${total} no catálogo</strong>`;
+        el.innerHTML = `${t('demo.counter.lastRhythm')} · <strong>${t('demo.counter.catalogCount', { total })}</strong>`;
       } else {
-        el.innerHTML = `Prévia com ${MAX_RHYTHMS} ritmos · <strong>${total} no catálogo</strong>`;
+        el.innerHTML = `${t('demo.counter.previewCount', { max: MAX_RHYTHMS })} · <strong>${t('demo.counter.catalogCount', { total })}</strong>`;
       }
       el.classList.toggle('low', remaining <= 1);
     }
@@ -469,7 +470,7 @@ class DemoPlayer {
     tip.innerHTML = `
       <div class="demo-tour-tip-title">${step.title}</div>
       <div class="demo-tour-tip-body">${step.body}</div>
-      <div class="demo-tour-tip-skip" role="button" tabindex="0">Pular tour</div>
+      <div class="demo-tour-tip-skip" role="button" tabindex="0">${t('demo.tour.skip')}</div>
     `;
     document.body.appendChild(tip);
     this.tourTooltip = tip;
@@ -613,23 +614,21 @@ class DemoPlayer {
     overlay.className = 'demo-convert-modal';
     overlay.innerHTML = `
       <div class="demo-convert-card">
-        <div class="demo-convert-overline">Gostou?</div>
-        <h3 class="demo-convert-title">Isso é só uma prévia.</h3>
+        <div class="demo-convert-overline">${t('demo.convert.overline')}</div>
+        <h3 class="demo-convert-title">${t('demo.convert.title')}</h3>
         <p class="demo-convert-body">
-          Você acabou de tocar com acompanhamento profissional.
-          Cria conta pra liberar os outros ${LOCKED_RHYTHM_COUNT} ritmos, conectar pedal
-          Bluetooth e montar sua setlist.
+          ${t('demo.convert.body', { count: LOCKED_RHYTHM_COUNT })}
         </p>
         <div class="demo-convert-offer">
-          <span class="demo-convert-offer-badge">100% Grátis</span>
-          <span class="demo-convert-offer-head">48 horas de acesso total</span>
-          <span class="demo-convert-offer-sub">✓ Não pedimos cartão · ✓ Sem cobrança automática</span>
+          <span class="demo-convert-offer-badge">${t('demo.offer.badge')}</span>
+          <span class="demo-convert-offer-head">${t('demo.offer.head')}</span>
+          <span class="demo-convert-offer-sub">${t('demo.convert.offerSub')}</span>
         </div>
         <div class="demo-convert-actions">
-          <a href="/register" class="demo-convert-primary">Criar conta grátis</a>
-          <button class="demo-convert-secondary">Continuar testando</button>
+          <a href="/register" class="demo-convert-primary">${t('demo.cta.createAccount')}</a>
+          <button class="demo-convert-secondary">${t('demo.convert.secondary')}</button>
         </div>
-        <div class="demo-convert-reassure">É de graça mesmo — só criar a conta e tocar.</div>
+        <div class="demo-convert-reassure">${t('demo.convert.reassure')}</div>
       </div>
     `;
     document.body.appendChild(overlay);
@@ -667,7 +666,7 @@ class DemoPlayer {
     });
 
     const allBtn = document.getElementById('demoAllRhythmsBtn');
-    allBtn?.setAttribute('title', `Ver todos os ${RHYTHM_COUNT} ritmos`);
+    allBtn?.setAttribute('title', t('demo.allRhythms.buttonTitle', { count: RHYTHM_COUNT }));
     allBtn?.addEventListener('click', () => this.openAllRhythmsModal());
 
     this.injectLockedStyles();
@@ -698,17 +697,17 @@ class DemoPlayer {
     const overlay = document.createElement('div');
     overlay.className = 'demo-all-overlay';
     overlay.innerHTML = `
-      <div class="demo-all-panel" role="dialog" aria-label="Todos os ritmos">
+      <div class="demo-all-panel" role="dialog" aria-label="${t('demo.allRhythms.title')}">
         <div class="demo-all-head">
           <div>
-            <div class="demo-all-title">Todos os ritmos</div>
-            <div class="demo-all-sub">${RHYTHM_COUNT} ritmos · liberados no cadastro</div>
+            <div class="demo-all-title">${t('demo.allRhythms.title')}</div>
+            <div class="demo-all-sub">${t('demo.allRhythms.subtitle', { count: RHYTHM_COUNT })}</div>
           </div>
-          <button class="demo-all-close" aria-label="Fechar">&#10005;</button>
+          <button class="demo-all-close" aria-label="${t('demo.allRhythms.closeAriaLabel')}">&#10005;</button>
         </div>
         <div class="demo-all-body"></div>
         <div class="demo-all-foot">
-          <a href="/register" class="demo-all-cta">Cadastrar grátis e liberar tudo</a>
+          <a href="/register" class="demo-all-cta">${t('demo.allRhythms.cta')}</a>
         </div>
       </div>
     `;
@@ -734,7 +733,7 @@ class DemoPlayer {
       names.forEach(name => {
         const btn = document.createElement('button');
         btn.className = 'rhythm-card-btn rhythm-card-locked';
-        btn.title = 'Disponível após cadastro';
+        btn.title = t('demo.allRhythms.lockedTitle');
         btn.innerHTML = `
           <svg class="rhythm-lock-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect x="4" y="11" width="16" height="10" rx="2"></rect>
@@ -752,7 +751,7 @@ class DemoPlayer {
       });
       body.appendChild(grid);
     } catch {
-      body.innerHTML = '<div class="demo-all-empty">Não foi possível carregar o catálogo.</div>';
+      body.innerHTML = `<div class="demo-all-empty">${t('demo.allRhythms.loadError')}</div>`;
     }
   }
 
@@ -884,7 +883,7 @@ class DemoPlayer {
       });
     } catch {
       const nameEl = document.getElementById('currentRhythmName');
-      if (nameEl) nameEl.textContent = 'Erro ao carregar';
+      if (nameEl) nameEl.textContent = t('demo.rhythm.loadError');
     }
   }
 
@@ -1113,7 +1112,7 @@ class DemoPlayer {
     const cell = document.getElementById('pauseBtnUser');
     const label = document.getElementById('pauseBtnLabel');
     if (cell) cell.classList.toggle('active', this.isPaused);
-    if (label) label.textContent = this.isPaused ? 'CONTINUAR' : 'PAUSAR';
+    if (label) label.textContent = this.isPaused ? t('demo.pause.resumeLabel') : t('demo.pause.pauseLabel');
   }
 
   // ─── Expired ──────────────────────────────────────────────────────
@@ -1128,12 +1127,11 @@ class DemoPlayer {
     overlay.className = 'demo-expired-overlay';
     overlay.innerHTML = `
       <div class="demo-expired-card">
-        <div class="demo-expired-overline">Você tocou bem</div>
-        <h2>Agora é pegar a banda completa.</h2>
+        <div class="demo-expired-overline">${t('demo.expired.overline')}</div>
+        <h2>${t('demo.expired.title')}</h2>
         <p>
-          Você tocou 3 ritmos. A biblioteca tem <strong>${this.totalRhythms}</strong> —
-          Vaneira, Sertanejo, Gospel, Pagode, Forró, Reggae, Rock e muito
-          mais, cada um com viradas, intros e finais prontos pra palco.
+          ${t('demo.expired.bodyPre')} <strong>${this.totalRhythms}</strong>
+          ${t('demo.expired.bodyPost')}
         </p>
 
         <!-- Preview do catálogo: lista dos ritmos bloqueados passando -->
@@ -1142,9 +1140,9 @@ class DemoPlayer {
         </div>
 
         <div class="demo-expired-features">
-          <div class="demo-expired-feature"><span>${this.totalRhythms}</span>ritmos completos</div>
-          <div class="demo-expired-feature"><span>BT</span>pedal Bluetooth</div>
-          <div class="demo-expired-feature"><span>∞</span>offline no palco</div>
+          <div class="demo-expired-feature"><span>${this.totalRhythms}</span>${t('demo.expired.featureRhythmsCount')}</div>
+          <div class="demo-expired-feature"><span>${t('demo.expired.featureBluetoothBadge')}</span>${t('demo.expired.featureBluetoothLabel')}</div>
+          <div class="demo-expired-feature"><span>${t('demo.expired.featureOfflineBadge')}</span>${t('demo.expired.featureOfflineLabel')}</div>
         </div>
 
         <!-- Oferta do trial em destaque: 48h grátis ANTES do preço.
@@ -1152,11 +1150,11 @@ class DemoPlayer {
              aparece abaixo, como referência secundária. -->
         <div class="demo-expired-offer">
           <div class="demo-expired-offer-main">
-            <span class="demo-expired-offer-badge">100% Grátis</span>
-            <span class="demo-expired-offer-head">48 horas de acesso total</span>
+            <span class="demo-expired-offer-badge">${t('demo.offer.badge')}</span>
+            <span class="demo-expired-offer-head">${t('demo.offer.head')}</span>
           </div>
-          <div class="demo-expired-offer-sub">✓ Não pedimos cartão · ✓ Sem cobrança automática · cancela quando quiser</div>
-          <div class="demo-expired-offer-price">Só depois das 48h, se gostar: R$ 29/mês</div>
+          <div class="demo-expired-offer-sub">${t('demo.expired.offerSub')}</div>
+          <div class="demo-expired-offer-price">${t('demo.expired.offerPrice')}</div>
         </div>
         <!-- Campo inline de e-mail: reduz fricção do cadastro.
              O user digita aqui, a gente leva pro /register com o email
@@ -1167,15 +1165,15 @@ class DemoPlayer {
             type="email"
             id="demoEmailInput"
             class="demo-expired-email"
-            placeholder="Seu e-mail"
+            placeholder="${t('demo.expired.emailPlaceholder')}"
             autocomplete="email"
             required
           />
-          <button type="submit" class="demo-expired-cta">Criar conta grátis</button>
+          <button type="submit" class="demo-expired-cta">${t('demo.cta.createAccount')}</button>
         </form>
 
         <div class="demo-expired-sub">
-          Já tem conta? <a href="/login">Entrar</a>
+          ${t('demo.expired.hasAccount')} <a href="/login">${t('demo.expired.loginLink')}</a>
         </div>
       </div>
     `;

@@ -1,5 +1,7 @@
 // PaymentService — InfinitePay checkout via API
 
+import { t } from '../i18n';
+
 const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
 const INFINITEPAY_HANDLE = 'checkout-gdrums';
 // Migrado em 2026-06-02: URL antiga (api.infinitepay.io/invoices/public/
@@ -28,20 +30,20 @@ export interface Plan {
 export const PLANS: Plan[] = [
   {
     id: 'passe-3-dias',
-    name: 'Modo Show 3 Dias GDrums',
-    displayName: 'Modo Show 3 Dias',
+    name: t('plans.name.passe3dias'),
+    displayName: t('plans.displayName.passe3dias'),
     priceCents: 990,
     priceDisplay: 'R$ 9,90',
     pricePerMonth: '9,90',
     durationMonths: 0,
     durationDays: 3,
-    tagline: 'Pro show do fim de semana ou festa de família',
+    tagline: t('plans.tagline.passe3dias'),
     hideOnIOS: true,
   },
   {
     id: 'mensal',
-    name: 'Plano Mensal GDrums',
-    displayName: 'Mensal',
+    name: t('plans.name.mensal'),
+    displayName: t('plans.displayName.mensal'),
     priceCents: 2900,
     priceDisplay: 'R$ 29',
     pricePerMonth: '29',
@@ -49,44 +51,44 @@ export const PLANS: Plan[] = [
   },
   {
     id: 'trimestral',
-    name: 'Plano Trimestral GDrums',
-    displayName: 'Trimestral',
+    name: t('plans.name.trimestral'),
+    displayName: t('plans.displayName.trimestral'),
     priceCents: 8100,
     priceDisplay: 'R$ 81',
     pricePerMonth: '27',
     durationMonths: 3,
-    savings: 'Economize 7%',
+    savings: t('plans.savings.trimestral'),
   },
   {
     id: 'semestral',
-    name: 'Plano Semestral GDrums',
-    displayName: 'Semestral',
+    name: t('plans.name.semestral'),
+    displayName: t('plans.displayName.semestral'),
     priceCents: 14400,
     priceDisplay: 'R$ 144',
     pricePerMonth: '24',
     durationMonths: 6,
-    savings: 'Economize 17%',
+    savings: t('plans.savings.semestral'),
     popular: true,
   },
   {
     id: 'anual',
-    name: 'Plano Anual GDrums',
-    displayName: 'Anual',
+    name: t('plans.name.anual'),
+    displayName: t('plans.displayName.anual'),
     priceCents: 22800,
     priceDisplay: 'R$ 228',
     pricePerMonth: '19',
     durationMonths: 12,
-    savings: 'Economize 34%',
+    savings: t('plans.savings.anual'),
   },
   {
     id: 'rei-dos-palcos',
-    name: 'Rei dos Palcos — 3 Anos GDrums',
-    displayName: 'Rei dos Palcos',
+    name: t('plans.name.reidospalcos'),
+    displayName: t('plans.displayName.reidospalcos'),
     priceCents: 52200,
     priceDisplay: 'R$ 522',
     pricePerMonth: '14,50',
     durationMonths: 36,
-    savings: 'Metade do mensal!',
+    savings: t('plans.savings.reidospalcos'),
     hideOnIOS: true,
   },
 ];
@@ -148,7 +150,7 @@ export async function createCheckoutLink(
     const data = await response.json();
 
     if (!response.ok || !data.url) {
-      return { success: false, error: data.error || 'Erro ao criar checkout' };
+      return { success: false, error: data.error || t('plans.checkout.createError') };
     }
 
     return { success: true, url: data.url };
