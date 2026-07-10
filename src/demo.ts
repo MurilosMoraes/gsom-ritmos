@@ -12,7 +12,11 @@ import { HapticsService } from './native/HapticsService';
 import { AttributionService } from './native/AttributionService';
 import { RHYTHM_COUNT, LOCKED_RHYTHM_COUNT, updateRhythmCountInDom } from './utils/rhythmCount';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
-import { t } from './i18n';
+import { t, hydrate } from './i18n';
+
+// Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
+// pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
+hydrate();
 
 // Só estes ritmos ficam liberados. O resto aparece bloqueado no catálogo
 // (botão TODOS) pra mostrar ao user o tamanho REAL da biblioteca — peça

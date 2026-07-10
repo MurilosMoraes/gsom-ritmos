@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-i18n-doc-title="htmlPlans.paymentSuccessDocTitle">
 <head>
   <meta charset="UTF-8" />
   <!-- Meta Pixel — necessário pra trackPurchase disparar fbq('Purchase') -->
@@ -89,10 +89,10 @@
       <div class="success-icon loading" id="statusIcon">
         <div class="spinner-sm"></div>
       </div>
-      <h1 class="success-title" id="statusTitle">Verificando pagamento...</h1>
-      <p class="success-msg" id="statusMsg">Estamos confirmando seu pagamento. Isso leva poucos segundos.</p>
-      <a href="/" class="success-btn" id="accessBtn">Acessar GDrums</a>
-      <button class="retry-btn" id="retryBtn" onclick="window.location.href='/plans.html'">Tentar novamente</button>
+      <h1 class="success-title" id="statusTitle" data-i18n="plans.success.verifyingPayment">Verificando pagamento...</h1>
+      <p class="success-msg" id="statusMsg" data-i18n="htmlPlans.paymentSuccessInitialMsg">Estamos confirmando seu pagamento. Isso leva poucos segundos.</p>
+      <a href="/" class="success-btn" id="accessBtn" data-i18n="htmlPlans.paymentSuccessAccessBtn">Acessar GDrums</a>
+      <button class="retry-btn" id="retryBtn" onclick="window.location.href='/plans.html'" data-i18n="main.access.retryButton">Tentar novamente</button>
     </div>
   </div>
 

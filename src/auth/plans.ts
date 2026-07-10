@@ -7,7 +7,11 @@ import type { Plan } from './PaymentService';
 import { internalNav, isIOSNative } from '../native/Platform';
 import { purchasePlan as iapPurchase, restorePurchases as iapRestore, loadProducts as iapLoadProducts } from '../native/IAPService';
 import { redirectIfRecoveryHash } from './recoveryGuard';
-import { t } from '../i18n';
+import { t, hydrate } from '../i18n';
+
+// Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
+// pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
+hydrate();
 
 interface AppliedCoupon {
   code: string;

@@ -7,7 +7,13 @@ import { loginSchema, zodErrorsToFieldMap } from './schemas';
 import { isNativeApp, openExternal, internalNav } from '../native/Platform';
 import { setupPasswordToggle } from '../utils/passwordToggle';
 import { OfflineCache } from '../native/OfflineCache';
-import { t } from '../i18n';
+import { t, hydrate } from '../i18n';
+import { injectLanguagePill } from '../i18n/selector';
+
+// Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
+// pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
+hydrate();
+injectLanguagePill();
 
 class LoginPage {
   private form: HTMLFormElement;

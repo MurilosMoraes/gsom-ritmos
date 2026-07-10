@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-i18n-doc-title="htmlPlans.demoDocTitle">
 <head>
   <meta charset="UTF-8">
   <!-- Meta Pixel -->
@@ -18,7 +18,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>GDrums | Teste Grátis sem Cadastro | Baterista Virtual</title>
-  <meta name="description" content="Teste o GDrums agora sem cadastro. 5 ritmos liberados, acompanhamento profissional pra tocar ao vivo. Biblioteca com 155 ritmos brasileiros.">
+  <meta name="description" content="Teste o GDrums agora sem cadastro. 5 ritmos liberados, acompanhamento profissional pra tocar ao vivo. Biblioteca com 155 ritmos brasileiros." data-i18n-content="htmlPlans.demoMetaDescription">
 
   <meta name="author" content="Murilo Moraes, Staner Goulart">
   <meta name="robots" content="index, follow, max-image-preview:large">
@@ -31,15 +31,15 @@
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="GDrums">
-  <meta property="og:title" content="GDrums — Teste Grátis sem Cadastro">
-  <meta property="og:description" content="5 ritmos liberados sem cadastro. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth, viradas e finalizações.">
+  <meta property="og:title" content="GDrums — Teste Grátis sem Cadastro" data-i18n-content="htmlPlans.demoOgTitle">
+  <meta property="og:description" content="5 ritmos liberados sem cadastro. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth, viradas e finalizações." data-i18n-content="htmlPlans.demoOgDescription">
   <meta property="og:image" content="https://gdrums.com.br/img/icon-512.png">
   <meta property="og:url" content="https://gdrums.com.br/demo">
   <meta property="og:locale" content="pt_BR">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="GDrums — Teste Grátis sem Cadastro">
-  <meta name="twitter:description" content="5 ritmos liberados. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth.">
+  <meta name="twitter:title" content="GDrums — Teste Grátis sem Cadastro" data-i18n-content="htmlPlans.demoOgTitle">
+  <meta name="twitter:description" content="5 ritmos liberados. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth." data-i18n-content="htmlPlans.demoTwitterDescription">
   <meta name="twitter:image" content="https://gdrums.com.br/img/icon-512.png">
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -842,13 +842,13 @@
     </div>
     <span class="demo-topbar-sep"></span>
     <div class="demo-topbar-mid">
-      <span class="demo-topbar-headline">
+      <span class="demo-topbar-headline" data-i18n="htmlPlans.demoTopbarHeadline">
         Cadastre e tenha <strong>48h grátis</strong> pra tocar tudo
       </span>
-      <span class="demo-topbar-progress" id="demoCounter">Prévia com 5 ritmos · <strong>155 no catálogo</strong></span>
+      <span class="demo-topbar-progress" id="demoCounter" data-i18n="htmlPlans.demoCounterFallback">Prévia com 5 ritmos · <strong>155 no catálogo</strong></span>
     </div>
     <a href="/register" class="demo-topbar-cta">
-      <span>Começar grátis</span>
+      <span data-i18n="htmlPlans.demoTopbarCtaLabel">Começar grátis</span>
       <span class="demo-topbar-cta-arrow">→</span>
     </a>
     <div class="demo-topbar-bar" id="demoBar" style="width:100%;"></div>
@@ -858,8 +858,8 @@
        (evita redundância com o header quando ele acabou de chegar). -->
   <div class="demo-value-banner" id="demoValueBanner" style="display:none;">
     <span class="demo-value-dot"></span>
-    <span>Essa é a banda real. <strong>Cadastra grátis</strong> pra liberar tudo.</span>
-    <a href="/register" class="demo-value-cta">Começar</a>
+    <span data-i18n="htmlPlans.demoValueBannerText">Essa é a banda real. <strong>Cadastra grátis</strong> pra liberar tudo.</span>
+    <a href="/register" class="demo-value-cta" data-i18n="htmlPlans.demoValueCtaLabel">Começar</a>
   </div>
 
   <div class="app-container">
@@ -870,7 +870,7 @@
           <!-- 1. Botão do catálogo completo, centralizado -->
           <div class="fav-section">
             <div class="fav-bar">
-              <button class="demo-all-btn" id="demoAllRhythmsBtn" aria-label="Ver todos os ritmos">
+              <button class="demo-all-btn" id="demoAllRhythmsBtn" aria-label="Ver todos os ritmos" data-i18n-aria="htmlPlans.demoAllRhythmsBtnAria" data-i18n="htmlPlans.demoAllRhythmsBtnContent">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
                   <line x1="4" y1="6" x2="20" y2="6"></line>
                   <line x1="4" y1="12" x2="20" y2="12"></line>
@@ -899,44 +899,44 @@
             <div class="user-performance-grid" id="performanceGrid">
               <div class="grid-cell rhythm-cell" data-type="main" data-variation="0">
                 <span class="cell-number">1</span>
-                <span class="cell-label">RITMO</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellRitmo">RITMO</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell rhythm-cell" data-type="main" data-variation="1">
                 <span class="cell-number">2</span>
-                <span class="cell-label">RITMO</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellRitmo">RITMO</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell rhythm-cell" data-type="main" data-variation="2">
                 <span class="cell-number">3</span>
-                <span class="cell-label">RITMO</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellRitmo">RITMO</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell fill-cell" data-type="fill" data-variation="0">
                 <span class="cell-number">1</span>
-                <span class="cell-label">VIRADA</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellVirada">VIRADA</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell fill-cell" data-type="fill" data-variation="1">
                 <span class="cell-number">2</span>
-                <span class="cell-label">VIRADA</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellVirada">VIRADA</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell fill-cell" data-type="fill" data-variation="2">
                 <span class="cell-number">3</span>
-                <span class="cell-label">VIRADA</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellVirada">VIRADA</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell pause-cell" id="pauseBtnUser">
-                <span class="cell-label" id="pauseBtnLabel">PAUSAR</span>
+                <span class="cell-label" id="pauseBtnLabel" data-i18n="demo.pause.pauseLabel">PAUSAR</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell end-cell" data-type="end" data-variation="0">
-                <span class="cell-label">FINAL</span>
+                <span class="cell-label" data-i18n="main.manual.badge.final">FINAL</span>
                 <div class="cell-indicator"></div>
               </div>
               <div class="grid-cell cymbal-cell" id="cymbalBtn">
-                <span class="cell-label">PRATO</span>
+                <span class="cell-label" data-i18n="htmlPlans.demoCellPrato">PRATO</span>
                 <div class="cell-indicator"></div>
               </div>
             </div>
@@ -945,7 +945,7 @@
           <!-- 4. Controles (identico ao app) -->
           <div class="controls-bar">
             <div class="ctrl-group">
-              <span class="ctrl-label">BPM</span>
+              <span class="ctrl-label" data-i18n="main.saveRhythm.bpmLabel">BPM</span>
               <div class="ctrl-row">
                 <button id="tempoDownUser" class="ctrl-btn ctrl-btn-bpm">&minus;</button>
                 <button id="tempoDisplayUser" class="ctrl-value ctrl-value-tap">80</button>
@@ -954,7 +954,7 @@
             </div>
             <div class="ctrl-divider"></div>
             <div class="ctrl-group ctrl-group-vol">
-              <span class="ctrl-label">VOL</span>
+              <span class="ctrl-label" data-i18n="main.manual.badge.vol">VOL</span>
               <div class="ctrl-row">
                 <input type="range" id="masterVolumeUser" min="0" max="200" value="200" step="5" class="ctrl-slider">
                 <span class="ctrl-value ctrl-value-sm" id="volumeDisplayUser">100%</span>

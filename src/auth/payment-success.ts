@@ -6,7 +6,11 @@ import { parseOrderNsu, getPlan } from './PaymentService';
 import { internalNav } from '../native/Platform';
 import { redirectIfRecoveryHash } from './recoveryGuard';
 import { trackPurchase } from '../utils/metaTracking';
-import { t } from '../i18n';
+import { t, hydrate } from '../i18n';
+
+// Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
+// pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
+hydrate();
 
 const SUPABASE_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co';
 

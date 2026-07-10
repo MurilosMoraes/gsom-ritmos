@@ -75,3 +75,43 @@ export function setLocale(locale: string): boolean {
 export function availableLocales(): string[] {
   return Object.keys(dictionaries);
 }
+
+/**
+ * HIDRATAÇÃO do HTML estático. As páginas são escritas em pt-BR (valor
+ * byte-idêntico ao dicionário — pra pt a hidratação é um no-op visual) e
+ * marcadas com atributos data-i18n; cada entry chama hydrate() no boot.
+ *
+ * Atributos suportados:
+ *   data-i18n="chave"              → innerHTML (valores podem ter <strong> etc.
+ *                                    — vêm do NOSSO dicionário, conteúdo confiável)
+ *   data-i18n-placeholder="chave"  → placeholder
+ *   data-i18n-title="chave"        → title
+ *   data-i18n-aria="chave"         → aria-label
+ *   data-i18n-content="chave"      → content (meta description)
+ *
+ * Também ajusta <html lang> e, se data-i18n-doc-title existir no <html>,
+ * o título da aba.
+ */
+export function hydrate(root: ParentNode = document): void {
+  try {
+    document.documentElement.lang = currentLocale;
+    const docTitleKey = document.documentElement.getAttribute('data-i18n-doc-title');
+    if (docTitleKey) document.title = t(docTitleKey);
+  } catch { /* fora do browser (testes) — ignora */ }
+
+  root.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
+    el.innerHTML = t(el.getAttribute('data-i18n')!);
+  });
+  root.querySelectorAll<HTMLElement>('[data-i18n-placeholder]').forEach((el) => {
+    el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')!));
+  });
+  root.querySelectorAll<HTMLElement>('[data-i18n-title]').forEach((el) => {
+    el.setAttribute('title', t(el.getAttribute('data-i18n-title')!));
+  });
+  root.querySelectorAll<HTMLElement>('[data-i18n-aria]').forEach((el) => {
+    el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria')!));
+  });
+  root.querySelectorAll<HTMLElement>('[data-i18n-content]').forEach((el) => {
+    el.setAttribute('content', t(el.getAttribute('data-i18n-content')!));
+  });
+}

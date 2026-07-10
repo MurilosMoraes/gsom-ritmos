@@ -76,6 +76,16 @@ for (const [name, dict] of modules) {
   }
 }
 
+// ── 1b. Chaves usadas em data-i18n* nos HTMLs existem no dicionário ──
+const ROOT = path.join(__dirname, '..');
+const htmlFiles = fs.readdirSync(ROOT).filter((f) => f.endsWith('.html'));
+for (const f of htmlFiles) {
+  const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+  for (const m of src.matchAll(/data-i18n(?:-placeholder|-title|-aria|-content|-doc-title)?="([^"]+)"/g)) {
+    check(m[1] in pt, `[${f}] data-i18n usa chave AUSENTE no dicionário: '${m[1]}'`);
+  }
+}
+
 // ── 3b. PARIDADE entre idiomas: cada locale tem EXATAMENTE as chaves
 //        do pt-BR (faltar = usuário vê pt no meio do inglês; sobrar =
 //        chave morta). Placeholders {x} também precisam bater. ──

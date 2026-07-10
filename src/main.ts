@@ -1,6 +1,11 @@
 // Entry point principal - GSOM Rhythm Sequencer
 
-import { t, getLocale, setLocale } from './i18n';
+import { t, getLocale, setLocale, hydrate } from './i18n';
+import { flagSvg, showLanguageSelector } from './i18n/selector';
+
+// Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
+// pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
+hydrate();
 import { StateManager } from './core/StateManager';
 import type { IAudioEngine } from './core/audio/IAudioEngine';
 import { createAudioEngine } from './core/audio/engineFactory';
@@ -3221,13 +3226,15 @@ ctaUrl: '/plans?renew=true',
 
   private setupModeToggle(): void {
     // Seletor de idioma — o item do menu mostra a BANDEIRINHA do idioma
-    // atual + label traduzido (HTML estático não é hidratado pelo i18n;
-    // este item é via JS)
+    // atual + label traduzido. Bandeiras em SVG inline (emoji de bandeira
+    // NÃO renderiza no Windows — vira "BR"/"US"; SVG aparece em tudo).
     const languageBtn = document.getElementById('languageBtn');
     if (languageBtn) {
-      const flags: Record<string, string> = { 'pt-BR': '🇧🇷', 'es-419': '🇲🇽', 'en': '🇺🇸' };
-      languageBtn.textContent = `${flags[getLocale()] || '🌎'} ${t('main.language.menuItem')}`;
-      languageBtn.addEventListener('click', () => this.showLanguageSelector());
+      languageBtn.innerHTML = `${flagSvg(getLocale())} ${t('main.language.menuItem')}`;
+      languageBtn.style.display = 'flex';
+      languageBtn.style.alignItems = 'center';
+      languageBtn.style.gap = '0.5rem';
+      languageBtn.addEventListener('click', () => showLanguageSelector());
     }
 
     // Manual do Usuário
@@ -4002,52 +4009,6 @@ ctaUrl: '/plans?renew=true',
     overlay.querySelector('#closePedalInfo')!.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
-  }
-
-  /** Seletor de idioma com bandeiras. Nomes de idioma NUNCA traduzem
-   *  (cada um aparece na própria língua — padrão universal de UX).
-   *  Trocar = setLocale + reload (aplica em tudo de uma vez). */
-  private showLanguageSelector(): void {
-    const LANGS: Array<{ code: string; flag: string; name: string }> = [
-      { code: 'pt-BR', flag: '🇧🇷', name: 'Português (Brasil)' },
-      { code: 'es-419', flag: '🇲🇽', name: 'Español (Latinoamérica)' },
-      { code: 'en', flag: '🇺🇸', name: 'English' },
-    ];
-    const current = getLocale();
-
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(3,0,20,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem;';
-    overlay.innerHTML = `
-      <div style="background:#0d0a24;border:1px solid rgba(139,92,246,0.35);border-radius:18px;padding:1.6rem;max-width:340px;width:100%;">
-        <h2 style="color:#fff;font-size:1.05rem;margin:0 0 1rem;text-align:center;">${t('main.language.title')}</h2>
-        ${LANGS.map(l => `
-          <button data-lang="${l.code}" style="
-            width:100%;display:flex;align-items:center;gap:0.8rem;padding:0.85rem 1rem;
-            margin-bottom:0.5rem;border-radius:12px;cursor:pointer;font-family:inherit;
-            font-size:0.95rem;font-weight:600;text-align:left;color:#fff;
-            background:${l.code === current ? 'linear-gradient(135deg,rgba(0,212,255,0.18),rgba(139,92,246,0.18))' : 'rgba(255,255,255,0.04)'};
-            border:1px solid ${l.code === current ? 'rgba(0,212,255,0.5)' : 'rgba(255,255,255,0.08)'};
-          ">
-            <span style="font-size:1.4rem;">${l.flag}</span>
-            <span style="flex:1;">${l.name}</span>
-            ${l.code === current ? '<span style="color:#00D4FF;">✓</span>' : ''}
-          </button>
-        `).join('')}
-        <button id="langCancel" style="width:100%;padding:0.7rem;border:none;border-radius:12px;background:transparent;color:rgba(255,255,255,0.45);font-size:0.85rem;cursor:pointer;font-family:inherit;">${t('ui.modal.cancel')}</button>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-    overlay.querySelector('#langCancel')?.addEventListener('click', () => overlay.remove());
-    overlay.querySelectorAll<HTMLElement>('[data-lang]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const code = btn.dataset.lang!;
-        if (code === current) { overlay.remove(); return; }
-        setLocale(code);
-        window.location.reload();
-      });
-    });
   }
 
   private showUserManual(): void {

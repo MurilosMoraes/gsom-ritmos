@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-i18n-doc-title="htmlPlans.plansDocTitle">
 <head>
   <meta charset="UTF-8" />
   <!-- Meta Pixel -->
@@ -18,7 +18,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Planos GDrums | A partir de R$ 9,90</title>
-  <meta name="description" content="Planos do GDrums com acesso a 155 ritmos, suporte a pedal Bluetooth (vendido separadamente) e apps iOS/Android. Mensal R$ 29, Anual R$ 228, Rei dos Palcos (3 anos) R$ 522.">
+  <meta name="description" content="Planos do GDrums com acesso a 155 ritmos, suporte a pedal Bluetooth (vendido separadamente) e apps iOS/Android. Mensal R$ 29, Anual R$ 228, Rei dos Palcos (3 anos) R$ 522." data-i18n-content="htmlPlans.plansMetaDescription">
   <meta name="author" content="Murilo Moraes, Staner Goulart">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#030014">
@@ -30,15 +30,15 @@
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="GDrums">
-  <meta property="og:title" content="Planos GDrums — A partir de R$ 9,90">
-  <meta property="og:description" content="Acesso total: 155 ritmos, suporte a pedal Bluetooth, apps iOS/Android. Trial 48h grátis sem cartão.">
+  <meta property="og:title" content="Planos GDrums — A partir de R$ 9,90" data-i18n-content="htmlPlans.plansOgTitle">
+  <meta property="og:description" content="Acesso total: 155 ritmos, suporte a pedal Bluetooth, apps iOS/Android. Trial 48h grátis sem cartão." data-i18n-content="htmlPlans.plansOgDescription">
   <meta property="og:image" content="https://gdrums.com.br/img/icon-512.png">
   <meta property="og:url" content="https://gdrums.com.br/plans">
   <meta property="og:locale" content="pt_BR">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Planos GDrums — A partir de R$ 9,90">
-  <meta name="twitter:description" content="Acesso total: 155 ritmos, suporte a pedal Bluetooth, apps iOS/Android.">
+  <meta name="twitter:title" content="Planos GDrums — A partir de R$ 9,90" data-i18n-content="htmlPlans.plansOgTitle">
+  <meta name="twitter:description" content="Acesso total: 155 ritmos, suporte a pedal Bluetooth, apps iOS/Android." data-i18n-content="htmlPlans.plansTwitterDescription">
   <meta name="twitter:image" content="https://gdrums.com.br/img/icon-512.png">
 
   <script type="application/ld+json">
@@ -468,15 +468,15 @@
         <span class="plans-brand-text">GDrums</span>
       </div>
       <div class="plans-top-actions">
-        <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank" class="plans-top-link">Suporte</a>
-        <button id="plansLogoutBtn" class="plans-logout-btn">Sair</button>
+        <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank" class="plans-top-link" data-i18n="htmlPlans.plansSupportLink">Suporte</a>
+        <button id="plansLogoutBtn" class="plans-logout-btn" data-i18n="main.stageMode.exit">Sair</button>
       </div>
     </div>
 
     <div class="plans-hero">
-      <div class="plans-overline">Planos</div>
-      <h1 class="plans-title">Escolha como quer seguir.</h1>
-      <p class="plans-subtitle">
+      <div class="plans-overline" data-i18n="htmlPlans.plansOverline">Planos</div>
+      <h1 class="plans-title" data-i18n="htmlPlans.plansTitle">Escolha como quer seguir.</h1>
+      <p class="plans-subtitle" data-i18n="htmlPlans.plansSubtitle">
         Todos os planos incluem a biblioteca completa, suporte a pedal
         Bluetooth, setlist e modo offline. Sem limite de uso. Cancele
         quando quiser. <span style="opacity:0.6;font-size:0.85em;">(pedal vendido separadamente)</span>
@@ -487,8 +487,8 @@
 
     <div class="coupon-section" id="couponSection">
       <div class="coupon-row">
-        <input type="text" class="coupon-input" id="couponInput" placeholder="Tem um cupom?" maxlength="20" />
-        <button class="coupon-btn" id="couponBtn">Aplicar</button>
+        <input type="text" class="coupon-input" id="couponInput" placeholder="Tem um cupom?" maxlength="20" data-i18n-placeholder="htmlPlans.plansCouponPlaceholder" />
+        <button class="coupon-btn" id="couponBtn" data-i18n="htmlPlans.plansCouponApplyBtn">Aplicar</button>
       </div>
       <div class="coupon-status" id="couponStatus"></div>
     </div>
@@ -497,13 +497,13 @@
       <!-- Cards gerados pelo JS -->
     </div>
 
-    <p class="plans-footer">Pagamento seguro via InfinitePay.</p>
-    <p class="plans-glory">Pra honra e glória de Deus</p>
+    <p class="plans-footer" data-i18n="htmlPlans.plansFooterPayment">Pagamento seguro via InfinitePay.</p>
+    <p class="plans-glory" data-i18n="htmlPlans.plansGlory">Pra honra e glória de Deus</p>
   </div>
 
   <div class="plans-loading" id="plansLoading">
     <div class="plans-spinner"></div>
-    <span class="plans-loading-text">Redirecionando para pagamento</span>
+    <span class="plans-loading-text" data-i18n="htmlPlans.plansLoadingText">Redirecionando para pagamento</span>
   </div>
 
   <script type="module" src="/src/auth/plans.ts"></script>

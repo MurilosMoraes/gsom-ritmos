@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-i18n-doc-title="htmlAuth.docTitleCompletarCadastro">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -152,34 +152,34 @@
       <span class="cc-brand-text">GDrums</span>
     </div>
 
-    <div class="cc-overline">Falta pouco!</div>
-    <h1 class="cc-title">Termina seu cadastro</h1>
-    <p class="cc-sub">
+    <div class="cc-overline" data-i18n="htmlAuth.completarCadastro.overline">Falta pouco!</div>
+    <h1 class="cc-title" data-i18n="htmlAuth.completarCadastro.title">Termina seu cadastro</h1>
+    <p class="cc-sub" data-i18n="htmlAuth.completarCadastro.subtitle">
       A gente precisa do seu CPF e WhatsApp pra confirmar sua conta e te
       avisar de novidades. Leva 30 segundos.
     </p>
 
     <form id="ccForm" novalidate>
       <div class="cc-field">
-        <label for="ccCpf">CPF</label>
-        <input type="text" id="ccCpf" required placeholder="000.000.000-00" inputmode="numeric" autocomplete="off" />
+        <label for="ccCpf" data-i18n="htmlAuth.cpfLabel">CPF</label>
+        <input type="text" id="ccCpf" required placeholder="000.000.000-00" data-i18n-placeholder="htmlAuth.cpfPlaceholder" inputmode="numeric" autocomplete="off" />
         <div class="cc-field-error" id="ccCpfError"></div>
       </div>
 
       <div class="cc-field">
-        <label for="ccPhone">WhatsApp</label>
-        <input type="tel" id="ccPhone" required placeholder="(00) 00000-0000" inputmode="tel" autocomplete="tel" />
+        <label for="ccPhone" data-i18n="htmlAuth.whatsappLabel">WhatsApp</label>
+        <input type="tel" id="ccPhone" required placeholder="(00) 00000-0000" data-i18n-placeholder="main.phoneModal.placeholder" inputmode="tel" autocomplete="tel" />
         <div class="cc-field-error" id="ccPhoneError"></div>
       </div>
 
       <button type="submit" class="cc-btn" id="ccSubmit">
-        <span id="ccSubmitText">Concluir</span>
+        <span id="ccSubmitText" data-i18n="auth.completarCadastro.concludeBtn">Concluir</span>
       </button>
     </form>
 
     <div class="cc-alert" id="ccAlert" role="alert"></div>
 
-    <p class="cc-logout">
+    <p class="cc-logout" data-i18n="htmlAuth.completarCadastro.logoutText">
       Não é você? <a id="ccLogout">Sair</a>
     </p>
   </div>

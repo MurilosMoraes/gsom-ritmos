@@ -6,7 +6,11 @@
 import { supabase } from './supabase';
 import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
 import { internalNav } from '../native/Platform';
-import { t } from '../i18n';
+import { t, hydrate } from '../i18n';
+
+// Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
+// pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
+hydrate();
 
 class CompletarCadastroPage {
   private cpfInput!: HTMLInputElement;
