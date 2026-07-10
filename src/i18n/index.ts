@@ -15,15 +15,22 @@
 // - Admin (admin.ts) fica FORA do i18n de propósito: painel interno, PT-BR.
 
 import { pt } from './pt';
+import { dict as es419 } from './es-419';
+import { dict as en } from './en';
 
 const LOCALE_KEY = 'gdrums-locale';
 
 const dictionaries: Record<string, Record<string, string>> = {
   'pt-BR': pt,
+  'es-419': es419, // espanhol latino-americano neutro
+  'en': en,
 };
 
-/** Resolve o idioma ativo: escolha manual salva > idioma do aparelho > pt-BR.
- *  Enquanto só existe pt-BR, sempre cai em pt-BR — comportamento idêntico. */
+/** Resolve o idioma ativo — ordem de prioridade:
+ *  1. Escolha MANUAL salva (usuário trocou no app) — vence sempre.
+ *  2. Idioma do APARELHO (no Capacitor o WebView reporta o idioma do
+ *     sistema; na web, o do navegador): pt* → pt-BR, es* → es-419.
+ *  3. Qualquer outro idioma do mundo → inglês (padrão internacional). */
 function resolveLocale(): string {
   try {
     const saved = localStorage.getItem(LOCALE_KEY);
@@ -31,10 +38,10 @@ function resolveLocale(): string {
   } catch { /* storage indisponível — segue */ }
   try {
     const nav = (navigator.language || '').toLowerCase();
-    // Quando houver mais idiomas: 'es*' → 'es-419', 'en*' → 'en', etc.
     if (nav.startsWith('pt')) return 'pt-BR';
+    if (nav.startsWith('es')) return 'es-419';
   } catch { /* noop */ }
-  return 'pt-BR';
+  return 'en';
 }
 
 let currentLocale = resolveLocale();

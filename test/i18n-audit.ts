@@ -19,6 +19,8 @@ import { plans } from '../src/i18n/pt/plans';
 import { demo } from '../src/i18n/pt/demo';
 import { ui } from '../src/i18n/pt/ui';
 import { core } from '../src/i18n/pt/core';
+import { dict as es419 } from '../src/i18n/es-419';
+import { dict as en } from '../src/i18n/en';
 
 const SRC = path.join(__dirname, '..', 'src');
 const SKIP = ['auth/admin.ts', 'i18n']; // admin é PT-only; i18n é o próprio dicionário
@@ -71,6 +73,24 @@ for (const [name, dict] of modules) {
     const prev = seen.get(key);
     check(!prev, `chave DUPLICADA entre módulos: '${key}' (${prev} e ${name})`);
     if (!prev) seen.set(key, name);
+  }
+}
+
+// ── 3b. PARIDADE entre idiomas: cada locale tem EXATAMENTE as chaves
+//        do pt-BR (faltar = usuário vê pt no meio do inglês; sobrar =
+//        chave morta). Placeholders {x} também precisam bater. ──
+const locales: Array<[string, Record<string, string>]> = [['es-419', es419], ['en', en]];
+const placeholdersOf = (s: string) => (s.match(/\{[a-zA-Z0-9_]+\}/g) || []).sort().join(',');
+for (const [name, dict] of locales) {
+  for (const key of Object.keys(pt)) {
+    check(key in dict, `[${name}] tradução FALTANDO pra chave '${key}'`);
+    if (key in dict) {
+      check(placeholdersOf(dict[key]) === placeholdersOf(pt[key]),
+        `[${name}] placeholders divergem em '${key}' (pt: ${placeholdersOf(pt[key]) || 'nenhum'} vs ${name}: ${placeholdersOf(dict[key]) || 'nenhum'})`);
+    }
+  }
+  for (const key of Object.keys(dict)) {
+    check(key in pt, `[${name}] chave que NÃO existe no pt-BR: '${key}'`);
   }
 }
 
