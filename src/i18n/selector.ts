@@ -70,22 +70,52 @@ export function showLanguageSelector(): void {
   });
 }
 
-/** Pílula flutuante com a bandeira atual (canto sup. direito) — usada
- *  nas páginas de auth pro estrangeiro trocar ANTES de logar. */
-export function injectLanguagePill(): void {
+/** Pílula com a bandeira atual pro estrangeiro trocar ANTES de logar.
+ *
+ *  @param anchorId  se dado e o elemento existe, monta a pílula INLINE
+ *  dentro dele (ex: topbar do demo, que já ocupa o topo). Sem anchor,
+ *  ou anchor inexistente, cai no modo FLUTUANTE (canto sup. direito).
+ */
+export function injectLanguagePill(anchorId?: string): void {
   if (document.getElementById('langPill')) return;
+  const code = getLocale();
+  const short = code === 'pt-BR' ? 'PT' : code === 'es-419' ? 'ES' : 'EN';
+
   const pill = document.createElement('button');
   pill.id = 'langPill';
+  pill.type = 'button'; // não submete formulário se cair dentro de um <form>
   pill.setAttribute('aria-label', t('main.language.title'));
-  pill.style.cssText = `
-    position:fixed;top:calc(env(safe-area-inset-top, 0px) + 12px);right:14px;z-index:9000;
-    display:flex;align-items:center;gap:0.45rem;padding:0.45rem 0.7rem;
-    background:rgba(13,10,36,0.85);border:1px solid rgba(255,255,255,0.14);
-    border-radius:999px;cursor:pointer;font-family:inherit;color:rgba(255,255,255,0.85);
-    font-size:0.78rem;font-weight:700;backdrop-filter:blur(8px);
-  `;
-  const code = getLocale();
-  pill.innerHTML = `${flagSvg(code, 18)} ${code === 'pt-BR' ? 'PT' : code === 'es-419' ? 'ES' : 'EN'}`;
+  pill.innerHTML = `${flagSvg(code, 18)} <span>${short}</span>`;
+
+  // Estilo base (comum aos dois modos). setProperty com 'important' pra
+  // blindar contra CSS de botão das páginas (ex: .login button width:100%
+  // esticava a pílula pra fora da tela).
+  const base: Array<[string, string]> = [
+    ['display', 'inline-flex'], ['align-items', 'center'], ['gap', '0.4rem'],
+    ['width', 'auto'], ['min-width', '0'], ['box-sizing', 'border-box'],
+    ['padding', '0.4rem 0.65rem'], ['margin', '0'],
+    ['background', 'rgba(13,10,36,0.85)'], ['border', '1px solid rgba(255,255,255,0.16)'],
+    ['border-radius', '999px'], ['cursor', 'pointer'], ['font-family', 'inherit'],
+    ['color', 'rgba(255,255,255,0.9)'], ['font-size', '0.78rem'], ['font-weight', '700'],
+    ['line-height', '1'], ['flex-shrink', '0'], ['-webkit-backdrop-filter', 'blur(8px)'],
+    ['backdrop-filter', 'blur(8px)'],
+  ];
+  for (const [k, v] of base) pill.style.setProperty(k, v, 'important');
+
+  const anchor = anchorId ? document.getElementById(anchorId) : null;
+  if (anchor) {
+    // INLINE: primeiro filho do anchor (topbar do demo) — fica à
+    // esquerda, longe do CTA "Começar grátis" na direita
+    anchor.insertBefore(pill, anchor.firstChild);
+  } else {
+    // FLUTUANTE: canto superior direito, acima de tudo
+    pill.style.setProperty('position', 'fixed', 'important');
+    pill.style.setProperty('top', 'calc(env(safe-area-inset-top, 0px) + 12px)', 'important');
+    pill.style.setProperty('right', '14px', 'important');
+    pill.style.setProperty('left', 'auto', 'important');
+    pill.style.setProperty('z-index', '99990', 'important');
+    document.body.appendChild(pill);
+  }
+
   pill.addEventListener('click', () => showLanguageSelector());
-  document.body.appendChild(pill);
 }

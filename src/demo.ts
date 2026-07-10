@@ -18,7 +18,7 @@ import { injectLanguagePill } from './i18n/selector';
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
 // pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
 hydrate();
-injectLanguagePill();
+injectLanguagePill('demoTopbar');
 
 // Só estes ritmos ficam liberados. O resto aparece bloqueado no catálogo
 // (botão TODOS) pra mostrar ao user o tamanho REAL da biblioteca — peça
