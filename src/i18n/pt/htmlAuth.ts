@@ -50,6 +50,7 @@ export const htmlAuth: Record<string, string> = {
   'htmlAuth.register.title': 'Crie sua conta.',
   'htmlAuth.register.subtitle': '48h grátis pra testar tudo. Sem cartão.',
   'htmlAuth.register.nameLabel': 'Nome',
+  'htmlAuth.register.countryLabel': 'País',
   'htmlAuth.register.namePlaceholder': 'Seu nome',
   'htmlAuth.register.phoneLabel': 'WhatsApp <span style="opacity:0.55;font-weight:500;text-transform:none;letter-spacing:0;">(opcional)</span>',
   'htmlAuth.register.termsCheckbox': 'Aceito os <a href="/terms">termos de uso</a> e a <a href="/privacy">política de privacidade</a>',

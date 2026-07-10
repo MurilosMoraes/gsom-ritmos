@@ -5,12 +5,12 @@ import { supabase } from './supabase';
 import { validateCPF, formatCPF } from '../utils/cpf';
 import { AttributionService } from '../native/AttributionService';
 import { isNativeApp } from '../native/Platform';
-import { registerSchema, zodErrorsToFieldMap } from './schemas';
+import { registerSchema, registerSchemaIntl, zodErrorsToFieldMap } from './schemas';
 import { updateRhythmCountInDom } from '../utils/rhythmCount';
 import { redirectIfRecoveryHash } from './recoveryGuard';
 import { setupPasswordToggle } from '../utils/passwordToggle';
 import { trackLead } from '../utils/metaTracking';
-import { t, hydrate } from '../i18n';
+import { t, hydrate, getLocale } from '../i18n';
 import { injectLanguagePill } from '../i18n/selector';
 
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
@@ -20,6 +20,7 @@ injectLanguagePill();
 
 class RegisterPage {
   private form: HTMLFormElement;
+  private countrySelect: HTMLSelectElement;
   private nameInput: HTMLInputElement;
   private cpfInput: HTMLInputElement;
   private phoneInput: HTMLInputElement;
@@ -33,6 +34,7 @@ class RegisterPage {
 
   constructor() {
     this.form = document.getElementById('registerForm') as HTMLFormElement;
+    this.countrySelect = document.getElementById('country') as HTMLSelectElement;
     this.nameInput = document.getElementById('name') as HTMLInputElement;
     this.cpfInput = document.getElementById('cpf') as HTMLInputElement;
     this.phoneInput = document.getElementById('phone') as HTMLInputElement;
@@ -80,6 +82,9 @@ class RegisterPage {
       window.location.href = '/';
       return;
     }
+
+    // Seletor de país: popula, default por locale, e alterna o CPF.
+    this.setupCountry();
 
     // Social proof dinâmico — fire-and-forget, não bloqueia o formulário
     this.loadSocialProof();
@@ -139,6 +144,62 @@ class RegisterPage {
     this.setupFieldValidation();
   }
 
+  /** True se o país selecionado é Brasil — dirige CPF e validação. */
+  private isBrazil(): boolean {
+    return (this.countrySelect?.value || 'BR') === 'BR';
+  }
+
+  /**
+   * Popula o seletor de país (nomes traduzidos pro idioma da UI via
+   * Intl.DisplayNames), define o default pelo idioma/região do aparelho,
+   * e alterna o campo de CPF: Brasil mostra e exige; fora do Brasil
+   * esconde (o anti-abuso vira rate limit + confirmação de e-mail no
+   * servidor). BR = comportamento idêntico ao de sempre.
+   */
+  private setupCountry(): void {
+    if (!this.countrySelect) return;
+    // Lista curada dos mercados de lançamento. Servidor só distingue
+    // BR x não-BR; o resto é só rótulo. 'OTHER' cobre o mundo todo.
+    const CODES = ['BR', 'PT', 'US', 'GB', 'CA', 'ES', 'MX', 'AR', 'CO', 'CL', 'PE', 'EC', 'BO', 'PY', 'UY', 'VE', 'AO', 'MZ'];
+    let names: Intl.DisplayNames | null = null;
+    try { names = new Intl.DisplayNames([getLocale()], { type: 'region' }); } catch { names = null; }
+    const label = (code: string) => { try { return names?.of(code) || code; } catch { return code; } };
+
+    // Ordena por nome localizado, mas fixa Brasil no topo.
+    const rest = CODES.filter(c => c !== 'BR').sort((a, b) => label(a)!.localeCompare(label(b)!, getLocale()));
+    const ordered = ['BR', ...rest];
+
+    this.countrySelect.innerHTML =
+      ordered.map(c => `<option value="${c}">${label(c)}</option>`).join('') +
+      `<option value="OTHER">${t('auth.register.countryOther')}</option>`;
+
+    // Default: região do navegador (ex: 'es-MX' → MX) se estiver na lista;
+    // senão pelo idioma (pt→BR, es→MX, en→US).
+    let def = 'BR';
+    try {
+      const navRegion = (navigator.language.split('-')[1] || '').toUpperCase();
+      if (navRegion && ordered.includes(navRegion)) def = navRegion;
+      else { const loc = getLocale(); def = loc.startsWith('pt') ? 'BR' : loc.startsWith('es') ? 'MX' : 'US'; }
+    } catch { /* mantém BR */ }
+    this.countrySelect.value = def;
+
+    this.toggleCpf();
+    this.countrySelect.addEventListener('change', () => {
+      this.toggleCpf();
+      // Revalida CPF (limpa erro se saiu do Brasil)
+      this.renderFieldError('cpf', null);
+    });
+  }
+
+  /** Mostra/esconde o campo de CPF conforme país (só Brasil). */
+  private toggleCpf(): void {
+    const field = document.getElementById('cpfField');
+    const br = this.isBrazil();
+    if (field) field.style.display = br ? '' : 'none';
+    // required só no Brasil — evita o browser barrar submit fora do BR
+    if (this.cpfInput) this.cpfInput.required = br;
+  }
+
   /**
    * Validação inline campo-a-campo com Zod.
    *
@@ -192,18 +253,26 @@ class RegisterPage {
   }
 
   private validateSingleField(): Record<string, string> {
-    const payload = {
+    const result = this.parseForm();
+    if (result.success) return {};
+    return zodErrorsToFieldMap(result.error);
+  }
+
+  /** Valida com o schema certo pro país: BR inclui CPF (registerSchema,
+   *  idêntico ao de sempre); fora do BR usa registerSchemaIntl (sem CPF). */
+  private parseForm() {
+    const base = {
       name: this.nameInput.value,
-      cpf: this.cpfInput.value,
       phone: this.phoneInput.value,
       email: this.emailInput.value,
       password: this.passwordInput.value,
       confirmPassword: this.confirmPasswordInput.value,
       acceptTerms: this.acceptTermsCheckbox.checked,
     };
-    const result = registerSchema.safeParse(payload);
-    if (result.success) return {};
-    return zodErrorsToFieldMap(result.error);
+    if (this.isBrazil()) {
+      return registerSchema.safeParse({ ...base, cpf: this.cpfInput.value });
+    }
+    return registerSchemaIntl.safeParse(base);
   }
 
   private renderFieldError(fieldKey: string, msg: string | null): void {
@@ -266,7 +335,10 @@ class RegisterPage {
           name: this.nameInput.value.trim(),
           email: this.emailInput.value.trim(),
           password: this.passwordInput.value,
-          cpf: this.cpfInput.value,
+          // País dirige o caminho no servidor: BR exige CPF (idêntico ao
+          // de hoje); fora do BR, sem CPF + confirmação de e-mail.
+          country: this.countrySelect?.value || 'BR',
+          cpf: this.isBrazil() ? this.cpfInput.value : '',
           phone: this.phoneInput.value.replace(/\D/g, ''),
           signup_source: attr.source,
           signup_medium: attr.medium,
@@ -297,6 +369,16 @@ class RegisterPage {
         email: this.emailInput.value.trim(),
         phone: this.phoneInput.value.replace(/\D/g, ''),
       });
+
+      // CADASTRO INTERNACIONAL: o servidor criou a conta mas o e-mail
+      // NÃO está confirmado (não dá pra logar ainda) — ele mandou um
+      // e-mail de confirmação. Mostra "confira seu e-mail" em vez de
+      // tentar signIn (que falharia com email_not_confirmed). O link do
+      // e-mail cai no login.ts (type=signup) e loga de lá.
+      if (result.confirmation_required) {
+        this.showCheckEmail(this.emailInput.value.trim());
+        return;
+      }
 
       // Sucesso: servidor garantiu que conta tá completa. Agora faz signIn
       // pelo cliente pra gerar a sessão JWT local.
@@ -387,6 +469,48 @@ class RegisterPage {
     this.injectWelcomeStyles();
   }
 
+  /**
+   * Tela "confira seu e-mail" — cadastro internacional. A conta existe
+   * mas o e-mail precisa ser confirmado (é o anti-abuso que substitui o
+   * CPF fora do Brasil). Reaproveita o visual da wd-card. Botão de
+   * reenviar usa supabase.auth.resend(type:'signup').
+   */
+  private showCheckEmail(email: string): void {
+    const overlay = document.createElement('div');
+    overlay.className = 'wd-overlay';
+    overlay.innerHTML = `
+      <div class="wd-card">
+        <div class="wd-check" style="background:linear-gradient(135deg,#00D4FF,#8B5CF6);color:#fff;">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <h1 class="wd-title">${t('auth.register.checkEmailTitle')}</h1>
+        <p class="wd-sub">${t('auth.register.checkEmailBody', { email: `<strong>${email}</strong>` })}</p>
+        <p class="wd-sub" style="font-size:0.85rem;opacity:0.7;">${t('auth.register.checkEmailHint')}</p>
+        <div class="wd-stores">
+          <button class="wd-store-btn" id="ceResend">${t('auth.register.checkEmailResend')}</button>
+        </div>
+        <button class="wd-continue" id="ceBack">${t('auth.register.checkEmailBackToLogin')}</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('wd-visible'));
+
+    const resendBtn = overlay.querySelector('#ceResend') as HTMLButtonElement;
+    resendBtn?.addEventListener('click', async () => {
+      resendBtn.disabled = true;
+      try {
+        await supabase.auth.resend({ type: 'signup', email });
+        resendBtn.textContent = t('auth.register.checkEmailResent');
+      } catch {
+        resendBtn.disabled = false;
+      }
+    });
+    overlay.querySelector('#ceBack')?.addEventListener('click', () => {
+      window.location.href = '/login.html';
+    });
+
+    this.injectWelcomeStyles();
+  }
+
   private injectWelcomeStyles(): void {
     if (document.getElementById('wd-styles')) return;
     const css = document.createElement('style');
@@ -447,18 +571,9 @@ class RegisterPage {
   }
 
   private validateForm(): boolean {
-    // Validação completa via Zod — mais robusta que a sequência de ifs anterior.
-    // Mensagens em PT-BR vêm do schema (src/auth/schemas.ts).
-    const payload = {
-      name: this.nameInput.value,
-      cpf: this.cpfInput.value,
-      phone: this.phoneInput.value,
-      email: this.emailInput.value,
-      password: this.passwordInput.value,
-      confirmPassword: this.confirmPasswordInput.value,
-      acceptTerms: this.acceptTermsCheckbox.checked,
-    };
-    const result = registerSchema.safeParse(payload);
+    // Validação completa via Zod (schema por país — ver parseForm).
+    // Mensagens vêm do schema (src/auth/schemas.ts).
+    const result = this.parseForm();
 
     // Limpar erros antigos de TODOS os campos
     ['name', 'cpf', 'phone', 'email', 'password', 'confirmPassword', 'acceptTerms'].forEach(k => {

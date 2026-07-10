@@ -333,7 +333,8 @@
     .reg-field input[type="tel"],
     .reg-field input[type="text"],
     .reg-field input[type="email"],
-    .reg-field input[type="password"] {
+    .reg-field input[type="password"],
+    .reg-field select {
       width: 100%;
       padding: 0.95rem 1rem;
       background: rgba(255, 255, 255, 0.04);
@@ -345,7 +346,10 @@
       outline: none;
       transition: all 0.18s;
     }
-    .reg-field input:focus {
+    .reg-field select { appearance: none; -webkit-appearance: none; cursor: pointer; }
+    .reg-field select option { background: #0d0a24; color: #fff; }
+    .reg-field input:focus,
+    .reg-field select:focus {
       border-color: rgba(0, 230, 140, 0.6);
       background: rgba(0, 230, 140, 0.04);
       box-shadow: 0 0 0 4px rgba(0, 230, 140, 0.12);
@@ -572,10 +576,16 @@
 
       <form id="registerForm" class="reg-form" novalidate>
         <div class="reg-field">
+          <label for="country" data-i18n="htmlAuth.register.countryLabel">País</label>
+          <select id="country" name="country" required></select>
+        </div>
+        <div class="reg-field">
           <label for="name" data-i18n="htmlAuth.register.nameLabel">Nome</label>
           <input type="text" id="name" name="name" required placeholder="Seu nome" data-i18n-placeholder="htmlAuth.register.namePlaceholder" autocomplete="name" />
         </div>
-        <div class="reg-field">
+        <!-- CPF: só aparece pra conta do Brasil (documento BR). Fora do
+             Brasil, o anti-abuso é rate limit + confirmação de e-mail. -->
+        <div class="reg-field" id="cpfField">
           <label for="cpf" data-i18n="htmlAuth.cpfLabel">CPF</label>
           <input type="text" id="cpf" name="cpf" required placeholder="000.000.000-00" data-i18n-placeholder="htmlAuth.cpfPlaceholder" autocomplete="off" inputmode="numeric" maxlength="14" />
         </div>

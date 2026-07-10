@@ -102,6 +102,26 @@ export const registerSchema = z
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 
+// Cadastro INTERNACIONAL (país != Brasil): SEM CPF. O anti-abuso do CPF
+// (documento BR único) é substituído no servidor por rate limit +
+// confirmação de e-mail. Telefone segue opcional. Todo o RESTO é
+// idêntico ao registerSchema — o BR não é afetado por este schema.
+export const registerSchemaIntl = z
+  .object({
+    name: nameSchema,
+    phone: phoneSchema,
+    email: emailSchema,
+    password: passwordSchema,
+    confirmPassword: z.string({ error: t('auth.schemas.confirmPasswordRequired') }),
+    acceptTerms: z.boolean().refine(v => v === true, {
+      error: t('auth.schemas.acceptTermsRequired'),
+    }),
+  })
+  .refine(d => d.password === d.confirmPassword, {
+    error: t('auth.errors.passwordsDontMatch'),
+    path: ['confirmPassword'],
+  });
+
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string({ error: t('auth.schemas.loginPasswordRequired') }).min(1, { error: t('auth.schemas.loginPasswordRequired') }),
