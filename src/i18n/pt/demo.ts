@@ -23,10 +23,10 @@ export const demo: Record<string, string> = {
   // Modal de conversão (progressivo, após tour/3 trocas)
   'demo.convert.overline': 'Gostou?',
   'demo.convert.title': 'Isso é só uma prévia.',
-  'demo.convert.body': 'Você acabou de tocar com acompanhamento profissional. Cria conta pra liberar os outros {count} ritmos, conectar pedal Bluetooth e montar sua setlist.',
+  'demo.convert.body': 'Você acabou de tocar com acompanhamento profissional. Cria conta pra liberar os outros {count} ritmos, conectar pedal Bluetooth e montar seu repertório.',
   'demo.convert.offerSub': '✓ Não pedimos cartão · ✓ Sem cobrança automática',
   'demo.convert.secondary': 'Continuar testando',
-  'demo.convert.reassure': 'É de graça mesmo — só criar a conta e tocar.',
+  'demo.convert.reassure': 'É de graça mesmo, só criar a conta e tocar.',
 
   // Compartilhados entre modal de conversão e tela de prévia encerrada
   'demo.offer.badge': '100% Grátis',
@@ -38,9 +38,21 @@ export const demo: Record<string, string> = {
   'demo.allRhythms.title': 'Todos os ritmos',
   'demo.allRhythms.subtitle': '{count} ritmos · liberados no cadastro',
   'demo.allRhythms.closeAriaLabel': 'Fechar',
-  'demo.allRhythms.cta': 'Cadastrar grátis e liberar tudo',
+  'demo.allRhythms.cta': 'Libere tudo grátis por 48h',
   'demo.allRhythms.lockedTitle': 'Disponível após cadastro',
   'demo.allRhythms.loadError': 'Não foi possível carregar o catálogo.',
+
+  // Modal de fim do tour guiado
+  'demo.tourEnd.ariaLabel': 'Demonstração rápida',
+  'demo.tourEnd.title': 'Isso é só uma demonstração rápida!',
+  'demo.tourEnd.feature.rhythmCount': 'Dentro do app temos <strong>{count} ritmos</strong>.',
+  'demo.tourEnd.feature.pedal': 'Suporte para usar pedal sem fio.',
+  'demo.tourEnd.feature.setlist': 'Pode criar repertórios na ordem e velocidade que quiser!',
+  'demo.tourEnd.feature.toggle': 'Ativar e desativar ritmos e viradas.',
+  'demo.tourEnd.feature.eq': 'Equalizador e Reverb.',
+  'demo.tourEnd.footerText': 'E muito mais!! Se cadastre e teste gratuitamente.',
+  'demo.tourEnd.primaryCta': 'Se cadastrar',
+  'demo.tourEnd.secondary': 'Continuar teste',
 
   // Nome do ritmo atual
   'demo.rhythm.loadError': 'Erro ao carregar',
@@ -52,7 +64,7 @@ export const demo: Record<string, string> = {
   // Tela de prévia encerrada
   'demo.expired.overline': 'Você tocou bem',
   'demo.expired.title': 'Agora é pegar a banda completa.',
-  'demo.expired.bodyPre': 'Você tocou 3 ritmos. A biblioteca tem',
+  'demo.expired.bodyPre': 'Você tocou {count} ritmos. A biblioteca tem',
   'demo.expired.bodyPost': '— Vaneira, Sertanejo, Gospel, Pagode, Forró, Reggae, Rock e muito mais, cada um com viradas, intros e finais prontos pra palco.',
   'demo.expired.featureRhythmsCount': 'ritmos completos',
   'demo.expired.featureBluetoothBadge': 'BT',
