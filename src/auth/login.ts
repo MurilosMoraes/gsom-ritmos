@@ -692,6 +692,16 @@ class LoginPage {
       // ANTES do redirect pra pessoa decidir com calma.
       await this.maybeOfferBiometric(this.emailInput.value.trim(), password);
       await this.finishLogin(response.user.id);
+    } else if (response.code === 'email_not_confirmed') {
+      // Conta INTERNACIONAL que ainda não clicou no link de confirmação.
+      // Em vez de um alerta vermelho sem saída, abre a tela "confira seu
+      // e-mail" com reenvio (a mesma do pós-cadastro). O BR nunca cai
+      // aqui: lá o e-mail já nasce confirmado pelo admin API.
+      this.setLoading(false);
+      const { showCheckEmailScreen } = await import('./checkEmailScreen');
+      showCheckEmailScreen(this.emailInput.value.trim(), {
+        onBack: () => { /* fecha o overlay e volta pro form já renderizado */ },
+      });
     } else {
       this.showAlert(response.message || t('auth.login.loginFailedFallback'), 'error');
       this.setLoading(false);

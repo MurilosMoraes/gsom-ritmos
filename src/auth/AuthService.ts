@@ -63,6 +63,10 @@ export interface AuthResponse {
   token?: string;
   user?: User;
   message?: string;
+  /** Código estável do erro (não depende do texto traduzido).
+   *  'email_not_confirmed' = conta internacional que ainda não clicou no
+   *  link de confirmação — o login mostra a tela de "confira seu e-mail". */
+  code?: 'email_not_confirmed';
 }
 
 class AuthService {
@@ -76,7 +80,16 @@ class AuthService {
       });
 
       if (error) {
-        return { success: false, message: this.translateError(error.message) };
+        // E-mail não confirmado (conta internacional que não clicou no
+        // link ainda): devolve um CÓDIGO estável pro login.ts abrir a
+        // tela de confirmação com reenvio, em vez de um alerta seco.
+        const raw = (error.message || '').toLowerCase();
+        const notConfirmed = raw.includes('not confirmed') || raw.includes('email_not_confirmed');
+        return {
+          success: false,
+          message: this.translateError(error.message),
+          ...(notConfirmed ? { code: 'email_not_confirmed' as const } : {}),
+        };
       }
 
       if (!data.user) {

@@ -376,7 +376,8 @@ class RegisterPage {
       // tentar signIn (que falharia com email_not_confirmed). O link do
       // e-mail cai no login.ts (type=signup) e loga de lá.
       if (result.confirmation_required) {
-        this.showCheckEmail(this.emailInput.value.trim());
+        const { showCheckEmailScreen } = await import('./checkEmailScreen');
+        showCheckEmailScreen(this.emailInput.value.trim());
         return;
       }
 
@@ -464,48 +465,6 @@ class RegisterPage {
 
     overlay.querySelector('#wdContinue')?.addEventListener('click', () => {
       window.location.href = '/';
-    });
-
-    this.injectWelcomeStyles();
-  }
-
-  /**
-   * Tela "confira seu e-mail" — cadastro internacional. A conta existe
-   * mas o e-mail precisa ser confirmado (é o anti-abuso que substitui o
-   * CPF fora do Brasil). Reaproveita o visual da wd-card. Botão de
-   * reenviar usa supabase.auth.resend(type:'signup').
-   */
-  private showCheckEmail(email: string): void {
-    const overlay = document.createElement('div');
-    overlay.className = 'wd-overlay';
-    overlay.innerHTML = `
-      <div class="wd-card">
-        <div class="wd-check" style="background:linear-gradient(135deg,#00D4FF,#8B5CF6);color:#fff;">
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        </div>
-        <h1 class="wd-title">${t('auth.register.checkEmailTitle')}</h1>
-        <p class="wd-sub">${t('auth.register.checkEmailBody', { email: `<strong>${email}</strong>` })}</p>
-        <p class="wd-sub" style="font-size:0.85rem;opacity:0.7;">${t('auth.register.checkEmailHint')}</p>
-        <div class="wd-stores">
-          <button class="wd-store-btn" id="ceResend">${t('auth.register.checkEmailResend')}</button>
-        </div>
-        <button class="wd-continue" id="ceBack">${t('auth.register.checkEmailBackToLogin')}</button>
-      </div>`;
-    document.body.appendChild(overlay);
-    requestAnimationFrame(() => overlay.classList.add('wd-visible'));
-
-    const resendBtn = overlay.querySelector('#ceResend') as HTMLButtonElement;
-    resendBtn?.addEventListener('click', async () => {
-      resendBtn.disabled = true;
-      try {
-        await supabase.auth.resend({ type: 'signup', email });
-        resendBtn.textContent = t('auth.register.checkEmailResent');
-      } catch {
-        resendBtn.disabled = false;
-      }
-    });
-    overlay.querySelector('#ceBack')?.addEventListener('click', () => {
-      window.location.href = '/login.html';
     });
 
     this.injectWelcomeStyles();
