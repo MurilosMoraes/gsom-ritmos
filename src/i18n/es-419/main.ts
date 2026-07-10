@@ -1,5 +1,7 @@
 // Traducción es-419 — claves reflejan pt/main.ts (fase 2 del i18n).
 export const main: Record<string, string> = {
+  'main.language.menuItem': 'Idioma',
+  'main.language.title': 'Elige el idioma',
   // ── Boot / iOS startup modal ──
   'main.mediaSession.artist': 'Secuenciador de Ritmos',
   'main.iosStartup.title': 'Todo listo',

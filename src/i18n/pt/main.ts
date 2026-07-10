@@ -1,5 +1,7 @@
 // Preenchido pela extração de strings (fase 1 do i18n) — valores byte-idênticos aos literais originais.
 export const main: Record<string, string> = {
+  'main.language.menuItem': 'Idioma',
+  'main.language.title': 'Escolha o idioma',
   // ── Boot / iOS startup modal ──
   'main.mediaSession.artist': 'Sequenciador de Ritmos',
   'main.iosStartup.title': 'Tudo pronto',

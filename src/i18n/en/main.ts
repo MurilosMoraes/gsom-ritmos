@@ -1,5 +1,7 @@
 // Tradução en — preenchido por extração/tradução (chaves espelham pt/main.ts)
 export const main: Record<string, string> = {
+  'main.language.menuItem': 'Language',
+  'main.language.title': 'Choose your language',
   // ── Boot / iOS startup modal ──
   'main.mediaSession.artist': 'Rhythm Sequencer',
   'main.iosStartup.title': 'All set',
