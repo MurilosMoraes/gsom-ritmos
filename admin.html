@@ -784,6 +784,32 @@
                 <div id="freeTrialHint" style="font-size:0.72rem;color:var(--a-text3,#778);text-align:center;margin-top:0.35rem;"></div>
               </div>
             </div>
+
+            <!-- Reset de senha: destrava músico quando o "esqueci minha senha"
+                 não chega (ex: limite de envio de email). Pede confirmação
+                 pra não ser acidental. -->
+            <div style="border-top:1px solid var(--a-border,rgba(255,255,255,0.1));margin:1rem 0 0.75rem;padding-top:0.75rem;">
+              <label style="font-size:0.8rem;color:var(--a-text2,#9aa);font-weight:600;display:block;margin-bottom:0.5rem;">
+                🔑 Resetar senha
+              </label>
+              <button type="button" id="resetPassBtn" class="adm-btn adm-btn-ghost" style="width:100%;">
+                Resetar senha deste usuário
+              </button>
+              <div id="resetPassHint" style="font-size:0.72rem;color:var(--a-text3,#778);text-align:center;margin-top:0.35rem;">
+                Gera uma senha temporária nova. Vai pedir confirmação.
+              </div>
+
+              <!-- Resultado: senha gerada + texto pronto pro WhatsApp -->
+              <div id="resetPassResult" style="display:none;margin-top:0.7rem;background:rgba(0,230,140,0.06);border:1px solid rgba(0,230,140,0.25);border-radius:10px;padding:0.8rem;">
+                <div style="font-size:0.7rem;color:var(--a-text3,#778);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.3rem;">
+                  Senha temporária
+                </div>
+                <div id="resetPassValue" style="font-size:1.4rem;font-weight:800;color:#00E68C;letter-spacing:2px;margin-bottom:0.7rem;font-family:ui-monospace,monospace;"></div>
+                <button type="button" id="resetPassCopyBtn" class="adm-btn adm-btn-primary" style="width:100%;">
+                  📋 Copiar texto pro WhatsApp
+                </button>
+              </div>
+            </div>
           </div>
           <div class="adm-modal-foot">
             <button type="button" class="adm-btn adm-btn-ghost" data-modal="editUserModal">Fechar</button>
