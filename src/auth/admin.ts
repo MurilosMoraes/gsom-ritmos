@@ -156,6 +156,19 @@ async function adminBanUser(userId: string, ban: boolean): Promise<void> {
 }
 
 /**
+ * Reseta a senha do usuário pra uma TEMPORÁRIA e devolve ela.
+ * A senha é gerada na edge function (formato "gdrums" + 4 dígitos) —
+ * o painel não escolhe a senha, só exibe a que voltou.
+ * Usado quando o "esqueci minha senha" não chega no músico.
+ */
+async function adminResetPassword(userId: string): Promise<string> {
+  const res = await adminCall({ action: 'reset_password', id: userId });
+  const senha = res?.password;
+  if (!senha) throw new Error('A função não devolveu a senha nova.');
+  return senha as string;
+}
+
+/**
  * Chama funções agregadas no Postgres (admin_kpi_summary, admin_signup_funnel,
  * admin_medium_funnel). Rápido porque agrega no DB sem puxar linha por linha.
  */
@@ -2249,6 +2262,9 @@ class AdminDashboard {
   }
 
   private currentEditUserId: string | null = null;
+  /** Senha temporária gerada no último reset (pro texto do WhatsApp).
+   *  Zerada a cada abertura do modal — ver editUser(). */
+  private lastResetPassword: string | null = null;
 
   private editUser(userId: string): void {
     const profile = this.profiles.find(p => p.id === userId);
@@ -2330,6 +2346,20 @@ class AdminDashboard {
       ftBtn.textContent = '🎁 Dar +24h de teste grátis';
       ftHint.textContent = 'Pode conceder 1x. Soma 24h ao prazo atual.';
     }
+
+    // Reset de senha: zera o painel a cada abertura. CRÍTICO — sem isso, a
+    // senha temporária gerada pro usuário ANTERIOR continuaria na tela e o
+    // suporte mandaria a senha errada pro músico errado.
+    this.lastResetPassword = null;
+    const rpResult = document.getElementById('resetPassResult') as HTMLElement;
+    const rpBtn = document.getElementById('resetPassBtn') as HTMLButtonElement;
+    const rpHint = document.getElementById('resetPassHint') as HTMLElement;
+    if (rpResult) rpResult.style.display = 'none';
+    if (rpBtn) {
+      rpBtn.disabled = false;
+      rpBtn.textContent = 'Resetar senha deste usuário';
+    }
+    if (rpHint) rpHint.textContent = 'Gera uma senha temporária nova. Vai pedir confirmação.';
 
     modal.classList.add('active');
   }
@@ -2417,6 +2447,84 @@ class AdminDashboard {
     // Preview ao vivo da ativação manual
     document.getElementById('manualPlan')?.addEventListener('change', () => this.updateManualPreview());
     document.getElementById('manualCoupon')?.addEventListener('change', () => this.updateManualPreview());
+
+    // Botão: resetar senha pra uma temporária ("gdrums" + 4 dígitos).
+    // Confirmação OBRIGATÓRIA — reset é destrutivo (a senha antiga morre).
+    document.getElementById('resetPassBtn')?.addEventListener('click', async () => {
+      if (!this.currentEditUserId) return;
+      const profile = this.profiles.find(p => p.id === this.currentEditUserId);
+      if (!profile) return;
+
+      const ok = await modalManager.confirm(
+        'Resetar a senha?',
+        `A senha atual de ${profile.name} vai ser APAGADA e trocada por uma temporária. ` +
+        `Ele só vai conseguir entrar com a senha nova. Não dá pra desfazer.`
+      );
+      if (!ok) return;
+
+      const btn = document.getElementById('resetPassBtn') as HTMLButtonElement;
+      const hint = document.getElementById('resetPassHint') as HTMLElement;
+      const box = document.getElementById('resetPassResult') as HTMLElement;
+      const val = document.getElementById('resetPassValue') as HTMLElement;
+
+      btn.disabled = true;
+      btn.textContent = 'Resetando...';
+      try {
+        const senha = await adminResetPassword(this.currentEditUserId);
+        this.lastResetPassword = senha;
+        val.textContent = senha;
+        box.style.display = '';
+        btn.disabled = false;
+        btn.textContent = 'Gerar outra senha';
+        hint.textContent = 'Senha trocada. Copia o texto e manda pro músico.';
+        modalManager.show('Pronto!', `Senha de ${profile.name} resetada.`, 'success');
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'Resetar senha deste usuário';
+        modalManager.show('Erro', `Falha ao resetar: ${String(e)}`, 'error');
+      }
+    });
+
+    // Botão: copiar texto pronto pro WhatsApp (senha + como trocar depois)
+    document.getElementById('resetPassCopyBtn')?.addEventListener('click', async () => {
+      if (!this.lastResetPassword || !this.currentEditUserId) return;
+      const profile = this.profiles.find(p => p.id === this.currentEditUserId);
+      const primeiro = (profile?.name || '').trim().split(/\s+/)[0] || 'Músico';
+
+      const texto = [
+        `Oi ${primeiro}! Aqui é do GDrums.`,
+        ``,
+        `Sua senha temporária é: ${this.lastResetPassword}`,
+        ``,
+        `É só entrar no app com o seu email e essa senha.`,
+        ``,
+        `Se quiser trocar por uma senha sua: entra na conta, clica na chave no menu, vai em "Minha Conta" e depois em "Alterar senha".`,
+        ``,
+        `Qualquer coisa é só chamar!`,
+      ].join('\n');
+
+      const btn = document.getElementById('resetPassCopyBtn') as HTMLButtonElement;
+      const flash = (): void => {
+        btn.textContent = '✅ Copiado!';
+        setTimeout(() => { btn.textContent = '📋 Copiar texto pro WhatsApp'; }, 2000);
+      };
+
+      try {
+        await navigator.clipboard.writeText(texto);
+        flash();
+      } catch {
+        // Fallback: clipboard API falha em contexto não-seguro / browser velho
+        const ta = document.createElement('textarea');
+        ta.value = texto;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); flash(); }
+        catch { modalManager.show('Erro', 'Não consegui copiar. Copia a senha na mão.', 'error'); }
+        document.body.removeChild(ta);
+      }
+    });
 
     // Botão: +24h de teste grátis (limite 1x por usuário, anti-abuso)
     document.getElementById('freeTrialBtn')?.addEventListener('click', async () => {
