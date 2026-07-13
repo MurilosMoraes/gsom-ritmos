@@ -1,15 +1,15 @@
 // Comissão da App Store (Apple IAP).
 //
-// Fomos aprovados no Small Business Program da Apple em 10/07/2026, e a
-// comissão cai de 30% pra 15%. Pela regra da Apple, a taxa reduzida só vale
-// a partir do PRIMEIRO DIA DO MÊS SEGUINTE à aprovação, ou seja, 01/08/2026.
-// Vendas antes disso a Apple cobrou 30% de verdade.
+// Fomos APROVADOS no Small Business Program da Apple em 10/07/2026, e a
+// comissão cai de 30% pra 15%. O corte usado aqui é a data da aprovação:
+// vendas a partir de 10/07/2026 contam 15%.
 //
-// Por isso a taxa é POR TRANSAÇÃO, decidida pela data dela, e não uma
-// constante global: recalcular as vendas antigas a 15% faria o histórico de
-// faturamento MENTIR (mostraria dinheiro que nunca entrou na conta).
+// A taxa é POR TRANSAÇÃO, decidida pela data dela, e não uma constante
+// global: as vendas ANTERIORES à aprovação a Apple cobrou 30% de verdade, e
+// recalculá-las a 15% faria o histórico de faturamento MENTIR (mostraria
+// dinheiro que nunca entrou na conta).
 //
-// Se a Apple confirmar outra data de início, muda só APPLE_SMALL_BUSINESS_INICIO.
+// Se a data de início mudar, muda só APPLE_SMALL_BUSINESS_INICIO abaixo.
 
 /** Venda da Apple (só o que a regra de comissão precisa saber). */
 export interface AppleSaleLike {
@@ -17,11 +17,12 @@ export interface AppleSaleLike {
   amount_cents?: number | null;
 }
 
-export const APPLE_CUT_PADRAO = 0.30;         // até 31/07/2026
-export const APPLE_CUT_SMALL_BUSINESS = 0.15; // a partir de 01/08/2026
+export const APPLE_CUT_PADRAO = 0.30;         // antes de 10/07/2026
+export const APPLE_CUT_SMALL_BUSINESS = 0.15; // a partir de 10/07/2026
 
-/** 01/08/2026 00:00 UTC. Date.UTC é 0-based no mês, então 7 = agosto. */
-export const APPLE_SMALL_BUSINESS_INICIO = Date.UTC(2026, 7, 1);
+/** 10/07/2026 00:00 UTC — data da aprovação no Small Business Program.
+ *  Date.UTC é 0-based no mês, então 6 = julho. */
+export const APPLE_SMALL_BUSINESS_INICIO = Date.UTC(2026, 6, 10);
 
 /** Comissão que a Apple cobrou NESTA venda, decidida pela data dela. */
 export function appleCutFor(t: AppleSaleLike): number {
