@@ -4,6 +4,7 @@ import { supabase } from './supabase';
 import { ModalManager } from '../ui/ModalManager';
 import { internalNav } from '../native/Platform';
 import { redirectIfRecoveryHash } from './recoveryGuard';
+import { appleCutFor, liqTx } from '../utils/appleCommission';
 
 const modalManager = new ModalManager();
 const ADMIN_API_URL = 'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/admin-api';
@@ -53,6 +54,10 @@ interface ScoreSignal {
 function isSandboxTx(t: Transaction): boolean {
   return (t.payment_method || '').includes('sandbox');
 }
+
+// Comissão da App Store: 30% até 31/07/2026, 15% a partir de 01/08/2026
+// (Small Business Program, aprovado em 10/07). A taxa é POR TRANSAÇÃO,
+// decidida pela data dela — ver src/utils/appleCommission.ts.
 
 interface ScoredLead {
   id: string;
@@ -2820,24 +2825,24 @@ class AdminDashboard {
 
     const now = Date.now();
     const since = (days: number) => now - days * 24 * 60 * 60 * 1000;
+    const inWindow = (days: number) =>
+      real.filter(t => new Date(t.created_at).getTime() >= since(days));
     const sumIn = (days: number) =>
-      real.filter(t => new Date(t.created_at).getTime() >= since(days))
-          .reduce((s, t) => s + (t.amount_cents || 0), 0);
-    const countIn = (days: number) =>
-      real.filter(t => new Date(t.created_at).getTime() >= since(days)).length;
+      inWindow(days).reduce((s, t) => s + (t.amount_cents || 0), 0);
+    const netIn = (days: number) =>
+      inWindow(days).reduce((s, t) => s + liqTx(t), 0);
+    const countIn = (days: number) => inWindow(days).length;
 
     const totalReal = real.reduce((s, t) => s + (t.amount_cents || 0), 0);
+    const totalNet = real.reduce((s, t) => s + liqTx(t), 0);
     const brl = (c: number) => `R$ ${(c / 100).toFixed(2)}`;
-    // Apple desconta 30% (comissão da App Store). Líquido = o que cai pra gente.
-    // (Small Business Program = 15%, mas mostramos 30% conservador até aprovar.)
-    const APPLE_CUT = 0.30;
-    const liq = (c: number) => c * (1 - APPLE_CUT);
-    // Card: LÍQUIDO em destaque (o que cai pra gente) + BRUTO embaixo
-    // em outra cor (o que o cliente pagou, antes da comissão da Apple).
-    const dualCard = (label: string, gross: number, count: number) => `
+
+    // Card: LÍQUIDO em destaque (o que cai pra gente, já com a taxa certa de
+    // cada venda) + BRUTO embaixo (o que o cliente pagou, antes da Apple).
+    const dualCard = (label: string, gross: number, net: number, count: number) => `
       <div class="adm-kpi adm-kpi-apple">
         <span class="adm-kpi-label">${label}</span>
-        <span class="adm-kpi-value">${brl(liq(gross))}</span>
+        <span class="adm-kpi-value">${brl(net)}</span>
         <div class="adm-kpi-meta">
           <span class="apple-bruto">bruto ${brl(gross)}</span>
           <span class="apple-count">· ${count} venda(s)</span>
@@ -2845,10 +2850,10 @@ class AdminDashboard {
       </div>`;
 
     kpis.innerHTML =
-      dualCard('🍎 Hoje', sumIn(1), countIn(1)) +
-      dualCard('Últimos 7 dias', sumIn(7), countIn(7)) +
-      dualCard('Últimos 30 dias', sumIn(30), countIn(30)) +
-      dualCard('Total Apple', totalReal, real.length);
+      dualCard('🍎 Hoje', sumIn(1), netIn(1), countIn(1)) +
+      dualCard('Últimos 7 dias', sumIn(7), netIn(7), countIn(7)) +
+      dualCard('Últimos 30 dias', sumIn(30), netIn(30), countIn(30)) +
+      dualCard('Total Apple', totalReal, totalNet, real.length);
 
     if (real.length === 0) {
       body.innerHTML = `<tr><td colspan="5">${emptyState({ title: 'Nenhuma venda Apple ainda', desc: 'Assim que cair a primeira compra real via App Store, aparece aqui.', inline: true })}</td></tr>`;
@@ -2864,7 +2869,7 @@ class AdminDashboard {
         <tr style="${sb ? 'opacity:0.45;' : ''}">
           <td>${user?.name || '—'}</td>
           <td><span class="badge badge-primary">${t.plan}</span></td>
-          <td class="num">${sb ? '—' : `<span style="color:#00E68C;font-weight:700;">${brl(liq(t.amount_cents))}</span><br><span class="apple-liq-sm">bruto ${brl(t.amount_cents)}</span>`}</td>
+          <td class="num">${sb ? '—' : `<span style="color:#00E68C;font-weight:700;">${brl(liqTx(t))}</span><br><span class="apple-liq-sm">bruto ${brl(t.amount_cents)} · taxa ${Math.round(appleCutFor(t) * 100)}%</span>`}</td>
           <td>${sb ? '<span class="badge badge-warning">sandbox</span>' : '<span class="badge badge-success">produção</span>'}</td>
           <td>${date}</td>
         </tr>`;
