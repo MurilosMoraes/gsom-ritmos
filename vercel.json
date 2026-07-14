@@ -53,7 +53,7 @@
     },
     {
       "source": "/assinar",
-      "destination": "/plans.html"
+      "destination": "/plans"
     },
     {
       "source": "/download",
@@ -61,7 +61,7 @@
     },
     {
       "source": "/download/:slug",
-      "destination": "/download.html"
+      "destination": "/download"
     }
   ],
   "headers": [
