@@ -30,6 +30,8 @@ export class SetlistEditorUI {
   private dragSourceIndex: number = -1;
   private activeCategory: string = 'all'; // 'all' | 'Meus' | 'Favoritos' | <category name>
   private currentQuery: string = '';
+  private setlistQuery: string = ''; // busca DENTRO do repertório (lista de músicas)
+  private hubQuery: string = '';     // busca dos REPERTÓRIOS (hub)
   private previewPlayer: PreviewPlayer | null = null;
   // Em mobile (<=640px) navegamos em TELAS empilhadas (sem tabs):
   // hub (lista de repertórios) → setlist (itens do ativo) → catalog
@@ -155,7 +157,15 @@ export class SetlistEditorUI {
     // Painel: HUB de repertórios (mobile) — cards grandes
     const hubPanel = document.createElement('div');
     hubPanel.className = 'sle-panel sle-hub';
-    hubPanel.innerHTML = '<div class="sle-panel-list sle-hub-list"></div>';
+    hubPanel.innerHTML = `
+      <div class="sle-search-wrap sle-hub-search">
+        <svg class="sle-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="sle-search-v2 sle-hub-search-input" placeholder="Buscar repertório" autocomplete="off" />
+        <button class="sle-search-clear sle-hub-search-clear" aria-label="Limpar" style="display:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sle-panel-list sle-hub-list"></div>`;
 
     // Painel: Ritmos disponíveis
     const catalogPanel = document.createElement('div');
@@ -225,6 +235,13 @@ export class SetlistEditorUI {
         <span class="sle-panel-title">${t('ui.setlist.panelTitle')}</span>
         <button class="sle-clear-btn">${t('ui.setlist.clearButton')}</button>
       </div>
+      <div class="sle-search-wrap sle-setlist-search">
+        <svg class="sle-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="sle-search-v2 sle-setlist-search-input" placeholder="Buscar no repertório" autocomplete="off" />
+        <button class="sle-search-clear sle-setlist-search-clear" aria-label="Limpar" style="display:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
       <div class="sle-panel-list sle-setlist-list"></div>
       <button class="sle-cta-add" type="button">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
@@ -262,6 +279,26 @@ export class SetlistEditorUI {
       this.setMobileView('catalog');
     });
 
+    // Busca DENTRO do repertório (filtra as músicas do repertório ativo)
+    const slSearch = setlistPanel.querySelector('.sle-setlist-search-input') as HTMLInputElement;
+    const slSearchClear = setlistPanel.querySelector('.sle-setlist-search-clear') as HTMLElement;
+    if (slSearch && slSearchClear) {
+      slSearch.value = this.setlistQuery;
+      slSearchClear.style.display = this.setlistQuery ? 'flex' : 'none';
+      slSearch.addEventListener('input', () => {
+        this.setlistQuery = slSearch.value;
+        slSearchClear.style.display = this.setlistQuery ? 'flex' : 'none';
+        this.renderSetlist(setlistPanel.querySelector('.sle-setlist-list')!);
+      });
+      slSearchClear.addEventListener('click', () => {
+        slSearch.value = '';
+        this.setlistQuery = '';
+        slSearchClear.style.display = 'none';
+        this.renderSetlist(setlistPanel.querySelector('.sle-setlist-list')!);
+        slSearch.focus();
+      });
+    }
+
     const refreshAll = (): void => {
       // Após trocar/criar/excluir repertório: re-render de tudo
       this.renderSetlist(setlistPanel.querySelector('.sle-setlist-list')!);
@@ -269,6 +306,26 @@ export class SetlistEditorUI {
       this.renderHub(hubPanel.querySelector('.sle-hub-list') as HTMLElement, refreshAll);
       this.syncHeader();
     };
+
+    // Busca dos REPERTÓRIOS (filtra os cards do hub por nome)
+    const hubSearch = hubPanel.querySelector('.sle-hub-search-input') as HTMLInputElement;
+    const hubSearchClear = hubPanel.querySelector('.sle-hub-search-clear') as HTMLElement;
+    if (hubSearch && hubSearchClear) {
+      hubSearch.value = this.hubQuery;
+      hubSearchClear.style.display = this.hubQuery ? 'flex' : 'none';
+      const rerenderHub = () => this.renderHub(hubPanel.querySelector('.sle-hub-list') as HTMLElement, refreshAll);
+      hubSearch.addEventListener('input', () => {
+        this.hubQuery = hubSearch.value;
+        hubSearchClear.style.display = this.hubQuery ? 'flex' : 'none';
+        rerenderHub();
+      });
+      hubSearchClear.addEventListener('click', () => {
+        hubSearch.value = ''; this.hubQuery = '';
+        hubSearchClear.style.display = 'none';
+        rerenderHub();
+        hubSearch.focus();
+      });
+    }
 
     // Render dos chips de repertórios (desktop; no mobile o hub cobre)
     this.renderSetlistsBar(
@@ -342,8 +399,10 @@ export class SetlistEditorUI {
   private renderHub(container: HTMLElement, onChanged: () => void): void {
     const mgr = this.setlistManager;
     if (!mgr) return;
-    const lists = mgr.getSetlists();
+    const allLists = mgr.getSetlists();
     const max = mgr.getMaxSetlists();
+    const q = this.hubQuery.trim().toLowerCase();
+    const lists = q ? allLists.filter(l => l.name.toLowerCase().includes(q)) : allLists;
 
     container.innerHTML = `
       ${lists.map(l => `
@@ -368,12 +427,13 @@ export class SetlistEditorUI {
           </div>
         </div>
       `).join('')}
-      ${lists.length < max
+      ${q && lists.length === 0 ? `<div class="sle-hub-limit">Nenhum repertório com "${this.escapeHtml(this.hubQuery.trim())}"</div>` : ''}
+      ${!q && allLists.length < max
         ? `<button class="sle-hub-new" type="button">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-            ${t('ui.setlist.newRepertoire')} <span class="sle-hub-new-count">${lists.length}/${max}</span>
+            ${t('ui.setlist.newRepertoire')} <span class="sle-hub-new-count">${allLists.length}/${max}</span>
           </button>`
-        : `<div class="sle-hub-limit">${t('ui.setlist.hubLimit', { max })}</div>`}
+        : (!q ? `<div class="sle-hub-limit">${t('ui.setlist.hubLimit', { max })}</div>` : '')}
     `;
 
     // Tap no card: SELECIONA o repertório e FECHA o modal (vai tocar).
@@ -696,6 +756,13 @@ export class SetlistEditorUI {
 
       item.append(name, actions);
       container.appendChild(item);
+
+      // Clicar no corpo do item: seleciona + liga o letreiro no nome.
+      // Os botões (preview/adicionar) estão em .sle-item-actions → ignorados.
+      item.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('.sle-item-actions')) return;
+        this.selectRow(item, name);
+      });
     });
 
     // Sincroniza estado do preview (pode haver um ativo reaparecer após filtro)
@@ -727,9 +794,61 @@ export class SetlistEditorUI {
     window.setTimeout(finish, 400); // fallback caso o transitionend não dispare
   }
 
+  // ─── Seleção + letreiro (marquee) ──────────────────────────────────
+  // Clicar numa linha (música/ritmo) seleciona ela (destaque) e liga o
+  // letreiro no nome SE ele não couber. Só UMA linha selecionada por vez —
+  // evita dezenas de animações simultâneas travando a lista grande.
+  private selectRow(row: HTMLElement, nameEl: HTMLElement): void {
+    if (!this.overlay) return;
+    // Desmarca a anterior e para o letreiro dela
+    this.overlay.querySelectorAll<HTMLElement>('.sle-row-selected').forEach(el => {
+      el.classList.remove('sle-row-selected');
+      const n = el.querySelector<HTMLElement>('.sle-item-name');
+      if (n) this.stopMarquee(n);
+    });
+    row.classList.add('sle-row-selected');
+    this.startMarquee(nameEl);
+  }
+
+  /** Liga o letreiro no nome se transbordar. Envolve o conteúdo num .mq-inner
+   *  (preserva badges) e anima a translação pelo tanto que sobra. */
+  private startMarquee(nameEl: HTMLElement): void {
+    let inner = nameEl.querySelector<HTMLElement>(':scope > .mq-inner');
+    if (!inner) {
+      inner = document.createElement('span');
+      inner.className = 'mq-inner';
+      while (nameEl.firstChild) inner.appendChild(nameEl.firstChild);
+      nameEl.appendChild(inner);
+    }
+    const overflow = Math.ceil(inner.scrollWidth - nameEl.clientWidth);
+    if (overflow > 4) {
+      const dur = Math.max(3.5, overflow / 42 + 2); // rolagem ~42px/s + pausas nas pontas
+      nameEl.style.setProperty('--mq-shift', `${-overflow}px`);
+      nameEl.style.setProperty('--mq-dur', `${dur.toFixed(1)}s`);
+      nameEl.classList.add('mq-on');
+    } else {
+      // Coube: desfaz o wrap pra manter ellipsis normal
+      this.stopMarquee(nameEl);
+    }
+  }
+
+  /** Desliga o letreiro e desfaz o wrap (restaura ellipsis). */
+  private stopMarquee(nameEl: HTMLElement): void {
+    nameEl.classList.remove('mq-on');
+    nameEl.style.removeProperty('--mq-shift');
+    nameEl.style.removeProperty('--mq-dur');
+    const inner = nameEl.querySelector<HTMLElement>(':scope > .mq-inner');
+    if (inner) {
+      while (inner.firstChild) nameEl.insertBefore(inner.firstChild, inner);
+      inner.remove();
+    }
+  }
+
   private renderSetlist(container: HTMLElement): void {
     container.innerHTML = '';
-    const items = this.setlistManager?.getItems() || [];
+    const q = this.setlistQuery.trim().toLowerCase();
+    const allItems = this.setlistManager?.getItems() || [];
+    const items = allItems;
 
     if (items.length === 0) {
       container.innerHTML = `
@@ -746,6 +865,9 @@ export class SetlistEditorUI {
     const currentIdx = this.setlistManager?.getCurrentIndex() ?? -1;
 
     items.forEach((item, index) => {
+      // Busca dentro do repertório: pula quem não casa, mas mantém o index
+      // REAL (reordenar/remover dependem dele).
+      if (q && !item.name.toLowerCase().includes(q)) return;
       const isFirst = index === 0;
       const isLast = index === items.length - 1;
 
@@ -845,6 +967,13 @@ export class SetlistEditorUI {
       row.append(handle, num, name, actions);
       container.appendChild(row);
 
+      // Clicar no corpo da linha: seleciona + liga o letreiro no nome.
+      // Botões internos têm stopPropagation, então não disparam aqui.
+      row.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('.sle-item-actions')) return;
+        this.selectRow(row, name);
+      });
+
       // ─── Drag-drop HTML5 (desktop) ──────────────────────────────
       // Em mobile trocamos por botões ▲▼; o drag fica disponível só como
       // bonus em desktop (mouse é preciso, dedo não).
@@ -873,6 +1002,11 @@ export class SetlistEditorUI {
         this.dragSourceIndex = -1;
       });
     });
+
+    // Busca sem resultado dentro do repertório
+    if (q && !container.querySelector('.sle-setlist-item')) {
+      container.innerHTML = `<div class="sle-empty-pro"><div class="sle-empty-desc">Nenhuma música com "${this.escapeHtml(this.setlistQuery.trim())}"</div></div>`;
+    }
 
     // Após render, re-sincroniza estado do preview pros botões recém-criados
     this.updatePreviewButtons();
@@ -1191,9 +1325,14 @@ export class SetlistEditorUI {
       }
       .sle-catalog-item:hover { background: rgba(255, 255, 255, 0.04); }
       .sle-catalog-item .sle-item-name {
-        font-size: 0.88rem;
+        flex: 1;
+        min-width: 0;
+        font-size: 1.02rem;
         color: rgba(255, 255, 255, 0.85);
         text-transform: capitalize;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .sle-catalog-item.sle-in-setlist .sle-item-name {
         color: rgba(255, 255, 255, 0.35);
@@ -1265,7 +1404,8 @@ export class SetlistEditorUI {
       }
       .sle-setlist-item .sle-item-name {
         flex: 1;
-        font-size: 0.88rem;
+        min-width: 0;
+        font-size: 1.02rem;
         color: rgba(255, 255, 255, 0.85);
         text-transform: capitalize;
         overflow: hidden;
@@ -1315,6 +1455,29 @@ export class SetlistEditorUI {
         outline: none;
         transition: border-color 0.15s, background 0.15s;
         -webkit-appearance: none;
+      }
+      /* Busca DENTRO do repertório e busca dos repertórios (hub) */
+      .sle-setlist-search, .sle-hub-search { margin: 0 0 0.6rem; flex-shrink: 0; }
+
+      /* ── Seleção da linha + letreiro (marquee) ── */
+      .sle-setlist-item.sle-row-selected,
+      .sle-catalog-item.sle-row-selected {
+        border-color: rgba(0, 212, 255, 0.6) !important;
+        background: rgba(0, 212, 255, 0.1) !important;
+      }
+      /* inline-block SEMPRE — senão scrollWidth (medição do transbordo) sai
+         errado quando o span é inline puro, e o letreiro nunca liga. */
+      .sle-item-name .mq-inner { display: inline-block; white-space: nowrap; }
+      .sle-item-name.mq-on { overflow: hidden; }
+      .sle-item-name.mq-on .mq-inner {
+        will-change: transform;
+        animation: sle-marquee var(--mq-dur, 6s) linear infinite;
+      }
+      /* Rola do início até o fim do nome e, ao terminar, PULA de volta pro
+         início (não volta rolando). O reset instantâneo é o loop reiniciando. */
+      @keyframes sle-marquee {
+        0%, 12% { transform: translateX(0); }
+        88%, 100% { transform: translateX(var(--mq-shift, 0px)); }
       }
       .sle-search-v2::placeholder { color: rgba(255, 255, 255, 0.25); }
       .sle-search-v2:focus {
@@ -1425,10 +1588,11 @@ export class SetlistEditorUI {
       .sle-hub-list { padding: 0.75rem; }
       .sle-hub-card {
         display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        padding: 0.9rem 0.9rem;
-        min-height: 64px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.55rem;
+        padding: 0.7rem 0.85rem;
+        min-height: 0;
         border-radius: 14px;
         border: 1.5px solid rgba(255, 255, 255, 0.1);
         background: rgba(255, 255, 255, 0.03);
@@ -1450,7 +1614,7 @@ export class SetlistEditorUI {
         gap: 0.15rem;
       }
       .sle-hub-card-name {
-        font-size: 0.98rem;
+        font-size: 1.06rem;
         font-weight: 700;
         color: #fff;
         white-space: nowrap;
@@ -1458,8 +1622,9 @@ export class SetlistEditorUI {
         text-overflow: ellipsis;
       }
       .sle-hub-card-meta {
-        font-size: 0.72rem;
-        color: rgba(255, 255, 255, 0.45);
+        font-size: 0.85rem;
+        margin-top: 0.15rem;
+        color: rgba(255, 255, 255, 0.55);
       }
       .sle-hub-ativo {
         color: #00D4FF;
@@ -1469,7 +1634,8 @@ export class SetlistEditorUI {
       .sle-hub-card-actions {
         display: flex;
         align-items: center;
-        gap: 0.3rem;
+        justify-content: flex-end;
+        gap: 0.4rem;
         flex-shrink: 0;
       }
       .sle-hub-act {

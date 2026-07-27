@@ -33,6 +33,7 @@ import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
+import { startMarquee, stopMarquee } from './utils/marquee';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
 // Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
@@ -6179,12 +6180,25 @@ ctaUrl: '/plans?renew=true',
         renderList();
       });
 
-      // Tap no card = carregar ritmo
+      // 1º toque no card = SELECIONA e liga o letreiro (dá pra ler o nome
+      // inteiro se for longo). 2º toque no MESMO card = carrega o ritmo.
+      // Só um card selecionado por vez pra não animar a lista toda.
       overlay.querySelectorAll<HTMLElement>('.x-rhythm-card').forEach(card => {
         card.addEventListener('click', (e) => {
           const target = e.target as HTMLElement;
           // Ignora cliques nos botões de ação, no controle de BPM ou em inputs
           if (target.closest('.x-rhythm-action, .x-rhythm-name-input, .x-bpm-ctrl')) return;
+          if (!card.classList.contains('x-rhythm-selected')) {
+            overlay.querySelectorAll<HTMLElement>('.x-rhythm-card.x-rhythm-selected').forEach(other => {
+              other.classList.remove('x-rhythm-selected');
+              const n = other.querySelector('.x-rhythm-name') as HTMLElement | null;
+              if (n) stopMarquee(n);
+            });
+            card.classList.add('x-rhythm-selected');
+            const nameEl = card.querySelector('.x-rhythm-name') as HTMLElement | null;
+            if (nameEl) startMarquee(nameEl);
+            return;
+          }
           const id = card.dataset.id!;
           const rhythm = this.userRhythmService.getById(id);
           if (!rhythm) return;
@@ -7825,11 +7839,16 @@ ctaUrl: '/plans?renew=true',
       });
     });
 
-    // Scroll pro atual
+    // Scroll pro atual + letreiro no nome da música TOCANDO (se for longo,
+    // rola pra mostrar o nome inteiro). Só na atual pra não animar a lista toda.
     const list = overlay.querySelector('.x-picker-list') as HTMLElement | null;
     const currentRow = list?.querySelector('.x-picker-row-current') as HTMLElement | null;
     if (currentRow) {
-      setTimeout(() => currentRow.scrollIntoView({ block: 'center', behavior: 'auto' }), 0);
+      setTimeout(() => {
+        currentRow.scrollIntoView({ block: 'center', behavior: 'auto' });
+        const nameEl = currentRow.querySelector('.x-picker-name') as HTMLElement | null;
+        if (nameEl) startMarquee(nameEl);
+      }, 0);
     }
 
     // Click na linha → pular pro ritmo
@@ -8029,13 +8048,13 @@ ctaUrl: '/plans?renew=true',
         if (favBar) favBar.style.display = '';
         if (numEl) numEl.textContent = '♪';
         if (positionEl) positionEl.textContent = t('main.setlistUI.noSetlistLabel');
-        if (nameEl) nameEl.textContent = this.currentRhythmName;
+        if (nameEl) { nameEl.textContent = this.currentRhythmName; startMarquee(nameEl); }
         if (metaEl) metaEl.textContent = `${Math.round(this.stateManager.getTempo())} BPM`;
       } else {
         if (favBar) favBar.style.display = 'none';
         if (numEl) numEl.textContent = '#';
         if (positionEl) positionEl.textContent = '';
-        if (nameEl) nameEl.textContent = t('main.setlistUI.emptyPrompt');
+        if (nameEl) { nameEl.textContent = t('main.setlistUI.emptyPrompt'); stopMarquee(nameEl); }
         if (metaEl) metaEl.textContent = '';
       }
       if (prevNameEl) prevNameEl.textContent = '--';
@@ -8062,11 +8081,11 @@ ctaUrl: '/plans?renew=true',
       // próximo seguem navegando o repertório (voltar é 1 toque).
       if (numEl) numEl.textContent = '♪';
       if (positionEl) positionEl.textContent = t('main.setlistUI.outsideSetlistLabel');
-      if (nameEl) nameEl.textContent = this.currentRhythmName;
+      if (nameEl) { nameEl.textContent = this.currentRhythmName; startMarquee(nameEl); }
     } else {
       if (numEl) numEl.textContent = `${idx + 1}`;
       if (positionEl) positionEl.textContent = t('main.setlistUI.ofTotal', { total });
-      if (nameEl && current) nameEl.textContent = current.name;
+      if (nameEl && current) { nameEl.textContent = current.name; startMarquee(nameEl); }
     }
     if (prevNameEl) prevNameEl.textContent = prev ? prev.name : '--';
     if (nextNameEl) nextNameEl.textContent = next ? next.name : '--';
