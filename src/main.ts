@@ -35,7 +35,7 @@ import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
 import { startMarquee, stopMarquee } from './utils/marquee';
 import { buildRhythmPayload, buildSetlistPayload, makeShareUrl, showShareResultModal, readImportFromUrl, clearImportFromUrl, type SharePayload } from './core/ShareLink';
-import { publishShare, fetchShare, shortUrl, readShareCodeFromPath, clearShareCodeFromPath, saveLocalShare, getLocalShare } from './core/ShareService';
+import { publishShare, fetchShare, shortUrl, localTestUrl, readShareCodeFromPath, clearShareCodeFromPath, saveLocalShare, getLocalShare } from './core/ShareService';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
 // Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
@@ -6272,16 +6272,14 @@ ctaUrl: '/plans?renew=true',
 
   // ─── Compartilhar / Importar ────────────────────────────────────────
 
-  /** Gera o link de compartilhar: tenta o link CURTO (backend /r/CÓDIGO);
-   *  se o backend não estiver disponível, cai no link auto-contido. */
-  private async makeShareLink(payload: SharePayload): Promise<string> {
-    // 1) tenta o backend (link curto CROSS-DEVICE, se o SQL estiver aplicado)
+  /** Gera o CÓDIGO curto: tenta o backend (cross-device); sem ele, gera um
+   *  código local (localStorage, abre no mesmo aparelho). */
+  private async getShareCode(payload: SharePayload): Promise<string> {
     try {
       const code = await publishShare(payload);
-      if (code) return shortUrl(code);
-    } catch { /* backend indisponível — cai no link curto LOCAL abaixo */ }
-    // 2) sem backend: link curto LOCAL (/r/12345) — abre só no mesmo aparelho
-    return shortUrl(saveLocalShare(payload));
+      if (code) return code;
+    } catch { /* backend indisponível — código local abaixo */ }
+    return saveLocalShare(payload);
   }
 
   /** Compartilha um repertório: embute os ritmos pessoais e gera o link. */
@@ -6290,7 +6288,8 @@ ctaUrl: '/plans?renew=true',
     const name = this.setlistManager.getNameOf(id) || 'Repertório';
     if (items.length === 0) { Toast.show('Esse repertório está vazio', { type: 'info' }); return; }
     const payload = buildSetlistPayload(name, items, (rid) => this.userRhythmService.getById(rid));
-    showShareResultModal(await this.makeShareLink(payload), name, 'Repertório');
+    const code = await this.getShareCode(payload);
+    showShareResultModal(shortUrl(code), name, 'Repertório', localTestUrl(code));
   }
 
   /** Se o app abriu por um link de compartilhar, mostra o preview.
@@ -6662,7 +6661,8 @@ ctaUrl: '/plans?renew=true',
           const r = this.userRhythmService.getById(btn.dataset.share!);
           if (!r) return;
           const payload = buildRhythmPayload(r);
-          showShareResultModal(await this.makeShareLink(payload), r.name, 'Ritmo');
+          const code = await this.getShareCode(payload);
+          showShareResultModal(shortUrl(code), r.name, 'Ritmo', localTestUrl(code));
         });
       });
 

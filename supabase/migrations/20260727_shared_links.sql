@@ -49,7 +49,7 @@ as $$
 declare
   v_uid   uuid := auth.uid();
   v_code  text;
-  v_alpha text := '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  v_alpha text := '0123456789'; -- código numérico (link fica gdrums.com.br/123456)
   v_exists bool;
   i int;
 begin

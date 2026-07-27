@@ -34,9 +34,20 @@ export async function fetchShare(code: string): Promise<SharePayload | null> {
   }
 }
 
-/** Monta a URL curta a partir do código. */
+// Domínio real do produto — o link compartilhado é sempre esse (você nunca
+// manda um "localhost" pra alguém). Pra testar localmente, use localTestUrl().
+const SHARE_DOMAIN = 'https://gdrums.com.br';
+
+/** Link curto REAL: gdrums.com.br/CÓDIGO (sem /r/). */
 export function shortUrl(code: string): string {
-  return `${location.origin}/r/${code}`;
+  return `${SHARE_DOMAIN}/${code}`;
+}
+
+/** Link equivalente no ORIGIN atual (localhost/IP) — pra testar aqui, já que
+ *  a produção ainda não tem o recurso. undefined quando já é o domínio real. */
+export function localTestUrl(code: string): string | undefined {
+  if (location.origin === SHARE_DOMAIN) return undefined;
+  return `${location.origin}/${code}`;
 }
 
 // ─── Link curto SEM backend (teste) ────────────────────────────────────
@@ -66,9 +77,9 @@ export function getLocalShare(code: string): SharePayload | null {
   } catch { return null; }
 }
 
-/** Lê o código de compartilhamento do caminho atual (/r/CÓDIGO). null se não. */
+/** Lê o código de compartilhamento do caminho atual (/CÓDIGO numérico). */
 export function readShareCodeFromPath(): string | null {
-  const m = location.pathname.match(/^\/r\/([A-Za-z0-9]{4,16})\/?$/);
+  const m = location.pathname.match(/^\/(\d{4,8})\/?$/);
   return m ? m[1] : null;
 }
 

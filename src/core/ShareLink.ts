@@ -177,31 +177,36 @@ export function clearImportFromUrl(): void {
 
 // ─── Modal com o link gerado ──────────────────────────────────────────
 
-export function showShareResultModal(url: string, title: string, typeLabel: string): void {
+export function showShareResultModal(url: string, title: string, typeLabel: string, testUrl?: string): void {
   const esc = (s: string): string => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:1rem;';
-  const tooLong = url.length > 8000;
+  const waText = `Olha esse ${typeLabel.toLowerCase()} que separei no GDrums: ${title}\n${url}`;
+  const waUrl = `https://wa.me/?text=${encodeURIComponent(waText)}`;
   overlay.innerHTML = `
-    <div style="background:rgba(10,10,26,0.97);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:1.5rem;max-width:440px;width:100%;">
+    <div style="background:rgba(10,10,26,0.97);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:1.5rem;max-width:420px;width:100%;">
       <h2 style="font-size:1.15rem;font-weight:700;color:#fff;margin:0 0 0.3rem;text-align:center;">Compartilhar</h2>
       <p style="font-size:0.78rem;color:rgba(255,255,255,0.4);text-align:center;margin:0 0 1.1rem;">${esc(typeLabel)}: <span style="color:rgba(0,212,255,0.85);font-weight:600;">${esc(title)}</span></p>
-      <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.2);border-radius:12px;padding:0.75rem;margin-bottom:0.9rem;">
-        <div style="font-size:0.7rem;color:rgba(255,255,255,0.65);word-break:break-all;line-height:1.5;max-height:120px;overflow-y:auto;">${esc(url)}</div>
+      <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.2);border-radius:12px;padding:0.7rem 0.8rem;margin-bottom:0.85rem;">
+        <div style="font-size:0.85rem;color:#fff;word-break:break-all;line-height:1.4;font-weight:600;">${esc(url)}</div>
       </div>
-      ${tooLong ? `<p style="font-size:0.72rem;color:rgba(249,160,60,0.9);text-align:center;margin:0 0 0.9rem;">Link grande (repertório extenso). Funciona, mas o link curto (com servidor) vem na próxima etapa.</p>` : ''}
-      <button id="shareCopyBtn" style="width:100%;padding:0.75rem;border:none;border-radius:12px;background:linear-gradient(160deg,rgba(0,150,255,0.95),rgba(0,90,200,0.95));color:#fff;font-size:0.9rem;font-weight:700;font-family:inherit;cursor:pointer;margin-bottom:0.6rem;">Copiar link</button>
+      ${testUrl ? `<div style="text-align:center;margin:0 0 0.9rem;"><a href="${esc(testUrl)}" style="font-size:0.72rem;color:rgba(0,212,255,0.75);text-decoration:underline;">testar aqui (abre no seu servidor local)</a></div>` : ''}
+      <button id="shareWaBtn" style="width:100%;padding:0.8rem;border:none;border-radius:12px;background:linear-gradient(160deg,#25d366,#128c3e);color:#fff;font-size:0.92rem;font-weight:800;font-family:inherit;cursor:pointer;margin-bottom:0.6rem;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.2-.6.1-.2.3-.7.9-.8 1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.6-1.5-.9-2-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-1 .9-1 2.3s1 2.7 1.2 2.9c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.9-1.3A10 10 0 1 0 12 2z"/></svg>
+        Mandar no WhatsApp
+      </button>
+      <button id="shareCopyBtn" style="width:100%;padding:0.72rem;border:none;border-radius:12px;background:rgba(0,150,255,0.15);border:1px solid rgba(0,150,255,0.35);color:#fff;font-size:0.88rem;font-weight:700;font-family:inherit;cursor:pointer;margin-bottom:0.6rem;">Copiar link</button>
       <button id="shareCloseBtn" style="width:100%;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">Fechar</button>
     </div>
   `;
   document.body.appendChild(overlay);
   const close = (): void => { overlay.remove(); (window as any).__refocusPedal?.(); };
+  overlay.querySelector('#shareWaBtn')!.addEventListener('click', () => { window.open(waUrl, '_blank'); });
   const copyBtn = overlay.querySelector('#shareCopyBtn') as HTMLButtonElement;
   copyBtn.addEventListener('click', async () => {
     let ok = false;
     try { await navigator.clipboard.writeText(url); ok = true; } catch { /* fallback abaixo */ }
     if (!ok) {
-      // fallback: seleciona um textarea temporário
       try {
         const ta = document.createElement('textarea');
         ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
@@ -210,8 +215,7 @@ export function showShareResultModal(url: string, title: string, typeLabel: stri
         ta.remove();
       } catch { /* noop */ }
     }
-    copyBtn.textContent = ok ? 'Copiado! ✓' : 'Copie manualmente acima';
-    copyBtn.style.background = ok ? 'linear-gradient(160deg,rgba(22,163,74,0.95),rgba(21,128,61,0.95))' : copyBtn.style.background;
+    copyBtn.textContent = ok ? 'Copiado!' : 'Copie o link acima';
   });
   overlay.querySelector('#shareCloseBtn')!.addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
