@@ -6272,17 +6272,17 @@ ctaUrl: '/plans?renew=true',
   // ─── Compartilhar / Importar (protótipo link auto-contido) ──────────
 
   /** Compartilha um repertório: embute os ritmos pessoais e gera o link. */
-  private shareSetlist(id: string): void {
+  private async shareSetlist(id: string): Promise<void> {
     const items = this.setlistManager.getItemsOf(id);
     const name = this.setlistManager.getNameOf(id) || 'Repertório';
     if (items.length === 0) { Toast.show('Esse repertório está vazio', { type: 'info' }); return; }
     const payload = buildSetlistPayload(name, items, (rid) => this.userRhythmService.getById(rid));
-    showShareResultModal(makeShareUrl(payload), name, 'Repertório');
+    showShareResultModal(await makeShareUrl(payload), name, 'Repertório');
   }
 
   /** Se o app abriu por um link de compartilhar (#import=...), mostra o preview. */
-  private handleShareImport(): void {
-    const payload = readImportFromUrl();
+  private async handleShareImport(): Promise<void> {
+    const payload = await readImportFromUrl();
     if (!payload) return;
     clearImportFromUrl();
     this.showImportPreview(payload);
@@ -6297,7 +6297,6 @@ ctaUrl: '/plans?renew=true',
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:1rem;';
     overlay.innerHTML = `
       <div style="background:rgba(10,10,26,0.97);border:1px solid rgba(250,204,21,0.35);border-radius:20px;padding:1.5rem;max-width:400px;width:100%;text-align:center;">
-        <div style="font-size:2rem;margin-bottom:0.4rem;">🎁</div>
         <h2 style="font-size:1.15rem;font-weight:700;color:#fff;margin:0 0 0.3rem;">Alguém compartilhou com você</h2>
         <p style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin:0 0 0.3rem;">${isRhythm ? 'Ritmo' : 'Repertório'}</p>
         <div style="font-size:1.05rem;font-weight:700;color:#facc15;margin:0 0 0.4rem;word-break:break-word;">${esc(payload.title || '')}</div>
@@ -6635,12 +6634,12 @@ ctaUrl: '/plans?renew=true',
 
       // Compartilhar ritmo → gera o link
       overlay.querySelectorAll<HTMLElement>('[data-share]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
           e.stopPropagation();
           const r = this.userRhythmService.getById(btn.dataset.share!);
           if (!r) return;
           const payload = buildRhythmPayload(r);
-          showShareResultModal(makeShareUrl(payload), r.name, 'Ritmo');
+          showShareResultModal(await makeShareUrl(payload), r.name, 'Ritmo');
         });
       });
 

@@ -41,7 +41,7 @@ function clone<T>(x: T): T {
   return JSON.parse(JSON.stringify(x));
 }
 
-// base64 URL-safe com suporte a unicode
+// base64 URL-safe com suporte a unicode (fallback sem compressão)
 function b64EncodeUnicode(str: string): string {
   const b64 = btoa(unescape(encodeURIComponent(str)));
   return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -50,6 +50,68 @@ function b64DecodeUnicode(b64url: string): string {
   let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
   while (b64.length % 4) b64 += '=';
   return decodeURIComponent(escape(atob(b64)));
+}
+
+// bytes <-> base64url
+function bytesToB64url(bytes: Uint8Array): string {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlToBytes(s: string): Uint8Array {
+  let b64 = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+// gzip via CompressionStream nativo (Chrome/Safari/Android modernos)
+async function gzip(str: string): Promise<Uint8Array> {
+  const cs = new (window as any).CompressionStream('gzip');
+  const writer = cs.writable.getWriter();
+  writer.write(new TextEncoder().encode(str));
+  writer.close();
+  const ab = await new Response(cs.readable).arrayBuffer();
+  return new Uint8Array(ab);
+}
+async function gunzip(bytes: Uint8Array): Promise<string> {
+  const ds = new (window as any).DecompressionStream('gzip');
+  const writer = ds.writable.getWriter();
+  writer.write(bytes);
+  writer.close();
+  const ab = await new Response(ds.readable).arrayBuffer();
+  return new TextDecoder().decode(ab);
+}
+
+/** Codifica o payload em string URL-safe. Comprime (gzip) quando o browser
+ *  suporta — encurta MUITO o link. 1º char = modo: 'g' gzip, 'u' cru. */
+async function encodeShare(payload: SharePayload): Promise<string> {
+  const json = JSON.stringify(payload);
+  if (typeof (window as any).CompressionStream !== 'undefined') {
+    try {
+      return 'g' + bytesToB64url(await gzip(json));
+    } catch { /* cai pro cru */ }
+  }
+  return 'u' + b64EncodeUnicode(json);
+}
+
+async function decodeShare(s: string): Promise<SharePayload | null> {
+  try {
+    const mode = s[0];
+    const body = s.slice(1);
+    let json: string;
+    if (mode === 'g') {
+      if (typeof (window as any).DecompressionStream === 'undefined') return null;
+      json = await gunzip(b64urlToBytes(body));
+    } else {
+      json = b64DecodeUnicode(body);
+    }
+    const p = JSON.parse(json);
+    if (p && (p.t === 'r' || p.t === 's')) return p as SharePayload;
+  } catch { /* link inválido */ }
+  return null;
 }
 
 // ─── Montagem dos payloads ────────────────────────────────────────────
@@ -93,21 +155,17 @@ export function buildSetlistPayload(
 
 // ─── Link ─────────────────────────────────────────────────────────────
 
-export function makeShareUrl(payload: SharePayload): string {
-  const encoded = b64EncodeUnicode(JSON.stringify(payload));
+export async function makeShareUrl(payload: SharePayload): Promise<string> {
+  const encoded = await encodeShare(payload);
   return `${location.origin}/#import=${encoded}`;
 }
 
 /** Lê um payload de import da URL atual (#import=...). null se não houver. */
-export function readImportFromUrl(): SharePayload | null {
-  try {
-    const h = location.hash || '';
-    const m = h.match(/[#&]import=([^&]+)/);
-    if (!m) return null;
-    const payload = JSON.parse(b64DecodeUnicode(m[1]));
-    if (payload && (payload.t === 'r' || payload.t === 's')) return payload as SharePayload;
-  } catch { /* link inválido */ }
-  return null;
+export async function readImportFromUrl(): Promise<SharePayload | null> {
+  const h = location.hash || '';
+  const m = h.match(/[#&]import=([^&]+)/);
+  if (!m) return null;
+  return decodeShare(m[1]);
 }
 
 /** Limpa o #import= da URL (sem recarregar). */
@@ -131,7 +189,7 @@ export function showShareResultModal(url: string, title: string, typeLabel: stri
       <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.2);border-radius:12px;padding:0.75rem;margin-bottom:0.9rem;">
         <div style="font-size:0.7rem;color:rgba(255,255,255,0.65);word-break:break-all;line-height:1.5;max-height:120px;overflow-y:auto;">${esc(url)}</div>
       </div>
-      ${tooLong ? `<p style="font-size:0.72rem;color:rgba(249,160,60,0.9);text-align:center;margin:0 0 0.9rem;">⚠️ Link grande (repertório extenso). Funciona, mas o link curto (com servidor) vem na próxima etapa.</p>` : ''}
+      ${tooLong ? `<p style="font-size:0.72rem;color:rgba(249,160,60,0.9);text-align:center;margin:0 0 0.9rem;">Link grande (repertório extenso). Funciona, mas o link curto (com servidor) vem na próxima etapa.</p>` : ''}
       <button id="shareCopyBtn" style="width:100%;padding:0.75rem;border:none;border-radius:12px;background:linear-gradient(160deg,rgba(0,150,255,0.95),rgba(0,90,200,0.95));color:#fff;font-size:0.9rem;font-weight:700;font-family:inherit;cursor:pointer;margin-bottom:0.6rem;">Copiar link</button>
       <button id="shareCloseBtn" style="width:100%;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">Fechar</button>
     </div>
