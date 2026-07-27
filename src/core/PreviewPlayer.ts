@@ -54,9 +54,22 @@ export class PreviewPlayer {
   // Subscribers pra UI saber quando preview terminou (botão para pulsar)
   private listeners = new Set<(activeId: string | null) => void>();
 
-  constructor(audioContext: AudioContext, audioManager: IAudioEngine) {
+  /** Lê o volume geral (masterVolume, 0-2) no momento do preview. A prévia
+   *  toca 20% ABAIXO desse volume (× 0.8), pra acompanhar o principal em vez
+   *  de um gain fixo baixo. Opcional: sem ele, cai no fallback fixo. */
+  private getMasterVolume?: () => number;
+
+  constructor(audioContext: AudioContext, audioManager: IAudioEngine, getMasterVolume?: () => number) {
     this.audioContext = audioContext;
     this.audioManager = audioManager;
+    this.getMasterVolume = getMasterVolume;
+  }
+
+  /** Gain do bus da prévia: 20% abaixo do volume geral. Clamp em [0, 1.6]
+   *  (masterVolume vai de 0 a 2, então 2×0.8 = 1.6 é o teto). */
+  private previewGain(): number {
+    const mv = this.getMasterVolume ? this.getMasterVolume() : PREVIEW_GAIN / 0.8;
+    return Math.max(0, Math.min(1.6, mv * 0.8));
   }
 
   onChange(cb: (activeId: string | null) => void): () => void {
@@ -179,8 +192,9 @@ export class PreviewPlayer {
     // interpola desde o último valor conhecido e pode começar em zero
     // demorando até fadeOutStart pra atingir PREVIEW_GAIN — causando o
     // "mudo" intermitente que o user reportou.
-    gainNode.gain.linearRampToValueAtTime(PREVIEW_GAIN, fadeInEnd);
-    gainNode.gain.setValueAtTime(PREVIEW_GAIN, fadeOutStart);
+    const busGain = this.previewGain(); // 20% abaixo do volume geral
+    gainNode.gain.linearRampToValueAtTime(busGain, fadeInEnd);
+    gainNode.gain.setValueAtTime(busGain, fadeOutStart);
     gainNode.gain.linearRampToValueAtTime(0, endTime);
 
     const sources: AudioBufferSourceNode[] = [];

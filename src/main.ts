@@ -421,7 +421,7 @@ class RhythmSequencer {
     this.setlistEditor = new SetlistEditorUI();
     this.userRhythmService = new UserRhythmService();
     this.conversionManager = new ConversionManager();
-    this.previewPlayer = new PreviewPlayer(this.audioContext, this.audioManager);
+    this.previewPlayer = new PreviewPlayer(this.audioContext, this.audioManager, () => this.stateManager.getMasterVolume());
 
     // Setlist onChange — não atualizar UI automaticamente durante navegação
     // A UI é atualizada explicitamente após cada ação
