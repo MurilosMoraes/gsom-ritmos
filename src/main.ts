@@ -3300,6 +3300,12 @@ ctaUrl: '/plans?renew=true',
     }
     this.applyAudioFxFromStorage(); // aplica EQ/reverb salvos ao iniciar
 
+    // Tamanho da fonte
+    const fontSizeBtn = document.getElementById('fontSizeBtn');
+    if (fontSizeBtn) {
+      fontSizeBtn.addEventListener('click', () => this.showFontSizePanel());
+    }
+
     // Info pedal
     const pedalInfoBtn = document.getElementById('pedalInfoBtn');
     if (pedalInfoBtn) {
@@ -4271,6 +4277,57 @@ ctaUrl: '/plans?renew=true',
       const rv = parseFloat(localStorage.getItem('gdrums-reverb') || '');
       if (!isNaN(rv)) this.audioManager.setReverbAmount(rv);
     } catch { /* noop */ }
+  }
+
+  /** Painel de Tamanho da Fonte — escala o font-size do html (tudo é rem, então
+   *  texto + botões escalam juntos, sem estourar). Presets de 10 em 10%. */
+  private showFontSizePanel(): void {
+    const dd = document.getElementById('fabDropdown');
+    if (dd) dd.style.display = 'none';
+    document.querySelectorAll('.fs-overlay').forEach(el => el.remove());
+
+    const PRESETS = [50, 60, 70, 80, 90, 100, 110, 120, 130];
+    const DEFAULT_FS = 70;
+    const readScale = (): number => {
+      const s = parseInt(localStorage.getItem('gdrums-font-scale') || '', 10);
+      return (!s || s < 50 || s > 130) ? DEFAULT_FS : s;
+    };
+    const current = readScale();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'fs-overlay';
+    const btns = PRESETS.map(p =>
+      `<button class="fs-preset${p === current ? ' active' : ''}" data-fs="${p}">${p}%${p === DEFAULT_FS ? '<span class="fs-tag">padrão</span>' : ''}</button>`
+    ).join('');
+    overlay.innerHTML = `
+      <div class="fs-card" role="dialog" aria-label="Tamanho da fonte">
+        <div class="fs-head">
+          <div class="fs-title">Tamanho da fonte</div>
+          <button class="fs-close" id="fsClose" aria-label="Fechar">&#10005;</button>
+        </div>
+        <div class="fs-sub">Ajuste o texto do app inteiro. Toque num tamanho:</div>
+        <div class="fs-grid">${btns}</div>
+        <div class="fs-hint">Prévia: <span class="fs-sample">Ritmo 1 · Virada · Bolero 115</span></div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const apply = (scale: number): void => {
+      document.documentElement.style.fontSize = scale + '%';
+      try { localStorage.setItem('gdrums-font-scale', String(scale)); } catch { /* noop */ }
+      overlay.querySelectorAll('.fs-preset').forEach(b =>
+        b.classList.toggle('active', Number((b as HTMLElement).dataset.fs) === scale));
+      HapticsService.light();
+    };
+
+    overlay.querySelectorAll('.fs-preset').forEach(b =>
+      b.addEventListener('click', () => apply(Number((b as HTMLElement).dataset.fs))));
+
+    const close = (): void => overlay.remove();
+    overlay.querySelector('#fsClose')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+    });
   }
 
   /** Painel de Equalizador (5 bandas) + Reverb, nas cores do app. */

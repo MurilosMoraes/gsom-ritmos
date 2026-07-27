@@ -22,6 +22,18 @@
        user-scalable por acessibilidade, lá quem cobre é o
        touch-action:manipulation global no CSS. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <!-- Tamanho da fonte do app: escala o font-size do html (tudo é rem, então
+       escala junto — texto e botões, sem estourar). Aplicado ANTES de pintar
+       pra não piscar. Padrão 70%. Ajustável em Configurações. -->
+  <script>
+    (function () {
+      try {
+        var s = parseInt(localStorage.getItem('gdrums-font-scale'), 10);
+        if (!s || s < 50 || s > 130) s = 70;
+        document.documentElement.style.fontSize = s + '%';
+      } catch (e) { document.documentElement.style.fontSize = '70%'; }
+    })();
+  </script>
   <title>GDrums | Baterista Virtual com 155 Ritmos</title>
   <meta name="description" content="GDrums é um sequenciador de ritmos e baterista virtual para músicos tocarem ao vivo. 155 ritmos brasileiros (vaneira, sertanejo, gospel, forró, rock), suporte a pedal Bluetooth, iOS e Android. Teste 48h grátis.">
   <meta name="author" content="Murilo Moraes, Staner Goulart">
@@ -301,6 +313,7 @@
         <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="languageBtn" data-i18n="htmlApp.topbar.languageBtn">🌎 Idioma</button>
         <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="userManualBtn" data-i18n="main.manual.title">Manual do Usuário</button>
         <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="eqBtn" data-i18n="main.eq.title">Equalizador e Reverb</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="fontSizeBtn">Tamanho da fonte</button>
         <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="pedalInfoBtn" data-i18n="htmlApp.topbar.pedalInfoBtn">Como usar o pedal</button>
         <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="pedalMapBtn" data-i18n="main.manual.pedal4.mapear.name">Mapear pedal</button>
         <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="menuOfflineBtn" data-i18n="htmlApp.topbar.offlineBtn">Baixar pra usar offline</button>

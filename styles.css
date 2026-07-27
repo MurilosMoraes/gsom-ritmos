@@ -3583,3 +3583,77 @@ input[type="number"]:focus {
 @keyframes rhythmSpin {
   to { transform: rotate(360deg); }
 }
+
+/* ─── Painel de Tamanho da Fonte ─── */
+.fs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10002;
+  background: rgba(3, 0, 20, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.fs-card {
+  width: 100%;
+  max-width: 22rem;
+  background: rgba(12, 12, 28, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1rem 1.1rem 1.2rem;
+}
+.fs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.15rem;
+}
+.fs-title { font-size: 1.05rem; font-weight: 800; color: #fff; }
+.fs-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 8px;
+}
+.fs-close:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+.fs-sub { font-size: 0.8rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 0.9rem; }
+.fs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+.fs-preset {
+  padding: 0.7rem 0.4rem;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.fs-preset:hover { border-color: rgba(0, 212, 255, 0.4); }
+.fs-preset.active {
+  border-color: #00D4FF;
+  color: #00D4FF;
+  background: rgba(0, 212, 255, 0.12);
+}
+.fs-tag {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.04em;
+  margin-top: 0.1rem;
+}
+.fs-preset.active .fs-tag { color: rgba(0, 212, 255, 0.7); }
+.fs-hint { margin-top: 1rem; font-size: 0.8rem; color: rgba(255, 255, 255, 0.5); text-align: center; }
+.fs-sample { color: #fff; font-weight: 700; }
