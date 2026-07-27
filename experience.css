@@ -1868,6 +1868,11 @@ body:has(#pedalBtInput) .user-layout {
   font-size: 1.08rem;
   font-weight: 700;
 }
+/* Ritmo importado de um compartilhamento: borda amarela até renomear. */
+.x-myrh-sheet .x-rhythm-card.x-shared {
+  border-color: rgba(250, 204, 21, 0.75);
+  background: linear-gradient(160deg, rgba(80, 66, 20, 0.22), rgba(10, 9, 20, 0.5));
+}
 /* Card selecionado (1º toque): destaque roxo. 2º toque no mesmo carrega. */
 .x-myrh-sheet .x-rhythm-card.x-rhythm-selected {
   border-color: rgba(139, 92, 246, 0.75);

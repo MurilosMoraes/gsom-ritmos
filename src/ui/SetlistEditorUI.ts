@@ -406,7 +406,7 @@ export class SetlistEditorUI {
 
     container.innerHTML = `
       ${lists.map(l => `
-        <div class="sle-hub-card ${l.active ? 'active' : ''}" data-hub-id="${l.id}">
+        <div class="sle-hub-card ${l.active ? 'active' : ''} ${l.shared ? 'sle-hub-shared' : ''}" data-hub-id="${l.id}">
           <div class="sle-hub-card-main">
             <span class="sle-hub-card-name">${this.escapeHtml(l.name)}</span>
             <span class="sle-hub-card-meta">${l.count} ${l.count === 1 ? t('ui.setlist.rhythmSingular') : t('ui.setlist.rhythmPlural')}${l.active ? ` · <span class="sle-hub-ativo">${t('ui.setlist.activeLabel')}</span>` : ''}</span>
@@ -414,6 +414,9 @@ export class SetlistEditorUI {
           <div class="sle-hub-card-actions">
             <button class="sle-hub-act sle-hub-rename" data-id="${l.id}" aria-label="${t('ui.setlist.renameAriaLabel')}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </button>
+            <button class="sle-hub-act sle-hub-share" data-id="${l.id}" aria-label="Compartilhar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
             <button class="sle-hub-act sle-hub-dup" data-id="${l.id}" aria-label="${t('ui.setlist.duplicateAriaLabel')}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -454,6 +457,15 @@ export class SetlistEditorUI {
         mgr.switchSetlist(btn.dataset.id!);
         onChanged();
         this.setMobileView('setlist');
+      });
+    });
+
+    // Compartilhar repertório → gera o link (via hook do main.ts, que tem
+    // acesso ao UserRhythmService pra embutir os ritmos pessoais)
+    container.querySelectorAll<HTMLElement>('.sle-hub-share').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        (window as any).__gdrumsShareSetlist?.(btn.dataset.id!);
       });
     });
 
@@ -1605,6 +1617,14 @@ export class SetlistEditorUI {
         border-color: rgba(0, 212, 255, 0.7);
         background: rgba(0, 212, 255, 0.07);
         box-shadow: 0 0 14px rgba(0, 212, 255, 0.15);
+      }
+      /* Repertório importado de um compartilhamento: borda amarela até renomear. */
+      .sle-hub-card.sle-hub-shared {
+        border-color: rgba(250, 204, 21, 0.75);
+        background: rgba(250, 204, 21, 0.06);
+      }
+      .sle-hub-card.sle-hub-shared.active {
+        box-shadow: 0 0 14px rgba(250, 204, 21, 0.18);
       }
       .sle-hub-card-main {
         flex: 1;

@@ -14,6 +14,9 @@ export interface UserRhythm {
   created_at: string;
   updated_at: string;
   synced: boolean; // true = já está no Supabase
+  // true = veio de um link compartilhado (importado). Só marcador LOCAL de UI
+  // (borda amarela). Some quando o usuário renomeia o ritmo. Não vai pro banco.
+  sharedImport?: boolean;
 }
 
 const LOCAL_KEY = 'gdrums-user-rhythms';
@@ -128,6 +131,8 @@ export class UserRhythmService {
           created_at: remote.created_at,
           updated_at: remote.updated_at,
           synced: true,
+          // preserva a marca local de "compartilhado" (o banco não guarda)
+          ...(local && local.sharedImport ? { sharedImport: true } : {}),
         });
       }
       // Locais que o banco ainda não conhece (criados offline) — mantém
@@ -260,6 +265,7 @@ export class UserRhythmService {
             created_at: remote.created_at,
             updated_at: remote.updated_at,
             synced: true,
+            ...(local && local.sharedImport ? { sharedImport: true } : {}),
           });
         }
 
@@ -284,7 +290,7 @@ export class UserRhythmService {
 
   // ─── CRUD ─────────────────────────────────────────────────────────
 
-  async save(name: string, bpm: number, rhythmData: any, baseRhythmName?: string): Promise<UserRhythm> {
+  async save(name: string, bpm: number, rhythmData: any, baseRhythmName?: string, sharedImport = false): Promise<UserRhythm> {
     const now = new Date().toISOString();
     const rhythm: UserRhythm = {
       id: crypto.randomUUID(),
@@ -295,6 +301,7 @@ export class UserRhythmService {
       created_at: now,
       updated_at: now,
       synced: false,
+      ...(sharedImport ? { sharedImport: true } : {}),
     };
 
     this.rhythms.unshift(rhythm);
@@ -333,6 +340,8 @@ export class UserRhythmService {
     const rhythm = this.rhythms.find(r => r.id === id);
     if (!rhythm) return;
 
+    // Renomeou → tira a marca de "compartilhado" (borda amarela some).
+    if (rhythm.name !== name) rhythm.sharedImport = false;
     rhythm.name = name;
     rhythm.bpm = bpm;
     if (rhythmData !== undefined) rhythm.rhythm_data = rhythmData;

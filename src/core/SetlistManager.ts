@@ -52,6 +52,9 @@ export interface NamedSetlist extends Setlist {
   // A união usa isso pra "mais recente ganha" no mesmo id — assim remover
   // música ou reordenar PROPAGA entre aparelhos, não só adicionar.
   lastModified?: number;
+  // true = veio de um link compartilhado (importado). Borda amarela na UI;
+  // some quando o usuário renomeia o repertório.
+  sharedImport?: boolean;
 }
 
 interface MultiSetlistState {
@@ -340,12 +343,13 @@ export class SetlistManager {
 
   // ─── API de MÚLTIPLOS repertórios ───────────────────────────────────
 
-  getSetlists(): Array<{ id: string; name: string; count: number; active: boolean }> {
+  getSetlists(): Array<{ id: string; name: string; count: number; active: boolean; shared: boolean }> {
     return this.state.setlists.map(s => ({
       id: s.id,
       name: s.name,
       count: s.items.length,
       active: s.id === this.state.activeId,
+      shared: s.sharedImport === true,
     }));
   }
 
@@ -362,12 +366,13 @@ export class SetlistManager {
     return true;
   }
 
-  /** Cria repertório novo (e ativa). Retorna null se bateu o limite. */
-  createSetlist(name: string): string | null {
+  /** Cria repertório novo (e ativa). Retorna null se bateu o limite.
+   *  sharedImport=true marca como "compartilhado" (borda amarela). */
+  createSetlist(name: string, sharedImport = false): string | null {
     if (this.state.setlists.length >= MAX_SETLISTS) return null;
     const id = genId();
     const cleanName = (name || '').trim() || t('core.setlist.numbered', { n: this.state.setlists.length + 1 });
-    this.state.setlists.push({ id, name: cleanName.slice(0, 40), items: [], currentIndex: 0, lastModified: Date.now() });
+    this.state.setlists.push({ id, name: cleanName.slice(0, 40), items: [], currentIndex: 0, lastModified: Date.now(), ...(sharedImport ? { sharedImport: true } : {}) });
     this.state.activeId = id;
     this.notify();
     return id;
@@ -385,6 +390,7 @@ export class SetlistManager {
     const cleanName = (name || '').trim();
     if (!cleanName) return false;
     s.name = cleanName.slice(0, 40);
+    s.sharedImport = false; // renomeou → tira a marca de compartilhado
     this.touch(s);
     this.notify();
     return true;
@@ -413,6 +419,17 @@ export class SetlistManager {
   }
 
   getMaxSetlists(): number { return MAX_SETLISTS; }
+
+  /** Itens de um repertório específico por id (cópia). Usado pra compartilhar. */
+  getItemsOf(id: string): SetlistItem[] {
+    const s = this.state.setlists.find(x => x.id === id);
+    return s ? s.items.map(i => ({ ...i })) : [];
+  }
+  /** Nome de um repertório específico por id. */
+  getNameOf(id: string): string {
+    const s = this.state.setlists.find(x => x.id === id);
+    return s ? s.name : '';
+  }
 
   /** Duplica um repertório (itens copiados, nome "X (cópia)"). Null se bateu o limite. */
   duplicateSetlist(id: string): string | null {
@@ -631,6 +648,7 @@ export class SetlistManager {
         items: Array.isArray(s.items) ? s.items : [],
         currentIndex: typeof s.currentIndex === 'number' ? s.currentIndex : 0,
         lastModified: typeof s.lastModified === 'number' ? s.lastModified : 0,
+        ...(s.sharedImport === true ? { sharedImport: true } : {}),
       }));
     if (setlists.length === 0) return emptyState();
     const activeId = setlists.some(s => s.id === parsed.activeId)

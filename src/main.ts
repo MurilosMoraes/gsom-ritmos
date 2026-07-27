@@ -34,6 +34,7 @@ import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
 import { startMarquee, stopMarquee } from './utils/marquee';
+import { buildRhythmPayload, buildSetlistPayload, makeShareUrl, showShareResultModal, readImportFromUrl, clearImportFromUrl, type SharePayload } from './core/ShareLink';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
 // Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
@@ -779,6 +780,10 @@ class RhythmSequencer {
 
       // Modal de download offline — 1a vez ou quando manifest atualizar
       setTimeout(() => this.maybeShowOfflineDownload(), 6500);
+
+      // Compartilhamento: hook pro editor de repertório + import se abriu via link
+      (window as any).__gdrumsShareSetlist = (id: string) => this.shareSetlist(id);
+      setTimeout(() => this.handleShareImport(), 800);
 
       // Banner soft de notificações push — aparece pra user autenticado
       // que ainda não permitiu e não dismissou recentemente
@@ -6264,6 +6269,85 @@ ctaUrl: '/plans?renew=true',
     }, 300);
   }
 
+  // ─── Compartilhar / Importar (protótipo link auto-contido) ──────────
+
+  /** Compartilha um repertório: embute os ritmos pessoais e gera o link. */
+  private shareSetlist(id: string): void {
+    const items = this.setlistManager.getItemsOf(id);
+    const name = this.setlistManager.getNameOf(id) || 'Repertório';
+    if (items.length === 0) { Toast.show('Esse repertório está vazio', { type: 'info' }); return; }
+    const payload = buildSetlistPayload(name, items, (rid) => this.userRhythmService.getById(rid));
+    showShareResultModal(makeShareUrl(payload), name, 'Repertório');
+  }
+
+  /** Se o app abriu por um link de compartilhar (#import=...), mostra o preview. */
+  private handleShareImport(): void {
+    const payload = readImportFromUrl();
+    if (!payload) return;
+    clearImportFromUrl();
+    this.showImportPreview(payload);
+  }
+
+  /** Preview do conteúdo compartilhado + botão importar (clona na conta). */
+  private showImportPreview(payload: SharePayload): void {
+    const esc = (s: string): string => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+    const isRhythm = payload.t === 'r';
+    const count = payload.items?.length || 0;
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:1rem;';
+    overlay.innerHTML = `
+      <div style="background:rgba(10,10,26,0.97);border:1px solid rgba(250,204,21,0.35);border-radius:20px;padding:1.5rem;max-width:400px;width:100%;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:0.4rem;">🎁</div>
+        <h2 style="font-size:1.15rem;font-weight:700;color:#fff;margin:0 0 0.3rem;">Alguém compartilhou com você</h2>
+        <p style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin:0 0 0.3rem;">${isRhythm ? 'Ritmo' : 'Repertório'}</p>
+        <div style="font-size:1.05rem;font-weight:700;color:#facc15;margin:0 0 0.4rem;word-break:break-word;">${esc(payload.title || '')}</div>
+        ${!isRhythm ? `<p style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin:0 0 1.1rem;">${count} ${count === 1 ? 'música' : 'músicas'}</p>` : '<div style="margin-bottom:1.1rem;"></div>'}
+        <button id="impDoBtn" style="width:100%;padding:0.8rem;border:none;border-radius:12px;background:linear-gradient(160deg,rgba(250,204,21,0.95),rgba(202,138,4,0.95));color:#1a1400;font-size:0.92rem;font-weight:800;font-family:inherit;cursor:pointer;margin-bottom:0.6rem;">Importar pra minha conta</button>
+        <button id="impCancelBtn" style="width:100%;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">Agora não</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = (): void => { overlay.remove(); (window as any).__refocusPedal?.(); };
+    overlay.querySelector('#impCancelBtn')!.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    const doBtn = overlay.querySelector('#impDoBtn') as HTMLButtonElement;
+    doBtn.addEventListener('click', async () => {
+      doBtn.disabled = true;
+      doBtn.textContent = 'Importando…';
+      try {
+        if (isRhythm) {
+          await this.userRhythmService.save(payload.title || 'Ritmo', payload.bpm || 80, payload.data, payload.base, true);
+        } else {
+          // 1) recria os ritmos pessoais embutidos (ids novos)
+          const map: Record<string, string> = {};
+          const rhythms = payload.rhythms || {};
+          for (const k of Object.keys(rhythms)) {
+            const rh = rhythms[k];
+            const nr = await this.userRhythmService.save(rh.name, rh.bpm || 80, rh.data, rh.base, true);
+            map[k] = nr.id;
+          }
+          // 2) cria o repertório (marcado como compartilhado) e monta os itens
+          const newId = this.setlistManager.createSetlist(payload.title || 'Repertório', true);
+          if (newId) {
+            for (const it of (payload.items || [])) {
+              const item: any = { name: it.name, path: it.path || '', bpm: it.bpm, baseRhythmName: it.base };
+              if (it.k && map[it.k]) item.userRhythmId = map[it.k];
+              this.setlistManager.addItemTo(newId, item);
+            }
+          }
+        }
+        this.updateSetlistUI();
+        this.renderRhythmStrip();
+        close();
+        Toast.show(isRhythm ? 'Ritmo importado! (borda amarela)' : 'Repertório importado! (borda amarela)', { type: 'success', durationMs: 6000 });
+      } catch (e: any) {
+        doBtn.disabled = false;
+        doBtn.textContent = 'Importar pra minha conta';
+        Toast.show('Falha ao importar: ' + (e?.message || ''), { type: 'warn', durationMs: 7000 });
+      }
+    });
+  }
+
   /**
    * Meus Ritmos (v2) — cards com edit in-line, busca fuzzy, undo na deleção.
    *
@@ -6315,7 +6399,7 @@ ctaUrl: '/plans?renew=true',
                </div>`)
         : `<div class="x-rhythms-list">${
             filtered.map(r => `
-              <div class="x-rhythm-card" data-id="${r.id}">
+              <div class="x-rhythm-card ${r.sharedImport ? 'x-shared' : ''}" data-id="${r.id}">
                 <span class="x-rhythm-accent"></span>
                 <div class="x-rhythm-content">
                   <div class="x-rhythm-top">
@@ -6323,6 +6407,9 @@ ctaUrl: '/plans?renew=true',
                     <div class="x-rhythm-actions">
                       <button class="x-rhythm-action" data-rename="${r.id}" aria-label="${t('main.myRhythms.renameAriaLabel')}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                      </button>
+                      <button class="x-rhythm-action" data-share="${r.id}" aria-label="Compartilhar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                       </button>
                       <button class="x-rhythm-action danger" data-delete="${r.id}" aria-label="${t('main.myRhythms.deleteAriaLabel')}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
@@ -6543,6 +6630,17 @@ ctaUrl: '/plans?renew=true',
           input.addEventListener('blur', () => commit(true));
           // Stop propagation pra não disparar click do card
           input.addEventListener('click', (ev) => ev.stopPropagation());
+        });
+      });
+
+      // Compartilhar ritmo → gera o link
+      overlay.querySelectorAll<HTMLElement>('[data-share]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const r = this.userRhythmService.getById(btn.dataset.share!);
+          if (!r) return;
+          const payload = buildRhythmPayload(r);
+          showShareResultModal(makeShareUrl(payload), r.name, 'Ritmo');
         });
       });
 
