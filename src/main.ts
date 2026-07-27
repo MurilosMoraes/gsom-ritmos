@@ -6250,7 +6250,7 @@ ctaUrl: '/plans?renew=true',
                   <div class="x-rhythm-bottom">
                     <div class="x-rhythm-meta">
                       ${r.base_rhythm_name ? `<span class="x-rhythm-base">${t('main.myRhythms.basedOn', { name: escapeHtml(r.base_rhythm_name) })}</span>` : ''}
-                      ${!r.synced ? `${r.base_rhythm_name ? '<span class="x-rhythm-meta-dot"></span>' : ''}<button class="x-rhythm-pending" data-sync-one="${r.id}" title="${t('main.myRhythms.syncTooltip')}">${t('main.myRhythms.pendingSync')}</button>` : ''}
+                      ${!r.synced ? `${r.base_rhythm_name ? '<span class="x-rhythm-meta-dot"></span>' : ''}<button class="x-rhythm-sync-arrow" data-goto-sync title="${t('main.myRhythms.syncTooltip')}" aria-label="${t('main.myRhythms.syncTooltip')}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>` : ''}
                     </div>
                     <div class="x-bpm-ctrl" data-bpm-ctrl="${r.id}" aria-label="${t('main.myRhythms.bpmAriaLabel')}">
                       <button class="x-bpm-btn" data-bpm-step="-1" aria-label="${t('main.myRhythms.bpmDecreaseAriaLabel')}">&minus;</button>
@@ -6353,20 +6353,14 @@ ctaUrl: '/plans?renew=true',
         });
       });
 
-      // Badge "pendente sync": tap = tenta subir AGORA e mostra o motivo
-      // real se falhar (antes o erro era invisível, só no console)
-      overlay.querySelectorAll<HTMLElement>('[data-sync-one]').forEach(badge => {
-        badge.addEventListener('click', async (e) => {
+      // Seta vermelha "não salvo na nuvem": tap = fecha o Meus Ritmos e
+      // dispara DIRETO o "Baixar e sincronizar" (mesma ação do botão da
+      // config, como se o user tivesse aberto a config e clicado nele).
+      overlay.querySelectorAll<HTMLElement>('[data-goto-sync]').forEach(arrow => {
+        arrow.addEventListener('click', (e) => {
           e.stopPropagation();
-          badge.textContent = t('main.myRhythms.syncingLabel');
-          const result = await this.userRhythmService.syncOne(badge.dataset.syncOne!);
-          if (result.ok) {
-            Toast.show(t('main.myRhythms.syncedToast'), { type: 'success' });
-            renderList();
-          } else {
-            badge.textContent = t('main.myRhythms.pendingSync');
-            Toast.show(t('main.myRhythms.syncFailedToast', { error: result.error ?? '' }), { type: 'warn', durationMs: 8000 });
-          }
+          close();
+          void this.showBackupSyncFlow();
         });
       });
 
