@@ -47,6 +47,11 @@ export const MAX_SETLISTS = 30;
 
 export interface NamedSetlist extends Setlist {
   id: string;
+  // Timestamp ms da última edição de CONTEÚDO deste repertório (add/remove/
+  // mover música, renomear). NÃO é bumpado por navegação (next/prev/goTo).
+  // A união usa isso pra "mais recente ganha" no mesmo id — assim remover
+  // música ou reordenar PROPAGA entre aparelhos, não só adicionar.
+  lastModified?: number;
 }
 
 interface MultiSetlistState {
@@ -362,10 +367,16 @@ export class SetlistManager {
     if (this.state.setlists.length >= MAX_SETLISTS) return null;
     const id = genId();
     const cleanName = (name || '').trim() || t('core.setlist.numbered', { n: this.state.setlists.length + 1 });
-    this.state.setlists.push({ id, name: cleanName.slice(0, 40), items: [], currentIndex: 0 });
+    this.state.setlists.push({ id, name: cleanName.slice(0, 40), items: [], currentIndex: 0, lastModified: Date.now() });
     this.state.activeId = id;
     this.notify();
     return id;
+  }
+
+  /** Carimba a hora da última edição de CONTEÚDO do repertório — usado pela
+   *  união pra decidir "mais recente ganha" no mesmo id. */
+  private touch(s: NamedSetlist): void {
+    s.lastModified = Date.now();
   }
 
   renameSetlist(id: string, name: string): boolean {
@@ -374,6 +385,7 @@ export class SetlistManager {
     const cleanName = (name || '').trim();
     if (!cleanName) return false;
     s.name = cleanName.slice(0, 40);
+    this.touch(s);
     this.notify();
     return true;
   }
@@ -413,6 +425,7 @@ export class SetlistManager {
       name: t('core.setlist.copyName', { name: src.name }).slice(0, 40),
       items: src.items.map(i => ({ ...i })),
       currentIndex: 0,
+      lastModified: Date.now(),
     });
     this.notify();
     return newId;
@@ -424,6 +437,7 @@ export class SetlistManager {
     const s = this.state.setlists.find(x => x.id === setlistId);
     if (!s) return false;
     s.items.push(item);
+    this.touch(s);
     this.notify();
     return true;
   }
@@ -486,7 +500,9 @@ export class SetlistManager {
   // ─── CRUD (no repertório ativo) ─────────────────────────────────────
 
   addItem(item: SetlistItem): void {
-    this.active().items.push({ ...item });
+    const a = this.active();
+    a.items.push({ ...item });
+    this.touch(a);
     this.notify();
   }
 
@@ -497,6 +513,7 @@ export class SetlistManager {
     if (a.currentIndex >= a.items.length) {
       a.currentIndex = Math.max(0, a.items.length - 1);
     }
+    this.touch(a);
     this.notify();
   }
 
@@ -517,6 +534,7 @@ export class SetlistManager {
       a.currentIndex++;
     }
 
+    this.touch(a);
     this.notify();
   }
 
@@ -524,11 +542,14 @@ export class SetlistManager {
     const a = this.active();
     a.items = [];
     a.currentIndex = 0;
+    this.touch(a);
     this.notify();
   }
 
   setName(name: string): void {
-    this.active().name = name;
+    const a = this.active();
+    a.name = name;
+    this.touch(a);
     this.saveLocal();
   }
 
@@ -609,6 +630,7 @@ export class SetlistManager {
         name: typeof s.name === 'string' && s.name.trim() ? s.name.slice(0, 40) : t('core.setlist.numbered', { n: i + 1 }),
         items: Array.isArray(s.items) ? s.items : [],
         currentIndex: typeof s.currentIndex === 'number' ? s.currentIndex : 0,
+        lastModified: typeof s.lastModified === 'number' ? s.lastModified : 0,
       }));
     if (setlists.length === 0) return emptyState();
     const activeId = setlists.some(s => s.id === parsed.activeId)
@@ -686,9 +708,11 @@ export class SetlistManager {
   }
 
   /** UNIÃO de dois estados POR ID de repertório — nunca perde repertório de
-   *  nenhum lado. Mesmo id nos dois → fica com o que tem MAIS músicas (nunca
-   *  encolhe; empate → local). Respeita TOMBSTONES: id excluído em qualquer
-   *  lado é removido dos dois (a exclusão propaga). Preserva o activeId local. */
+   *  nenhum lado. Mesmo id nos dois → fica com o MAIS RECENTE (lastModified);
+   *  assim remover música/reordenar propaga, não só adicionar. Sem timestamp
+   *  (dado legado) cai no fallback "mais músicas ganha" (nunca encolhe).
+   *  Respeita TOMBSTONES: id excluído em qualquer lado é removido dos dois.
+   *  Preserva o activeId local. */
   private unionSetlists(local: MultiSetlistState, remote: MultiSetlistState | null): MultiSetlistState {
     // Excluídos = união dos tombstones dos dois lados
     const deleted = new Set<string>([
@@ -703,7 +727,17 @@ export class SetlistManager {
     for (const s of local.setlists) {
       const ex = byId.get(s.id);
       if (!ex) { byId.set(s.id, s); continue; }
-      if (s.items.length >= ex.items.length) byId.set(s.id, s); // nunca encolhe
+      // Mesmo id nos dois: decide quem fica.
+      const lm = s.lastModified || 0;
+      const em = ex.lastModified || 0;
+      if (lm !== em) {
+        // Timestamps existem e diferem → o MAIS RECENTE ganha (propaga
+        // remoção/reordenação, não só adição).
+        if (lm > em) byId.set(s.id, s);
+      } else {
+        // Sem timestamp ou empate → fallback conservador: nunca encolhe.
+        if (s.items.length >= ex.items.length) byId.set(s.id, s);
+      }
     }
     // Remove os excluídos (tombstones) da união — exclusão propaga
     for (const id of deleted) byId.delete(id);
@@ -761,7 +795,9 @@ export class SetlistManager {
       // pra detectar tanto conteúdo novo quanto exclusão a propagar.
       const sig = (st: MultiSetlistState | null): string => {
         if (!st) return '|';
-        return st.setlists.map(s => `${s.id}:${s.items.length}`).sort().join(',') +
+        // inclui lastModified pra detectar edição que não muda a contagem
+        // (reordenar, renomear) e não só add/remove de música.
+        return st.setlists.map(s => `${s.id}:${s.items.length}:${s.lastModified || 0}`).sort().join(',') +
           '|' + [...(st.deletedSetlists || [])].sort().join(',');
       };
       const before = sig(this.state);
