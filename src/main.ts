@@ -35,7 +35,7 @@ import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
 import { startMarquee, stopMarquee } from './utils/marquee';
 import { buildRhythmPayload, buildSetlistPayload, makeShareUrl, showShareResultModal, readImportFromUrl, clearImportFromUrl, type SharePayload } from './core/ShareLink';
-import { publishShare, fetchShare, shortUrl, localTestUrl, readShareCodeFromPath, clearShareCodeFromPath, saveLocalShare, getLocalShare } from './core/ShareService';
+import { publishShare, fetchShare, shortUrl, readShareCodeFromPath, clearShareCodeFromPath, saveLocalShare, getLocalShare } from './core/ShareService';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
 // Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
@@ -6289,7 +6289,7 @@ ctaUrl: '/plans?renew=true',
     if (items.length === 0) { Toast.show('Esse repertório está vazio', { type: 'info' }); return; }
     const payload = buildSetlistPayload(name, items, (rid) => this.userRhythmService.getById(rid));
     const code = await this.getShareCode(payload);
-    showShareResultModal(shortUrl(code), name, 'Repertório', localTestUrl(code));
+    showShareResultModal(shortUrl(code), name, 'Repertório');
   }
 
   /** Se o app abriu por um link de compartilhar, mostra o preview.
@@ -6662,7 +6662,7 @@ ctaUrl: '/plans?renew=true',
           if (!r) return;
           const payload = buildRhythmPayload(r);
           const code = await this.getShareCode(payload);
-          showShareResultModal(shortUrl(code), r.name, 'Ritmo', localTestUrl(code));
+          showShareResultModal(shortUrl(code), r.name, 'Ritmo');
         });
       });
 

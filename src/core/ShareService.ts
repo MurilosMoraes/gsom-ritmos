@@ -43,13 +43,6 @@ export function shortUrl(code: string): string {
   return `${SHARE_DOMAIN}/${code}`;
 }
 
-/** Link equivalente no ORIGIN atual (localhost/IP) — pra testar aqui, já que
- *  a produção ainda não tem o recurso. undefined quando já é o domínio real. */
-export function localTestUrl(code: string): string | undefined {
-  if (location.origin === SHARE_DOMAIN) return undefined;
-  return `${location.origin}/${code}`;
-}
-
 // ─── Link curto SEM backend (teste) ────────────────────────────────────
 // Guarda o payload no localStorage sob um código numérico curto. O link fica
 // /r/12345, mas SÓ abre no MESMO navegador/aparelho onde foi criado (o
