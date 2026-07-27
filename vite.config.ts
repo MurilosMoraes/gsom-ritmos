@@ -32,6 +32,17 @@ export default defineConfig({
     }
   },
   plugins: [
+    {
+      // Dev: serve o app principal em /r/CÓDIGO (link curto de compartilhar).
+      // Em produção o rewrite equivalente está no vercel.json.
+      name: 'gdrums-share-route',
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          if (req.url && /^\/r\/[^/?#]+/.test(req.url)) req.url = '/index.html';
+          next();
+        });
+      },
+    },
     VitePWA({
       // injectManifest: temos um SW custom em src/sw.ts que faz
       // importScripts do OneSignal SDK Worker + Workbox routing.

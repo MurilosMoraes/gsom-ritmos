@@ -35,6 +35,7 @@ import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
 import { startMarquee, stopMarquee } from './utils/marquee';
 import { buildRhythmPayload, buildSetlistPayload, makeShareUrl, showShareResultModal, readImportFromUrl, clearImportFromUrl, type SharePayload } from './core/ShareLink';
+import { publishShare, fetchShare, shortUrl, readShareCodeFromPath, clearShareCodeFromPath } from './core/ShareService';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
 // Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
@@ -6269,7 +6270,17 @@ ctaUrl: '/plans?renew=true',
     }, 300);
   }
 
-  // ─── Compartilhar / Importar (protótipo link auto-contido) ──────────
+  // ─── Compartilhar / Importar ────────────────────────────────────────
+
+  /** Gera o link de compartilhar: tenta o link CURTO (backend /r/CÓDIGO);
+   *  se o backend não estiver disponível, cai no link auto-contido. */
+  private async makeShareLink(payload: SharePayload): Promise<string> {
+    try {
+      const code = await publishShare(payload);
+      if (code) return shortUrl(code);
+    } catch { /* backend indisponível/SQL não aplicado — usa link auto-contido */ }
+    return makeShareUrl(payload);
+  }
 
   /** Compartilha um repertório: embute os ritmos pessoais e gera o link. */
   private async shareSetlist(id: string): Promise<void> {
@@ -6277,11 +6288,20 @@ ctaUrl: '/plans?renew=true',
     const name = this.setlistManager.getNameOf(id) || 'Repertório';
     if (items.length === 0) { Toast.show('Esse repertório está vazio', { type: 'info' }); return; }
     const payload = buildSetlistPayload(name, items, (rid) => this.userRhythmService.getById(rid));
-    showShareResultModal(await makeShareUrl(payload), name, 'Repertório');
+    showShareResultModal(await this.makeShareLink(payload), name, 'Repertório');
   }
 
-  /** Se o app abriu por um link de compartilhar (#import=...), mostra o preview. */
+  /** Se o app abriu por um link de compartilhar, mostra o preview.
+   *  Suporta o link CURTO (/r/CÓDIGO, via backend) e o auto-contido (#import=). */
   private async handleShareImport(): Promise<void> {
+    const code = readShareCodeFromPath();
+    if (code) {
+      clearShareCodeFromPath();
+      const payload = await fetchShare(code);
+      if (payload) { this.showImportPreview(payload); return; }
+      Toast.show('Link de compartilhamento inválido ou expirado', { type: 'warn' });
+      return;
+    }
     const payload = await readImportFromUrl();
     if (!payload) return;
     clearImportFromUrl();
@@ -6338,7 +6358,7 @@ ctaUrl: '/plans?renew=true',
         this.updateSetlistUI();
         this.renderRhythmStrip();
         close();
-        Toast.show(isRhythm ? 'Ritmo importado! (borda amarela)' : 'Repertório importado! (borda amarela)', { type: 'success', durationMs: 6000 });
+        Toast.show(isRhythm ? 'Ritmo importado!' : 'Repertório importado!', { type: 'success', durationMs: 5000 });
       } catch (e: any) {
         doBtn.disabled = false;
         doBtn.textContent = 'Importar pra minha conta';
@@ -6639,7 +6659,7 @@ ctaUrl: '/plans?renew=true',
           const r = this.userRhythmService.getById(btn.dataset.share!);
           if (!r) return;
           const payload = buildRhythmPayload(r);
-          showShareResultModal(await makeShareUrl(payload), r.name, 'Ritmo');
+          showShareResultModal(await this.makeShareLink(payload), r.name, 'Ritmo');
         });
       });
 

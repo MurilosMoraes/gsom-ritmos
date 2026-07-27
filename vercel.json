@@ -62,6 +62,10 @@
     {
       "source": "/download/:slug",
       "destination": "/download"
+    },
+    {
+      "source": "/r/:code",
+      "destination": "/index.html"
     }
   ],
   "headers": [
