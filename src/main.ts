@@ -5758,6 +5758,30 @@ ctaUrl: '/plans?renew=true',
    * - Enter no input salva direto
    * - Toast com "Renomear" depois do save — pode corrigir em 5s sem abrir modal
    */
+  /** Tira a foto congelada do ritmo carregado. Chamado no load, junto com a
+   *  identidade. Deep-clone via JSON pra a foto NÃO compartilhar memória com
+   *  o estado vivo (senão o motor mexendo depois mudaria a foto). */
+  private captureEditSnapshot(): void {
+    try {
+      this.editSnapshot = JSON.parse(JSON.stringify(this.fileManager.exportProjectAsJSON()));
+    } catch {
+      this.editSnapshot = null;
+    }
+  }
+
+  /** Dado que o disquete verde vai salvar. No modo usuário, usa a FOTO do
+   *  ritmo escolhido (com o BPM atual) — nunca o estado vivo, pra não salvar
+   *  o ritmo errado que esteja tocando/pausado. No admin (edita padrão ao
+   *  vivo) ou sem foto, cai pro estado real. */
+  private rhythmDataForSave(bpm: number): any {
+    if (!this.isAdminMode && this.editSnapshot) {
+      const snap = JSON.parse(JSON.stringify(this.editSnapshot));
+      snap.tempo = bpm;
+      return snap;
+    }
+    return this.fileManager.exportProjectAsJSON();
+  }
+
   private showSaveRhythmModal(): void {
     if (!this.currentRhythmName && !this.stateManager.getState().patterns.main.some(r => r.some(s => s))) {
       this.modalManager.show(t('main.modal.myRhythmsTitle'), t('main.modal.loadRhythmBeforeSave'), 'warning');
@@ -5936,7 +5960,7 @@ ctaUrl: '/plans?renew=true',
       const v = validate();
       if (!v) return;
 
-      const rhythmData = this.fileManager.exportProjectAsJSON();
+      const rhythmData = this.rhythmDataForSave(v.bpm);
       const isLibraryRhythm = this.availableRhythms.some(r => r.name === this.currentRhythmName);
       const baseRhythmName = isLibraryRhythm
         ? this.currentRhythmName
@@ -5964,7 +5988,7 @@ ctaUrl: '/plans?renew=true',
       const v = validate();
       if (!v) return;
 
-      const rhythmData = this.fileManager.exportProjectAsJSON();
+      const rhythmData = this.rhythmDataForSave(v.bpm);
       await this.userRhythmService.update(editing.id, v.name, v.bpm, rhythmData);
       this.currentUserRhythmId = editing.id;
       this.persistDisabledVariations(); // salva as desativadas no ritmo atualizado
@@ -6371,6 +6395,7 @@ ctaUrl: '/plans?renew=true',
       this.uiManager.updateVariationButtons();
 
       this.currentRhythmName = name;
+      this.captureEditSnapshot(); // foto do ritmo escolhido, junto com a identidade
       this.loadDisabledVariations(); // aplica as variações desativadas salvas deste ritmo
       const nameEl = document.getElementById('currentRhythmName');
       if (nameEl) nameEl.textContent = name;
@@ -8072,6 +8097,16 @@ ctaUrl: '/plans?renew=true',
   /** Id do ritmo PESSOAL carregado (null se for da biblioteca). Habilita
    *  o "Atualizar 'X'" no salvar em vez de duplicar. */
   private currentUserRhythmId: string | null = null;
+
+  /** FOTO CONGELADA do ritmo que o usuário escolheu/carregou por último.
+   *  Tirada no MESMO instante em que a identidade (currentRhythmName /
+   *  currentUserRhythmId) é setada, no load. O disquete verde salva ESTA
+   *  foto — nunca o estado vivo do motor. Assim o que é salvo bate SEMPRE
+   *  com o ritmo que está na tela, mesmo que outro ritmo esteja tocando/
+   *  pausado (bug "salva o que está tocando, não o que ele escolheu").
+   *  No modo ADMIN (que edita padrão ao vivo) o save ignora a foto e usa
+   *  o estado real — ver rhythmDataForSave(). */
+  private editSnapshot: any = null;
   /** True quando o ritmo tocando NÃO veio do repertório (TODOS, painel
    *  lateral, Meus Ritmos) — o fav-bar mostra ele como "fora do
    *  repertório" em vez de fingir que o item do setlist continua. */
@@ -8607,6 +8642,7 @@ ctaUrl: '/plans?renew=true',
         // User: atualizar nome do ritmo, favoritos, strip
         this.currentRhythmName = name;
         this.currentUserRhythmId = null; // ritmo de biblioteca
+        this.captureEditSnapshot(); // foto do ritmo escolhido, junto com a identidade
         this.loadDisabledVariations(); // aplica as variações desativadas salvas deste ritmo
         // Carregado avulso (TODOS/painel) — o loadSetlistItem desfaz
         // essa flag logo depois quando o load veio do repertório
