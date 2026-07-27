@@ -87,15 +87,19 @@ class RhythmSequencer {
   private isAdminMode = false;
   private userRole: 'user' | 'admin' = 'user';
   private rhythmVersion: number = 0;
-  // Pedal — esquerdo e direito (2 botões = padrão)
-  private pedalLeft = 'ArrowLeft';
-  private pedalRight = 'ArrowRight';
-  // Pedal expandido (3 ou 4 botões — MVAVE Chocolate, etc):
-  // - 3 botões: + Play/Pause instantâneo
-  // - 4 botões: + Play/Pause + Finalização (end)
-  private pedalCount: 2 | 3 | 4 = 2;
-  private pedalPlayPause = '';  // tecla pra botão 3 (play/pause)
-  private pedalEnd = '';        // tecla pra botão 4 (finalização)
+  // Pedal — PADRÃO DE FÁBRICA: M-VAVE Chocolate (4 botões), já mapeado, pra
+  // funcionar de primeira sem o cliente configurar nada. O Chocolate manda as
+  // 4 setas; a ordem física bate com as funções:
+  //   ↑ Cima  = iniciar/trocar variação (esquerdo)
+  //   ↓ Baixo = virada/prato (direito)
+  //   ← Esq.  = pausa/continua (3º botão)
+  //   → Dir.  = finaliza (4º botão)
+  // Quem tem outro pedal (2 botões) é só remapear em "Mapear pedal".
+  private pedalLeft = 'ArrowUp';
+  private pedalRight = 'ArrowDown';
+  private pedalCount: 2 | 3 | 4 = 4;
+  private pedalPlayPause = 'ArrowLeft';  // tecla pra botão 3 (play/pause)
+  private pedalEnd = 'ArrowRight';       // tecla pra botão 4 (finalização)
   private pedalMapperOpen = false;
   private installPrompt: any = null;
   // Unlock do AudioContext (iOS) — re-armável quando o contexto cai
@@ -4759,9 +4763,10 @@ ctaUrl: '/plans?renew=true',
       if (tempCount >= 4) wireBtn('end');
 
       overlay.querySelector('#pedalReset')!.addEventListener('click', () => {
-        tempLeft = 'ArrowLeft'; tempRight = 'ArrowRight';
-        tempPlayPause = ''; tempEnd = '';
-        tempCount = 2;
+        // Padrão de fábrica: M-VAVE Chocolate (4 botões) já mapeado.
+        tempLeft = 'ArrowUp'; tempRight = 'ArrowDown';
+        tempPlayPause = 'ArrowLeft'; tempEnd = 'ArrowRight';
+        tempCount = 4;
         listening = null; render();
         mapperInput.focus({ preventScroll: true });
       });
