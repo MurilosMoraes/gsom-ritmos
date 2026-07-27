@@ -3502,6 +3502,14 @@ ctaUrl: '/plans?renew=true',
       });
     }
 
+    const compatPedalsBtn = document.getElementById('compatPedalsBtn');
+    if (compatPedalsBtn) {
+      compatPedalsBtn.addEventListener('click', () => {
+        if (fabDropdown) fabDropdown.style.display = 'none';
+        this.showCompatiblePedals();
+      });
+    }
+
     // Modo Show — switch sempre visível na topbar (1 clique liga/desliga)
     const stageModeSwitch = document.getElementById('stageModeSwitch') as HTMLInputElement | null;
     if (stageModeSwitch) {
@@ -4166,6 +4174,121 @@ ctaUrl: '/plans?renew=true',
 
     const close = () => { overlay.remove(); (window as any).__refocusPedal?.(); };
     overlay.querySelector('#closePedalInfo')!.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+  }
+
+  /**
+   * Tela "Pedais compatíveis" — mostra o mapeamento pronto dos pedais M-VAVE
+   * (Page Turner, 2 pedais; Chocolate, 4 botões). Minimalista, nas cores do
+   * app. Só informativo (não configura nada).
+   */
+  private showCompatiblePedals(): void {
+    const T = (k: string): string => t(`main.compatPedals.${k}`);
+
+    // Paleta do app
+    const CYAN = '#00d4ff', PURPLE = '#8b5cf6', GREEN = '#00e68c', ORANGE = '#f9a03c';
+    // Pílula de estado (por estado: parado=neutro, tocando=verde, 2 toques=laranja)
+    const STATE: Record<string, [string, string, string, string]> = {
+      stopped: ['stopped', '#9aa3b2', 'rgba(154,163,178,0.12)', 'rgba(154,163,178,0.3)'],
+      playing: ['playing', GREEN, 'rgba(0,230,140,0.12)', 'rgba(0,230,140,0.32)'],
+      double: ['double', ORANGE, 'rgba(249,160,60,0.14)', 'rgba(249,160,60,0.36)'],
+    };
+    const pill = (txt: string, col: string, bg: string, bd: string): string =>
+      `<span style="flex-shrink:0;display:inline-block;font-size:0.56rem;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:${col};background:${bg};border:1px solid ${bd};border-radius:999px;padding:0.12rem 0.45rem;">${txt}</span>`;
+    // linha "estado → ação"
+    const line = (stateKey: string, actionKey: string): string => {
+      const [labelKey, col, bg, bd] = STATE[stateKey];
+      return `<div style="display:flex;align-items:center;gap:0.5rem;margin:0.32rem 0;">
+        ${pill(T(labelKey), col, bg, bd)}
+        <span style="font-size:0.8rem;color:rgba(255,255,255,0.74);line-height:1.3;">${T(actionKey)}</span>
+      </div>`;
+    };
+    // linha simples (botão de ação única, sem estado)
+    const plain = (actionKey: string): string =>
+      `<div style="font-size:0.8rem;color:rgba(255,255,255,0.74);margin:0.32rem 0;">${T(actionKey)}</div>`;
+    const head = (label: string, color: string): string =>
+      `<div style="font-size:0.62rem;font-weight:800;text-transform:uppercase;letter-spacing:0.9px;color:${color};margin:0 0 0.2rem;">${label}</div>`;
+
+    // Visual do Page Turner (2 treadles com textura diagonal)
+    const treadle = (color: string): string =>
+      `<div style="flex:1;height:54px;border-radius:9px;background:repeating-linear-gradient(120deg, ${color}26 0 5px, ${color}0a 5px 11px);border:1px solid ${color}66;"></div>`;
+    // Visual do Chocolate (4 footswitches redondos)
+    const chip = (letter: string, color: string): string =>
+      `<div style="width:34px;height:34px;border-radius:50%;background:${color}1f;border:1.5px solid ${color}80;display:flex;align-items:center;justify-content:center;font-size:0.82rem;font-weight:800;color:${color};">${letter}</div>`;
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+    overlay.innerHTML = `
+      <div style="background:rgba(10,10,26,0.96);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:1.5rem;max-width:520px;width:100%;max-height:88vh;overflow-y:auto;">
+        <h2 style="font-size:1.2rem;font-weight:700;color:#fff;margin:0 0 0.35rem;text-align:center;">${T('title')}</h2>
+        <p style="font-size:0.74rem;color:rgba(255,255,255,0.34);text-align:center;margin:0 0 1.35rem;">${T('subtitle')}</p>
+
+        <!-- Page Turner -->
+        <div style="margin-bottom:1.5rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+            <span style="font-size:0.92rem;font-weight:700;color:#fff;">${T('pageTurner')}</span>
+            <span style="font-size:0.6rem;font-weight:700;color:${CYAN};background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.28);border-radius:999px;padding:0.1rem 0.45rem;">${T('pageTurnerTag')}</span>
+          </div>
+          <div style="margin:0.55rem 0 0.85rem;">
+            <img src="/img/pedal-pageturner.png" alt="M-VAVE Page Turner" style="width:100%;max-width:340px;display:block;margin:0 auto;filter:saturate(1.06) brightness(1.04) contrast(1.02) drop-shadow(0 4px 12px rgba(0,0,0,0.5));" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <div style="display:none;gap:0.6rem;background:linear-gradient(160deg,rgba(30,30,52,0.85),rgba(12,12,26,0.95));border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:0.7rem;">
+              ${treadle(CYAN)}${treadle(PURPLE)}
+            </div>
+          </div>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+            <div style="flex:1;min-width:170px;">
+              ${head(T('left'), CYAN)}
+              ${line('stopped', 'start')}
+              ${line('playing', 'changeVar')}
+              ${line('double', 'prevVar')}
+            </div>
+            <div style="flex:1;min-width:170px;">
+              ${head(T('right'), PURPLE)}
+              ${line('playing', 'fill')}
+              ${line('double', 'finish')}
+              ${line('stopped', 'cymbal')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Chocolate -->
+        <div style="margin-bottom:0.5rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+            <span style="font-size:0.92rem;font-weight:700;color:#fff;">${T('chocolate')}</span>
+            <span style="font-size:0.6rem;font-weight:700;color:${PURPLE};background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.28);border-radius:999px;padding:0.1rem 0.45rem;">${T('chocolateTag')}</span>
+          </div>
+          <div style="margin:0.55rem 0 0.85rem;">
+            <img src="/img/pedal-chocolate.png" alt="M-VAVE Chocolate" style="width:100%;max-width:340px;display:block;margin:0 auto;filter:saturate(1.06) brightness(1.04) contrast(1.02) drop-shadow(0 4px 12px rgba(0,0,0,0.5));" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <div style="display:none;gap:0.6rem;justify-content:space-around;align-items:center;background:linear-gradient(160deg,rgba(30,30,52,0.85),rgba(12,12,26,0.95));border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:0.8rem;">
+              ${chip('A', CYAN)}${chip('B', PURPLE)}${chip('C', GREEN)}${chip('D', ORANGE)}
+            </div>
+          </div>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+            <div style="flex:1;min-width:170px;">
+              ${head('A', CYAN)}
+              ${line('stopped', 'start')}
+              ${line('playing', 'changeVar')}
+              ${line('double', 'prevVar')}
+            </div>
+            <div style="flex:1;min-width:170px;">
+              ${head('B', PURPLE)}
+              ${line('playing', 'applyFill')}
+              ${line('stopped', 'cymbal')}
+              <div style="margin-top:0.6rem;">${head('C', GREEN)}${plain('pauseResume')}</div>
+              <div style="margin-top:0.6rem;">${head('D', ORANGE)}${plain('finish')}</div>
+            </div>
+          </div>
+        </div>
+
+        <button id="closeCompatPedals" style="width:100%;margin-top:1.25rem;padding:0.7rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.62);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">${T('close')}</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    const close = () => { overlay.remove(); (window as any).__refocusPedal?.(); };
+    overlay.querySelector('#closeCompatPedals')!.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
   }

@@ -64,6 +64,28 @@ export const main: Record<string, string> = {
   'main.backupSync.nativeDoneText': 'Synced! Your work is safe on the server.',
   'main.backupSync.syncError': 'Could not sync: {error}',
 
+  // ── Compatible pedals ──
+  'main.compatPedals.title': 'Compatible pedals',
+  'main.compatPedals.subtitle': 'Ready-made mapping for M-VAVE Bluetooth pedals',
+  'main.compatPedals.pageTurner': 'M-VAVE Page Turner',
+  'main.compatPedals.pageTurnerTag': '2 buttons',
+  'main.compatPedals.chocolate': 'M-VAVE Chocolate',
+  'main.compatPedals.chocolateTag': '4 buttons',
+  'main.compatPedals.left': 'Left pedal',
+  'main.compatPedals.right': 'Right pedal',
+  'main.compatPedals.stopped': 'stopped',
+  'main.compatPedals.playing': 'playing',
+  'main.compatPedals.double': '2 taps',
+  'main.compatPedals.start': 'starts the rhythm',
+  'main.compatPedals.changeVar': 'change variation',
+  'main.compatPedals.prevVar': 'back to previous variation',
+  'main.compatPedals.fill': 'plays a fill',
+  'main.compatPedals.applyFill': 'applies the fill',
+  'main.compatPedals.finish': 'ends',
+  'main.compatPedals.cymbal': 'plays the cymbal',
+  'main.compatPedals.pauseResume': 'pause / resume',
+  'main.compatPedals.close': 'Close',
+
   // ── What's New modal ──
   'main.whatsNew.overline': 'Update',
   'main.whatsNew.title': '+17 rhythms, an equalizer, and pause on the beat.',
