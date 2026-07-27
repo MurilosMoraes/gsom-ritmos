@@ -4231,9 +4231,10 @@ ctaUrl: '/plans?renew=true',
             <span style="font-size:0.92rem;font-weight:700;color:#fff;">${T('pageTurner')}</span>
             <span style="font-size:0.6rem;font-weight:700;color:${CYAN};background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.28);border-radius:999px;padding:0.1rem 0.45rem;">${T('pageTurnerTag')}</span>
           </div>
-          <div style="margin:0.55rem 0 0.85rem;">
-            <img src="/img/pedal-pageturner.png" alt="M-VAVE Page Turner" style="width:100%;max-width:340px;display:block;margin:0 auto;filter:saturate(1.06) brightness(1.04) contrast(1.02) drop-shadow(0 4px 12px rgba(0,0,0,0.5));" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-            <div style="display:none;gap:0.6rem;background:linear-gradient(160deg,rgba(30,30,52,0.85),rgba(12,12,26,0.95));border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:0.7rem;">
+          <div style="position:relative;max-width:236px;margin:0.55rem auto 0.85rem;border-radius:10px;overflow:hidden;">
+            <img src="/img/pedal-pageturner.png" alt="M-VAVE Page Turner" style="width:100%;display:block;filter:brightness(0.8) contrast(1.05) saturate(1.05);" onerror="this.style.display='none';this.parentElement.querySelector('.pd-vig').style.display='none';this.parentElement.querySelector('.pd-fb').style.display='flex';">
+            <div class="pd-vig" style="position:absolute;inset:0;pointer-events:none;border-radius:10px;box-shadow:inset 0 0 12px 4px rgba(0,0,0,0.85);"></div>
+            <div class="pd-fb" style="display:none;gap:0.6rem;align-items:center;background:linear-gradient(160deg,#1c1c30,#0c0c1a);padding:0.7rem;">
               ${treadle(CYAN)}${treadle(PURPLE)}
             </div>
           </div>
@@ -4259,9 +4260,10 @@ ctaUrl: '/plans?renew=true',
             <span style="font-size:0.92rem;font-weight:700;color:#fff;">${T('chocolate')}</span>
             <span style="font-size:0.6rem;font-weight:700;color:${PURPLE};background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.28);border-radius:999px;padding:0.1rem 0.45rem;">${T('chocolateTag')}</span>
           </div>
-          <div style="margin:0.55rem 0 0.85rem;">
-            <img src="/img/pedal-chocolate.png" alt="M-VAVE Chocolate" style="width:100%;max-width:340px;display:block;margin:0 auto;filter:saturate(1.06) brightness(1.04) contrast(1.02) drop-shadow(0 4px 12px rgba(0,0,0,0.5));" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-            <div style="display:none;gap:0.6rem;justify-content:space-around;align-items:center;background:linear-gradient(160deg,rgba(30,30,52,0.85),rgba(12,12,26,0.95));border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:0.8rem;">
+          <div style="position:relative;max-width:340px;margin:0.55rem auto 0.85rem;border-radius:10px;overflow:hidden;">
+            <img src="/img/pedal-chocolate.png" alt="M-VAVE Chocolate" style="width:100%;display:block;filter:brightness(0.8) contrast(1.05) saturate(1.05);" onerror="this.style.display='none';this.parentElement.querySelector('.pd-vig').style.display='none';this.parentElement.querySelector('.pd-fb').style.display='flex';">
+            <div class="pd-vig" style="position:absolute;inset:0;pointer-events:none;border-radius:10px;box-shadow:inset 0 0 12px 4px rgba(0,0,0,0.85);"></div>
+            <div class="pd-fb" style="display:none;gap:0.6rem;justify-content:space-around;align-items:center;background:linear-gradient(160deg,#1c1c30,#0c0c1a);padding:0.8rem;">
               ${chip('A', CYAN)}${chip('B', PURPLE)}${chip('C', GREEN)}${chip('D', ORANGE)}
             </div>
           </div>
