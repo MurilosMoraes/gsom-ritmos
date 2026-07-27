@@ -1487,6 +1487,26 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   background: rgba(0, 153, 255, 0.05);
   box-shadow: 0 0 12px rgba(0, 153, 255, 0.16), inset 0 0 8px rgba(0, 153, 255, 0.05);
 }
+/* Bolinha vermelha pulsante na engrenagem: aparece quando há algo pra
+   "Baixar e sincronizar" — chama o user a abrir a config e clicar no botão. */
+.cfg-sync-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid #05010f;
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  animation: cfg-sync-dot-pulse 1.5s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes cfg-sync-dot-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+  70% { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
 /* Esconde estilos antigos do switch (classe morta após o redesign) */
 .stage-switch-track, .stage-switch-text, .stage-switch-icon { all: unset; }
 
@@ -1842,6 +1862,7 @@ body:has(#pedalBtInput) .user-layout {
   border-color: rgba(139, 92, 246, 0.75);
   background: linear-gradient(160deg, rgba(80, 45, 130, 0.32), rgba(12, 10, 28, 0.6));
 }
+
 
 /* Stepper de BPM no card: − 96 + */
 .x-bpm-ctrl {

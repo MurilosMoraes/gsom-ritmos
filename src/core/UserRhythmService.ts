@@ -43,6 +43,15 @@ export class UserRhythmService {
   private pendingDeletes: string[] = [];
   private userId: string | null = null;
   private supabase: any = null;
+  // Avisa a UI (botão "Baixar e sincronizar") sempre que o nº de pendentes
+  // muda — inclusive quando o app sincroniza SOZINHO (online/foreground/
+  // intervalo). Assim o botão fica verde na hora, sem o user tocar nada.
+  private onPendingChange?: () => void;
+
+  /** Registra um observador chamado quando o estado de sincronização muda. */
+  setOnPendingChange(cb: () => void): void {
+    this.onPendingChange = cb;
+  }
 
   constructor() {
     this.loadLocal();
@@ -67,6 +76,26 @@ export class UserRhythmService {
         void this.syncNow();
       }
     }, 20000);
+
+    // App voltou pra FRENTE (foreground) → tenta subir os pendentes na hora.
+    // Cobre o buraco mais comum no celular: o cara salvou offline, o app foi
+    // pro segundo plano (ou foi fechado), a internet voltou enquanto o timer
+    // de 20s estava SUSPENSO e o evento 'online' ninguém ouviu. Ao reabrir /
+    // trazer o app pra frente, sincroniza imediatamente em vez de esperar o
+    // próximo tick. visibilitychange (mobile) + focus (desktop/PWA) cobrem
+    // web e Capacitor. Guard: só dispara se houver pendente de fato.
+    const syncOnResume = (): void => {
+      if (
+        navigator.onLine && this.supabase && this.userId &&
+        (this.rhythms.some(r => !r.synced) || this.pendingDeletes.length > 0)
+      ) {
+        void this.syncNow();
+      }
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncOnResume();
+    });
+    window.addEventListener('focus', syncOnResume);
   }
 
   /** true se já sabemos (via OWNER_KEY) que o device pertence a OUTRO
@@ -386,6 +415,53 @@ export class UserRhythmService {
     await this.syncNow();
   }
 
+  /** Quantos itens ainda não subiram (saves não sincronizados + exclusões
+   *  pendentes). Usado pra decidir se mostra o "pendente". */
+  getPendingCount(): number {
+    return this.rhythms.filter(r => !r.synced).length + this.pendingDeletes.length;
+  }
+
+  /** Sobe TODOS os pendentes (saves + exclusões) e devolve um resultado
+   *  detalhado COM o motivo da 1ª falha — usado pelo botão "Sincronizar".
+   *  Diferente do syncNow() (que só devolve boolean), aqui o chamador
+   *  consegue mostrar pro usuário exatamente o que travou. */
+  async syncAll(): Promise<{ ok: boolean; synced: number; failed: number; firstError?: string }> {
+    const pending = this.rhythms.filter(r => !r.synced);
+    const total = pending.length;
+    if (!this.supabase || !this.userId) {
+      return { ok: false, synced: 0, failed: total, firstError: t('core.sync.sessionNotStarted') };
+    }
+    if (!navigator.onLine) {
+      return { ok: false, synced: 0, failed: total, firstError: t('core.sync.noInternet') };
+    }
+
+    let firstError: string | undefined;
+
+    // 1) Exclusões pendentes (tombstones) primeiro
+    for (const id of [...this.pendingDeletes]) {
+      try {
+        const { error } = await this.supabase.from('gdrums_user_rhythms').delete().eq('id', id);
+        if (!error) this.pendingDeletes = this.pendingDeletes.filter(d => d !== id);
+        else if (!firstError) firstError = error.message;
+      } catch (e: any) {
+        if (!firstError) firstError = e?.message || t('core.sync.networkFailure');
+        break;
+      }
+    }
+
+    // 2) Saves pendentes (reusa syncOne, que já faz upsert + saveLocal + erro)
+    let synced = 0;
+    for (const r of pending) {
+      const res = await this.syncOne(r.id);
+      if (res.ok) synced++;
+      else if (!firstError) firstError = res.error;
+    }
+    this.saveLocal();
+
+    const failed = total - synced;
+    return { ok: failed === 0 && this.pendingDeletes.length === 0, synced, failed, firstError };
+  }
+
   /** Sincroniza UM ritmo e devolve o resultado COM o motivo da falha —
    *  usado pelo badge "pendente sync" (tap = tentar agora + ver erro). */
   async syncOne(id: string): Promise<{ ok: boolean; error?: string }> {
@@ -445,6 +521,9 @@ export class UserRhythmService {
       persistSet(IDB_KEY, { rhythms: this.rhythms, pendingDeletes: this.pendingDeletes } as PersistedState)
         .catch(() => { /* noop */ });
     }
+    // saveLocal roda em toda mutação e em todo sync bem-sucedido — é o ponto
+    // certo pra notificar a UI que o nº de pendentes pode ter mudado.
+    try { this.onPendingChange?.(); } catch { /* noop */ }
   }
 
   private writeToLocalStorage(): void {

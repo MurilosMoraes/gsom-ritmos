@@ -1151,6 +1151,156 @@ class RhythmSequencer {
     });
   }
 
+  /** Estado atual do "seguro": tudo sincronizado E baixado offline?
+   *  - sincronizado: sem ritmos pendentes E repertório não-sujo
+   *  - offline: nativo já vem baixado; web depende da flag do OfflineDownloader */
+  private isBackedUpAndSynced(): boolean {
+    const noPending = this.userRhythmService.getPendingCount() === 0 &&
+                      !this.setlistManager.isRemoteDirty();
+    if (!noPending) return false;
+    if (isNativeApp()) return true; // ritmos+samples já embutidos no app
+    try {
+      // 'gdrums-offline-ready' = flag setada pelo OfflineDownloader ao baixar tudo
+      return !!localStorage.getItem('gdrums-offline-ready');
+    } catch {
+      return false;
+    }
+  }
+
+  /** Pinta o botão do menu: vermelho "Baixar e sincronizar" (pendente) ou
+   *  verde "Baixado e sincronizado!" (tudo certo). Chamado no boot, ao abrir
+   *  o menu e SEMPRE que o app sincroniza sozinho (callbacks dos serviços). */
+  private updateBackupSyncBtn(): void {
+    const btn = document.getElementById('menuOfflineBtn');
+    if (!btn) return;
+    const done = this.isBackedUpAndSynced();
+    btn.classList.toggle('is-done', done);
+    const label = btn.querySelector('.menu-backup-sync-label') as HTMLElement | null;
+    const text = done ? t('main.backupSync.menuDone') : t('main.backupSync.menuLabel');
+    if (label) label.textContent = text;
+    else btn.textContent = text;
+
+    // Bolinha vermelha pulsante na engrenagem: só quando FALTA baixar/sincronizar.
+    const dot = document.getElementById('cfgSyncDot');
+    if (dot) dot.style.display = done ? 'none' : 'block';
+  }
+
+  /**
+   * Fluxo "Baixar e sincronizar": sobe ritmos+repertórios pro servidor e,
+   * na sequência, baixa tudo pra offline — SEM opção de pular o download
+   * (o user espera até concluir; é rápido). App nativo pula o download
+   * (já vem embutido) e só sincroniza. Verde só quando tudo terminou.
+   */
+  private async showBackupSyncFlow(): Promise<void> {
+    this.injectOfflineCss();
+    const overlay = document.createElement('div');
+    overlay.className = 'offline-modal-overlay';
+    overlay.innerHTML = `
+      <div class="offline-modal">
+        <div class="offline-icon">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 0 1 9-9"/></svg>
+        </div>
+        <h2 class="offline-title">${t('main.backupSync.title')}</h2>
+        <p class="offline-sub" id="bsSub">${t('main.backupSync.sub')}</p>
+        <div class="offline-stats" id="bsStats" style="display:none;">
+          <div class="offline-progress-bar"><div class="offline-progress-fill" id="bsFill" style="width:0%;"></div></div>
+          <div class="offline-progress-text" id="bsText">${t('main.offlineDownload.preparing')}</div>
+          <div class="offline-current-file" id="bsFile"></div>
+        </div>
+        <div class="offline-done" id="bsDone" style="display:none;">
+          <div class="offline-done-icon">✓</div>
+          <div class="offline-done-text" id="bsDoneText">${t('main.backupSync.doneText')}</div>
+          <button class="offline-btn offline-btn-go" id="bsClose">${t('main.offlineDownload.close')}</button>
+        </div>
+        <div class="offline-actions" id="bsError" style="display:none;">
+          <button class="offline-btn offline-btn-skip" id="bsErrClose">${t('main.offlineDownload.close')}</button>
+          <button class="offline-btn offline-btn-go" id="bsRetry">${t('main.offlineDownload.retry')}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const sub = overlay.querySelector('#bsSub') as HTMLElement;
+    const stats = overlay.querySelector('#bsStats') as HTMLElement;
+    const fill = overlay.querySelector('#bsFill') as HTMLElement;
+    const text = overlay.querySelector('#bsText') as HTMLElement;
+    const file = overlay.querySelector('#bsFile') as HTMLElement;
+    const doneDiv = overlay.querySelector('#bsDone') as HTMLElement;
+    const doneText = overlay.querySelector('#bsDoneText') as HTMLElement;
+    const errDiv = overlay.querySelector('#bsError') as HTMLElement;
+
+    const closeModal = (): void => {
+      (window as any).__refocusPedal?.();
+      overlay.remove();
+    };
+    overlay.querySelector('#bsClose')?.addEventListener('click', closeModal);
+    overlay.querySelector('#bsErrClose')?.addEventListener('click', closeModal);
+
+    const showError = (reason: string): void => {
+      sub.style.display = '';
+      sub.textContent = reason;
+      stats.style.display = 'none';
+      doneDiv.style.display = 'none';
+      errDiv.style.display = '';
+    };
+
+    const run = async (): Promise<void> => {
+      errDiv.style.display = 'none';
+      doneDiv.style.display = 'none';
+      sub.style.display = '';
+      sub.textContent = t('main.backupSync.sub');
+      stats.style.display = '';
+      file.textContent = '';
+
+      // 1) SINCRONIZAR (sobe ritmos + repertórios)
+      text.textContent = t('main.backupSync.syncing');
+      fill.style.width = '8%';
+      const rhy = await this.userRhythmService.syncAll();
+      const rep = await this.setlistManager.forceSyncNow();
+      this.updateBackupSyncBtn();
+      if (!(rhy.ok && rep.ok)) {
+        showError(t('main.backupSync.syncError', { error: rhy.firstError || rep.error || '' }));
+        return;
+      }
+
+      // 2) BAIXAR OFFLINE (nativo já vem embutido — só marca pronto)
+      if (isNativeApp()) {
+        const { markNativeReady } = await import('./native/OfflineDownloader');
+        await markNativeReady();
+        doneText.textContent = t('main.backupSync.nativeDoneText');
+      } else {
+        fill.style.width = '10%';
+        try {
+          const { downloadEverything } = await import('./native/OfflineDownloader');
+          const result = await downloadEverything((p) => {
+            const pct = Math.max(10, Math.round((p.current / p.total) * 100));
+            fill.style.width = pct + '%';
+            text.textContent = t('main.offlineDownload.progress', { current: p.current, total: p.total, pct });
+            file.textContent = p.currentFile;
+          });
+          if (!result.success) {
+            showError(t('main.offlineDownload.retryHint', { count: result.failed.length }));
+            return;
+          }
+        } catch {
+          showError(t('main.offlineDownload.errorText'));
+          return;
+        }
+        doneText.textContent = t('main.backupSync.doneText');
+      }
+
+      // 3) PRONTO — verde
+      this.updateBackupSyncBtn();
+      try { HapticsService.success(); } catch { /* noop */ }
+      stats.style.display = 'none';
+      sub.style.display = 'none';
+      doneDiv.style.display = '';
+    };
+
+    overlay.querySelector('#bsRetry')?.addEventListener('click', () => { void run(); });
+    void run();
+  }
+
   private injectOfflineCss(): void {
     if (document.getElementById('offline-modal-css')) return;
     const style = document.createElement('style');
@@ -3331,31 +3481,22 @@ ctaUrl: '/plans?renew=true',
       }
     }
 
-    // Baixar offline (manual — user pode forçar mesmo se já tá baixado)
+    // "Baixar e sincronizar" — sobe ritmos+repertórios pro servidor E baixa
+    // tudo pra offline, numa tacada. Vermelho quando há pendência; verde
+    // "Baixado e sincronizado!" quando está tudo certo (fica verde sozinho
+    // quando o app sincroniza automático — ver setOnPendingChange abaixo).
     const offlineBtn = document.getElementById('menuOfflineBtn');
     if (offlineBtn) {
-      offlineBtn.addEventListener('click', async () => {
+      offlineBtn.addEventListener('click', () => {
         if (fabDropdown) fabDropdown.style.display = 'none';
-        // No app nativo, ritmos+samples já estão bundleados — não há nada pra baixar.
-        if (isNativeApp()) {
-          const { markNativeReady } = await import('./native/OfflineDownloader');
-          await markNativeReady();
-          Toast.show(t('main.toast.allOffline'), { type: 'success' });
-          return;
-        }
-        // Limpa o "pulado" pra modal mostrar de novo
-        localStorage.removeItem('gdrums-offline-skipped');
-        try {
-          const manifestRes = await fetch('/rhythm/manifest.json');
-          const manifest = await manifestRes.json();
-          const { getOfflineStatus } = await import('./native/OfflineDownloader');
-          const status = await getOfflineStatus();
-          this.showOfflineDownloadModal(manifest.version || 0, status.ready);
-        } catch {
-          Toast.show(t('main.toast.offlineCheckFailed'), { type: 'warn' });
-        }
+        void this.showBackupSyncFlow();
       });
     }
+    // Mantém o botão refletindo a realidade: estado inicial + sempre que o
+    // app sincronizar sozinho (ritmos ou repertórios).
+    this.updateBackupSyncBtn();
+    this.userRhythmService.setOnPendingChange(() => this.updateBackupSyncBtn());
+    this.setlistManager.setOnRemoteStateChange(() => this.updateBackupSyncBtn());
 
     // Mapear pedal
     const pedalMapBtn = document.getElementById('pedalMapBtn');
@@ -3460,7 +3601,11 @@ ctaUrl: '/plans?renew=true',
     if (fabMenu && fabDropdown) {
       fabMenu.addEventListener('click', (e) => {
         e.stopPropagation();
-        fabDropdown.style.display = fabDropdown.style.display === 'none' ? 'block' : 'none';
+        const opening = fabDropdown.style.display === 'none';
+        fabDropdown.style.display = opening ? 'block' : 'none';
+        // Ao abrir o menu, garante que o botão reflete o estado atual
+        // (ex.: baixou offline pelo popup do boot, ou sincronizou sozinho).
+        if (opening) this.updateBackupSyncBtn();
       });
       document.addEventListener('click', () => {
         fabDropdown.style.display = 'none';

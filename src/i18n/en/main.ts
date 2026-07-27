@@ -54,6 +54,16 @@ export const main: Record<string, string> = {
   'main.offlineDownload.retry': 'Try again',
   'main.offlineDownload.errorText': 'Download error. Try again.',
 
+  // ── "Download & sync" button (menu) ──
+  'main.backupSync.menuLabel': 'Download & sync',
+  'main.backupSync.menuDone': 'Downloaded & synced!',
+  'main.backupSync.title': 'Download & sync',
+  'main.backupSync.sub': 'We\'ll upload your rhythms and setlists to the server and download everything to play offline. Don\'t close until it finishes — it\'s quick.',
+  'main.backupSync.syncing': 'Saving your work to the cloud…',
+  'main.backupSync.doneText': 'Downloaded & synced! Your work is safe on the server and the app is ready to play offline.',
+  'main.backupSync.nativeDoneText': 'Synced! Your work is safe on the server.',
+  'main.backupSync.syncError': 'Could not sync: {error}',
+
   // ── What's New modal ──
   'main.whatsNew.overline': 'Update',
   'main.whatsNew.title': '+17 rhythms, an equalizer, and pause on the beat.',

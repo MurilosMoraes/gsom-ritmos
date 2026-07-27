@@ -54,6 +54,16 @@ export const main: Record<string, string> = {
   'main.offlineDownload.retry': 'Intentar de nuevo',
   'main.offlineDownload.errorText': 'Error en la descarga. Intenta de nuevo.',
 
+  // ── Botón "Descargar y sincronizar" (menú) ──
+  'main.backupSync.menuLabel': 'Descargar y sincronizar',
+  'main.backupSync.menuDone': '¡Descargado y sincronizado!',
+  'main.backupSync.title': 'Descargar y sincronizar',
+  'main.backupSync.sub': 'Vamos a subir tus ritmos y repertorios al servidor y descargar todo para tocar sin conexión. No cierres hasta terminar, es rápido.',
+  'main.backupSync.syncing': 'Guardando tu trabajo en la nube…',
+  'main.backupSync.doneText': '¡Descargado y sincronizado! Tu trabajo está seguro en el servidor y la app lista para tocar sin conexión.',
+  'main.backupSync.nativeDoneText': '¡Sincronizado! Tu trabajo está seguro en el servidor.',
+  'main.backupSync.syncError': 'No se pudo sincronizar: {error}',
+
   // ── What's New modal ──
   'main.whatsNew.overline': 'Actualización',
   'main.whatsNew.title': '+17 ritmos, ecualizador y pausa en tiempo.',

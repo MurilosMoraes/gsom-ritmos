@@ -80,6 +80,15 @@ export class SetlistManager {
   // a PRÓXIMA edição do usuário dispara um novo saveRemote(), então um
   // repertório que parou de ser editado depois da falha nunca sincroniza.
   private remoteDirty = false;
+  // Avisa a UI (botão "Baixar e sincronizar") quando o repertório sobe
+  // pro servidor ou volta a ficar pendente — inclusive nos syncs automáticos
+  // (online/foreground/intervalo). Mantém o botão verde sozinho.
+  private onRemoteStateChange?: () => void;
+
+  /** Registra um observador chamado quando o estado remoto muda. */
+  setOnRemoteStateChange(cb: () => void): void {
+    this.onRemoteStateChange = cb;
+  }
 
   constructor() {
     this.state = this.loadLocal();
@@ -103,6 +112,21 @@ export class SetlistManager {
         void this.saveRemote();
       }
     }, 20000);
+
+    // App voltou pra FRENTE (foreground) → sobe o repertório pendente na hora.
+    // Mesmo buraco que o UserRhythmService cobre: no celular o app quase nunca
+    // "abre do zero" (initWithUser não roda), só volta do segundo plano — e o
+    // timer de 20s fica suspenso enquanto está em background. Sem isso, um
+    // repertório editado offline só ressincroniza no próximo boot real.
+    const syncOnResume = (): void => {
+      if (this.remoteDirty && navigator.onLine && this.userId && this.supabaseClient) {
+        void this.saveRemote();
+      }
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncOnResume();
+    });
+    window.addEventListener('focus', syncOnResume);
   }
 
   // ─── Helpers internos ───────────────────────────────────────────────
@@ -656,6 +680,42 @@ export class SetlistManager {
 
   // ─── Persistência Supabase ──────────────────────────────────────────
 
+  /** true se a última tentativa de subir o repertório falhou (ou nunca
+   *  rodou) — usado pelo botão "Sincronizar" pra saber se há pendência. */
+  isRemoteDirty(): boolean {
+    return this.remoteDirty;
+  }
+
+  /** Sobe o estado completo (TODOS os repertórios) AGORA e devolve o
+   *  resultado COM o motivo da falha — usado pelo botão "Sincronizar".
+   *  Idempotente: mesmo sem pendência, re-sobe o estado atual (é upsert). */
+  async forceSyncNow(): Promise<{ ok: boolean; error?: string }> {
+    if (!this.userId || !this.supabaseClient) {
+      return { ok: false, error: t('core.sync.sessionNotStarted') };
+    }
+    if (!navigator.onLine) {
+      return { ok: false, error: t('core.sync.noInternet') };
+    }
+    try {
+      const { error } = await this.supabaseClient
+        .from('gdrums_favorites')
+        .upsert({
+          user_id: this.userId,
+          items: this.active().items,
+          current_index: this.active().currentIndex,
+          setlists: { setlists: this.state.setlists, activeId: this.state.activeId },
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      this.remoteDirty = !!error;
+      try { this.onRemoteStateChange?.(); } catch { /* noop */ }
+      return error ? { ok: false, error: error.message } : { ok: true };
+    } catch (e: any) {
+      this.remoteDirty = true;
+      try { this.onRemoteStateChange?.(); } catch { /* noop */ }
+      return { ok: false, error: e?.message || t('core.sync.networkFailure') };
+    }
+  }
+
   private async saveRemote(): Promise<void> {
     if (!this.userId || !this.supabaseClient) {
       // Ainda não temos client/userId (edição feita antes do initWithUser
@@ -684,5 +744,6 @@ export class SetlistManager {
     } catch {
       this.remoteDirty = true; // sem rede — o retry periódico/online tenta de novo
     }
+    try { this.onRemoteStateChange?.(); } catch { /* noop */ }
   }
 }
