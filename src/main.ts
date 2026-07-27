@@ -35,7 +35,7 @@ import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
 import { startMarquee, stopMarquee } from './utils/marquee';
 import { buildRhythmPayload, buildSetlistPayload, makeShareUrl, showShareResultModal, readImportFromUrl, clearImportFromUrl, type SharePayload } from './core/ShareLink';
-import { publishShare, fetchShare, shortUrl, readShareCodeFromPath, clearShareCodeFromPath } from './core/ShareService';
+import { publishShare, fetchShare, shortUrl, readShareCodeFromPath, clearShareCodeFromPath, saveLocalShare, getLocalShare } from './core/ShareService';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
 // Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
@@ -6275,19 +6275,13 @@ ctaUrl: '/plans?renew=true',
   /** Gera o link de compartilhar: tenta o link CURTO (backend /r/CÓDIGO);
    *  se o backend não estiver disponível, cai no link auto-contido. */
   private async makeShareLink(payload: SharePayload): Promise<string> {
+    // 1) tenta o backend (link curto CROSS-DEVICE, se o SQL estiver aplicado)
     try {
       const code = await publishShare(payload);
       if (code) return shortUrl(code);
-      throw new Error('sem código');
-    } catch (e: any) {
-      // DIAGNÓSTICO (fase de teste): mostra por que o link curto não saiu —
-      // ex.: "Could not find the function public.publish_share" = SQL não
-      // aplicado; "not_authenticated" = não logado. Removo depois.
-      const msg = e?.message || 'erro';
-      console.warn('[share] link curto falhou:', msg);
-      Toast.show('Link curto indisponível: ' + msg, { type: 'warn', durationMs: 8000 });
-      return makeShareUrl(payload);
-    }
+    } catch { /* backend indisponível — cai no link curto LOCAL abaixo */ }
+    // 2) sem backend: link curto LOCAL (/r/12345) — abre só no mesmo aparelho
+    return shortUrl(saveLocalShare(payload));
   }
 
   /** Compartilha um repertório: embute os ritmos pessoais e gera o link. */
@@ -6305,9 +6299,10 @@ ctaUrl: '/plans?renew=true',
     const code = readShareCodeFromPath();
     if (code) {
       clearShareCodeFromPath();
-      const payload = await fetchShare(code);
+      // backend primeiro (cross-device); senão, o store LOCAL (mesmo aparelho)
+      const payload = (await fetchShare(code)) || getLocalShare(code);
       if (payload) { this.showImportPreview(payload); return; }
-      Toast.show('Link de compartilhamento inválido ou expirado', { type: 'warn' });
+      Toast.show('Esse link curto não abriu aqui. No teste sem backend, o link curto só abre no MESMO aparelho onde foi criado (pro celular precisa do SQL).', { type: 'warn', durationMs: 9000 });
       return;
     }
     const payload = await readImportFromUrl();

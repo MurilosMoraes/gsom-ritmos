@@ -39,6 +39,33 @@ export function shortUrl(code: string): string {
   return `${location.origin}/r/${code}`;
 }
 
+// ─── Link curto SEM backend (teste) ────────────────────────────────────
+// Guarda o payload no localStorage sob um código numérico curto. O link fica
+// /r/12345, mas SÓ abre no MESMO navegador/aparelho onde foi criado (o
+// conteúdo mora local). Pra cross-device (celular) é preciso o backend (SQL).
+const LOCAL_SHARES_KEY = 'gdrums-local-shares';
+
+export function saveLocalShare(payload: SharePayload): string {
+  let map: Record<string, SharePayload> = {};
+  try { map = JSON.parse(localStorage.getItem(LOCAL_SHARES_KEY) || '{}'); } catch { map = {}; }
+  let code = '';
+  do { code = String(Math.floor(10000 + Math.random() * 90000)); } while (map[code]);
+  map[code] = payload;
+  // mantém só os últimos 30 pra não estourar o localStorage
+  const keys = Object.keys(map);
+  if (keys.length > 30) for (const k of keys.slice(0, keys.length - 30)) delete map[k];
+  try { localStorage.setItem(LOCAL_SHARES_KEY, JSON.stringify(map)); } catch { /* cheio */ }
+  return code;
+}
+
+export function getLocalShare(code: string): SharePayload | null {
+  try {
+    const map = JSON.parse(localStorage.getItem(LOCAL_SHARES_KEY) || '{}');
+    const p = map[code];
+    return (p && (p.t === 'r' || p.t === 's')) ? p : null;
+  } catch { return null; }
+}
+
 /** Lê o código de compartilhamento do caminho atual (/r/CÓDIGO). null se não. */
 export function readShareCodeFromPath(): string | null {
   const m = location.pathname.match(/^\/r\/([A-Za-z0-9]{4,16})\/?$/);
