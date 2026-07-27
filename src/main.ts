@@ -4657,6 +4657,55 @@ ctaUrl: '/plans?renew=true',
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   }
 
+  /** Modal "Configurar Chocolate" — passo a passo pra configurar o pedal
+   *  M-VAVE Chocolate via o site de configuração (Web Bluetooth). */
+  private showChocolateConfig(): void {
+    const CFG_URL = 'https://gdrums-chocolate.vercel.app';
+    const c = '#d8a064'; // marrom "chocolate"
+    const step = (n: number, html: string): string => `
+      <li style="display:flex;gap:0.85rem;align-items:flex-start;margin-bottom:1.05rem;">
+        <span style="flex-shrink:0;width:2.1rem;height:2.1rem;border-radius:50%;background:rgba(180,120,60,0.16);border:1.5px solid rgba(180,120,60,0.55);color:${c};font-size:1rem;font-weight:800;display:flex;align-items:center;justify-content:center;">${n}</span>
+        <span style="font-size:1.08rem;color:rgba(255,255,255,0.9);line-height:1.55;">${html}</span>
+      </li>`;
+    const b = (s: string): string => `<strong style="color:#fff;">${s}</strong>`;
+    const arrowDown = `<span style="display:inline-block;color:${c};font-weight:800;font-size:1.35rem;line-height:0;vertical-align:middle;margin-left:0.25rem;">↓</span>`;
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:0.6rem;';
+    overlay.innerHTML = `
+      <div style="background:rgba(10,10,26,0.98);border:1px solid rgba(180,120,60,0.35);border-radius:20px;padding:1.7rem 1.4rem;max-width:640px;width:100%;max-height:96vh;overflow-y:auto;">
+        <h2 style="font-size:1.6rem;font-weight:800;color:#fff;margin:0 0 0.3rem;text-align:center;">Configurar Chocolate</h2>
+        <p style="font-size:0.95rem;color:rgba(255,255,255,0.45);text-align:center;margin:0 0 1.5rem;">Deixa o M-VAVE Chocolate pronto pro GDrums</p>
+
+        <ol style="list-style:none;padding:0;margin:0;">
+          ${step(1, `Ligue o pedal na chave ${b('H')}.`)}
+          ${step(2, `Aperte ao mesmo tempo o botão ${b('1 e 4')} (${b('A e D')}) e segure os dois por ${b('10 segundos')} pra resetar o pedal. Precisa aparecer ${b('000')} na tela. Desligue e ligue novamente no ${b('H')}, irá aparecer ${b('001')}.`)}
+          ${step(3, `Ligue o ${b('Bluetooth do celular')} e ${b('NÃO conecte o pedal ainda')}. Se ele já estiver conectado, ${b('desconecte')}.`)}
+          ${step(4, `Com a luz do pedal ${b('piscando')}, abra o site de configuração no botão abaixo ${arrowDown}`)}
+        </ol>
+
+        <button id="chocoCfgOpen" style="width:100%;padding:1.05rem;margin:0.2rem 0 0.4rem;border:none;border-radius:14px;background:linear-gradient(160deg,rgba(180,120,60,0.95),rgba(120,74,34,0.95));color:#fff;font-size:1.1rem;font-weight:800;font-family:inherit;cursor:pointer;">Abrir o site de configuração</button>
+
+        <ol style="list-style:none;padding:0;margin:1.2rem 0 0;">
+          ${step(5, `No site, toque em ${b('“Configurar meu pedal”')}. Vai abrir uma janela de conexão Bluetooth ${b('do site')} — não é a do celular.`)}
+          ${step(6, `Selecione o ${b('FootCtrl')} nessa janela e clique em ${b('PAREAR')}. A configuração é ${b('automática')}.`)}
+        </ol>
+
+        <div style="background:rgba(255,200,60,0.06);border:1px solid rgba(255,200,60,0.25);border-radius:14px;padding:0.95rem 1.05rem;margin:0.4rem 0 1.2rem;display:flex;flex-direction:column;gap:0.7rem;">
+          <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs 1:</strong> Na tela do pedal deve aparecer ${b('n10')}. Ao abrir a janela de Bluetooth do site, o celular pode pedir autorização da ferramenta — ${b('autorize')} pra dar certo.</span>
+          <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs 2:</strong> Se não funcionar, ${b('feche o app e abra de novo')}. Se mesmo assim não der certo, refaça o processo e escolha a opção ${b('Keyboard B')} (alternativo).</span>
+        </div>
+
+        <button id="chocoCfgClose" style="width:100%;padding:0.9rem;border:none;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.65);font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer;">Fechar</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = (): void => { overlay.remove(); (window as any).__refocusPedal?.(); };
+    overlay.querySelector('#chocoCfgOpen')!.addEventListener('click', () => { openExternal(CFG_URL); });
+    overlay.querySelector('#chocoCfgClose')!.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
   private showPedalMapper(): void {
     const keyLabels: Record<string, string> = {
       // e.code values
@@ -4729,6 +4778,8 @@ ctaUrl: '/plans?renew=true',
 
           <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(0,210,255,0.7);min-height:1.4rem;margin-bottom:0.9rem;">${listening ? t('main.pedalMapper.listeningStatus', { label: listening === 'playPause' ? t('main.pedalMapper.label.playPause') : listening === 'end' ? t('main.pedalMapper.label.end') : listening === 'left' ? t('main.pedalMapper.label.left') : t('main.pedalMapper.label.right') }) : ''}</div>
 
+          ${tempCount === 4 ? `<button id="pedalChocolateCfg" style="width:100%;padding:0.6rem;margin-bottom:0.7rem;border-radius:10px;background:rgba(180,120,60,0.12);border:1px solid rgba(180,120,60,0.4);color:rgba(216,160,100,0.95);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">Configurar Chocolate</button>` : ''}
+
           <div style="display:flex;gap:0.5rem;">
             <button id="pedalReset" style="flex:1;padding:0.6rem;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">${t('main.pedalMapper.resetButton')}</button>
             <button id="pedalSave" style="flex:2;padding:0.6rem;border-radius:10px;background:rgba(0,230,140,0.12);border:1px solid rgba(0,230,140,0.25);color:rgba(0,230,140,0.9);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">${t('main.pedalMapper.saveButton')}</button>
@@ -4769,6 +4820,10 @@ ctaUrl: '/plans?renew=true',
         tempCount = 4;
         listening = null; render();
         mapperInput.focus({ preventScroll: true });
+      });
+
+      overlay.querySelector('#pedalChocolateCfg')?.addEventListener('click', () => {
+        this.showChocolateConfig();
       });
 
       overlay.querySelector('#pedalSave')!.addEventListener('click', () => {
