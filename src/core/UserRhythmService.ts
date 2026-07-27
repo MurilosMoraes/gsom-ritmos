@@ -59,43 +59,87 @@ export class UserRhythmService {
     if (this.rhythms.length === 0) {
       this.tryRestoreFromIndexedDB();
     }
-    // Voltou a rede → sobe os pendentes na hora (antes só re-tentava no
-    // próximo boot do app, e o badge "pendente sync" ficava eterno)
-    window.addEventListener('online', () => { void this.syncNow(); });
-    // Retry periódico — cobre 2 buracos que o listener 'online' sozinho
-    // não resolve: (1) ritmo salvo ANTES do initWithUser terminar (o
-    // client Supabase/userId ainda não tinham sido injetados aqui, então
-    // o upload nem chegou a ser tentado — falha 100% silenciosa) e
-    // (2) o device nunca "ficou offline de verdade" pro evento 'online'
-    // disparar, mas a rede estava ruim o bastante pro insert falhar uma
-    // vez. Sem isso, o ritmo fica preso em "pendente sync" até o usuário
-    // abrir Meus Ritmos de novo ou reiniciar o app — o que pareceu bug
-    // mesmo estando online o tempo todo.
+    // Voltou a rede → empurra pendentes E puxa do servidor (traz o que foi
+    // criado em outro aparelho). Wifi ou dados — navigator.onLine cobre os dois.
+    window.addEventListener('online', () => { void this.pushAndPull(); });
+    // Periódico — SEMPRE empurra e puxa (não gateia só em "tem pendente"),
+    // pra também trazer ritmos criados em outro aparelho enquanto o app tá
+    // aberto. Cadência modesta pra não martelar o servidor.
     setInterval(() => {
-      if (navigator.onLine && this.supabase && this.userId && this.rhythms.some(r => !r.synced)) {
-        void this.syncNow();
+      if (navigator.onLine && this.supabase && this.userId) {
+        void this.pushAndPull();
       }
-    }, 20000);
+    }, 30000);
 
-    // App voltou pra FRENTE (foreground) → tenta subir os pendentes na hora.
-    // Cobre o buraco mais comum no celular: o cara salvou offline, o app foi
-    // pro segundo plano (ou foi fechado), a internet voltou enquanto o timer
-    // de 20s estava SUSPENSO e o evento 'online' ninguém ouviu. Ao reabrir /
-    // trazer o app pra frente, sincroniza imediatamente em vez de esperar o
-    // próximo tick. visibilitychange (mobile) + focus (desktop/PWA) cobrem
-    // web e Capacitor. Guard: só dispara se houver pendente de fato.
+    // App voltou pra FRENTE (foreground) → empurra e puxa na hora. No celular
+    // o app quase nunca "abre do zero" (initWithUser não roda), só volta do 2º
+    // plano — e o timer fica suspenso em background.
     const syncOnResume = (): void => {
-      if (
-        navigator.onLine && this.supabase && this.userId &&
-        (this.rhythms.some(r => !r.synced) || this.pendingDeletes.length > 0)
-      ) {
-        void this.syncNow();
-      }
+      if (navigator.onLine && this.supabase && this.userId) void this.pushAndPull();
     };
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') syncOnResume();
     });
     window.addEventListener('focus', syncOnResume);
+  }
+
+  /** Empurra os pendentes E puxa do servidor (junta os de outro aparelho). */
+  private async pushAndPull(): Promise<void> {
+    await this.syncNow();
+    await this.pullRemote();
+  }
+
+  /** Puxa os ritmos do servidor e JUNTA com o local por id — traz o que foi
+   *  criado/salvo em outro aparelho, sem apagar edição local ainda não subida
+   *  nem ressuscitar exclusão pendente. Mesma lógica de merge do initWithUser,
+   *  mas rodável a qualquer momento (foreground/online/intervalo). */
+  private async pullRemote(): Promise<void> {
+    if (!this.supabase || !this.userId || !navigator.onLine) return;
+    try {
+      const { data } = await withNetTimeout(Promise.resolve(
+        this.supabase
+          .from('gdrums_user_rhythms')
+          .select('*')
+          .eq('user_id', this.userId)
+          .order('created_at', { ascending: false })
+      )) as { data: any };
+      if (!data || !Array.isArray(data)) return;
+
+      const localById = new Map(this.rhythms.map(r => [r.id, r]));
+      const deleted = new Set(this.pendingDeletes); // tombstones não voltam
+      const merged: UserRhythm[] = [];
+      for (const remote of data) {
+        if (deleted.has(remote.id)) continue;
+        const local = localById.get(remote.id);
+        if (local && !local.synced) {
+          const lt = Date.parse(local.updated_at) || 0;
+          const rt = Date.parse(remote.updated_at) || 0;
+          if (lt > rt) { merged.push(local); continue; } // edição local mais nova
+        }
+        merged.push({
+          id: remote.id,
+          name: remote.name,
+          bpm: remote.bpm,
+          rhythm_data: remote.rhythm_data,
+          base_rhythm_name: remote.base_rhythm_name || undefined,
+          created_at: remote.created_at,
+          updated_at: remote.updated_at,
+          synced: true,
+        });
+      }
+      // Locais que o banco ainda não conhece (criados offline) — mantém
+      const remoteIds = new Set(data.map((r: any) => r.id));
+      for (const local of this.rhythms) {
+        if (!local.synced && !remoteIds.has(local.id)) merged.push(local);
+      }
+
+      // Só reescreve se mudou algo (evita render/escrita à toa)
+      const sig = (arr: UserRhythm[]): string => arr.map(r => `${r.id}:${r.synced ? 1 : 0}`).join(',');
+      if (sig(merged) !== sig(this.rhythms)) {
+        this.rhythms = merged;
+        this.saveLocal();
+      }
+    } catch { /* rede ruim — próximo tick tenta de novo */ }
   }
 
   /** true se já sabemos (via OWNER_KEY) que o device pertence a OUTRO
@@ -457,6 +501,9 @@ export class UserRhythmService {
       else if (!firstError) firstError = res.error;
     }
     this.saveLocal();
+
+    // 3) Puxa do servidor e junta — traz ritmos criados em OUTRO aparelho
+    await this.pullRemote();
 
     const failed = total - synced;
     return { ok: failed === 0 && this.pendingDeletes.length === 0, synced, failed, firstError };

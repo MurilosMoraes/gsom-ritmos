@@ -3458,13 +3458,8 @@ ctaUrl: '/plans?renew=true',
     }
 
     // Info pedal
-    const pedalInfoBtn = document.getElementById('pedalInfoBtn');
-    if (pedalInfoBtn) {
-      pedalInfoBtn.addEventListener('click', () => {
-        if (fabDropdown) fabDropdown.style.display = 'none';
-        this.showPedalInfo();
-      });
-    }
+    // "Como usar o pedal" removido da config — o conteúdo já vive dentro do
+    // Manual do Usuário (evita duplicar a mesma informação em dois lugares).
 
     // Botões de loja no TOPO — só em clientes NÃO-nativos (web/PWA).
     // No app nativo ficam escondidos (o usuário já baixou).
@@ -3553,47 +3548,9 @@ ctaUrl: '/plans?renew=true',
     //   (caso comum: user já dispensou o prompt OU browser não suporta)
     // - iOS Safari (não tem beforeinstallprompt): sempre mostra tutorial
     // - Já instalado (standalone): botão fica hidden
-    const menuInstallBtn = document.getElementById('menuInstallBtn');
-    // Esconder em PWA standalone OU Capacitor app nativo (já está instalado).
-    const isStandalonePWA = window.matchMedia('(display-mode: standalone)').matches
-      || (navigator as any).standalone === true
-      || isNativeApp();
-    if (menuInstallBtn) {
-      menuInstallBtn.style.display = isStandalonePWA ? 'none' : '';
-
-      // Android web: existe app oficial na Play Store. Label muda pra ficar
-      // claro que vai abrir a loja, não instalar PWA.
-      if (isAndroidWeb()) {
-        menuInstallBtn.textContent = t('main.install.playStoreButton');
-      }
-
-      menuInstallBtn.addEventListener('click', () => {
-        const fabDropdown = document.getElementById('fabDropdown');
-        if (fabDropdown) fabDropdown.style.display = 'none';
-
-        // Android web: existe app nativo na Play Store, então PWA fragmenta
-        // a base de usuários. Sempre prioriza loja sobre PWA.
-        if (isAndroidWeb()) {
-          openPlayStore();
-          return;
-        }
-
-        if (this.installPrompt) {
-          // Desktop com prompt capturado — dispara nativo
-          this.installPrompt.prompt();
-          this.installPrompt.userChoice.then((choice: any) => {
-            if (choice.outcome === 'accepted') {
-              this.modalManager.show(t('main.modal.appInstalledTitle'), t('main.modal.appInstalledBody'), 'success');
-              menuInstallBtn.style.display = 'none';
-            }
-            this.installPrompt = null;
-          });
-        } else {
-          // iOS OU Desktop sem prompt disponível — tutorial manual
-          this.showInstallTutorial();
-        }
-      });
-    }
+    // Botão "Instalar app / Baixar na Play Store" removido da config (a pedido).
+    // Os botões de loja continuam no topo (hdrPlayStoreBtn/hdrAppStoreBtn) pra
+    // clientes web/PWA descobrirem o app nativo.
 
     // Fab menu toggle
     const fabMenu = document.getElementById('fabMenu');
