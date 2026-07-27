@@ -1962,6 +1962,44 @@ class RhythmSequencer {
     });
   }
 
+  /** true se o cliente tem um pagamento CONFIRMADO que cobre além de 7 dias
+   *  a partir de agora — mesmo que o subscription_expires_at no banco não
+   *  tenha sido atualizado. Usa a data + duração do plano da última transação
+   *  confirmada. Em erro/offline retorna false (mostra o aviso normal). */
+  private async isCoveredByConfirmedPayment(now: Date): Promise<boolean> {
+    try {
+      const { supabase } = await import('./auth/supabase');
+      const { data: sess } = await supabase.auth.getSession();
+      const uid = sess.session?.user?.id;
+      if (!uid) return false;
+
+      const { data: tx } = await supabase
+        .from('gdrums_transactions')
+        .select('plan, created_at')
+        .eq('user_id', uid)
+        .eq('status', 'confirmed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!tx?.created_at || !tx?.plan) return false;
+
+      const months: Record<string, number> = {
+        mensal: 1, trimestral: 3, semestral: 6, anual: 12, 'rei-dos-palcos': 36,
+      };
+      const m = months[tx.plan as string];
+      if (!m) return false;
+
+      const coverageEnd = new Date(tx.created_at);
+      coverageEnd.setMonth(coverageEnd.getMonth() + m);
+
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      return (coverageEnd.getTime() - now.getTime()) > SEVEN_DAYS;
+    } catch {
+      return false;
+    }
+  }
+
   private showSubscriptionBanner(status: string, expires: Date, plan: string): void {
     const isPaidPlan = status === 'active' && plan !== 'trial';
     const now = new Date();
@@ -1978,21 +2016,30 @@ class RhythmSequencer {
 
       // 1x por sessão (sessionStorage) — não martela o user a cada navegação
       if (sessionStorage.getItem('gdrums-renew-modal-shown')) return;
-      sessionStorage.setItem('gdrums-renew-modal-shown', '1');
 
-      let renewMsg: string;
-      if (daysLeft <= 0) renewMsg = t('main.renewal.dueToday');
-      else if (daysLeft === 1) renewMsg = t('main.renewal.dueTomorrow');
-      else renewMsg = t('main.renewal.dueInDays', { days: daysLeft });
+      // REDE DE SEGURANÇA: se o cliente tem um pagamento CONFIRMADO que cobre
+      // além dos 7 dias, NÃO incomoda — mesmo que a data no banco
+      // (subscription_expires_at) não tenha sido atualizada pelo webhook.
+      // Resolve o "renovou e continua avisando" pra todos que pagaram.
+      void (async () => {
+        if (await this.isCoveredByConfirmedPayment(now)) return;
 
-      this.showRenewalSuggestionModal({
-        title: t('main.renewal.title'),
-        message: renewMsg + t('main.renewal.messageSuffix'),
-        ctaLabel: t('main.renewal.cta'),
-        // IAP compliance (Apple 3.1.1): nativo NUNCA abre site externo de
-// pagamento; usa /plans interno que aciona StoreKit no iOS.
-ctaUrl: '/plans?renew=true',
-      });
+        sessionStorage.setItem('gdrums-renew-modal-shown', '1');
+
+        let renewMsg: string;
+        if (daysLeft <= 0) renewMsg = t('main.renewal.dueToday');
+        else if (daysLeft === 1) renewMsg = t('main.renewal.dueTomorrow');
+        else renewMsg = t('main.renewal.dueInDays', { days: daysLeft });
+
+        this.showRenewalSuggestionModal({
+          title: t('main.renewal.title'),
+          message: renewMsg + t('main.renewal.messageSuffix'),
+          ctaLabel: t('main.renewal.cta'),
+          // IAP compliance (Apple 3.1.1): nativo NUNCA abre site externo de
+          // pagamento; usa /plans interno que aciona StoreKit no iOS.
+          ctaUrl: '/plans?renew=true',
+        });
+      })();
       return;
     }
 
