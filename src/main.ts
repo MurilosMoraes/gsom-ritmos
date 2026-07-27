@@ -4571,11 +4571,11 @@ class RhythmSequencer {
     if (dd) dd.style.display = 'none';
     document.querySelectorAll('.fs-overlay').forEach(el => el.remove());
 
-    const PRESETS = [50, 60, 70, 80, 90, 100, 110, 120, 130];
+    const PRESETS = [50, 60, 70, 80, 90, 100, 110];
     const DEFAULT_FS = 70;
     const readScale = (): number => {
       const s = parseInt(localStorage.getItem('gdrums-font-scale') || '', 10);
-      return (!s || s < 50 || s > 130) ? DEFAULT_FS : s;
+      return (!s || s < 50 || s > 110) ? DEFAULT_FS : s;
     };
     const current = readScale();
 
@@ -4597,7 +4597,8 @@ class RhythmSequencer {
     document.body.appendChild(overlay);
 
     const apply = (scale: number): void => {
-      document.documentElement.style.fontSize = scale + '%';
+      // Preset 70 = tamanho ORIGINAL do app (antigo 100% do navegador).
+      document.documentElement.style.fontSize = (scale / 70 * 100) + '%';
       try { localStorage.setItem('gdrums-font-scale', String(scale)); } catch { /* noop */ }
       overlay.querySelectorAll('.fs-preset').forEach(b =>
         b.classList.toggle('active', Number((b as HTMLElement).dataset.fs) === scale));

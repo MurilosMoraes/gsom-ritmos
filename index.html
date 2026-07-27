@@ -24,14 +24,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <!-- Tamanho da fonte do app: escala o font-size do html (tudo é rem, então
        escala junto — texto e botões, sem estourar). Aplicado ANTES de pintar
-       pra não piscar. Padrão 70%. Ajustável em Configurações. -->
+       pra não piscar. O preset PADRÃO (70) = tamanho ORIGINAL do app (o antigo
+       100% do navegador): aplica-se escala/70*100. Abaixo de 70 fica menor,
+       acima fica maior. Ajustável em Configurações. -->
   <script>
     (function () {
       try {
         var s = parseInt(localStorage.getItem('gdrums-font-scale'), 10);
-        if (!s || s < 50 || s > 130) s = 70;
-        document.documentElement.style.fontSize = s + '%';
-      } catch (e) { document.documentElement.style.fontSize = '70%'; }
+        if (!s || s < 50 || s > 110) s = 70;
+        document.documentElement.style.fontSize = (s / 70 * 100) + '%';
+      } catch (e) { document.documentElement.style.fontSize = '100%'; }
     })();
   </script>
   <title>GDrums | Baterista Virtual com 155 Ritmos</title>
