@@ -103,7 +103,10 @@ export class UserRhythmService {
           .eq('user_id', this.userId)
           .order('created_at', { ascending: false })
       )) as { data: any };
-      if (!data || !Array.isArray(data)) return;
+      // Vazio/erro → NÃO mexe (não zera os sincronizados por um glitch de
+      // leitura). Exclusão comum (apagou 1 de vários) vem com lista não-vazia,
+      // então o ritmo apagado some do outro aparelho normalmente.
+      if (!data || !Array.isArray(data) || data.length === 0) return;
 
       const localById = new Map(this.rhythms.map(r => [r.id, r]));
       const deleted = new Set(this.pendingDeletes); // tombstones não voltam

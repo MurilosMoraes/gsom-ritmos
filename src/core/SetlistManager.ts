@@ -53,7 +53,15 @@ interface MultiSetlistState {
   setlists: NamedSetlist[];
   activeId: string;
   lastModified?: number; // timestamp ms da última edição (do device que editou)
+  // Tombstones: ids de repertórios EXCLUÍDOS. Sem isso, a união ressuscitaria
+  // o repertório apagado (ele ainda existe no servidor/outro aparelho). O
+  // tombstone viaja junto (local + servidor), então a exclusão PROPAGA: o
+  // outro aparelho vê o id na lista de excluídos e remove também.
+  deletedSetlists?: string[];
 }
+
+// Teto do histórico de exclusões (ids são pequenos; 500 cobre de sobra).
+const MAX_TOMBSTONES = 500;
 
 function genId(): string {
   return (crypto as Crypto & { randomUUID?: () => string }).randomUUID?.() ||
@@ -370,7 +378,9 @@ export class SetlistManager {
     return true;
   }
 
-  /** Exclui repertório. Não deixa excluir o último (sempre existe 1). */
+  /** Exclui repertório. Não deixa excluir o último (sempre existe 1).
+   *  Marca um TOMBSTONE (id excluído) que viaja pro servidor e pros outros
+   *  aparelhos — assim a exclusão PROPAGA em vez de a união ressuscitar. */
   deleteSetlist(id: string): boolean {
     if (this.state.setlists.length <= 1) return false;
     const idx = this.state.setlists.findIndex(x => x.id === id);
@@ -378,6 +388,13 @@ export class SetlistManager {
     this.state.setlists.splice(idx, 1);
     if (this.state.activeId === id) {
       this.state.activeId = this.state.setlists[Math.max(0, idx - 1)].id;
+    }
+    if (!this.state.deletedSetlists) this.state.deletedSetlists = [];
+    if (!this.state.deletedSetlists.includes(id)) {
+      this.state.deletedSetlists.push(id);
+      if (this.state.deletedSetlists.length > MAX_TOMBSTONES) {
+        this.state.deletedSetlists = this.state.deletedSetlists.slice(-MAX_TOMBSTONES);
+      }
     }
     this.notify();
     return true;
@@ -597,10 +614,14 @@ export class SetlistManager {
     const activeId = setlists.some(s => s.id === parsed.activeId)
       ? parsed.activeId
       : setlists[0].id;
+    const deletedSetlists = Array.isArray(parsed.deletedSetlists)
+      ? parsed.deletedSetlists.filter((x: any) => typeof x === 'string').slice(-MAX_TOMBSTONES)
+      : undefined;
     return {
       setlists,
       activeId,
       lastModified: typeof parsed.lastModified === 'number' ? parsed.lastModified : 0,
+      ...(deletedSetlists && deletedSetlists.length ? { deletedSetlists } : {}),
     };
   }
 
@@ -666,28 +687,42 @@ export class SetlistManager {
 
   /** UNIÃO de dois estados POR ID de repertório — nunca perde repertório de
    *  nenhum lado. Mesmo id nos dois → fica com o que tem MAIS músicas (nunca
-   *  encolhe; empate → local). Preserva o activeId local se ainda existir. */
+   *  encolhe; empate → local). Respeita TOMBSTONES: id excluído em qualquer
+   *  lado é removido dos dois (a exclusão propaga). Preserva o activeId local. */
   private unionSetlists(local: MultiSetlistState, remote: MultiSetlistState | null): MultiSetlistState {
-    if (!remote || !Array.isArray(remote.setlists) || remote.setlists.length === 0) {
-      return local;
-    }
+    // Excluídos = união dos tombstones dos dois lados
+    const deleted = new Set<string>([
+      ...(local.deletedSetlists || []),
+      ...(remote?.deletedSetlists || []),
+    ]);
+
     const byId = new Map<string, NamedSetlist>();
-    for (const s of remote.setlists) byId.set(s.id, s);
+    if (remote && Array.isArray(remote.setlists)) {
+      for (const s of remote.setlists) byId.set(s.id, s);
+    }
     for (const s of local.setlists) {
       const ex = byId.get(s.id);
       if (!ex) { byId.set(s.id, s); continue; }
-      if (s.items.length >= ex.items.length) byId.set(s.id, s);
+      if (s.items.length >= ex.items.length) byId.set(s.id, s); // nunca encolhe
     }
-    const setlists = Array.from(byId.values()).slice(0, MAX_SETLISTS);
-    if (setlists.length === 0) return local;
+    // Remove os excluídos (tombstones) da união — exclusão propaga
+    for (const id of deleted) byId.delete(id);
+
+    let setlists = Array.from(byId.values()).slice(0, MAX_SETLISTS);
+    // Invariante: sempre existe pelo menos 1 repertório
+    if (setlists.length === 0) setlists = emptyState().setlists;
+
     let activeId = local.activeId;
     if (!setlists.some(s => s.id === activeId)) {
-      activeId = setlists.some(s => s.id === remote.activeId) ? remote.activeId : setlists[0].id;
+      activeId = (remote && setlists.some(s => s.id === remote.activeId)) ? remote.activeId : setlists[0].id;
     }
+
+    const deletedArr = Array.from(deleted).slice(-MAX_TOMBSTONES);
     return {
       setlists,
       activeId,
-      lastModified: Math.max(local.lastModified || 0, remote.lastModified || 0),
+      lastModified: Math.max(local.lastModified || 0, remote?.lastModified || 0),
+      ...(deletedArr.length ? { deletedSetlists: deletedArr } : {}),
     };
   }
 
@@ -720,21 +755,25 @@ export class SetlistManager {
         return { ok: false, error: error.message };
       }
 
-      // 2) Junta local + remoto (união por id)
+      // 2) Junta local + remoto (união por id + tombstones)
       const remoteState = this.remoteStateFrom(data);
-      const before = this.state.setlists.map(s => `${s.id}:${s.items.length}`).sort().join(',');
+      // Assinatura inclui repertórios (id:qtdMúsicas) E a lista de excluídos —
+      // pra detectar tanto conteúdo novo quanto exclusão a propagar.
+      const sig = (st: MultiSetlistState | null): string => {
+        if (!st) return '|';
+        return st.setlists.map(s => `${s.id}:${s.items.length}`).sort().join(',') +
+          '|' + [...(st.deletedSetlists || [])].sort().join(',');
+      };
+      const before = sig(this.state);
       this.state = this.unionSetlists(this.state, remoteState);
-      const after = this.state.setlists.map(s => `${s.id}:${s.items.length}`).sort().join(',');
+      const after = sig(this.state);
       if (before !== after) { this.saveLocal(); this.onChange?.(); }
 
       // 3) Só ESCREVE se houver algo local a subir: edição pendente
-      //    (remoteDirty) OU o servidor não tem tudo que temos (união ≠ o que
-      //    o servidor mandou). Assim o pull periódico (60s) de quem está
-      //    ocioso não gera write à toa — só leitura pra puxar de outro device.
-      const remoteSig = remoteState
-        ? remoteState.setlists.map(s => `${s.id}:${s.items.length}`).sort().join(',')
-        : '';
-      const serverMissingOurs = remoteSig !== after;
+      //    (remoteDirty) OU o servidor não tem tudo que temos (repertório novo
+      //    OU exclusão nova). Assim o pull periódico de quem está ocioso não
+      //    gera write à toa — só leitura pra puxar de outro aparelho.
+      const serverMissingOurs = sig(remoteState) !== after;
       if (!this.remoteDirty && !serverMissingOurs) {
         try { this.onRemoteStateChange?.(); } catch { /* noop */ }
         return { ok: true };
@@ -748,7 +787,11 @@ export class SetlistManager {
           user_id: this.userId,
           items: a.items,
           current_index: a.currentIndex,
-          setlists: { setlists: this.state.setlists, activeId: this.state.activeId },
+          setlists: {
+            setlists: this.state.setlists,
+            activeId: this.state.activeId,
+            deletedSetlists: this.state.deletedSetlists || [],
+          },
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
       this.remoteDirty = !!wErr;
