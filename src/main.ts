@@ -6278,8 +6278,16 @@ ctaUrl: '/plans?renew=true',
     try {
       const code = await publishShare(payload);
       if (code) return shortUrl(code);
-    } catch { /* backend indisponível/SQL não aplicado — usa link auto-contido */ }
-    return makeShareUrl(payload);
+      throw new Error('sem código');
+    } catch (e: any) {
+      // DIAGNÓSTICO (fase de teste): mostra por que o link curto não saiu —
+      // ex.: "Could not find the function public.publish_share" = SQL não
+      // aplicado; "not_authenticated" = não logado. Removo depois.
+      const msg = e?.message || 'erro';
+      console.warn('[share] link curto falhou:', msg);
+      Toast.show('Link curto indisponível: ' + msg, { type: 'warn', durationMs: 8000 });
+      return makeShareUrl(payload);
+    }
   }
 
   /** Compartilha um repertório: embute os ritmos pessoais e gera o link. */
