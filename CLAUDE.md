@@ -27,9 +27,10 @@ Problemas resolvidos cabeça de pissa mol:
 15- mais BPM ✅
 16- icone e ajustes da web pc ✅
 17- demo ao baixar o app nas lojas ✅
+18- ativar o "lembrar de mim" forçado ✅
+19- prato tocando ao soltar ✅
 
-**Sobre a demo:**
-
+Sobre a demo:
 1️⃣ Primeira vez / demo ainda não esgotou → DEMO FORÇADA
 Quem chega sem conta (e a demo do aparelho ainda não acabou) cai direto na demo, sem passar pelo login. Cobre também "fechou e reabriu no meio da demo → volta pra demo".
 
@@ -39,7 +40,7 @@ Depois que a demo do aparelho acaba, ao entrar sem conta vai pra tela de login (
 3️⃣ Já logado → APP NORMAL
 Quem já é cliente e tem sessão ativa entra direto no app, como sempre — não muda nada.
 
-Onde vale: web e app nativo (lojas). Como decide: no boot, `checkAccess` → sem sessão + demo não esgotada = demo; sem sessão + esgotada = login; com sessão = app.
+Da teus pulos ai garganta de glande.
 
 ---
 
