@@ -2566,7 +2566,7 @@ class RhythmSequencer {
 
     if (tempoUpUser) {
       this.attachHoldRepeat(tempoUpUser,
-        () => this.stateManager.setTempo(Math.min(240, this.stateManager.getTempo() + 1)),
+        () => this.stateManager.setTempo(Math.min(280, this.stateManager.getTempo() + 1)),
         () => this.saveCustomBpm());
     }
 
@@ -2591,7 +2591,7 @@ class RhythmSequencer {
     const tempoDown = document.getElementById('tempoDown');
 
     const updateTempo = (value: number) => {
-      const newTempo = Math.max(40, Math.min(240, value));
+      const newTempo = Math.max(40, Math.min(280, value));
       this.stateManager.setTempo(newTempo);
     };
 
@@ -6260,11 +6260,11 @@ class RhythmSequencer {
     setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
 
     // ── BPM: stepper pill (mesmo do Meus Ritmos) ──
-    let bpmValue = Math.max(40, Math.min(240, Math.round(currentBpm)));
+    let bpmValue = Math.max(40, Math.min(280, Math.round(currentBpm)));
     const bpmCtrl = overlay.querySelector('#xSaveBpmCtrl') as HTMLElement;
     const bpmVal = overlay.querySelector('#xSaveBpmVal') as HTMLElement;
     const setBpmValue = (v: number): void => {
-      bpmValue = Math.max(40, Math.min(240, Math.round(v)));
+      bpmValue = Math.max(40, Math.min(280, Math.round(v)));
       bpmVal.textContent = String(bpmValue);
     };
     bpmCtrl.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(btn => {
@@ -6276,7 +6276,7 @@ class RhythmSequencer {
     // Tap no número → digita direto
     bpmVal.addEventListener('click', () => {
       if (bpmCtrl.querySelector('.x-bpm-input')) return;
-      bpmVal.innerHTML = `<input type="number" class="x-bpm-input" value="${bpmValue}" min="40" max="240" inputmode="numeric" />`;
+      bpmVal.innerHTML = `<input type="number" class="x-bpm-input" value="${bpmValue}" min="40" max="280" inputmode="numeric" />`;
       const input = bpmVal.querySelector('input') as HTMLInputElement;
       input.focus();
       input.select();
@@ -6309,7 +6309,7 @@ class RhythmSequencer {
         Toast.show(t('main.saveRhythm.nameRequiredToast'), { type: 'warn' });
         return null;
       }
-      // bpmValue é sempre válido por construção (clamp 40-240 no stepper)
+      // bpmValue é sempre válido por construção (clamp 40-280 no stepper)
       return { name, bpm: bpmValue };
     };
 
@@ -6708,7 +6708,7 @@ class RhythmSequencer {
       const commitBpm = (id: string, bpm: number): void => {
         const rhythm = this.userRhythmService.getById(id);
         if (!rhythm) return;
-        const clamped = Math.max(40, Math.min(240, bpm));
+        const clamped = Math.max(40, Math.min(280, bpm));
         const valEl = overlay.querySelector(`[data-bpm-val="${id}"]`);
         if (valEl) valEl.textContent = String(clamped);
         if (bpmTimers[id]) clearTimeout(bpmTimers[id]);
@@ -6737,7 +6737,7 @@ class RhythmSequencer {
         valEl?.addEventListener('click', () => {
           if (ctrl.querySelector('.x-bpm-input')) return;
           const cur = valEl.textContent || '';
-          valEl.innerHTML = `<input type="number" class="x-bpm-input" value="${cur}" min="40" max="240" inputmode="numeric" />`;
+          valEl.innerHTML = `<input type="number" class="x-bpm-input" value="${cur}" min="40" max="280" inputmode="numeric" />`;
           const input = valEl.querySelector('input') as HTMLInputElement;
           input.focus();
           input.select();
@@ -7042,12 +7042,12 @@ class RhythmSequencer {
             <div class="x-tap-nudge">
               <button class="x-tap-nudge-btn" data-nudge="-5" aria-label="${t('main.bpmModal.nudgeMinus5AriaLabel')}">−5</button>
               <button class="x-tap-nudge-btn" data-nudge="-1" aria-label="${t('main.bpmModal.nudgeMinus1AriaLabel')}">−1</button>
-              <input type="number" class="x-tap-nudge-input" id="xBpmInput" min="40" max="240" inputmode="numeric" value="${currentBpm}" aria-label="BPM" />
+              <input type="number" class="x-tap-nudge-input" id="xBpmInput" min="40" max="280" inputmode="numeric" value="${currentBpm}" aria-label="BPM" />
               <button class="x-tap-nudge-btn" data-nudge="1" aria-label="${t('main.bpmModal.nudgePlus1AriaLabel')}">+1</button>
               <button class="x-tap-nudge-btn" data-nudge="5" aria-label="${t('main.bpmModal.nudgePlus5AriaLabel')}">+5</button>
             </div>
 
-            <input type="range" class="x-tap-slider" id="xBpmSlider" min="40" max="240" value="${currentBpm}" aria-label="${t('main.bpmModal.sliderAriaLabel')}" />
+            <input type="range" class="x-tap-slider" id="xBpmSlider" min="40" max="280" value="${currentBpm}" aria-label="${t('main.bpmModal.sliderAriaLabel')}" />
 
             ${this.currentRhythmOriginalBpm > 0 && currentBpm !== this.currentRhythmOriginalBpm
               ? `<button class="x-tap-restore" id="xBpmRestore">${t('main.bpmModal.restoreButton', { bpm: this.currentRhythmOriginalBpm })}</button>`
@@ -7067,7 +7067,7 @@ class RhythmSequencer {
     const hintEl = overlay.querySelector('#xTapHint') as HTMLElement;
 
     const applyBpm = (bpm: number, source?: 'input' | 'slider' | 'tap'): void => {
-      currentBpm = Math.max(40, Math.min(240, Math.round(bpm)));
+      currentBpm = Math.max(40, Math.min(280, Math.round(bpm)));
       valueEl.textContent = String(currentBpm);
       if (source !== 'input') inputEl.value = String(currentBpm);
       if (source !== 'slider') sliderEl.value = String(currentBpm);
@@ -7087,7 +7087,7 @@ class RhythmSequencer {
     // Input direto
     inputEl.addEventListener('input', () => {
       const v = parseInt(inputEl.value);
-      if (!isNaN(v) && v >= 40 && v <= 240) applyBpm(v, 'input');
+      if (!isNaN(v) && v >= 40 && v <= 280) applyBpm(v, 'input');
     });
     inputEl.addEventListener('focus', () => inputEl.select());
 
@@ -7142,7 +7142,7 @@ class RhythmSequencer {
       const avg = sum / (tapTimes.length - 1);
       const bpm = Math.round(60000 / avg);
 
-      if (bpm >= 40 && bpm <= 240) {
+      if (bpm >= 40 && bpm <= 280) {
         applyBpm(bpm, 'tap');
         const taps = tapTimes.length;
         hintEl.innerHTML = taps >= 4
