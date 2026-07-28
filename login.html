@@ -752,6 +752,15 @@
     .fp-btn-send:hover { opacity: 0.9; }
     .fp-btn-send:disabled { opacity: 0.55; cursor: default; }
     .fp-btn-loader { display: none; align-items: center; justify-content: center; }
+    /* Botão "Teste rápido" — brilho pulsante com as cores do app */
+    @keyframes demoGlowPulse {
+      0%,100% { box-shadow: 0 0 0 1px rgba(0,212,255,.55), 0 0 16px 1px rgba(0,212,255,.5); border-color: rgba(0,212,255,.7); }
+      33%     { box-shadow: 0 0 0 1px rgba(139,92,246,.6), 0 0 24px 3px rgba(139,92,246,.55); border-color: rgba(139,92,246,.75); }
+      66%     { box-shadow: 0 0 0 1px rgba(255,61,154,.6), 0 0 24px 3px rgba(255,61,154,.55); border-color: rgba(255,61,154,.75); }
+    }
+    .demo-cta-glow { animation: demoGlowPulse 3.2s ease-in-out infinite; }
+    .demo-cta-glow .login-trial-cta-title { color: #fff; }
+    @media (prefers-reduced-motion: reduce) { .demo-cta-glow { animation: none; } }
   </style>
 </head>
 <body>
@@ -853,9 +862,14 @@
 
       <div class="login-divider"><span data-i18n="htmlAuth.login.firstTime">Primeira vez?</span></div>
 
-      <a href="/register" class="login-trial-cta" id="loginTrialCta">
-        <span class="login-trial-cta-title" data-i18n="htmlAuth.login.createFreeAccount">Criar conta grátis</span>
-        <span class="login-trial-cta-sub" data-i18n="htmlAuth.login.trialSub">48h pra testar tudo · sem cartão</span>
+      <a href="/demo" class="login-trial-cta demo-cta-glow" id="loginDemoCta" style="margin:0 1.6rem;flex-direction:row;justify-content:center;gap:0.45rem;padding:0.62rem 1rem;">
+        <span class="login-trial-cta-title" style="font-size:0.82rem;">▶ Teste rápido</span>
+        <span class="login-trial-cta-sub" style="font-size:0.7rem;">· sem cadastro</span>
+      </a>
+
+      <a href="/register" class="login-trial-cta" id="loginTrialCta" style="margin:0.75rem 2.4rem 0;padding:0.62rem 1rem;">
+        <span class="login-trial-cta-title" data-i18n="htmlAuth.login.createFreeAccount" style="font-size:0.82rem;">Criar conta grátis</span>
+        <span class="login-trial-cta-sub" data-i18n="htmlAuth.login.trialSub" style="font-size:0.66rem;">48h pra testar tudo · sem cartão</span>
       </a>
 
       <div class="login-support">

@@ -466,6 +466,9 @@ class DemoPlayer {
 
   private startTour(): void {
     if (this.tourDone) return;
+    // Durante o tour: nada clicável a não ser o alvo guiado. A máscara já
+    // cobre o grid; o topbar/banner (z-index alto) são travados via classe.
+    document.body.classList.add('demo-tour-active');
     // Se user já deu play antes do tour começar, pula o primeiro passo
     if (this.stateManager.isPlaying() && this.tourIdx === 0) this.tourIdx = 1;
     this.renderTourStep();
@@ -478,6 +481,7 @@ class DemoPlayer {
     if (this.tourDone) return;
     if (this.tourIdx >= TOUR_STEPS.length) {
       this.tourDone = true;
+      document.body.classList.remove('demo-tour-active');
       // Fim do tour: janela própria (o "Isso é só uma prévia" fica pro
       // momento em que os créditos estiverem quase acabando).
       setTimeout(() => this.showTourEndModal(), 500);
@@ -541,6 +545,7 @@ class DemoPlayer {
     tip.querySelector('.demo-tour-tip-skip')?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.tourDone = true;
+      document.body.classList.remove('demo-tour-active');
       this.clearTourTooltip();
       target.classList.remove('demo-tour-pulse');
     });
@@ -655,9 +660,9 @@ class DemoPlayer {
           <span class="demo-convert-offer-head">${t('demo.offer.head')}</span>
           <span class="demo-convert-offer-sub">${t('demo.convert.offerSub')}</span>
         </div>
-        <div class="demo-convert-actions">
-          <a href="/register" class="demo-convert-primary">${t('demo.tourEnd.primaryCta')}</a>
+        <div class="demo-convert-actions demo-tourend-actions">
           <button class="demo-convert-secondary">${t('demo.tourEnd.secondary')}</button>
+          <a href="/register" class="demo-convert-primary">${t('demo.tourEnd.primaryCta')}</a>
         </div>
       </div>
     `;
@@ -780,7 +785,11 @@ class DemoPlayer {
     overlay.innerHTML = `
       <div class="demo-all-panel" role="dialog" aria-label="${t('demo.allRhythms.title')}">
         <div class="demo-all-head">
-          <div>
+          <button class="demo-all-back" aria-label="Voltar" style="display:inline-flex;align-items:center;gap:0.3rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);color:rgba(255,255,255,0.85);border-radius:10px;padding:0.4rem 0.7rem 0.4rem 0.55rem;font-family:inherit;font-size:0.8rem;font-weight:700;cursor:pointer;flex-shrink:0;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            <span>Voltar</span>
+          </button>
+          <div style="text-align:right;min-width:0;">
             <div class="demo-all-title">${t('demo.allRhythms.title')}</div>
             <div class="demo-all-sub">${t('demo.allRhythms.subtitle', { count: RHYTHM_COUNT })}</div>
           </div>
@@ -803,6 +812,7 @@ class DemoPlayer {
     const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
     document.addEventListener('keydown', onEsc);
     overlay.querySelector('.demo-all-close')?.addEventListener('click', close);
+    overlay.querySelector('.demo-all-back')?.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
     const body = overlay.querySelector('.demo-all-body') as HTMLElement;
