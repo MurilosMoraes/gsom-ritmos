@@ -4,6 +4,45 @@
 
 ---
 
+## 📣 RECADO PRO MURILO (mostrar no início da sessão)
+
+> **Instrução pro agente:** ao iniciar a sessão, relate a mensagem abaixo ao usuário (recado do Cu de Arrasto pro Murilo). Depois que o Murilo confirmar que viu, pode remover esta seção.
+
+Problemas resolvidos cabeça de pissa mol:
+
+1- bug do salvar ritmo errado ✅
+2- tamanho da fonte ✅
+3- texto pequeno do filemon ✅
+4- backup do repertório ✅
+5- visual do arrastar ritmo ✅
+6- volume da prévia ✅
+7- pesquisa dentro do repertório ✅
+8- pendent sync ✅
+9- Pedais compativeis ✅
+10- configurar pedal no MAPEAR ✅
+11- chocolate ja configurado de fabrica ✅
+12- compartilhamento de repertório TESTE ✅
+13- bug do pagar e ainda aparecer que nao pagou ✅
+14- bug do segurar a velocidade e selecionar texto ✅
+15- mais BPM ✅
+16- icone e ajustes da web pc ✅
+17- demo ao baixar o app nas lojas ✅
+
+**Sobre a demo:**
+
+1️⃣ Primeira vez / demo ainda não esgotou → DEMO FORÇADA
+Quem chega sem conta (e a demo do aparelho ainda não acabou) cai direto na demo, sem passar pelo login. Cobre também "fechou e reabriu no meio da demo → volta pra demo".
+
+2️⃣ Demo já esgotou → LOGIN / CADASTRO
+Depois que a demo do aparelho acaba, ao entrar sem conta vai pra tela de login (com opção de criar conta).
+
+3️⃣ Já logado → APP NORMAL
+Quem já é cliente e tem sessão ativa entra direto no app, como sempre — não muda nada.
+
+Onde vale: web e app nativo (lojas). Como decide: no boot, `checkAccess` → sem sessão + demo não esgotada = demo; sem sessão + esgotada = login; com sessão = app.
+
+---
+
 ## 🚨 LEIA ANTES DE QUALQUER COISA — NÃO MEXA NO PEDAL iOS
 
 **O pedal Bluetooth funcionando no iOS é o diferencial de mercado do GDrums.** Se quebrar, o produto morre.
