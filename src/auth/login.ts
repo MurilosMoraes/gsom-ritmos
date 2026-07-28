@@ -19,7 +19,6 @@ class LoginPage {
   private form: HTMLFormElement;
   private emailInput: HTMLInputElement;
   private passwordInput: HTMLInputElement;
-  private rememberMeCheckbox: HTMLInputElement;
   private loginBtn: HTMLButtonElement;
   private alertMessage: HTMLElement;
 
@@ -27,7 +26,6 @@ class LoginPage {
     this.form = document.getElementById('loginForm') as HTMLFormElement;
     this.emailInput = document.getElementById('email') as HTMLInputElement;
     this.passwordInput = document.getElementById('password') as HTMLInputElement;
-    this.rememberMeCheckbox = document.getElementById('rememberMe') as HTMLInputElement;
     this.loginBtn = document.getElementById('loginBtn') as HTMLButtonElement;
     this.alertMessage = document.getElementById('alertMessage') as HTMLElement;
 
@@ -304,6 +302,32 @@ class LoginPage {
     if (emailParam) {
       this.emailInput.value = emailParam;
     }
+    this.prefillFromRemembered(!!emailParam);
+  }
+
+  /**
+   * "Lembrar de mim": sincroniza o checkbox com a preferência salva e, se
+   * ativo, pré-preenche e-mail + senha (avançando pro step 2). Padrão =
+   * marcado (fica logado), igual ao comportamento antigo.
+   *
+   * ⚠️ A senha é guardada no aparelho (base64, NÃO é criptografia). Só existe
+   * porque o usuário pediu explicitamente. Quem tem acesso ao aparelho lê.
+   */
+  private prefillFromRemembered(hasEmailParam: boolean): void {
+    try {
+      const email = localStorage.getItem('gdrums-remember-email');
+      const pwB64 = localStorage.getItem('gdrums-remember-pw');
+      if (!email) return;
+      if (!hasEmailParam) this.emailInput.value = email;
+      if (pwB64) {
+        let pw = '';
+        try { pw = decodeURIComponent(escape(atob(pwB64))); } catch { pw = ''; }
+        if (pw) {
+          this.advanceToPasswordStep(this.emailInput.value.trim() || email, false);
+          this.passwordInput.value = pw;
+        }
+      }
+    } catch { /* noop */ }
   }
 
   /**
@@ -662,10 +686,16 @@ class LoginPage {
     const response = await authService.login({
       email: this.emailInput.value.trim(),
       password,
-      rememberMe: this.rememberMeCheckbox.checked,
+      rememberMe: true,
     });
 
     if (response.success && response.user) {
+      // "Lembrar de mim" é sempre ligado: guarda e-mail+senha pra pré-preencher
+      // na próxima. Senha em base64 (ofuscação leve, NÃO é criptografia).
+      try {
+        localStorage.setItem('gdrums-remember-email', this.emailInput.value.trim());
+        localStorage.setItem('gdrums-remember-pw', btoa(unescape(encodeURIComponent(password))));
+      } catch { /* noop */ }
       // Após login com senha DIGITADA no nativo: oferece ativar a
       // biometria (uma vez; "agora não" silencia por 7 dias). Fica
       // ANTES do redirect pra pessoa decidir com calma.
