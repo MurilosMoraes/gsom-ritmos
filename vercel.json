@@ -64,7 +64,7 @@
       "destination": "/download"
     },
     {
-      "source": "/:code(\\d+)",
+      "source": "/:code",
       "destination": "/index.html"
     }
   ],
