@@ -34,13 +34,14 @@ export async function fetchShare(code: string): Promise<SharePayload | null> {
   }
 }
 
-// Domínio real do produto — o link compartilhado é sempre esse (você nunca
-// manda um "localhost" pra alguém). Pra testar localmente, use localTestUrl().
+// Domínio real do produto — o link compartilhado é sempre esse.
 const SHARE_DOMAIN = 'https://gdrums.com.br';
 
-/** Link curto REAL: gdrums.com.br/CÓDIGO (sem /r/). */
+/** Link de compartilhamento: gdrums.com.br/?s=CÓDIGO. Usa a RAIZ (/), que
+ *  sempre serve o app — não depende de rewrite de rota no Vercel (que engasga
+ *  com caminho /CÓDIGO). O app lê o ?s= e importa. */
 export function shortUrl(code: string): string {
-  return `${SHARE_DOMAIN}/${code}`;
+  return `${SHARE_DOMAIN}/?s=${code}`;
 }
 
 // ─── Link curto SEM backend (teste) ────────────────────────────────────
@@ -70,8 +71,13 @@ export function getLocalShare(code: string): SharePayload | null {
   } catch { return null; }
 }
 
-/** Lê o código de compartilhamento do caminho atual (/CÓDIGO numérico). */
+/** Lê o código de compartilhamento da URL: primeiro do ?s= (raiz — o que
+ *  usamos agora), e como fallback do caminho /CÓDIGO. null se não houver. */
 export function readShareCodeFromPath(): string | null {
+  try {
+    const q = new URLSearchParams(location.search).get('s');
+    if (q && /^\d{4,8}$/.test(q)) return q;
+  } catch { /* noop */ }
   const m = location.pathname.match(/^\/(\d{4,8})\/?$/);
   return m ? m[1] : null;
 }
