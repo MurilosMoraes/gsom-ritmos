@@ -32,13 +32,11 @@ export const htmlPlans: Record<string, string> = {
   'htmlPlans.demoOgTitle': 'GDrums - Teste Grátis sem Cadastro',
   'htmlPlans.demoOgDescription': '5 ritmos liberados sem cadastro. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth, viradas e finalizações.',
   'htmlPlans.demoTwitterDescription': '5 ritmos liberados. Biblioteca com 155 ritmos brasileiros, pedal Bluetooth.',
-  'htmlPlans.demoTopbarHeadline': `
-        Cadastre e tenha <strong>48h grátis</strong> pra tocar tudo
-      `,
+  'htmlPlans.demoTopbarHeadline': 'Já tem uma conta?',
   'htmlPlans.demoCounterFallback': 'Prévia com 5 ritmos · <strong>155 no catálogo</strong>',
-  'htmlPlans.demoTopbarCtaLabel': 'Começar grátis',
-  'htmlPlans.demoValueBannerText': 'Essa é a banda real. <strong>Cadastra grátis</strong> pra liberar tudo.',
-  'htmlPlans.demoValueCtaLabel': 'Começar',
+  'htmlPlans.demoTopbarCtaLabel': 'ENTRAR',
+  'htmlPlans.demoValueBannerText': 'Se cadastre grátis para liberar tudo!',
+  'htmlPlans.demoValueCtaLabel': 'cadastrar',
   'htmlPlans.demoAllRhythmsBtnAria': 'Ver todos os ritmos',
   'htmlPlans.demoAllRhythmsBtnContent': `
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">

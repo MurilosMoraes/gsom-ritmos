@@ -1607,6 +1607,22 @@ class RhythmSequencer {
     // gdrums_pedal_keys, gdrums-toggle-*, gdrums-attr-v1, gdrums-whats-new-seen
   }
 
+  /**
+   * Primeira vez sem conta → força a demo (web e nativo). Vale enquanto a
+   * demo NÃO esgotou (marcada por aparelho via localStorage + cookie, as
+   * mesmas chaves que a /demo usa). Esgotou → segue pro login/cadastro.
+   * Cobre também "reabriu no meio da demo" (volta pra demo).
+   */
+  private shouldForceDemo(): boolean {
+    try {
+      const expired = localStorage.getItem('gdrums_demo_used') === 'expired'
+        || document.cookie.includes('gdrums_demo_used=expired');
+      return !expired;
+    } catch {
+      return false; // localStorage indisponível → não força (vai pro login)
+    }
+  }
+
   private async checkAccess(): Promise<boolean> {
     const { supabase } = await import('./auth/supabase');
 
@@ -1692,6 +1708,8 @@ class RhythmSequencer {
         }
         return true;
       }
+      // Primeira vez (sem conta e demo ainda não esgotada) → demo forçada.
+      if (this.shouldForceDemo()) { internalNav('/demo'); return false; }
       internalNav('/login');
       return false;
     }
