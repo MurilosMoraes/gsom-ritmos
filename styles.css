@@ -459,6 +459,24 @@ input:checked + .slider:before {
 .topbar-dropdown-btn-account { color: rgba(255, 255, 255, 0.6); }
 .topbar-dropdown-btn-account:hover { color: rgba(255, 255, 255, 0.9); }
 
+/* "Instalar no PC": botão cinza (só aparece em navegador desktop não-instalado) */
+.topbar-dropdown-btn-install-pc {
+  margin: 0.25rem 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 9px;
+  text-align: center;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.82);
+  background: linear-gradient(160deg, rgba(92, 98, 110, 0.55), rgba(58, 62, 72, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+.topbar-dropdown-btn-install-pc:hover {
+  color: #fff;
+  background: linear-gradient(160deg, rgba(112, 118, 130, 0.7), rgba(74, 80, 90, 0.78));
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
 /* "Baixar e sincronizar": pill vermelho (pendente) → verde (baixado e
    sincronizado). Fica verde sozinho quando o app sincroniza automático. */
 .topbar-dropdown-btn-backup-sync {

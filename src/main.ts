@@ -3621,6 +3621,44 @@ class RhythmSequencer {
       });
     }
 
+    // Instalar no PC — botão cinza no menu, só em navegador desktop e quando
+    // ainda não instalado (standalone/nativo/mobile ficam sem ele).
+    const installPcBtn = document.getElementById('installPcBtn');
+    if (installPcBtn) {
+      const uaPc = navigator.userAgent;
+      const isIOSpc = /iPhone|iPad|iPod/i.test(uaPc) ||
+                      (/Mac/i.test(uaPc) && navigator.maxTouchPoints > 1);
+      const isStandalonePc = window.matchMedia('(display-mode: standalone)').matches
+        || (navigator as any).standalone === true
+        || isNativeApp();
+      const isDesktopPc = !isIOSpc && !isAndroidWeb() && !isNativeApp();
+      if (isDesktopPc && !isStandalonePc) {
+        installPcBtn.style.display = '';
+        installPcBtn.addEventListener('click', () => {
+          const fabDropdown = document.getElementById('fabDropdown');
+          if (fabDropdown) fabDropdown.style.display = 'none';
+          if (this.installPrompt) {
+            // Chrome/Edge: dispara a instalação nativa na hora
+            this.installPrompt.prompt();
+            this.installPrompt.userChoice.then((choice: any) => {
+              if (choice.outcome === 'accepted') {
+                this.modalManager.show(t('main.modal.appInstalledTitle'), t('main.modal.appInstalledBody'), 'success');
+                installPcBtn.style.display = 'none';
+              }
+              this.installPrompt = null;
+            });
+          } else {
+            // Sem prompt (já dispensado, ou navegador sem suporte): instrução manual
+            this.modalManager.show(
+              'Instalar no PC',
+              'No Chrome ou Edge, clique no ícone de instalar na barra de endereço — um monitorzinho com uma seta, do lado direito do endereço — e confirme "Instalar". Se não aparecer, abra o menu (⋮) do navegador e escolha "Instalar GDrums…".',
+              'info'
+            );
+          }
+        });
+      }
+    }
+
     // Minha Conta
     const myAccountBtn = document.getElementById('myAccountBtn');
     if (myAccountBtn) {
@@ -4351,22 +4389,22 @@ class RhythmSequencer {
             <img src="/img/pedal-chocolate.png" alt="M-VAVE Chocolate" style="width:100%;display:block;filter:brightness(0.8) contrast(1.05) saturate(1.05);" onerror="this.style.display='none';this.parentElement.querySelector('.pd-vig').style.display='none';this.parentElement.querySelector('.pd-fb').style.display='flex';">
             <div class="pd-vig" style="position:absolute;inset:0;pointer-events:none;border-radius:10px;box-shadow:inset 0 0 12px 4px rgba(0,0,0,0.85);"></div>
             <div class="pd-fb" style="display:none;gap:0.6rem;justify-content:space-around;align-items:center;background:linear-gradient(160deg,#1c1c30,#0c0c1a);padding:0.8rem;">
-              ${chip('A', CYAN)}${chip('B', PURPLE)}${chip('C', GREEN)}${chip('D', ORANGE)}
+              ${chip('1', CYAN)}${chip('2', PURPLE)}${chip('3', GREEN)}${chip('4', ORANGE)}
             </div>
           </div>
           <div style="display:flex;gap:1rem;flex-wrap:wrap;">
             <div style="flex:1;min-width:170px;">
-              ${head('A', CYAN)}
+              ${head('Botão 1', CYAN)}
               ${line('stopped', 'start')}
               ${line('playing', 'changeVar')}
               ${line('double', 'prevVar')}
             </div>
             <div style="flex:1;min-width:170px;">
-              ${head('B', PURPLE)}
+              ${head('Botão 2', PURPLE)}
               ${line('playing', 'applyFill')}
               ${line('stopped', 'cymbal')}
-              <div style="margin-top:0.6rem;">${head('C', GREEN)}${plain('pauseResume')}</div>
-              <div style="margin-top:0.6rem;">${head('D', ORANGE)}${plain('finish')}</div>
+              <div style="margin-top:0.6rem;">${head('Botão 3', GREEN)}${plain('pauseResume')}</div>
+              <div style="margin-top:0.6rem;">${head('Botão 4', ORANGE)}${plain('finish')}</div>
             </div>
           </div>
         </div>
