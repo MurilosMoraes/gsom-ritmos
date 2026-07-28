@@ -851,6 +851,8 @@
        máscara; topbar/banner (z-index alto) são travados aqui. */
     body.demo-tour-active .demo-topbar,
     body.demo-tour-active .demo-value-banner { pointer-events: none !important; }
+    /* ...menos o ENTRAR: quem já tem conta pode logar direto, sem ficar preso no tour */
+    body.demo-tour-active .demo-topbar .demo-topbar-cta { pointer-events: auto !important; }
 
     /* Modal fim-do-tour: 2 botões do MESMO tamanho; "continuar teste" pulsa
        com as cores do app (igual o "Teste rápido" do login). */
