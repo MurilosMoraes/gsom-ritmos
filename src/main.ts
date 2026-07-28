@@ -2425,10 +2425,12 @@ class RhythmSequencer {
       });
     }
 
-    // Cymbal button (prato)
+    // Cymbal button (prato) — dispara no POINTERDOWN (na hora que aperta o
+    // botão), não no 'click' (que só sai quando SOLTA). Assim toca na hora,
+    // igual ao teclado/pedal, e aceita martelar várias vezes seguidas.
     const cymbalBtn = document.getElementById('cymbalBtn');
     if (cymbalBtn) {
-      cymbalBtn.addEventListener('click', () => { HapticsService.heavy(); this.playCymbal(); });
+      cymbalBtn.addEventListener('pointerdown', () => { HapticsService.heavy(); this.playCymbal(); });
     }
 
     // Tempo controls
