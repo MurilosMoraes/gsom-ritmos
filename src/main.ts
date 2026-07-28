@@ -2525,6 +2525,12 @@ class RhythmSequencer {
    *  (acelerando). `onStop` roda 1x ao soltar (ex.: salvar). Usa Pointer
    *  Events, então cobre mouse e toque. */
   private attachHoldRepeat(el: HTMLElement, action: () => void, onStop?: () => void): void {
+    // Mobile: matar a seleção/lupa/menu "Copiar" que aparece no press-and-hold.
+    el.style.userSelect = 'none';
+    (el.style as any).webkitUserSelect = 'none';
+    (el.style as any).webkitTouchCallout = 'none';
+    el.style.touchAction = 'manipulation';
+
     let delayTimer: number | null = null;
     let loopTimer: number | null = null;
     let active = false;
@@ -2536,6 +2542,7 @@ class RhythmSequencer {
     el.addEventListener('pointerdown', (e) => {
       const pe = e as PointerEvent;
       if (pe.button != null && pe.button > 0) return; // ignora botões não-primários
+      pe.preventDefault(); // evita a seleção de texto no toque longo (mobile)
       stop();
       active = true;
       action(); // 1 passo imediato (toque normal)
@@ -2543,10 +2550,10 @@ class RhythmSequencer {
       const tick = (): void => {
         action();
         n++;
-        const delay = n < 8 ? 100 : n < 24 ? 55 : 30; // acelera enquanto segura
+        const delay = n < 8 ? 150 : n < 24 ? 95 : 60; // repete e acelera (mais lento)
         loopTimer = window.setTimeout(tick, delay);
       };
-      delayTimer = window.setTimeout(tick, 450); // ~0,45s segurando pra começar a repetir
+      delayTimer = window.setTimeout(tick, 500); // ~0,5s segurando pra começar a repetir
       try { el.setPointerCapture?.(pe.pointerId); } catch { /* noop */ }
     });
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, stop));
