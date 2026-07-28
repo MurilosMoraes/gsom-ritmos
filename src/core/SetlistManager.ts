@@ -778,19 +778,37 @@ export class SetlistManager {
     };
   }
 
+  /** Garante userId + client Supabase. Se o initWithUser não rodou (net ruim
+   *  no boot, clicou cedo), busca a sessão atual na hora — evita o "sessão
+   *  não iniciada" que só saía fechando/reabrindo o app. */
+  private async ensureSession(): Promise<boolean> {
+    if (this.userId && this.supabaseClient) return true;
+    try {
+      const { supabase } = await import('../auth/supabase');
+      const { data } = await supabase.auth.getSession();
+      const uid = data.session?.user?.id;
+      if (uid) {
+        this.supabaseClient = supabase;
+        this.userId = uid;
+        return true;
+      }
+    } catch { /* offline/sem sessão */ }
+    return false;
+  }
+
   /**
    * MERGE-PUSH: lê o servidor, JUNTA com o local por id (união) e reescreve
    * a união de volta. É o que faz dois aparelhos convergirem pra soma de
    * tudo, sem um sobrescrever o outro. Idempotente. Devolve motivo da falha.
    */
   private async mergePush(): Promise<{ ok: boolean; error?: string }> {
-    if (!this.userId || !this.supabaseClient) {
-      this.remoteDirty = true;
-      return { ok: false, error: t('core.sync.sessionNotStarted') };
-    }
     if (!navigator.onLine) {
       this.remoteDirty = true;
       return { ok: false, error: t('core.sync.noInternet') };
+    }
+    if (!(await this.ensureSession())) {
+      this.remoteDirty = true;
+      return { ok: false, error: t('core.sync.sessionNotStarted') };
     }
     try {
       // 1) Lê o estado atual do servidor

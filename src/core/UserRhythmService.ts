@@ -56,6 +56,24 @@ export class UserRhythmService {
     this.onPendingChange = cb;
   }
 
+  /** Garante que temos userId + client Supabase. Se o initWithUser não rodou
+   *  (net ruim no boot, clicou cedo demais), busca a sessão atual na hora —
+   *  evita o "sessão não iniciada" que exigia fechar/reabrir o app. */
+  private async ensureSession(): Promise<boolean> {
+    if (this.userId && this.supabase) return true;
+    try {
+      const { supabase } = await import('../auth/supabase');
+      const { data } = await supabase.auth.getSession();
+      const uid = data.session?.user?.id;
+      if (uid) {
+        this.supabase = supabase;
+        this.userId = uid;
+        return true;
+      }
+    } catch { /* offline/sem sessão */ }
+    return false;
+  }
+
   constructor() {
     this.loadLocal();
     requestPersistentStorage().catch(() => { /* noop */ });
@@ -97,7 +115,7 @@ export class UserRhythmService {
    *  nem ressuscitar exclusão pendente. Mesma lógica de merge do initWithUser,
    *  mas rodável a qualquer momento (foreground/online/intervalo). */
   private async pullRemote(): Promise<void> {
-    if (!this.supabase || !this.userId || !navigator.onLine) return;
+    if (!navigator.onLine || !(await this.ensureSession())) return;
     try {
       const { data } = await withNetTimeout(Promise.resolve(
         this.supabase
@@ -415,7 +433,7 @@ export class UserRhythmService {
    *  algo sincronizou. Chamado no boot (initWithUser), na volta da rede
    *  (evento online) e ao abrir o modal Meus Ritmos. */
   async syncNow(): Promise<boolean> {
-    if (!this.supabase || !this.userId || !navigator.onLine) return false;
+    if (!navigator.onLine || !(await this.ensureSession())) return false;
 
     let deletedAny = false;
     // 1) Exclusões pendentes (tombstones)
@@ -484,11 +502,11 @@ export class UserRhythmService {
   async syncAll(): Promise<{ ok: boolean; synced: number; failed: number; firstError?: string }> {
     const pending = this.rhythms.filter(r => !r.synced);
     const total = pending.length;
-    if (!this.supabase || !this.userId) {
-      return { ok: false, synced: 0, failed: total, firstError: t('core.sync.sessionNotStarted') };
-    }
     if (!navigator.onLine) {
       return { ok: false, synced: 0, failed: total, firstError: t('core.sync.noInternet') };
+    }
+    if (!(await this.ensureSession())) {
+      return { ok: false, synced: 0, failed: total, firstError: t('core.sync.sessionNotStarted') };
     }
 
     let firstError: string | undefined;
@@ -528,7 +546,7 @@ export class UserRhythmService {
     if (!r) return { ok: false, error: t('core.sync.rhythmNotFound') };
     if (r.synced) return { ok: true };
     if (!navigator.onLine) return { ok: false, error: t('core.sync.noInternet') };
-    if (!this.supabase || !this.userId) return { ok: false, error: t('core.sync.sessionNotStarted') };
+    if (!(await this.ensureSession())) return { ok: false, error: t('core.sync.sessionNotStarted') };
 
     try {
       const payload: Record<string, any> = {

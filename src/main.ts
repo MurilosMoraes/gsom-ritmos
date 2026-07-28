@@ -2521,25 +2521,52 @@ class RhythmSequencer {
     return map[rhythmName] ?? null;
   }
 
+  /** Press-and-hold: dispara `action` 1x no toque e, se SEGURAR, repete
+   *  (acelerando). `onStop` roda 1x ao soltar (ex.: salvar). Usa Pointer
+   *  Events, então cobre mouse e toque. */
+  private attachHoldRepeat(el: HTMLElement, action: () => void, onStop?: () => void): void {
+    let delayTimer: number | null = null;
+    let loopTimer: number | null = null;
+    let active = false;
+    const stop = (): void => {
+      if (delayTimer !== null) { clearTimeout(delayTimer); delayTimer = null; }
+      if (loopTimer !== null) { clearTimeout(loopTimer); loopTimer = null; }
+      if (active) { active = false; onStop?.(); }
+    };
+    el.addEventListener('pointerdown', (e) => {
+      const pe = e as PointerEvent;
+      if (pe.button != null && pe.button > 0) return; // ignora botões não-primários
+      stop();
+      active = true;
+      action(); // 1 passo imediato (toque normal)
+      let n = 0;
+      const tick = (): void => {
+        action();
+        n++;
+        const delay = n < 8 ? 100 : n < 24 ? 55 : 30; // acelera enquanto segura
+        loopTimer = window.setTimeout(tick, delay);
+      };
+      delayTimer = window.setTimeout(tick, 450); // ~0,45s segurando pra começar a repetir
+      try { el.setPointerCapture?.(pe.pointerId); } catch { /* noop */ }
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, stop));
+  }
+
   private setupTempoControls(): void {
     // Controles do modo usuário
     const tempoUpUser = document.getElementById('tempoUpUser');
     const tempoDownUser = document.getElementById('tempoDownUser');
 
     if (tempoUpUser) {
-      tempoUpUser.addEventListener('click', () => {
-        const newTempo = Math.min(240, this.stateManager.getTempo() + 1);
-        this.stateManager.setTempo(newTempo);
-        this.saveCustomBpm();
-      });
+      this.attachHoldRepeat(tempoUpUser,
+        () => this.stateManager.setTempo(Math.min(240, this.stateManager.getTempo() + 1)),
+        () => this.saveCustomBpm());
     }
 
     if (tempoDownUser) {
-      tempoDownUser.addEventListener('click', () => {
-        const newTempo = Math.max(40, this.stateManager.getTempo() - 1);
-        this.stateManager.setTempo(newTempo);
-        this.saveCustomBpm();
-      });
+      this.attachHoldRepeat(tempoDownUser,
+        () => this.stateManager.setTempo(Math.max(40, this.stateManager.getTempo() - 1)),
+        () => this.saveCustomBpm());
     }
 
     // BPM display clicável → abre modal
@@ -2574,15 +2601,11 @@ class RhythmSequencer {
     }
 
     if (tempoUp) {
-      tempoUp.addEventListener('click', () => {
-        updateTempo(this.stateManager.getTempo() + 1);
-      });
+      this.attachHoldRepeat(tempoUp, () => updateTempo(this.stateManager.getTempo() + 1));
     }
 
     if (tempoDown) {
-      tempoDown.addEventListener('click', () => {
-        updateTempo(this.stateManager.getTempo() - 1);
-      });
+      this.attachHoldRepeat(tempoDown, () => updateTempo(this.stateManager.getTempo() - 1));
     }
 
     // Compasso (beatsPerBar) selector
