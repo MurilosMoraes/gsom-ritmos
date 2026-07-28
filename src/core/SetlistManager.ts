@@ -47,13 +47,29 @@ export const MAX_SETLISTS = 30;
 
 export interface NamedSetlist extends Setlist {
   id: string;
+  // Timestamp ms da última edição de CONTEÚDO deste repertório (add/remove/
+  // mover música, renomear). NÃO é bumpado por navegação (next/prev/goTo).
+  // A união usa isso pra "mais recente ganha" no mesmo id — assim remover
+  // música ou reordenar PROPAGA entre aparelhos, não só adicionar.
+  lastModified?: number;
+  // true = veio de um link compartilhado (importado). Borda amarela na UI;
+  // some quando o usuário renomeia o repertório.
+  sharedImport?: boolean;
 }
 
 interface MultiSetlistState {
   setlists: NamedSetlist[];
   activeId: string;
   lastModified?: number; // timestamp ms da última edição (do device que editou)
+  // Tombstones: ids de repertórios EXCLUÍDOS. Sem isso, a união ressuscitaria
+  // o repertório apagado (ele ainda existe no servidor/outro aparelho). O
+  // tombstone viaja junto (local + servidor), então a exclusão PROPAGA: o
+  // outro aparelho vê o id na lista de excluídos e remove também.
+  deletedSetlists?: string[];
 }
+
+// Teto do histórico de exclusões (ids são pequenos; 500 cobre de sobra).
+const MAX_TOMBSTONES = 500;
 
 function genId(): string {
   return (crypto as Crypto & { randomUUID?: () => string }).randomUUID?.() ||
@@ -80,6 +96,15 @@ export class SetlistManager {
   // a PRÓXIMA edição do usuário dispara um novo saveRemote(), então um
   // repertório que parou de ser editado depois da falha nunca sincroniza.
   private remoteDirty = false;
+  // Avisa a UI (botão "Baixar e sincronizar") quando o repertório sobe
+  // pro servidor ou volta a ficar pendente — inclusive nos syncs automáticos
+  // (online/foreground/intervalo). Mantém o botão verde sozinho.
+  private onRemoteStateChange?: () => void;
+
+  /** Registra um observador chamado quando o estado remoto muda. */
+  setOnRemoteStateChange(cb: () => void): void {
+    this.onRemoteStateChange = cb;
+  }
 
   constructor() {
     this.state = this.loadLocal();
@@ -97,12 +122,28 @@ export class SetlistManager {
     // saveRemote() (rede ruim, ou edição feita antes do initWithUser
     // terminar de injetar userId/supabaseClient) deixa o repertório
     // desatualizado no servidor até a PRÓXIMA edição local acontecer.
-    window.addEventListener('online', () => { if (this.remoteDirty) void this.saveRemote(); });
+    // "Empurra tudo" SEMPRE — não depende da flag remoteDirty. Cada push é um
+    // MERGE (lê o servidor, junta por id, reescreve a UNIÃO). Assim dois
+    // aparelhos convergem pra união de tudo, sem um sobrescrever o outro.
+    // Funciona em wifi ou dados móveis (navigator.onLine cobre os dois).
+    window.addEventListener('online', () => { void this.mergePush(); });
     setInterval(() => {
-      if (this.remoteDirty && navigator.onLine && this.userId && this.supabaseClient) {
-        void this.saveRemote();
+      if (navigator.onLine && this.userId && this.supabaseClient) {
+        void this.mergePush();
       }
-    }, 20000);
+    }, 60000);
+
+    // App voltou pra FRENTE (foreground) → junta e sobe na hora. No celular o
+    // app quase nunca "abre do zero" (initWithUser não roda), só volta do 2º
+    // plano — e o timer fica suspenso em background. Sem isso, edição offline
+    // só ressincronizava no próximo boot real.
+    const syncOnResume = (): void => {
+      if (navigator.onLine && this.userId && this.supabaseClient) void this.mergePush();
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncOnResume();
+    });
+    window.addEventListener('focus', syncOnResume);
   }
 
   // ─── Helpers internos ───────────────────────────────────────────────
@@ -244,100 +285,21 @@ export class SetlistManager {
         return;
       }
 
-      const localCount = this.totalItemCount();
-      const localLastModified = this.state.lastModified || 0;
-      const localHasItems = localCount > 0;
+      // Estado remoto (coluna nova `setlists` ou reconstruído do legado items)
+      const remoteState = this.remoteStateFrom(data);
 
-      // Caso 1: banco não tem registro (user novo ou nunca sincronizou)
-      if (!data) {
-        if (localHasItems) {
-          await this.saveRemote();
-        }
-        return;
-      }
+      // JUNTA TUDO: união local + remoto POR ID de repertório — nunca perde
+      // repertório de nenhum aparelho. Se ambos têm o MESMO repertório (mesmo
+      // id) com conteúdos diferentes, fica com o que tem MAIS músicas (nunca
+      // encolhe). Depois grava a UNIÃO de volta pro servidor ficar completo.
+      // Cobre também "banco vazio + local cheio" (união = local) e "local
+      // vazio + banco cheio" (união = remoto).
+      const beforeIds = this.state.setlists.map(s => s.id).sort().join(',');
+      this.state = this.unionSetlists(this.state, remoteState);
+      const afterIds = this.state.setlists.map(s => s.id).sort().join(',');
+      if (beforeIds !== afterIds) { this.saveLocal(); this.onChange?.(); }
 
-      // Estado remoto: prioriza coluna nova `setlists`; se não existe,
-      // reconstrói do formato antigo (items/current_index)
-      let remoteState: MultiSetlistState | null = null;
-      if (data.setlists && Array.isArray(data.setlists?.setlists)) {
-        remoteState = this.normalizeState(data.setlists as MultiSetlistState);
-        // ── Detecção de escrita de APP ANTIGO (período de transição) ──
-        // O app novo SEMPRE grava items + setlists juntos (dual-write
-        // consistente: items === itens do repertório ativo). Se as
-        // colunas divergem, um app antigo (PWA cacheada em outro device,
-        // ou um Service Worker grudado numa versão anterior — ver nota do
-        // SW em main.ts) gravou só items DEPOIS — adota items no
-        // repertório ativo pra não perder as edições feitas lá.
-        //
-        // DEFESA: só adota se NÃO for uma redução drástica. As duas
-        // colunas compartilham o mesmo `updated_at` da linha — não dá
-        // pra saber por timestamp se `items` é realmente mais novo ou se
-        // é um app velho reescrevendo por cima com um snapshot pequeno e
-        // desatualizado que ele tinha em cache local. Um repertório
-        // legítimo editado por um app antigo dificilmente ENCOLHE muito;
-        // se encolheu, é sinal de escrita de versão velha/corrompida —
-        // ignora e mantém o `setlists` (maior, mais confiável).
-        if (Array.isArray(data.items) && data.items.length > 0) {
-          const act = remoteState.setlists.find(s => s.id === remoteState!.activeId);
-          if (act && JSON.stringify(act.items) !== JSON.stringify(data.items)) {
-            const shrunk = data.items.length < act.items.length * 0.9;
-            if (shrunk) {
-              console.warn(`[SetlistManager] items (legado, ${data.items.length} itens) muito menor que setlists (${act.items.length} itens) — IGNORADO para não truncar repertório`);
-            } else {
-              console.warn('[SetlistManager] items (app antigo) diverge do setlists — adotando items no repertório ativo');
-              act.items = data.items;
-              act.currentIndex = Math.min(
-                typeof data.current_index === 'number' ? data.current_index : 0,
-                Math.max(0, data.items.length - 1)
-              );
-            }
-          }
-        }
-      } else if (Array.isArray(data.items) && data.items.length > 0) {
-        const id = genId();
-        remoteState = {
-          setlists: [{ id, name: t('core.setlist.defaultName'), items: data.items, currentIndex: typeof data.current_index === 'number' ? data.current_index : 0 }],
-          activeId: id,
-        };
-      }
-
-      const remoteCount = remoteState
-        ? remoteState.setlists.reduce((n, s) => n + s.items.length, 0)
-        : 0;
-      const remoteHasItems = remoteCount > 0;
-      const remoteLastModified = data.updated_at ? new Date(data.updated_at).getTime() : 0;
-
-      // Caso 2: banco vazio mas local tem itens — DEFESA CRÍTICA
-      if (!remoteHasItems && localHasItems) {
-        console.warn('[SetlistManager] Banco vazio mas local tem ' + localCount + ' itens — preservando local e re-sincronizando');
-        await this.saveRemote();
-        return;
-      }
-
-      // Caso 3: ambos têm itens — quem é mais novo ganha
-      if (remoteHasItems && localHasItems) {
-        if (remoteLastModified > localLastModified) {
-          this.state = { ...remoteState!, lastModified: remoteLastModified };
-          this.saveLocal();
-          this.onChange?.();
-        } else if (localLastModified > remoteLastModified) {
-          await this.saveRemote();
-        }
-        return;
-      }
-
-      // Caso 4: só banco tem itens, local vazio
-      if (remoteHasItems) {
-        if (localLastModified > remoteLastModified && localLastModified > 0) {
-          // User apagou local DEPOIS do banco — respeita, sobe o vazio
-          await this.saveRemote();
-        } else {
-          this.state = { ...remoteState!, lastModified: remoteLastModified };
-          this.saveLocal();
-          this.onChange?.();
-        }
-      }
-      // Caso 5: ambos vazios — nada a fazer
+      await this.mergePush();
     } catch (e) {
       // Timeout de rede (onLine mentiu) ou erro — preserva local e marca
       // dirty pra o retry (evento 'online' / intervalo 20s) ressincronizar
@@ -355,21 +317,39 @@ export class SetlistManager {
 
   private notify(): void {
     // Toda mudança atualiza o timestamp local — fundamental pra o merge
-    // no initWithUser saber "qual lado é mais novo".
+    // saber "qual lado é mais novo".
     this.state.lastModified = Date.now();
     this.saveLocal();
-    this.saveRemote(); // fire-and-forget
+    // Sync remoto é DEBOUNCED: notify() dispara em toda navegação de música
+    // (next/previous/goTo = cada toque de pedal no show). Sem debounce, o
+    // merge-push (que lê+escreve no Supabase) rodaria a cada toque. Coalesce
+    // rajadas num único push ~2.5s depois da última mudança. O intervalo de
+    // 60s + foreground são a rede de segurança se o app fechar antes disso.
+    this.scheduleRemoteSync();
     this.onChange?.();
+  }
+
+  private remoteSyncTimer: number | null = null;
+
+  /** Agenda um merge-push coalescido (debounce). Reinicia a cada chamada. */
+  private scheduleRemoteSync(): void {
+    this.remoteDirty = true; // há mudança local ainda não confirmada no servidor
+    if (this.remoteSyncTimer !== null) clearTimeout(this.remoteSyncTimer);
+    this.remoteSyncTimer = window.setTimeout(() => {
+      this.remoteSyncTimer = null;
+      void this.mergePush();
+    }, 2500);
   }
 
   // ─── API de MÚLTIPLOS repertórios ───────────────────────────────────
 
-  getSetlists(): Array<{ id: string; name: string; count: number; active: boolean }> {
+  getSetlists(): Array<{ id: string; name: string; count: number; active: boolean; shared: boolean }> {
     return this.state.setlists.map(s => ({
       id: s.id,
       name: s.name,
       count: s.items.length,
       active: s.id === this.state.activeId,
+      shared: s.sharedImport === true,
     }));
   }
 
@@ -386,15 +366,22 @@ export class SetlistManager {
     return true;
   }
 
-  /** Cria repertório novo (e ativa). Retorna null se bateu o limite. */
-  createSetlist(name: string): string | null {
+  /** Cria repertório novo (e ativa). Retorna null se bateu o limite.
+   *  sharedImport=true marca como "compartilhado" (borda amarela). */
+  createSetlist(name: string, sharedImport = false): string | null {
     if (this.state.setlists.length >= MAX_SETLISTS) return null;
     const id = genId();
     const cleanName = (name || '').trim() || t('core.setlist.numbered', { n: this.state.setlists.length + 1 });
-    this.state.setlists.push({ id, name: cleanName.slice(0, 40), items: [], currentIndex: 0 });
+    this.state.setlists.push({ id, name: cleanName.slice(0, 40), items: [], currentIndex: 0, lastModified: Date.now(), ...(sharedImport ? { sharedImport: true } : {}) });
     this.state.activeId = id;
     this.notify();
     return id;
+  }
+
+  /** Carimba a hora da última edição de CONTEÚDO do repertório — usado pela
+   *  união pra decidir "mais recente ganha" no mesmo id. */
+  private touch(s: NamedSetlist): void {
+    s.lastModified = Date.now();
   }
 
   renameSetlist(id: string, name: string): boolean {
@@ -403,11 +390,15 @@ export class SetlistManager {
     const cleanName = (name || '').trim();
     if (!cleanName) return false;
     s.name = cleanName.slice(0, 40);
+    s.sharedImport = false; // renomeou → tira a marca de compartilhado
+    this.touch(s);
     this.notify();
     return true;
   }
 
-  /** Exclui repertório. Não deixa excluir o último (sempre existe 1). */
+  /** Exclui repertório. Não deixa excluir o último (sempre existe 1).
+   *  Marca um TOMBSTONE (id excluído) que viaja pro servidor e pros outros
+   *  aparelhos — assim a exclusão PROPAGA em vez de a união ressuscitar. */
   deleteSetlist(id: string): boolean {
     if (this.state.setlists.length <= 1) return false;
     const idx = this.state.setlists.findIndex(x => x.id === id);
@@ -416,11 +407,29 @@ export class SetlistManager {
     if (this.state.activeId === id) {
       this.state.activeId = this.state.setlists[Math.max(0, idx - 1)].id;
     }
+    if (!this.state.deletedSetlists) this.state.deletedSetlists = [];
+    if (!this.state.deletedSetlists.includes(id)) {
+      this.state.deletedSetlists.push(id);
+      if (this.state.deletedSetlists.length > MAX_TOMBSTONES) {
+        this.state.deletedSetlists = this.state.deletedSetlists.slice(-MAX_TOMBSTONES);
+      }
+    }
     this.notify();
     return true;
   }
 
   getMaxSetlists(): number { return MAX_SETLISTS; }
+
+  /** Itens de um repertório específico por id (cópia). Usado pra compartilhar. */
+  getItemsOf(id: string): SetlistItem[] {
+    const s = this.state.setlists.find(x => x.id === id);
+    return s ? s.items.map(i => ({ ...i })) : [];
+  }
+  /** Nome de um repertório específico por id. */
+  getNameOf(id: string): string {
+    const s = this.state.setlists.find(x => x.id === id);
+    return s ? s.name : '';
+  }
 
   /** Duplica um repertório (itens copiados, nome "X (cópia)"). Null se bateu o limite. */
   duplicateSetlist(id: string): string | null {
@@ -433,6 +442,7 @@ export class SetlistManager {
       name: t('core.setlist.copyName', { name: src.name }).slice(0, 40),
       items: src.items.map(i => ({ ...i })),
       currentIndex: 0,
+      lastModified: Date.now(),
     });
     this.notify();
     return newId;
@@ -444,6 +454,7 @@ export class SetlistManager {
     const s = this.state.setlists.find(x => x.id === setlistId);
     if (!s) return false;
     s.items.push(item);
+    this.touch(s);
     this.notify();
     return true;
   }
@@ -506,7 +517,9 @@ export class SetlistManager {
   // ─── CRUD (no repertório ativo) ─────────────────────────────────────
 
   addItem(item: SetlistItem): void {
-    this.active().items.push({ ...item });
+    const a = this.active();
+    a.items.push({ ...item });
+    this.touch(a);
     this.notify();
   }
 
@@ -517,6 +530,7 @@ export class SetlistManager {
     if (a.currentIndex >= a.items.length) {
       a.currentIndex = Math.max(0, a.items.length - 1);
     }
+    this.touch(a);
     this.notify();
   }
 
@@ -537,6 +551,7 @@ export class SetlistManager {
       a.currentIndex++;
     }
 
+    this.touch(a);
     this.notify();
   }
 
@@ -544,11 +559,14 @@ export class SetlistManager {
     const a = this.active();
     a.items = [];
     a.currentIndex = 0;
+    this.touch(a);
     this.notify();
   }
 
   setName(name: string): void {
-    this.active().name = name;
+    const a = this.active();
+    a.name = name;
+    this.touch(a);
     this.saveLocal();
   }
 
@@ -629,15 +647,21 @@ export class SetlistManager {
         name: typeof s.name === 'string' && s.name.trim() ? s.name.slice(0, 40) : t('core.setlist.numbered', { n: i + 1 }),
         items: Array.isArray(s.items) ? s.items : [],
         currentIndex: typeof s.currentIndex === 'number' ? s.currentIndex : 0,
+        lastModified: typeof s.lastModified === 'number' ? s.lastModified : 0,
+        ...(s.sharedImport === true ? { sharedImport: true } : {}),
       }));
     if (setlists.length === 0) return emptyState();
     const activeId = setlists.some(s => s.id === parsed.activeId)
       ? parsed.activeId
       : setlists[0].id;
+    const deletedSetlists = Array.isArray(parsed.deletedSetlists)
+      ? parsed.deletedSetlists.filter((x: any) => typeof x === 'string').slice(-MAX_TOMBSTONES)
+      : undefined;
     return {
       setlists,
       activeId,
       lastModified: typeof parsed.lastModified === 'number' ? parsed.lastModified : 0,
+      ...(deletedSetlists && deletedSetlists.length ? { deletedSetlists } : {}),
     };
   }
 
@@ -656,33 +680,181 @@ export class SetlistManager {
 
   // ─── Persistência Supabase ──────────────────────────────────────────
 
-  private async saveRemote(): Promise<void> {
+  /** true se a última tentativa de subir o repertório falhou (ou nunca
+   *  rodou) — usado pelo botão/bolinha pra saber se há pendência. */
+  isRemoteDirty(): boolean {
+    return this.remoteDirty;
+  }
+
+  /** Botão "Baixar e sincronizar": junta local+servidor e sobe a UNIÃO. */
+  async forceSyncNow(): Promise<{ ok: boolean; error?: string }> {
+    return this.mergePush();
+  }
+
+  /** Reconstrói o MultiSetlistState do que veio da linha gdrums_favorites.
+   *  Prioriza a coluna nova `setlists`; senão reconstrói do legado
+   *  items/current_index. Retorna null se a linha não existe / sem dado. */
+  private remoteStateFrom(data: any): MultiSetlistState | null {
+    if (!data) return null;
+    let remoteState: MultiSetlistState | null = null;
+    if (data.setlists && Array.isArray(data.setlists?.setlists)) {
+      remoteState = this.normalizeState(data.setlists as MultiSetlistState);
+      // App ANTIGO pode ter gravado só a coluna legada `items` depois. Se
+      // divergir do repertório ativo e NÃO for encolhimento drástico, adota
+      // (não perde edição de app velho); se encolheu muito, ignora.
+      if (Array.isArray(data.items) && data.items.length > 0) {
+        const act = remoteState.setlists.find(s => s.id === remoteState!.activeId);
+        if (act && JSON.stringify(act.items) !== JSON.stringify(data.items)) {
+          const shrunk = data.items.length < act.items.length * 0.9;
+          if (!shrunk) {
+            act.items = data.items;
+            act.currentIndex = Math.min(
+              typeof data.current_index === 'number' ? data.current_index : 0,
+              Math.max(0, data.items.length - 1)
+            );
+          }
+        }
+      }
+    } else if (Array.isArray(data.items) && data.items.length > 0) {
+      const id = genId();
+      remoteState = {
+        setlists: [{ id, name: t('core.setlist.defaultName'), items: data.items, currentIndex: typeof data.current_index === 'number' ? data.current_index : 0 }],
+        activeId: id,
+      };
+    }
+    return remoteState;
+  }
+
+  /** UNIÃO de dois estados POR ID de repertório — nunca perde repertório de
+   *  nenhum lado. Mesmo id nos dois → fica com o MAIS RECENTE (lastModified);
+   *  assim remover música/reordenar propaga, não só adicionar. Sem timestamp
+   *  (dado legado) cai no fallback "mais músicas ganha" (nunca encolhe).
+   *  Respeita TOMBSTONES: id excluído em qualquer lado é removido dos dois.
+   *  Preserva o activeId local. */
+  private unionSetlists(local: MultiSetlistState, remote: MultiSetlistState | null): MultiSetlistState {
+    // Excluídos = união dos tombstones dos dois lados
+    const deleted = new Set<string>([
+      ...(local.deletedSetlists || []),
+      ...(remote?.deletedSetlists || []),
+    ]);
+
+    const byId = new Map<string, NamedSetlist>();
+    if (remote && Array.isArray(remote.setlists)) {
+      for (const s of remote.setlists) byId.set(s.id, s);
+    }
+    for (const s of local.setlists) {
+      const ex = byId.get(s.id);
+      if (!ex) { byId.set(s.id, s); continue; }
+      // Mesmo id nos dois: decide quem fica.
+      const lm = s.lastModified || 0;
+      const em = ex.lastModified || 0;
+      if (lm !== em) {
+        // Timestamps existem e diferem → o MAIS RECENTE ganha (propaga
+        // remoção/reordenação, não só adição).
+        if (lm > em) byId.set(s.id, s);
+      } else {
+        // Sem timestamp ou empate → fallback conservador: nunca encolhe.
+        if (s.items.length >= ex.items.length) byId.set(s.id, s);
+      }
+    }
+    // Remove os excluídos (tombstones) da união — exclusão propaga
+    for (const id of deleted) byId.delete(id);
+
+    let setlists = Array.from(byId.values()).slice(0, MAX_SETLISTS);
+    // Invariante: sempre existe pelo menos 1 repertório
+    if (setlists.length === 0) setlists = emptyState().setlists;
+
+    let activeId = local.activeId;
+    if (!setlists.some(s => s.id === activeId)) {
+      activeId = (remote && setlists.some(s => s.id === remote.activeId)) ? remote.activeId : setlists[0].id;
+    }
+
+    const deletedArr = Array.from(deleted).slice(-MAX_TOMBSTONES);
+    return {
+      setlists,
+      activeId,
+      lastModified: Math.max(local.lastModified || 0, remote?.lastModified || 0),
+      ...(deletedArr.length ? { deletedSetlists: deletedArr } : {}),
+    };
+  }
+
+  /**
+   * MERGE-PUSH: lê o servidor, JUNTA com o local por id (união) e reescreve
+   * a união de volta. É o que faz dois aparelhos convergirem pra soma de
+   * tudo, sem um sobrescrever o outro. Idempotente. Devolve motivo da falha.
+   */
+  private async mergePush(): Promise<{ ok: boolean; error?: string }> {
     if (!this.userId || !this.supabaseClient) {
-      // Ainda não temos client/userId (edição feita antes do initWithUser
-      // terminar) — marca dirty pro retry pegar assim que initWithUser rodar.
       this.remoteDirty = true;
-      return;
+      return { ok: false, error: t('core.sync.sessionNotStarted') };
+    }
+    if (!navigator.onLine) {
+      this.remoteDirty = true;
+      return { ok: false, error: t('core.sync.noInternet') };
     }
     try {
+      // 1) Lê o estado atual do servidor
+      const { data, error } = await withNetTimeout(Promise.resolve(
+        this.supabaseClient
+          .from('gdrums_favorites')
+          .select('items, current_index, setlists, updated_at')
+          .eq('user_id', this.userId)
+          .maybeSingle()
+      )) as { data: any; error: any };
+      if (error) {
+        this.remoteDirty = true;
+        try { this.onRemoteStateChange?.(); } catch { /* noop */ }
+        return { ok: false, error: error.message };
+      }
+
+      // 2) Junta local + remoto (união por id + tombstones)
+      const remoteState = this.remoteStateFrom(data);
+      // Assinatura inclui repertórios (id:qtdMúsicas) E a lista de excluídos —
+      // pra detectar tanto conteúdo novo quanto exclusão a propagar.
+      const sig = (st: MultiSetlistState | null): string => {
+        if (!st) return '|';
+        // inclui lastModified pra detectar edição que não muda a contagem
+        // (reordenar, renomear) e não só add/remove de música.
+        return st.setlists.map(s => `${s.id}:${s.items.length}:${s.lastModified || 0}`).sort().join(',') +
+          '|' + [...(st.deletedSetlists || [])].sort().join(',');
+      };
+      const before = sig(this.state);
+      this.state = this.unionSetlists(this.state, remoteState);
+      const after = sig(this.state);
+      if (before !== after) { this.saveLocal(); this.onChange?.(); }
+
+      // 3) Só ESCREVE se houver algo local a subir: edição pendente
+      //    (remoteDirty) OU o servidor não tem tudo que temos (repertório novo
+      //    OU exclusão nova). Assim o pull periódico de quem está ocioso não
+      //    gera write à toa — só leitura pra puxar de outro aparelho.
+      const serverMissingOurs = sig(remoteState) !== after;
+      if (!this.remoteDirty && !serverMissingOurs) {
+        try { this.onRemoteStateChange?.(); } catch { /* noop */ }
+        return { ok: true };
+      }
+
+      // Reescreve a UNIÃO (dual-write: coluna legada items = repertório ativo)
       const a = this.active();
-      const { error } = await this.supabaseClient
+      const { error: wErr } = await this.supabaseClient
         .from('gdrums_favorites')
         .upsert({
           user_id: this.userId,
-          // DUAL-WRITE: campos antigos recebem o repertório ATIVO — apps
-          // antigos em outros devices continuam funcionando (leem 1 setlist)
           items: a.items,
           current_index: a.currentIndex,
-          // Campo novo: estado completo dos múltiplos repertórios
           setlists: {
             setlists: this.state.setlists,
             activeId: this.state.activeId,
+            deletedSetlists: this.state.deletedSetlists || [],
           },
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
-      this.remoteDirty = !!error;
-    } catch {
-      this.remoteDirty = true; // sem rede — o retry periódico/online tenta de novo
+      this.remoteDirty = !!wErr;
+      try { this.onRemoteStateChange?.(); } catch { /* noop */ }
+      return wErr ? { ok: false, error: wErr.message } : { ok: true };
+    } catch (e: any) {
+      this.remoteDirty = true;
+      try { this.onRemoteStateChange?.(); } catch { /* noop */ }
+      return { ok: false, error: e?.message || t('core.sync.networkFailure') };
     }
   }
 }

@@ -62,6 +62,10 @@
     {
       "source": "/download/:slug",
       "destination": "/download"
+    },
+    {
+      "source": "/:code(\\d{4,8})",
+      "destination": "/index.html"
     }
   ],
   "headers": [

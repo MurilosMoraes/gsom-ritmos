@@ -54,6 +54,38 @@ export const main: Record<string, string> = {
   'main.offlineDownload.retry': 'Tentar de novo',
   'main.offlineDownload.errorText': 'Erro no download. Tente de novo.',
 
+  // ── Botão "Baixar e sincronizar" (menu) ──
+  'main.backupSync.menuLabel': 'Baixar e sincronizar',
+  'main.backupSync.menuDone': 'Baixado e sincronizado!',
+  'main.backupSync.title': 'Baixar e sincronizar',
+  'main.backupSync.sub': 'Vamos subir seus ritmos e repertórios pro servidor e baixar tudo pra tocar offline. Não feche até concluir, é rápido.',
+  'main.backupSync.syncing': 'Salvando seu trabalho na nuvem…',
+  'main.backupSync.doneText': 'Baixado e sincronizado! Seu trabalho está seguro no servidor e o app pronto pra tocar offline.',
+  'main.backupSync.nativeDoneText': 'Sincronizado! Seu trabalho está seguro no servidor.',
+  'main.backupSync.syncError': 'Não deu pra sincronizar: {error}',
+
+  // ── Pedais compatíveis ──
+  'main.compatPedals.title': 'Pedais compatíveis',
+  'main.compatPedals.subtitle': 'Mapeamento pronto pros pedais Bluetooth M-VAVE',
+  'main.compatPedals.pageTurner': 'M-VAVE Page Turner',
+  'main.compatPedals.pageTurnerTag': '2 botões',
+  'main.compatPedals.chocolate': 'M-VAVE Chocolate',
+  'main.compatPedals.chocolateTag': '4 botões',
+  'main.compatPedals.left': 'Pedal esquerdo',
+  'main.compatPedals.right': 'Pedal direito',
+  'main.compatPedals.stopped': 'parado',
+  'main.compatPedals.playing': 'tocando',
+  'main.compatPedals.double': '2 toques',
+  'main.compatPedals.start': 'inicia o ritmo',
+  'main.compatPedals.changeVar': 'troca de variação',
+  'main.compatPedals.prevVar': 'volta pra variação anterior',
+  'main.compatPedals.fill': 'faz a virada',
+  'main.compatPedals.applyFill': 'aplica a virada',
+  'main.compatPedals.finish': 'finaliza',
+  'main.compatPedals.cymbal': 'toca o prato',
+  'main.compatPedals.pauseResume': 'pausa / continua',
+  'main.compatPedals.close': 'Fechar',
+
   // ── What's New modal ──
   'main.whatsNew.overline': 'Atualização',
   'main.whatsNew.title': '+17 ritmos, equalizador e pausa no tempo.',

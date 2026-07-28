@@ -33,6 +33,9 @@ import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
+import { startMarquee, stopMarquee } from './utils/marquee';
+import { buildRhythmPayload, buildSetlistPayload, makeShareUrl, showShareResultModal, readImportFromUrl, clearImportFromUrl, type SharePayload } from './core/ShareLink';
+import { publishShare, fetchShare, shortUrl, readShareCodeFromPath, clearShareCodeFromPath, saveLocalShare, getLocalShare } from './core/ShareService';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
 // Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
@@ -84,15 +87,19 @@ class RhythmSequencer {
   private isAdminMode = false;
   private userRole: 'user' | 'admin' = 'user';
   private rhythmVersion: number = 0;
-  // Pedal — esquerdo e direito (2 botões = padrão)
-  private pedalLeft = 'ArrowLeft';
-  private pedalRight = 'ArrowRight';
-  // Pedal expandido (3 ou 4 botões — MVAVE Chocolate, etc):
-  // - 3 botões: + Play/Pause instantâneo
-  // - 4 botões: + Play/Pause + Finalização (end)
-  private pedalCount: 2 | 3 | 4 = 2;
-  private pedalPlayPause = '';  // tecla pra botão 3 (play/pause)
-  private pedalEnd = '';        // tecla pra botão 4 (finalização)
+  // Pedal — PADRÃO DE FÁBRICA: M-VAVE Chocolate (4 botões), já mapeado, pra
+  // funcionar de primeira sem o cliente configurar nada. O Chocolate manda as
+  // 4 setas; a ordem física bate com as funções:
+  //   ↑ Cima  = iniciar/trocar variação (esquerdo)
+  //   ↓ Baixo = virada/prato (direito)
+  //   ← Esq.  = pausa/continua (3º botão)
+  //   → Dir.  = finaliza (4º botão)
+  // Quem tem outro pedal (2 botões) é só remapear em "Mapear pedal".
+  private pedalLeft = 'ArrowUp';
+  private pedalRight = 'ArrowDown';
+  private pedalCount: 2 | 3 | 4 = 4;
+  private pedalPlayPause = 'ArrowLeft';  // tecla pra botão 3 (play/pause)
+  private pedalEnd = 'ArrowRight';       // tecla pra botão 4 (finalização)
   private pedalMapperOpen = false;
   private installPrompt: any = null;
   // Unlock do AudioContext (iOS) — re-armável quando o contexto cai
@@ -421,7 +428,7 @@ class RhythmSequencer {
     this.setlistEditor = new SetlistEditorUI();
     this.userRhythmService = new UserRhythmService();
     this.conversionManager = new ConversionManager();
-    this.previewPlayer = new PreviewPlayer(this.audioContext, this.audioManager);
+    this.previewPlayer = new PreviewPlayer(this.audioContext, this.audioManager, () => this.stateManager.getMasterVolume());
 
     // Setlist onChange — não atualizar UI automaticamente durante navegação
     // A UI é atualizada explicitamente após cada ação
@@ -778,6 +785,10 @@ class RhythmSequencer {
 
       // Modal de download offline — 1a vez ou quando manifest atualizar
       setTimeout(() => this.maybeShowOfflineDownload(), 6500);
+
+      // Compartilhamento: hook pro editor de repertório + import se abriu via link
+      (window as any).__gdrumsShareSetlist = (id: string) => this.shareSetlist(id);
+      setTimeout(() => this.handleShareImport(), 800);
 
       // Banner soft de notificações push — aparece pra user autenticado
       // que ainda não permitiu e não dismissou recentemente
@@ -1148,6 +1159,156 @@ class RhythmSequencer {
         }
       }
     });
+  }
+
+  /** Estado atual do "seguro": tudo sincronizado E baixado offline?
+   *  - sincronizado: sem ritmos pendentes E repertório não-sujo
+   *  - offline: nativo já vem baixado; web depende da flag do OfflineDownloader */
+  private isBackedUpAndSynced(): boolean {
+    const noPending = this.userRhythmService.getPendingCount() === 0 &&
+                      !this.setlistManager.isRemoteDirty();
+    if (!noPending) return false;
+    if (isNativeApp()) return true; // ritmos+samples já embutidos no app
+    try {
+      // 'gdrums-offline-ready' = flag setada pelo OfflineDownloader ao baixar tudo
+      return !!localStorage.getItem('gdrums-offline-ready');
+    } catch {
+      return false;
+    }
+  }
+
+  /** Pinta o botão do menu: vermelho "Baixar e sincronizar" (pendente) ou
+   *  verde "Baixado e sincronizado!" (tudo certo). Chamado no boot, ao abrir
+   *  o menu e SEMPRE que o app sincroniza sozinho (callbacks dos serviços). */
+  private updateBackupSyncBtn(): void {
+    const btn = document.getElementById('menuOfflineBtn');
+    if (!btn) return;
+    const done = this.isBackedUpAndSynced();
+    btn.classList.toggle('is-done', done);
+    const label = btn.querySelector('.menu-backup-sync-label') as HTMLElement | null;
+    const text = done ? t('main.backupSync.menuDone') : t('main.backupSync.menuLabel');
+    if (label) label.textContent = text;
+    else btn.textContent = text;
+
+    // Bolinha vermelha pulsante na engrenagem: só quando FALTA baixar/sincronizar.
+    const dot = document.getElementById('cfgSyncDot');
+    if (dot) dot.style.display = done ? 'none' : 'block';
+  }
+
+  /**
+   * Fluxo "Baixar e sincronizar": sobe ritmos+repertórios pro servidor e,
+   * na sequência, baixa tudo pra offline — SEM opção de pular o download
+   * (o user espera até concluir; é rápido). App nativo pula o download
+   * (já vem embutido) e só sincroniza. Verde só quando tudo terminou.
+   */
+  private async showBackupSyncFlow(): Promise<void> {
+    this.injectOfflineCss();
+    const overlay = document.createElement('div');
+    overlay.className = 'offline-modal-overlay';
+    overlay.innerHTML = `
+      <div class="offline-modal">
+        <div class="offline-icon">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 0 1 9-9"/></svg>
+        </div>
+        <h2 class="offline-title">${t('main.backupSync.title')}</h2>
+        <p class="offline-sub" id="bsSub">${t('main.backupSync.sub')}</p>
+        <div class="offline-stats" id="bsStats" style="display:none;">
+          <div class="offline-progress-bar"><div class="offline-progress-fill" id="bsFill" style="width:0%;"></div></div>
+          <div class="offline-progress-text" id="bsText">${t('main.offlineDownload.preparing')}</div>
+          <div class="offline-current-file" id="bsFile"></div>
+        </div>
+        <div class="offline-done" id="bsDone" style="display:none;">
+          <div class="offline-done-icon">✓</div>
+          <div class="offline-done-text" id="bsDoneText">${t('main.backupSync.doneText')}</div>
+          <button class="offline-btn offline-btn-go" id="bsClose">${t('main.offlineDownload.close')}</button>
+        </div>
+        <div class="offline-actions" id="bsError" style="display:none;">
+          <button class="offline-btn offline-btn-skip" id="bsErrClose">${t('main.offlineDownload.close')}</button>
+          <button class="offline-btn offline-btn-go" id="bsRetry">${t('main.offlineDownload.retry')}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const sub = overlay.querySelector('#bsSub') as HTMLElement;
+    const stats = overlay.querySelector('#bsStats') as HTMLElement;
+    const fill = overlay.querySelector('#bsFill') as HTMLElement;
+    const text = overlay.querySelector('#bsText') as HTMLElement;
+    const file = overlay.querySelector('#bsFile') as HTMLElement;
+    const doneDiv = overlay.querySelector('#bsDone') as HTMLElement;
+    const doneText = overlay.querySelector('#bsDoneText') as HTMLElement;
+    const errDiv = overlay.querySelector('#bsError') as HTMLElement;
+
+    const closeModal = (): void => {
+      (window as any).__refocusPedal?.();
+      overlay.remove();
+    };
+    overlay.querySelector('#bsClose')?.addEventListener('click', closeModal);
+    overlay.querySelector('#bsErrClose')?.addEventListener('click', closeModal);
+
+    const showError = (reason: string): void => {
+      sub.style.display = '';
+      sub.textContent = reason;
+      stats.style.display = 'none';
+      doneDiv.style.display = 'none';
+      errDiv.style.display = '';
+    };
+
+    const run = async (): Promise<void> => {
+      errDiv.style.display = 'none';
+      doneDiv.style.display = 'none';
+      sub.style.display = '';
+      sub.textContent = t('main.backupSync.sub');
+      stats.style.display = '';
+      file.textContent = '';
+
+      // 1) SINCRONIZAR (sobe ritmos + repertórios)
+      text.textContent = t('main.backupSync.syncing');
+      fill.style.width = '8%';
+      const rhy = await this.userRhythmService.syncAll();
+      const rep = await this.setlistManager.forceSyncNow();
+      this.updateBackupSyncBtn();
+      if (!(rhy.ok && rep.ok)) {
+        showError(t('main.backupSync.syncError', { error: rhy.firstError || rep.error || '' }));
+        return;
+      }
+
+      // 2) BAIXAR OFFLINE (nativo já vem embutido — só marca pronto)
+      if (isNativeApp()) {
+        const { markNativeReady } = await import('./native/OfflineDownloader');
+        await markNativeReady();
+        doneText.textContent = t('main.backupSync.nativeDoneText');
+      } else {
+        fill.style.width = '10%';
+        try {
+          const { downloadEverything } = await import('./native/OfflineDownloader');
+          const result = await downloadEverything((p) => {
+            const pct = Math.max(10, Math.round((p.current / p.total) * 100));
+            fill.style.width = pct + '%';
+            text.textContent = t('main.offlineDownload.progress', { current: p.current, total: p.total, pct });
+            file.textContent = p.currentFile;
+          });
+          if (!result.success) {
+            showError(t('main.offlineDownload.retryHint', { count: result.failed.length }));
+            return;
+          }
+        } catch {
+          showError(t('main.offlineDownload.errorText'));
+          return;
+        }
+        doneText.textContent = t('main.backupSync.doneText');
+      }
+
+      // 3) PRONTO — verde
+      this.updateBackupSyncBtn();
+      try { HapticsService.success(); } catch { /* noop */ }
+      stats.style.display = 'none';
+      sub.style.display = 'none';
+      doneDiv.style.display = '';
+    };
+
+    overlay.querySelector('#bsRetry')?.addEventListener('click', () => { void run(); });
+    void run();
   }
 
   private injectOfflineCss(): void {
@@ -1801,6 +1962,44 @@ class RhythmSequencer {
     });
   }
 
+  /** true se o cliente tem um pagamento CONFIRMADO que cobre além de 7 dias
+   *  a partir de agora — mesmo que o subscription_expires_at no banco não
+   *  tenha sido atualizado. Usa a data + duração do plano da última transação
+   *  confirmada. Em erro/offline retorna false (mostra o aviso normal). */
+  private async isCoveredByConfirmedPayment(now: Date): Promise<boolean> {
+    try {
+      const { supabase } = await import('./auth/supabase');
+      const { data: sess } = await supabase.auth.getSession();
+      const uid = sess.session?.user?.id;
+      if (!uid) return false;
+
+      const { data: tx } = await supabase
+        .from('gdrums_transactions')
+        .select('plan, created_at')
+        .eq('user_id', uid)
+        .eq('status', 'confirmed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!tx?.created_at || !tx?.plan) return false;
+
+      const months: Record<string, number> = {
+        mensal: 1, trimestral: 3, semestral: 6, anual: 12, 'rei-dos-palcos': 36,
+      };
+      const m = months[tx.plan as string];
+      if (!m) return false;
+
+      const coverageEnd = new Date(tx.created_at);
+      coverageEnd.setMonth(coverageEnd.getMonth() + m);
+
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      return (coverageEnd.getTime() - now.getTime()) > SEVEN_DAYS;
+    } catch {
+      return false;
+    }
+  }
+
   private showSubscriptionBanner(status: string, expires: Date, plan: string): void {
     const isPaidPlan = status === 'active' && plan !== 'trial';
     const now = new Date();
@@ -1817,21 +2016,30 @@ class RhythmSequencer {
 
       // 1x por sessão (sessionStorage) — não martela o user a cada navegação
       if (sessionStorage.getItem('gdrums-renew-modal-shown')) return;
-      sessionStorage.setItem('gdrums-renew-modal-shown', '1');
 
-      let renewMsg: string;
-      if (daysLeft <= 0) renewMsg = t('main.renewal.dueToday');
-      else if (daysLeft === 1) renewMsg = t('main.renewal.dueTomorrow');
-      else renewMsg = t('main.renewal.dueInDays', { days: daysLeft });
+      // REDE DE SEGURANÇA: se o cliente tem um pagamento CONFIRMADO que cobre
+      // além dos 7 dias, NÃO incomoda — mesmo que a data no banco
+      // (subscription_expires_at) não tenha sido atualizada pelo webhook.
+      // Resolve o "renovou e continua avisando" pra todos que pagaram.
+      void (async () => {
+        if (await this.isCoveredByConfirmedPayment(now)) return;
 
-      this.showRenewalSuggestionModal({
-        title: t('main.renewal.title'),
-        message: renewMsg + t('main.renewal.messageSuffix'),
-        ctaLabel: t('main.renewal.cta'),
-        // IAP compliance (Apple 3.1.1): nativo NUNCA abre site externo de
-// pagamento; usa /plans interno que aciona StoreKit no iOS.
-ctaUrl: '/plans?renew=true',
-      });
+        sessionStorage.setItem('gdrums-renew-modal-shown', '1');
+
+        let renewMsg: string;
+        if (daysLeft <= 0) renewMsg = t('main.renewal.dueToday');
+        else if (daysLeft === 1) renewMsg = t('main.renewal.dueTomorrow');
+        else renewMsg = t('main.renewal.dueInDays', { days: daysLeft });
+
+        this.showRenewalSuggestionModal({
+          title: t('main.renewal.title'),
+          message: renewMsg + t('main.renewal.messageSuffix'),
+          ctaLabel: t('main.renewal.cta'),
+          // IAP compliance (Apple 3.1.1): nativo NUNCA abre site externo de
+          // pagamento; usa /plans interno que aciona StoreKit no iOS.
+          ctaUrl: '/plans?renew=true',
+        });
+      })();
       return;
     }
 
@@ -3300,14 +3508,15 @@ ctaUrl: '/plans?renew=true',
     }
     this.applyAudioFxFromStorage(); // aplica EQ/reverb salvos ao iniciar
 
-    // Info pedal
-    const pedalInfoBtn = document.getElementById('pedalInfoBtn');
-    if (pedalInfoBtn) {
-      pedalInfoBtn.addEventListener('click', () => {
-        if (fabDropdown) fabDropdown.style.display = 'none';
-        this.showPedalInfo();
-      });
+    // Tamanho da fonte
+    const fontSizeBtn = document.getElementById('fontSizeBtn');
+    if (fontSizeBtn) {
+      fontSizeBtn.addEventListener('click', () => this.showFontSizePanel());
     }
+
+    // Info pedal
+    // "Como usar o pedal" removido da config — o conteúdo já vive dentro do
+    // Manual do Usuário (evita duplicar a mesma informação em dois lugares).
 
     // Botões de loja no TOPO — só em clientes NÃO-nativos (web/PWA).
     // No app nativo ficam escondidos (o usuário já baixou).
@@ -3324,31 +3533,22 @@ ctaUrl: '/plans?renew=true',
       }
     }
 
-    // Baixar offline (manual — user pode forçar mesmo se já tá baixado)
+    // "Baixar e sincronizar" — sobe ritmos+repertórios pro servidor E baixa
+    // tudo pra offline, numa tacada. Vermelho quando há pendência; verde
+    // "Baixado e sincronizado!" quando está tudo certo (fica verde sozinho
+    // quando o app sincroniza automático — ver setOnPendingChange abaixo).
     const offlineBtn = document.getElementById('menuOfflineBtn');
     if (offlineBtn) {
-      offlineBtn.addEventListener('click', async () => {
+      offlineBtn.addEventListener('click', () => {
         if (fabDropdown) fabDropdown.style.display = 'none';
-        // No app nativo, ritmos+samples já estão bundleados — não há nada pra baixar.
-        if (isNativeApp()) {
-          const { markNativeReady } = await import('./native/OfflineDownloader');
-          await markNativeReady();
-          Toast.show(t('main.toast.allOffline'), { type: 'success' });
-          return;
-        }
-        // Limpa o "pulado" pra modal mostrar de novo
-        localStorage.removeItem('gdrums-offline-skipped');
-        try {
-          const manifestRes = await fetch('/rhythm/manifest.json');
-          const manifest = await manifestRes.json();
-          const { getOfflineStatus } = await import('./native/OfflineDownloader');
-          const status = await getOfflineStatus();
-          this.showOfflineDownloadModal(manifest.version || 0, status.ready);
-        } catch {
-          Toast.show(t('main.toast.offlineCheckFailed'), { type: 'warn' });
-        }
+        void this.showBackupSyncFlow();
       });
     }
+    // Mantém o botão refletindo a realidade: estado inicial + sempre que o
+    // app sincronizar sozinho (ritmos ou repertórios).
+    this.updateBackupSyncBtn();
+    this.userRhythmService.setOnPendingChange(() => this.updateBackupSyncBtn());
+    this.setlistManager.setOnRemoteStateChange(() => this.updateBackupSyncBtn());
 
     // Mapear pedal
     const pedalMapBtn = document.getElementById('pedalMapBtn');
@@ -3356,6 +3556,14 @@ ctaUrl: '/plans?renew=true',
       pedalMapBtn.addEventListener('click', () => {
         if (fabDropdown) fabDropdown.style.display = 'none';
         this.showPedalMapper();
+      });
+    }
+
+    const compatPedalsBtn = document.getElementById('compatPedalsBtn');
+    if (compatPedalsBtn) {
+      compatPedalsBtn.addEventListener('click', () => {
+        if (fabDropdown) fabDropdown.style.display = 'none';
+        this.showCompatiblePedals();
       });
     }
 
@@ -3405,47 +3613,9 @@ ctaUrl: '/plans?renew=true',
     //   (caso comum: user já dispensou o prompt OU browser não suporta)
     // - iOS Safari (não tem beforeinstallprompt): sempre mostra tutorial
     // - Já instalado (standalone): botão fica hidden
-    const menuInstallBtn = document.getElementById('menuInstallBtn');
-    // Esconder em PWA standalone OU Capacitor app nativo (já está instalado).
-    const isStandalonePWA = window.matchMedia('(display-mode: standalone)').matches
-      || (navigator as any).standalone === true
-      || isNativeApp();
-    if (menuInstallBtn) {
-      menuInstallBtn.style.display = isStandalonePWA ? 'none' : '';
-
-      // Android web: existe app oficial na Play Store. Label muda pra ficar
-      // claro que vai abrir a loja, não instalar PWA.
-      if (isAndroidWeb()) {
-        menuInstallBtn.textContent = t('main.install.playStoreButton');
-      }
-
-      menuInstallBtn.addEventListener('click', () => {
-        const fabDropdown = document.getElementById('fabDropdown');
-        if (fabDropdown) fabDropdown.style.display = 'none';
-
-        // Android web: existe app nativo na Play Store, então PWA fragmenta
-        // a base de usuários. Sempre prioriza loja sobre PWA.
-        if (isAndroidWeb()) {
-          openPlayStore();
-          return;
-        }
-
-        if (this.installPrompt) {
-          // Desktop com prompt capturado — dispara nativo
-          this.installPrompt.prompt();
-          this.installPrompt.userChoice.then((choice: any) => {
-            if (choice.outcome === 'accepted') {
-              this.modalManager.show(t('main.modal.appInstalledTitle'), t('main.modal.appInstalledBody'), 'success');
-              menuInstallBtn.style.display = 'none';
-            }
-            this.installPrompt = null;
-          });
-        } else {
-          // iOS OU Desktop sem prompt disponível — tutorial manual
-          this.showInstallTutorial();
-        }
-      });
-    }
+    // Botão "Instalar app / Baixar na Play Store" removido da config (a pedido).
+    // Os botões de loja continuam no topo (hdrPlayStoreBtn/hdrAppStoreBtn) pra
+    // clientes web/PWA descobrirem o app nativo.
 
     // Fab menu toggle
     const fabMenu = document.getElementById('fabMenu');
@@ -3453,7 +3623,11 @@ ctaUrl: '/plans?renew=true',
     if (fabMenu && fabDropdown) {
       fabMenu.addEventListener('click', (e) => {
         e.stopPropagation();
-        fabDropdown.style.display = fabDropdown.style.display === 'none' ? 'block' : 'none';
+        const opening = fabDropdown.style.display === 'none';
+        fabDropdown.style.display = opening ? 'block' : 'none';
+        // Ao abrir o menu, garante que o botão reflete o estado atual
+        // (ex.: baixou offline pelo popup do boot, ou sincronizou sozinho).
+        if (opening) this.updateBackupSyncBtn();
       });
       document.addEventListener('click', () => {
         fabDropdown.style.display = 'none';
@@ -4061,6 +4235,123 @@ ctaUrl: '/plans?renew=true',
     document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
   }
 
+  /**
+   * Tela "Pedais compatíveis" — mostra o mapeamento pronto dos pedais M-VAVE
+   * (Page Turner, 2 pedais; Chocolate, 4 botões). Minimalista, nas cores do
+   * app. Só informativo (não configura nada).
+   */
+  private showCompatiblePedals(): void {
+    const T = (k: string): string => t(`main.compatPedals.${k}`);
+
+    // Paleta do app
+    const CYAN = '#00d4ff', PURPLE = '#8b5cf6', GREEN = '#00e68c', ORANGE = '#f9a03c';
+    // Pílula de estado (por estado: parado=neutro, tocando=verde, 2 toques=laranja)
+    const STATE: Record<string, [string, string, string, string]> = {
+      stopped: ['stopped', '#9aa3b2', 'rgba(154,163,178,0.12)', 'rgba(154,163,178,0.3)'],
+      playing: ['playing', GREEN, 'rgba(0,230,140,0.12)', 'rgba(0,230,140,0.32)'],
+      double: ['double', ORANGE, 'rgba(249,160,60,0.14)', 'rgba(249,160,60,0.36)'],
+    };
+    const pill = (txt: string, col: string, bg: string, bd: string): string =>
+      `<span style="flex-shrink:0;display:inline-block;font-size:0.56rem;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:${col};background:${bg};border:1px solid ${bd};border-radius:999px;padding:0.12rem 0.45rem;">${txt}</span>`;
+    // linha "estado → ação"
+    const line = (stateKey: string, actionKey: string): string => {
+      const [labelKey, col, bg, bd] = STATE[stateKey];
+      return `<div style="display:flex;align-items:center;gap:0.5rem;margin:0.32rem 0;">
+        ${pill(T(labelKey), col, bg, bd)}
+        <span style="font-size:0.8rem;color:rgba(255,255,255,0.74);line-height:1.3;">${T(actionKey)}</span>
+      </div>`;
+    };
+    // linha simples (botão de ação única, sem estado)
+    const plain = (actionKey: string): string =>
+      `<div style="font-size:0.8rem;color:rgba(255,255,255,0.74);margin:0.32rem 0;">${T(actionKey)}</div>`;
+    const head = (label: string, color: string): string =>
+      `<div style="font-size:0.62rem;font-weight:800;text-transform:uppercase;letter-spacing:0.9px;color:${color};margin:0 0 0.2rem;">${label}</div>`;
+
+    // Visual do Page Turner (2 treadles com textura diagonal)
+    const treadle = (color: string): string =>
+      `<div style="flex:1;height:54px;border-radius:9px;background:repeating-linear-gradient(120deg, ${color}26 0 5px, ${color}0a 5px 11px);border:1px solid ${color}66;"></div>`;
+    // Visual do Chocolate (4 footswitches redondos)
+    const chip = (letter: string, color: string): string =>
+      `<div style="width:34px;height:34px;border-radius:50%;background:${color}1f;border:1.5px solid ${color}80;display:flex;align-items:center;justify-content:center;font-size:0.82rem;font-weight:800;color:${color};">${letter}</div>`;
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+    overlay.innerHTML = `
+      <div style="background:rgba(10,10,26,0.96);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:1.5rem;max-width:520px;width:100%;max-height:88vh;overflow-y:auto;">
+        <h2 style="font-size:1.2rem;font-weight:700;color:#fff;margin:0 0 0.35rem;text-align:center;">${T('title')}</h2>
+        <p style="font-size:0.74rem;color:rgba(255,255,255,0.34);text-align:center;margin:0 0 1.35rem;">${T('subtitle')}</p>
+
+        <!-- Page Turner -->
+        <div style="margin-bottom:1.5rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+            <span style="font-size:0.92rem;font-weight:700;color:#fff;">${T('pageTurner')}</span>
+            <span style="font-size:0.6rem;font-weight:700;color:${CYAN};background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.28);border-radius:999px;padding:0.1rem 0.45rem;">${T('pageTurnerTag')}</span>
+          </div>
+          <div style="position:relative;max-width:236px;margin:0.55rem auto 0.85rem;border-radius:10px;overflow:hidden;">
+            <img src="/img/pedal-pageturner.png" alt="M-VAVE Page Turner" style="width:100%;display:block;filter:brightness(0.8) contrast(1.05) saturate(1.05);" onerror="this.style.display='none';this.parentElement.querySelector('.pd-vig').style.display='none';this.parentElement.querySelector('.pd-fb').style.display='flex';">
+            <div class="pd-vig" style="position:absolute;inset:0;pointer-events:none;border-radius:10px;box-shadow:inset 0 0 12px 4px rgba(0,0,0,0.85);"></div>
+            <div class="pd-fb" style="display:none;gap:0.6rem;align-items:center;background:linear-gradient(160deg,#1c1c30,#0c0c1a);padding:0.7rem;">
+              ${treadle(CYAN)}${treadle(PURPLE)}
+            </div>
+          </div>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+            <div style="flex:1;min-width:170px;">
+              ${head(T('left'), CYAN)}
+              ${line('stopped', 'start')}
+              ${line('playing', 'changeVar')}
+              ${line('double', 'prevVar')}
+            </div>
+            <div style="flex:1;min-width:170px;">
+              ${head(T('right'), PURPLE)}
+              ${line('playing', 'fill')}
+              ${line('double', 'finish')}
+              ${line('stopped', 'cymbal')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Chocolate -->
+        <div style="margin-bottom:0.5rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+            <span style="font-size:0.92rem;font-weight:700;color:#fff;">${T('chocolate')}</span>
+            <span style="font-size:0.6rem;font-weight:700;color:${PURPLE};background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.28);border-radius:999px;padding:0.1rem 0.45rem;">${T('chocolateTag')}</span>
+          </div>
+          <div style="position:relative;max-width:340px;margin:0.55rem auto 0.85rem;border-radius:10px;overflow:hidden;">
+            <img src="/img/pedal-chocolate.png" alt="M-VAVE Chocolate" style="width:100%;display:block;filter:brightness(0.8) contrast(1.05) saturate(1.05);" onerror="this.style.display='none';this.parentElement.querySelector('.pd-vig').style.display='none';this.parentElement.querySelector('.pd-fb').style.display='flex';">
+            <div class="pd-vig" style="position:absolute;inset:0;pointer-events:none;border-radius:10px;box-shadow:inset 0 0 12px 4px rgba(0,0,0,0.85);"></div>
+            <div class="pd-fb" style="display:none;gap:0.6rem;justify-content:space-around;align-items:center;background:linear-gradient(160deg,#1c1c30,#0c0c1a);padding:0.8rem;">
+              ${chip('A', CYAN)}${chip('B', PURPLE)}${chip('C', GREEN)}${chip('D', ORANGE)}
+            </div>
+          </div>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+            <div style="flex:1;min-width:170px;">
+              ${head('A', CYAN)}
+              ${line('stopped', 'start')}
+              ${line('playing', 'changeVar')}
+              ${line('double', 'prevVar')}
+            </div>
+            <div style="flex:1;min-width:170px;">
+              ${head('B', PURPLE)}
+              ${line('playing', 'applyFill')}
+              ${line('stopped', 'cymbal')}
+              <div style="margin-top:0.6rem;">${head('C', GREEN)}${plain('pauseResume')}</div>
+              <div style="margin-top:0.6rem;">${head('D', ORANGE)}${plain('finish')}</div>
+            </div>
+          </div>
+        </div>
+
+        <button id="closeCompatPedals" style="width:100%;margin-top:1.25rem;padding:0.7rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.62);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">${T('close')}</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    const close = () => { overlay.remove(); (window as any).__refocusPedal?.(); };
+    overlay.querySelector('#closeCompatPedals')!.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+  }
+
   private showUserManual(): void {
     const dd = document.getElementById('fabDropdown');
     if (dd) dd.style.display = 'none';
@@ -4273,6 +4564,58 @@ ctaUrl: '/plans?renew=true',
     } catch { /* noop */ }
   }
 
+  /** Painel de Tamanho da Fonte — escala o font-size do html (tudo é rem, então
+   *  texto + botões escalam juntos, sem estourar). Presets de 10 em 10%. */
+  private showFontSizePanel(): void {
+    const dd = document.getElementById('fabDropdown');
+    if (dd) dd.style.display = 'none';
+    document.querySelectorAll('.fs-overlay').forEach(el => el.remove());
+
+    const PRESETS = [50, 60, 70, 80, 90, 100, 110];
+    const DEFAULT_FS = 70;
+    const readScale = (): number => {
+      const s = parseInt(localStorage.getItem('gdrums-font-scale') || '', 10);
+      return (!s || s < 50 || s > 110) ? DEFAULT_FS : s;
+    };
+    const current = readScale();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'fs-overlay';
+    const btns = PRESETS.map(p =>
+      `<button class="fs-preset${p === current ? ' active' : ''}" data-fs="${p}">${p}%${p === DEFAULT_FS ? '<span class="fs-tag">padrão</span>' : ''}</button>`
+    ).join('');
+    overlay.innerHTML = `
+      <div class="fs-card" role="dialog" aria-label="Tamanho da fonte">
+        <div class="fs-head">
+          <div class="fs-title">Tamanho da fonte</div>
+          <button class="fs-close" id="fsClose" aria-label="Fechar">&#10005;</button>
+        </div>
+        <div class="fs-sub">Ajuste o texto do app inteiro. Toque num tamanho:</div>
+        <div class="fs-grid">${btns}</div>
+        <div class="fs-hint">Prévia: <span class="fs-sample">Ritmo 1 · Virada · Bolero 115</span></div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const apply = (scale: number): void => {
+      // Preset 70 = tamanho ORIGINAL do app (antigo 100% do navegador).
+      document.documentElement.style.fontSize = (scale / 70 * 100) + '%';
+      try { localStorage.setItem('gdrums-font-scale', String(scale)); } catch { /* noop */ }
+      overlay.querySelectorAll('.fs-preset').forEach(b =>
+        b.classList.toggle('active', Number((b as HTMLElement).dataset.fs) === scale));
+      HapticsService.light();
+    };
+
+    overlay.querySelectorAll('.fs-preset').forEach(b =>
+      b.addEventListener('click', () => apply(Number((b as HTMLElement).dataset.fs))));
+
+    const close = (): void => overlay.remove();
+    overlay.querySelector('#fsClose')?.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+    });
+  }
+
   /** Painel de Equalizador (5 bandas) + Reverb, nas cores do app. */
   private openEqPanel(): void {
     const dd = document.getElementById('fabDropdown');
@@ -4362,6 +4705,55 @@ ctaUrl: '/plans?renew=true',
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   }
 
+  /** Modal "Configurar Chocolate" — passo a passo pra configurar o pedal
+   *  M-VAVE Chocolate via o site de configuração (Web Bluetooth). */
+  private showChocolateConfig(): void {
+    const CFG_URL = 'https://gdrums-chocolate.vercel.app';
+    const c = '#d8a064'; // marrom "chocolate"
+    const step = (n: number, html: string): string => `
+      <li style="display:flex;gap:0.85rem;align-items:flex-start;margin-bottom:1.05rem;">
+        <span style="flex-shrink:0;width:2.1rem;height:2.1rem;border-radius:50%;background:rgba(180,120,60,0.16);border:1.5px solid rgba(180,120,60,0.55);color:${c};font-size:1rem;font-weight:800;display:flex;align-items:center;justify-content:center;">${n}</span>
+        <span style="font-size:1.08rem;color:rgba(255,255,255,0.9);line-height:1.55;">${html}</span>
+      </li>`;
+    const b = (s: string): string => `<strong style="color:#fff;">${s}</strong>`;
+    const arrowDown = `<span style="display:inline-block;color:${c};font-weight:800;font-size:1.35rem;line-height:0;vertical-align:middle;margin-left:0.25rem;">↓</span>`;
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:0.6rem;';
+    overlay.innerHTML = `
+      <div style="background:rgba(10,10,26,0.98);border:1px solid rgba(180,120,60,0.35);border-radius:20px;padding:1.7rem 1.4rem;max-width:640px;width:100%;max-height:96vh;overflow-y:auto;">
+        <h2 style="font-size:1.6rem;font-weight:800;color:#fff;margin:0 0 0.3rem;text-align:center;">Configurar Chocolate</h2>
+        <p style="font-size:0.95rem;color:rgba(255,255,255,0.45);text-align:center;margin:0 0 1.5rem;">Deixa o M-VAVE Chocolate pronto pro GDrums</p>
+
+        <ol style="list-style:none;padding:0;margin:0;">
+          ${step(1, `Ligue o pedal na chave ${b('H')}.`)}
+          ${step(2, `Aperte ao mesmo tempo o botão ${b('1 e 4')} (${b('A e D')}) e segure os dois por ${b('10 segundos')} pra resetar o pedal. Precisa aparecer ${b('000')} na tela. Desligue e ligue novamente no ${b('H')}, irá aparecer ${b('001')}.`)}
+          ${step(3, `Ligue o ${b('Bluetooth do celular')} e ${b('NÃO conecte o pedal ainda')}. Se ele já estiver conectado, ${b('desconecte')}.`)}
+          ${step(4, `Com a luz do pedal ${b('piscando')}, abra o site de configuração no botão abaixo ${arrowDown}`)}
+        </ol>
+
+        <button id="chocoCfgOpen" style="width:100%;padding:1.05rem;margin:0.2rem 0 0.4rem;border:none;border-radius:14px;background:linear-gradient(160deg,rgba(180,120,60,0.95),rgba(120,74,34,0.95));color:#fff;font-size:1.1rem;font-weight:800;font-family:inherit;cursor:pointer;">Abrir o site de configuração</button>
+
+        <ol style="list-style:none;padding:0;margin:1.2rem 0 0;">
+          ${step(5, `No site, toque em ${b('“Configurar meu pedal”')}. Vai abrir uma janela de conexão Bluetooth ${b('do site')} — não é a do celular.`)}
+          ${step(6, `Selecione o ${b('FootCtrl')} nessa janela e clique em ${b('PAREAR')}. A configuração é ${b('automática')}.`)}
+        </ol>
+
+        <div style="background:rgba(255,200,60,0.06);border:1px solid rgba(255,200,60,0.25);border-radius:14px;padding:0.95rem 1.05rem;margin:0.4rem 0 1.2rem;display:flex;flex-direction:column;gap:0.7rem;">
+          <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs 1:</strong> Na tela do pedal deve aparecer ${b('n10')}. Ao abrir a janela de Bluetooth do site, o celular pode pedir autorização da ferramenta — ${b('autorize')} pra dar certo.</span>
+          <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs 2:</strong> Se não funcionar, ${b('feche o app e abra de novo')}. Se mesmo assim não der certo, refaça o processo e escolha a opção ${b('Keyboard B')} (alternativo).</span>
+        </div>
+
+        <button id="chocoCfgClose" style="width:100%;padding:0.9rem;border:none;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.65);font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer;">Fechar</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = (): void => { overlay.remove(); (window as any).__refocusPedal?.(); };
+    overlay.querySelector('#chocoCfgOpen')!.addEventListener('click', () => { openExternal(CFG_URL); });
+    overlay.querySelector('#chocoCfgClose')!.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
   private showPedalMapper(): void {
     const keyLabels: Record<string, string> = {
       // e.code values
@@ -4434,6 +4826,8 @@ ctaUrl: '/plans?renew=true',
 
           <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(0,210,255,0.7);min-height:1.4rem;margin-bottom:0.9rem;">${listening ? t('main.pedalMapper.listeningStatus', { label: listening === 'playPause' ? t('main.pedalMapper.label.playPause') : listening === 'end' ? t('main.pedalMapper.label.end') : listening === 'left' ? t('main.pedalMapper.label.left') : t('main.pedalMapper.label.right') }) : ''}</div>
 
+          ${tempCount === 4 ? `<button id="pedalChocolateCfg" style="width:100%;padding:0.6rem;margin-bottom:0.7rem;border-radius:10px;background:rgba(180,120,60,0.12);border:1px solid rgba(180,120,60,0.4);color:rgba(216,160,100,0.95);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">Configurar Chocolate</button>` : ''}
+
           <div style="display:flex;gap:0.5rem;">
             <button id="pedalReset" style="flex:1;padding:0.6rem;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">${t('main.pedalMapper.resetButton')}</button>
             <button id="pedalSave" style="flex:2;padding:0.6rem;border-radius:10px;background:rgba(0,230,140,0.12);border:1px solid rgba(0,230,140,0.25);color:rgba(0,230,140,0.9);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">${t('main.pedalMapper.saveButton')}</button>
@@ -4468,11 +4862,16 @@ ctaUrl: '/plans?renew=true',
       if (tempCount >= 4) wireBtn('end');
 
       overlay.querySelector('#pedalReset')!.addEventListener('click', () => {
-        tempLeft = 'ArrowLeft'; tempRight = 'ArrowRight';
-        tempPlayPause = ''; tempEnd = '';
-        tempCount = 2;
+        // Padrão de fábrica: M-VAVE Chocolate (4 botões) já mapeado.
+        tempLeft = 'ArrowUp'; tempRight = 'ArrowDown';
+        tempPlayPause = 'ArrowLeft'; tempEnd = 'ArrowRight';
+        tempCount = 4;
         listening = null; render();
         mapperInput.focus({ preventScroll: true });
+      });
+
+      overlay.querySelector('#pedalChocolateCfg')?.addEventListener('click', () => {
+        this.showChocolateConfig();
       });
 
       overlay.querySelector('#pedalSave')!.addEventListener('click', () => {
@@ -5701,6 +6100,30 @@ ctaUrl: '/plans?renew=true',
    * - Enter no input salva direto
    * - Toast com "Renomear" depois do save — pode corrigir em 5s sem abrir modal
    */
+  /** Tira a foto congelada do ritmo carregado. Chamado no load, junto com a
+   *  identidade. Deep-clone via JSON pra a foto NÃO compartilhar memória com
+   *  o estado vivo (senão o motor mexendo depois mudaria a foto). */
+  private captureEditSnapshot(): void {
+    try {
+      this.editSnapshot = JSON.parse(JSON.stringify(this.fileManager.exportProjectAsJSON()));
+    } catch {
+      this.editSnapshot = null;
+    }
+  }
+
+  /** Dado que o disquete verde vai salvar. No modo usuário, usa a FOTO do
+   *  ritmo escolhido (com o BPM atual) — nunca o estado vivo, pra não salvar
+   *  o ritmo errado que esteja tocando/pausado. No admin (edita padrão ao
+   *  vivo) ou sem foto, cai pro estado real. */
+  private rhythmDataForSave(bpm: number): any {
+    if (!this.isAdminMode && this.editSnapshot) {
+      const snap = JSON.parse(JSON.stringify(this.editSnapshot));
+      snap.tempo = bpm;
+      return snap;
+    }
+    return this.fileManager.exportProjectAsJSON();
+  }
+
   private showSaveRhythmModal(): void {
     if (!this.currentRhythmName && !this.stateManager.getState().patterns.main.some(r => r.some(s => s))) {
       this.modalManager.show(t('main.modal.myRhythmsTitle'), t('main.modal.loadRhythmBeforeSave'), 'warning');
@@ -5879,7 +6302,7 @@ ctaUrl: '/plans?renew=true',
       const v = validate();
       if (!v) return;
 
-      const rhythmData = this.fileManager.exportProjectAsJSON();
+      const rhythmData = this.rhythmDataForSave(v.bpm);
       const isLibraryRhythm = this.availableRhythms.some(r => r.name === this.currentRhythmName);
       const baseRhythmName = isLibraryRhythm
         ? this.currentRhythmName
@@ -5907,7 +6330,7 @@ ctaUrl: '/plans?renew=true',
       const v = validate();
       if (!v) return;
 
-      const rhythmData = this.fileManager.exportProjectAsJSON();
+      const rhythmData = this.rhythmDataForSave(v.bpm);
       await this.userRhythmService.update(editing.id, v.name, v.bpm, rhythmData);
       this.currentUserRhythmId = editing.id;
       this.persistDisabledVariations(); // salva as desativadas no ritmo atualizado
@@ -5953,6 +6376,105 @@ ctaUrl: '/plans?renew=true',
       const btn = document.querySelector(`[data-rename="${rhythmId}"]`) as HTMLElement | null;
       btn?.click();
     }, 300);
+  }
+
+  // ─── Compartilhar / Importar ────────────────────────────────────────
+
+  /** Gera o CÓDIGO curto: tenta o backend (cross-device); sem ele, gera um
+   *  código local (localStorage, abre no mesmo aparelho). */
+  private async getShareCode(payload: SharePayload): Promise<string> {
+    try {
+      const code = await publishShare(payload);
+      if (code) return code;
+    } catch { /* backend indisponível — código local abaixo */ }
+    return saveLocalShare(payload);
+  }
+
+  /** Compartilha um repertório: embute os ritmos pessoais e gera o link. */
+  private async shareSetlist(id: string): Promise<void> {
+    const items = this.setlistManager.getItemsOf(id);
+    const name = this.setlistManager.getNameOf(id) || 'Repertório';
+    if (items.length === 0) { Toast.show('Esse repertório está vazio', { type: 'info' }); return; }
+    const payload = buildSetlistPayload(name, items, (rid) => this.userRhythmService.getById(rid));
+    const code = await this.getShareCode(payload);
+    showShareResultModal(shortUrl(code), name, 'Repertório');
+  }
+
+  /** Se o app abriu por um link de compartilhar, mostra o preview.
+   *  Suporta o link CURTO (/r/CÓDIGO, via backend) e o auto-contido (#import=). */
+  private async handleShareImport(): Promise<void> {
+    const code = readShareCodeFromPath();
+    if (code) {
+      clearShareCodeFromPath();
+      // backend primeiro (cross-device); senão, o store LOCAL (mesmo aparelho)
+      const payload = (await fetchShare(code)) || getLocalShare(code);
+      if (payload) { this.showImportPreview(payload); return; }
+      Toast.show('Esse link curto não abriu aqui. No teste sem backend, o link curto só abre no MESMO aparelho onde foi criado (pro celular precisa do SQL).', { type: 'warn', durationMs: 9000 });
+      return;
+    }
+    const payload = await readImportFromUrl();
+    if (!payload) return;
+    clearImportFromUrl();
+    this.showImportPreview(payload);
+  }
+
+  /** Preview do conteúdo compartilhado + botão importar (clona na conta). */
+  private showImportPreview(payload: SharePayload): void {
+    const esc = (s: string): string => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+    const isRhythm = payload.t === 'r';
+    const count = payload.items?.length || 0;
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:1rem;';
+    overlay.innerHTML = `
+      <div style="background:rgba(10,10,26,0.97);border:1px solid rgba(250,204,21,0.35);border-radius:20px;padding:1.5rem;max-width:400px;width:100%;text-align:center;">
+        <h2 style="font-size:1.15rem;font-weight:700;color:#fff;margin:0 0 0.3rem;">Alguém compartilhou com você</h2>
+        <p style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin:0 0 0.3rem;">${isRhythm ? 'Ritmo' : 'Repertório'}</p>
+        <div style="font-size:1.05rem;font-weight:700;color:#facc15;margin:0 0 0.4rem;word-break:break-word;">${esc(payload.title || '')}</div>
+        ${!isRhythm ? `<p style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin:0 0 1.1rem;">${count} ${count === 1 ? 'música' : 'músicas'}</p>` : '<div style="margin-bottom:1.1rem;"></div>'}
+        <button id="impDoBtn" style="width:100%;padding:0.8rem;border:none;border-radius:12px;background:linear-gradient(160deg,rgba(250,204,21,0.95),rgba(202,138,4,0.95));color:#1a1400;font-size:0.92rem;font-weight:800;font-family:inherit;cursor:pointer;margin-bottom:0.6rem;">Importar pra minha conta</button>
+        <button id="impCancelBtn" style="width:100%;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">Agora não</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = (): void => { overlay.remove(); (window as any).__refocusPedal?.(); };
+    overlay.querySelector('#impCancelBtn')!.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    const doBtn = overlay.querySelector('#impDoBtn') as HTMLButtonElement;
+    doBtn.addEventListener('click', async () => {
+      doBtn.disabled = true;
+      doBtn.textContent = 'Importando…';
+      try {
+        if (isRhythm) {
+          await this.userRhythmService.save(payload.title || 'Ritmo', payload.bpm || 80, payload.data, payload.base, true);
+        } else {
+          // 1) recria os ritmos pessoais embutidos (ids novos)
+          const map: Record<string, string> = {};
+          const rhythms = payload.rhythms || {};
+          for (const k of Object.keys(rhythms)) {
+            const rh = rhythms[k];
+            const nr = await this.userRhythmService.save(rh.name, rh.bpm || 80, rh.data, rh.base, true);
+            map[k] = nr.id;
+          }
+          // 2) cria o repertório (marcado como compartilhado) e monta os itens
+          const newId = this.setlistManager.createSetlist(payload.title || 'Repertório', true);
+          if (newId) {
+            for (const it of (payload.items || [])) {
+              const item: any = { name: it.name, path: it.path || '', bpm: it.bpm, baseRhythmName: it.base };
+              if (it.k && map[it.k]) item.userRhythmId = map[it.k];
+              this.setlistManager.addItemTo(newId, item);
+            }
+          }
+        }
+        this.updateSetlistUI();
+        this.renderRhythmStrip();
+        close();
+        Toast.show(isRhythm ? 'Ritmo importado!' : 'Repertório importado!', { type: 'success', durationMs: 5000 });
+      } catch (e: any) {
+        doBtn.disabled = false;
+        doBtn.textContent = 'Importar pra minha conta';
+        Toast.show('Falha ao importar: ' + (e?.message || ''), { type: 'warn', durationMs: 7000 });
+      }
+    });
   }
 
   /**
@@ -6006,7 +6528,7 @@ ctaUrl: '/plans?renew=true',
                </div>`)
         : `<div class="x-rhythms-list">${
             filtered.map(r => `
-              <div class="x-rhythm-card" data-id="${r.id}">
+              <div class="x-rhythm-card ${r.sharedImport ? 'x-shared' : ''}" data-id="${r.id}">
                 <span class="x-rhythm-accent"></span>
                 <div class="x-rhythm-content">
                   <div class="x-rhythm-top">
@@ -6014,6 +6536,9 @@ ctaUrl: '/plans?renew=true',
                     <div class="x-rhythm-actions">
                       <button class="x-rhythm-action" data-rename="${r.id}" aria-label="${t('main.myRhythms.renameAriaLabel')}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                      </button>
+                      <button class="x-rhythm-action" data-share="${r.id}" aria-label="Compartilhar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                       </button>
                       <button class="x-rhythm-action danger" data-delete="${r.id}" aria-label="${t('main.myRhythms.deleteAriaLabel')}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
@@ -6023,7 +6548,7 @@ ctaUrl: '/plans?renew=true',
                   <div class="x-rhythm-bottom">
                     <div class="x-rhythm-meta">
                       ${r.base_rhythm_name ? `<span class="x-rhythm-base">${t('main.myRhythms.basedOn', { name: escapeHtml(r.base_rhythm_name) })}</span>` : ''}
-                      ${!r.synced ? `${r.base_rhythm_name ? '<span class="x-rhythm-meta-dot"></span>' : ''}<button class="x-rhythm-pending" data-sync-one="${r.id}" title="${t('main.myRhythms.syncTooltip')}">${t('main.myRhythms.pendingSync')}</button>` : ''}
+                      ${!r.synced ? `${r.base_rhythm_name ? '<span class="x-rhythm-meta-dot"></span>' : ''}<button class="x-rhythm-sync-arrow" data-goto-sync title="${t('main.myRhythms.syncTooltip')}" aria-label="${t('main.myRhythms.syncTooltip')}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>` : ''}
                     </div>
                     <div class="x-bpm-ctrl" data-bpm-ctrl="${r.id}" aria-label="${t('main.myRhythms.bpmAriaLabel')}">
                       <button class="x-bpm-btn" data-bpm-step="-1" aria-label="${t('main.myRhythms.bpmDecreaseAriaLabel')}">&minus;</button>
@@ -6098,12 +6623,25 @@ ctaUrl: '/plans?renew=true',
         renderList();
       });
 
-      // Tap no card = carregar ritmo
+      // 1º toque no card = SELECIONA e liga o letreiro (dá pra ler o nome
+      // inteiro se for longo). 2º toque no MESMO card = carrega o ritmo.
+      // Só um card selecionado por vez pra não animar a lista toda.
       overlay.querySelectorAll<HTMLElement>('.x-rhythm-card').forEach(card => {
         card.addEventListener('click', (e) => {
           const target = e.target as HTMLElement;
           // Ignora cliques nos botões de ação, no controle de BPM ou em inputs
           if (target.closest('.x-rhythm-action, .x-rhythm-name-input, .x-bpm-ctrl')) return;
+          if (!card.classList.contains('x-rhythm-selected')) {
+            overlay.querySelectorAll<HTMLElement>('.x-rhythm-card.x-rhythm-selected').forEach(other => {
+              other.classList.remove('x-rhythm-selected');
+              const n = other.querySelector('.x-rhythm-name') as HTMLElement | null;
+              if (n) stopMarquee(n);
+            });
+            card.classList.add('x-rhythm-selected');
+            const nameEl = card.querySelector('.x-rhythm-name') as HTMLElement | null;
+            if (nameEl) startMarquee(nameEl);
+            return;
+          }
           const id = card.dataset.id!;
           const rhythm = this.userRhythmService.getById(id);
           if (!rhythm) return;
@@ -6113,20 +6651,14 @@ ctaUrl: '/plans?renew=true',
         });
       });
 
-      // Badge "pendente sync": tap = tenta subir AGORA e mostra o motivo
-      // real se falhar (antes o erro era invisível, só no console)
-      overlay.querySelectorAll<HTMLElement>('[data-sync-one]').forEach(badge => {
-        badge.addEventListener('click', async (e) => {
+      // Seta vermelha "não salvo na nuvem": tap = fecha o Meus Ritmos e
+      // dispara DIRETO o "Baixar e sincronizar" (mesma ação do botão da
+      // config, como se o user tivesse aberto a config e clicado nele).
+      overlay.querySelectorAll<HTMLElement>('[data-goto-sync]').forEach(arrow => {
+        arrow.addEventListener('click', (e) => {
           e.stopPropagation();
-          badge.textContent = t('main.myRhythms.syncingLabel');
-          const result = await this.userRhythmService.syncOne(badge.dataset.syncOne!);
-          if (result.ok) {
-            Toast.show(t('main.myRhythms.syncedToast'), { type: 'success' });
-            renderList();
-          } else {
-            badge.textContent = t('main.myRhythms.pendingSync');
-            Toast.show(t('main.myRhythms.syncFailedToast', { error: result.error ?? '' }), { type: 'warn', durationMs: 8000 });
-          }
+          close();
+          void this.showBackupSyncFlow();
         });
       });
 
@@ -6230,6 +6762,18 @@ ctaUrl: '/plans?renew=true',
         });
       });
 
+      // Compartilhar ritmo → gera o link
+      overlay.querySelectorAll<HTMLElement>('[data-share]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const r = this.userRhythmService.getById(btn.dataset.share!);
+          if (!r) return;
+          const payload = buildRhythmPayload(r);
+          const code = await this.getShareCode(payload);
+          showShareResultModal(shortUrl(code), r.name, 'Ritmo');
+        });
+      });
+
       // Deletar: dupla confirmação (1º tap vira "Excluir?", 2º confirma —
       // igual no repertório) + undo de 5s por garantia
       overlay.querySelectorAll<HTMLElement>('[data-delete]').forEach(btn => {
@@ -6314,6 +6858,7 @@ ctaUrl: '/plans?renew=true',
       this.uiManager.updateVariationButtons();
 
       this.currentRhythmName = name;
+      this.captureEditSnapshot(); // foto do ritmo escolhido, junto com a identidade
       this.loadDisabledVariations(); // aplica as variações desativadas salvas deste ritmo
       const nameEl = document.getElementById('currentRhythmName');
       if (nameEl) nameEl.textContent = name;
@@ -7743,11 +8288,16 @@ ctaUrl: '/plans?renew=true',
       });
     });
 
-    // Scroll pro atual
+    // Scroll pro atual + letreiro no nome da música TOCANDO (se for longo,
+    // rola pra mostrar o nome inteiro). Só na atual pra não animar a lista toda.
     const list = overlay.querySelector('.x-picker-list') as HTMLElement | null;
     const currentRow = list?.querySelector('.x-picker-row-current') as HTMLElement | null;
     if (currentRow) {
-      setTimeout(() => currentRow.scrollIntoView({ block: 'center', behavior: 'auto' }), 0);
+      setTimeout(() => {
+        currentRow.scrollIntoView({ block: 'center', behavior: 'auto' });
+        const nameEl = currentRow.querySelector('.x-picker-name') as HTMLElement | null;
+        if (nameEl) startMarquee(nameEl);
+      }, 0);
     }
 
     // Click na linha → pular pro ritmo
@@ -7947,13 +8497,13 @@ ctaUrl: '/plans?renew=true',
         if (favBar) favBar.style.display = '';
         if (numEl) numEl.textContent = '♪';
         if (positionEl) positionEl.textContent = t('main.setlistUI.noSetlistLabel');
-        if (nameEl) nameEl.textContent = this.currentRhythmName;
+        if (nameEl) { nameEl.textContent = this.currentRhythmName; startMarquee(nameEl); }
         if (metaEl) metaEl.textContent = `${Math.round(this.stateManager.getTempo())} BPM`;
       } else {
         if (favBar) favBar.style.display = 'none';
         if (numEl) numEl.textContent = '#';
         if (positionEl) positionEl.textContent = '';
-        if (nameEl) nameEl.textContent = t('main.setlistUI.emptyPrompt');
+        if (nameEl) { nameEl.textContent = t('main.setlistUI.emptyPrompt'); stopMarquee(nameEl); }
         if (metaEl) metaEl.textContent = '';
       }
       if (prevNameEl) prevNameEl.textContent = '--';
@@ -7980,11 +8530,11 @@ ctaUrl: '/plans?renew=true',
       // próximo seguem navegando o repertório (voltar é 1 toque).
       if (numEl) numEl.textContent = '♪';
       if (positionEl) positionEl.textContent = t('main.setlistUI.outsideSetlistLabel');
-      if (nameEl) nameEl.textContent = this.currentRhythmName;
+      if (nameEl) { nameEl.textContent = this.currentRhythmName; startMarquee(nameEl); }
     } else {
       if (numEl) numEl.textContent = `${idx + 1}`;
       if (positionEl) positionEl.textContent = t('main.setlistUI.ofTotal', { total });
-      if (nameEl && current) nameEl.textContent = current.name;
+      if (nameEl && current) { nameEl.textContent = current.name; startMarquee(nameEl); }
     }
     if (prevNameEl) prevNameEl.textContent = prev ? prev.name : '--';
     if (nextNameEl) nextNameEl.textContent = next ? next.name : '--';
@@ -8015,6 +8565,16 @@ ctaUrl: '/plans?renew=true',
   /** Id do ritmo PESSOAL carregado (null se for da biblioteca). Habilita
    *  o "Atualizar 'X'" no salvar em vez de duplicar. */
   private currentUserRhythmId: string | null = null;
+
+  /** FOTO CONGELADA do ritmo que o usuário escolheu/carregou por último.
+   *  Tirada no MESMO instante em que a identidade (currentRhythmName /
+   *  currentUserRhythmId) é setada, no load. O disquete verde salva ESTA
+   *  foto — nunca o estado vivo do motor. Assim o que é salvo bate SEMPRE
+   *  com o ritmo que está na tela, mesmo que outro ritmo esteja tocando/
+   *  pausado (bug "salva o que está tocando, não o que ele escolheu").
+   *  No modo ADMIN (que edita padrão ao vivo) o save ignora a foto e usa
+   *  o estado real — ver rhythmDataForSave(). */
+  private editSnapshot: any = null;
   /** True quando o ritmo tocando NÃO veio do repertório (TODOS, painel
    *  lateral, Meus Ritmos) — o fav-bar mostra ele como "fora do
    *  repertório" em vez de fingir que o item do setlist continua. */
@@ -8550,6 +9110,7 @@ ctaUrl: '/plans?renew=true',
         // User: atualizar nome do ritmo, favoritos, strip
         this.currentRhythmName = name;
         this.currentUserRhythmId = null; // ritmo de biblioteca
+        this.captureEditSnapshot(); // foto do ritmo escolhido, junto com a identidade
         this.loadDisabledVariations(); // aplica as variações desativadas salvas deste ritmo
         // Carregado avulso (TODOS/painel) — o loadSetlistItem desfaz
         // essa flag logo depois quando o load veio do repertório

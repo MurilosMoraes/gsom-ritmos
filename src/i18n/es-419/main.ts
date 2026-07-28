@@ -54,6 +54,38 @@ export const main: Record<string, string> = {
   'main.offlineDownload.retry': 'Intentar de nuevo',
   'main.offlineDownload.errorText': 'Error en la descarga. Intenta de nuevo.',
 
+  // ── Botón "Descargar y sincronizar" (menú) ──
+  'main.backupSync.menuLabel': 'Descargar y sincronizar',
+  'main.backupSync.menuDone': '¡Descargado y sincronizado!',
+  'main.backupSync.title': 'Descargar y sincronizar',
+  'main.backupSync.sub': 'Vamos a subir tus ritmos y repertorios al servidor y descargar todo para tocar sin conexión. No cierres hasta terminar, es rápido.',
+  'main.backupSync.syncing': 'Guardando tu trabajo en la nube…',
+  'main.backupSync.doneText': '¡Descargado y sincronizado! Tu trabajo está seguro en el servidor y la app lista para tocar sin conexión.',
+  'main.backupSync.nativeDoneText': '¡Sincronizado! Tu trabajo está seguro en el servidor.',
+  'main.backupSync.syncError': 'No se pudo sincronizar: {error}',
+
+  // ── Pedales compatibles ──
+  'main.compatPedals.title': 'Pedales compatibles',
+  'main.compatPedals.subtitle': 'Mapeo listo para los pedales Bluetooth M-VAVE',
+  'main.compatPedals.pageTurner': 'M-VAVE Page Turner',
+  'main.compatPedals.pageTurnerTag': '2 botones',
+  'main.compatPedals.chocolate': 'M-VAVE Chocolate',
+  'main.compatPedals.chocolateTag': '4 botones',
+  'main.compatPedals.left': 'Pedal izquierdo',
+  'main.compatPedals.right': 'Pedal derecho',
+  'main.compatPedals.stopped': 'parado',
+  'main.compatPedals.playing': 'sonando',
+  'main.compatPedals.double': '2 toques',
+  'main.compatPedals.start': 'inicia el ritmo',
+  'main.compatPedals.changeVar': 'cambia la variación',
+  'main.compatPedals.prevVar': 'vuelve a la variación anterior',
+  'main.compatPedals.fill': 'hace el relleno',
+  'main.compatPedals.applyFill': 'aplica el relleno',
+  'main.compatPedals.finish': 'finaliza',
+  'main.compatPedals.cymbal': 'toca el platillo',
+  'main.compatPedals.pauseResume': 'pausa / continúa',
+  'main.compatPedals.close': 'Cerrar',
+
   // ── What's New modal ──
   'main.whatsNew.overline': 'Actualización',
   'main.whatsNew.title': '+17 ritmos, ecualizador y pausa en tiempo.',

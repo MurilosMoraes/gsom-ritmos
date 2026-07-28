@@ -22,6 +22,20 @@
        user-scalable por acessibilidade, lá quem cobre é o
        touch-action:manipulation global no CSS. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <!-- Tamanho da fonte do app: escala o font-size do html (tudo é rem, então
+       escala junto — texto e botões, sem estourar). Aplicado ANTES de pintar
+       pra não piscar. O preset PADRÃO (70) = tamanho ORIGINAL do app (o antigo
+       100% do navegador): aplica-se escala/70*100. Abaixo de 70 fica menor,
+       acima fica maior. Ajustável em Configurações. -->
+  <script>
+    (function () {
+      try {
+        var s = parseInt(localStorage.getItem('gdrums-font-scale'), 10);
+        if (!s || s < 50 || s > 110) s = 70;
+        document.documentElement.style.fontSize = (s / 70 * 100) + '%';
+      } catch (e) { document.documentElement.style.fontSize = '100%'; }
+    })();
+  </script>
   <title>GDrums | Baterista Virtual com 155 Ritmos</title>
   <meta name="description" content="GDrums é um sequenciador de ritmos e baterista virtual para músicos tocarem ao vivo. 155 ritmos brasileiros (vaneira, sertanejo, gospel, forró, rock), suporte a pedal Bluetooth, iOS e Android. Teste 48h grátis.">
   <meta name="author" content="Murilo Moraes, Staner Goulart">
@@ -287,6 +301,7 @@
           <svg class="hdr-btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
           </svg>
+          <span class="cfg-sync-dot" id="cfgSyncDot" style="display:none;" aria-hidden="true"></span>
         </button>
       </div>
       <div class="topbar-dropdown" id="fabDropdown" style="display:none">
@@ -301,10 +316,10 @@
         <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="languageBtn" data-i18n="htmlApp.topbar.languageBtn">🌎 Idioma</button>
         <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="userManualBtn" data-i18n="main.manual.title">Manual do Usuário</button>
         <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="eqBtn" data-i18n="main.eq.title">Equalizador e Reverb</button>
-        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="pedalInfoBtn" data-i18n="htmlApp.topbar.pedalInfoBtn">Como usar o pedal</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="fontSizeBtn">Tamanho da fonte</button>
         <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="pedalMapBtn" data-i18n="main.manual.pedal4.mapear.name">Mapear pedal</button>
-        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="menuOfflineBtn" data-i18n="htmlApp.topbar.offlineBtn">Baixar pra usar offline</button>
-        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="menuInstallBtn" style="display:none;" data-i18n="htmlApp.topbar.installBtn">Instalar app</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-info" id="compatPedalsBtn" data-i18n="main.compatPedals.title">Pedais compatíveis</button>
+        <button class="topbar-dropdown-btn topbar-dropdown-btn-backup-sync" id="menuOfflineBtn"><span class="menu-backup-sync-label">Baixar e sincronizar</span></button>
         <div class="topbar-dropdown-divider"></div>
         <button class="topbar-dropdown-btn topbar-dropdown-btn-account" id="myAccountBtn" data-i18n="htmlApp.topbar.myAccountBtn">Minha Conta</button>
         <div class="topbar-dropdown-divider"></div>

@@ -14,6 +14,9 @@ export interface UserRhythm {
   created_at: string;
   updated_at: string;
   synced: boolean; // true = já está no Supabase
+  // true = veio de um link compartilhado (importado). Só marcador LOCAL de UI
+  // (borda amarela). Some quando o usuário renomeia o ritmo. Não vai pro banco.
+  sharedImport?: boolean;
 }
 
 const LOCAL_KEY = 'gdrums-user-rhythms';
@@ -43,6 +46,15 @@ export class UserRhythmService {
   private pendingDeletes: string[] = [];
   private userId: string | null = null;
   private supabase: any = null;
+  // Avisa a UI (botão "Baixar e sincronizar") sempre que o nº de pendentes
+  // muda — inclusive quando o app sincroniza SOZINHO (online/foreground/
+  // intervalo). Assim o botão fica verde na hora, sem o user tocar nada.
+  private onPendingChange?: () => void;
+
+  /** Registra um observador chamado quando o estado de sincronização muda. */
+  setOnPendingChange(cb: () => void): void {
+    this.onPendingChange = cb;
+  }
 
   constructor() {
     this.loadLocal();
@@ -50,23 +62,92 @@ export class UserRhythmService {
     if (this.rhythms.length === 0) {
       this.tryRestoreFromIndexedDB();
     }
-    // Voltou a rede → sobe os pendentes na hora (antes só re-tentava no
-    // próximo boot do app, e o badge "pendente sync" ficava eterno)
-    window.addEventListener('online', () => { void this.syncNow(); });
-    // Retry periódico — cobre 2 buracos que o listener 'online' sozinho
-    // não resolve: (1) ritmo salvo ANTES do initWithUser terminar (o
-    // client Supabase/userId ainda não tinham sido injetados aqui, então
-    // o upload nem chegou a ser tentado — falha 100% silenciosa) e
-    // (2) o device nunca "ficou offline de verdade" pro evento 'online'
-    // disparar, mas a rede estava ruim o bastante pro insert falhar uma
-    // vez. Sem isso, o ritmo fica preso em "pendente sync" até o usuário
-    // abrir Meus Ritmos de novo ou reiniciar o app — o que pareceu bug
-    // mesmo estando online o tempo todo.
+    // Voltou a rede → empurra pendentes E puxa do servidor (traz o que foi
+    // criado em outro aparelho). Wifi ou dados — navigator.onLine cobre os dois.
+    window.addEventListener('online', () => { void this.pushAndPull(); });
+    // Periódico — SEMPRE empurra e puxa (não gateia só em "tem pendente"),
+    // pra também trazer ritmos criados em outro aparelho enquanto o app tá
+    // aberto. Cadência modesta pra não martelar o servidor.
     setInterval(() => {
-      if (navigator.onLine && this.supabase && this.userId && this.rhythms.some(r => !r.synced)) {
-        void this.syncNow();
+      if (navigator.onLine && this.supabase && this.userId) {
+        void this.pushAndPull();
       }
-    }, 20000);
+    }, 30000);
+
+    // App voltou pra FRENTE (foreground) → empurra e puxa na hora. No celular
+    // o app quase nunca "abre do zero" (initWithUser não roda), só volta do 2º
+    // plano — e o timer fica suspenso em background.
+    const syncOnResume = (): void => {
+      if (navigator.onLine && this.supabase && this.userId) void this.pushAndPull();
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncOnResume();
+    });
+    window.addEventListener('focus', syncOnResume);
+  }
+
+  /** Empurra os pendentes E puxa do servidor (junta os de outro aparelho). */
+  private async pushAndPull(): Promise<void> {
+    await this.syncNow();
+    await this.pullRemote();
+  }
+
+  /** Puxa os ritmos do servidor e JUNTA com o local por id — traz o que foi
+   *  criado/salvo em outro aparelho, sem apagar edição local ainda não subida
+   *  nem ressuscitar exclusão pendente. Mesma lógica de merge do initWithUser,
+   *  mas rodável a qualquer momento (foreground/online/intervalo). */
+  private async pullRemote(): Promise<void> {
+    if (!this.supabase || !this.userId || !navigator.onLine) return;
+    try {
+      const { data } = await withNetTimeout(Promise.resolve(
+        this.supabase
+          .from('gdrums_user_rhythms')
+          .select('*')
+          .eq('user_id', this.userId)
+          .order('created_at', { ascending: false })
+      )) as { data: any };
+      // Vazio/erro → NÃO mexe (não zera os sincronizados por um glitch de
+      // leitura). Exclusão comum (apagou 1 de vários) vem com lista não-vazia,
+      // então o ritmo apagado some do outro aparelho normalmente.
+      if (!data || !Array.isArray(data) || data.length === 0) return;
+
+      const localById = new Map(this.rhythms.map(r => [r.id, r]));
+      const deleted = new Set(this.pendingDeletes); // tombstones não voltam
+      const merged: UserRhythm[] = [];
+      for (const remote of data) {
+        if (deleted.has(remote.id)) continue;
+        const local = localById.get(remote.id);
+        if (local && !local.synced) {
+          const lt = Date.parse(local.updated_at) || 0;
+          const rt = Date.parse(remote.updated_at) || 0;
+          if (lt > rt) { merged.push(local); continue; } // edição local mais nova
+        }
+        merged.push({
+          id: remote.id,
+          name: remote.name,
+          bpm: remote.bpm,
+          rhythm_data: remote.rhythm_data,
+          base_rhythm_name: remote.base_rhythm_name || undefined,
+          created_at: remote.created_at,
+          updated_at: remote.updated_at,
+          synced: true,
+          // preserva a marca local de "compartilhado" (o banco não guarda)
+          ...(local && local.sharedImport ? { sharedImport: true } : {}),
+        });
+      }
+      // Locais que o banco ainda não conhece (criados offline) — mantém
+      const remoteIds = new Set(data.map((r: any) => r.id));
+      for (const local of this.rhythms) {
+        if (!local.synced && !remoteIds.has(local.id)) merged.push(local);
+      }
+
+      // Só reescreve se mudou algo (evita render/escrita à toa)
+      const sig = (arr: UserRhythm[]): string => arr.map(r => `${r.id}:${r.synced ? 1 : 0}`).join(',');
+      if (sig(merged) !== sig(this.rhythms)) {
+        this.rhythms = merged;
+        this.saveLocal();
+      }
+    } catch { /* rede ruim — próximo tick tenta de novo */ }
   }
 
   /** true se já sabemos (via OWNER_KEY) que o device pertence a OUTRO
@@ -184,6 +265,7 @@ export class UserRhythmService {
             created_at: remote.created_at,
             updated_at: remote.updated_at,
             synced: true,
+            ...(local && local.sharedImport ? { sharedImport: true } : {}),
           });
         }
 
@@ -208,7 +290,7 @@ export class UserRhythmService {
 
   // ─── CRUD ─────────────────────────────────────────────────────────
 
-  async save(name: string, bpm: number, rhythmData: any, baseRhythmName?: string): Promise<UserRhythm> {
+  async save(name: string, bpm: number, rhythmData: any, baseRhythmName?: string, sharedImport = false): Promise<UserRhythm> {
     const now = new Date().toISOString();
     const rhythm: UserRhythm = {
       id: crypto.randomUUID(),
@@ -219,6 +301,7 @@ export class UserRhythmService {
       created_at: now,
       updated_at: now,
       synced: false,
+      ...(sharedImport ? { sharedImport: true } : {}),
     };
 
     this.rhythms.unshift(rhythm);
@@ -257,6 +340,8 @@ export class UserRhythmService {
     const rhythm = this.rhythms.find(r => r.id === id);
     if (!rhythm) return;
 
+    // Renomeou → tira a marca de "compartilhado" (borda amarela some).
+    if (rhythm.name !== name) rhythm.sharedImport = false;
     rhythm.name = name;
     rhythm.bpm = bpm;
     if (rhythmData !== undefined) rhythm.rhythm_data = rhythmData;
@@ -386,6 +471,56 @@ export class UserRhythmService {
     await this.syncNow();
   }
 
+  /** Quantos itens ainda não subiram (saves não sincronizados + exclusões
+   *  pendentes). Usado pra decidir se mostra o "pendente". */
+  getPendingCount(): number {
+    return this.rhythms.filter(r => !r.synced).length + this.pendingDeletes.length;
+  }
+
+  /** Sobe TODOS os pendentes (saves + exclusões) e devolve um resultado
+   *  detalhado COM o motivo da 1ª falha — usado pelo botão "Sincronizar".
+   *  Diferente do syncNow() (que só devolve boolean), aqui o chamador
+   *  consegue mostrar pro usuário exatamente o que travou. */
+  async syncAll(): Promise<{ ok: boolean; synced: number; failed: number; firstError?: string }> {
+    const pending = this.rhythms.filter(r => !r.synced);
+    const total = pending.length;
+    if (!this.supabase || !this.userId) {
+      return { ok: false, synced: 0, failed: total, firstError: t('core.sync.sessionNotStarted') };
+    }
+    if (!navigator.onLine) {
+      return { ok: false, synced: 0, failed: total, firstError: t('core.sync.noInternet') };
+    }
+
+    let firstError: string | undefined;
+
+    // 1) Exclusões pendentes (tombstones) primeiro
+    for (const id of [...this.pendingDeletes]) {
+      try {
+        const { error } = await this.supabase.from('gdrums_user_rhythms').delete().eq('id', id);
+        if (!error) this.pendingDeletes = this.pendingDeletes.filter(d => d !== id);
+        else if (!firstError) firstError = error.message;
+      } catch (e: any) {
+        if (!firstError) firstError = e?.message || t('core.sync.networkFailure');
+        break;
+      }
+    }
+
+    // 2) Saves pendentes (reusa syncOne, que já faz upsert + saveLocal + erro)
+    let synced = 0;
+    for (const r of pending) {
+      const res = await this.syncOne(r.id);
+      if (res.ok) synced++;
+      else if (!firstError) firstError = res.error;
+    }
+    this.saveLocal();
+
+    // 3) Puxa do servidor e junta — traz ritmos criados em OUTRO aparelho
+    await this.pullRemote();
+
+    const failed = total - synced;
+    return { ok: failed === 0 && this.pendingDeletes.length === 0, synced, failed, firstError };
+  }
+
   /** Sincroniza UM ritmo e devolve o resultado COM o motivo da falha —
    *  usado pelo badge "pendente sync" (tap = tentar agora + ver erro). */
   async syncOne(id: string): Promise<{ ok: boolean; error?: string }> {
@@ -445,6 +580,9 @@ export class UserRhythmService {
       persistSet(IDB_KEY, { rhythms: this.rhythms, pendingDeletes: this.pendingDeletes } as PersistedState)
         .catch(() => { /* noop */ });
     }
+    // saveLocal roda em toda mutação e em todo sync bem-sucedido — é o ponto
+    // certo pra notificar a UI que o nº de pendentes pode ter mudado.
+    try { this.onPendingChange?.(); } catch { /* noop */ }
   }
 
   private writeToLocalStorage(): void {

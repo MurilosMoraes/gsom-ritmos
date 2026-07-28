@@ -518,18 +518,29 @@
 .x-rhythm-base {
   color: var(--x-text3);
 }
-.x-rhythm-pending {
-  color: var(--x-gold);
-  font-weight: 600;
-  /* É botão agora: tap = sincronizar + ver erro real */
-  background: rgba(255, 200, 60, 0.08);
-  border: 1px solid rgba(255, 200, 60, 0.3);
+/* Seta vermelha "não salvo na nuvem": tap dispara direto o "Baixar e
+   sincronizar" (mesma ação do botão da config). */
+.x-rhythm-sync-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff4d4d;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.45);
   border-radius: 999px;
-  padding: 0.15rem 0.5rem;
-  font-size: inherit;
-  font-family: inherit;
+  padding: 0.12rem 0.28rem;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  animation: x-rhythm-sync-arrow-pulse 1.6s ease-in-out infinite;
+}
+.x-rhythm-sync-arrow:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.7);
+}
+.x-rhythm-sync-arrow svg { display: block; }
+@keyframes x-rhythm-sync-arrow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 .x-rhythm-actions {
@@ -984,7 +995,7 @@
   gap: 0.15rem;
 }
 .x-picker-name {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--x-text);
   letter-spacing: -0.01em;
@@ -1487,6 +1498,26 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
   background: rgba(0, 153, 255, 0.05);
   box-shadow: 0 0 12px rgba(0, 153, 255, 0.16), inset 0 0 8px rgba(0, 153, 255, 0.05);
 }
+/* Bolinha vermelha pulsante na engrenagem: aparece quando há algo pra
+   "Baixar e sincronizar" — chama o user a abrir a config e clicar no botão. */
+.cfg-sync-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid #05010f;
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  animation: cfg-sync-dot-pulse 1.5s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes cfg-sync-dot-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+  70% { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
 /* Esconde estilos antigos do switch (classe morta após o redesign) */
 .stage-switch-track, .stage-switch-text, .stage-switch-icon { all: unset; }
 
@@ -1834,9 +1865,20 @@ body:has(#pedalBtInput) .user-layout {
   background: linear-gradient(160deg, rgba(50, 30, 80, 0.28), rgba(8, 8, 22, 0.55));
 }
 .x-myrh-sheet .x-rhythm-name {
-  font-size: 0.95rem;
+  font-size: 1.08rem;
   font-weight: 700;
 }
+/* Ritmo importado de um compartilhamento: borda amarela até renomear. */
+.x-myrh-sheet .x-rhythm-card.x-shared {
+  border-color: rgba(250, 204, 21, 0.75);
+  background: linear-gradient(160deg, rgba(80, 66, 20, 0.22), rgba(10, 9, 20, 0.5));
+}
+/* Card selecionado (1º toque): destaque roxo. 2º toque no mesmo carrega. */
+.x-myrh-sheet .x-rhythm-card.x-rhythm-selected {
+  border-color: rgba(139, 92, 246, 0.75);
+  background: linear-gradient(160deg, rgba(80, 45, 130, 0.32), rgba(12, 10, 28, 0.6));
+}
+
 
 /* Stepper de BPM no card: − 96 + */
 .x-bpm-ctrl {
