@@ -65,13 +65,16 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         icons: [
+          // "any" = ícone da PWA instalada no PC (desktop usa este). Arquivo
+          // dedicado icon-pc-* pra NÃO afetar favicon/SERP/WhatsApp/celular,
+          // que continuam usando icon-512/192 originais.
           {
-            src: '/img/icon-192.png',
+            src: '/img/icon-pc-192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: '/img/icon-512.png',
+            src: '/img/icon-pc-512.png',
             sizes: '512x512',
             type: 'image/png'
           },
