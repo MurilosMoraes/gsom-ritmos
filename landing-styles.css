@@ -226,6 +226,12 @@ body {
 }
 
 /* Store badge — Google Play / App Store */
+.store-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
 .store-badge {
   display: inline-flex;
   align-items: center;
@@ -235,9 +241,9 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   text-decoration: none;
-  margin-bottom: 1rem;
   transition: all 0.18s ease;
 }
+.store-badges .store-badge { margin-bottom: 0; }
 .store-badge:hover {
   background: rgba(255, 255, 255, 0.07);
   border-color: rgba(255, 255, 255, 0.22);
