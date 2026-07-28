@@ -367,7 +367,7 @@ Logs de eventos de segurança (ex: `blocked_no_cpf`, trial farming). Escrita via
 - **Steps:** cada variação tem de 4 a 32 steps (padrão 16 p/ main/fill, 8 p/ end, 16 p/ intro).
 - **Canais:** `MAX_CHANNELS = 12` canais de áudio por variação.
 - **Speed:** cada variação tem `speed` (0.25× a 4×, default 1).
-- **Tempo:** BPM global (40-240).
+- **Tempo:** BPM global (40-280).
 - **Volume:** `masterVolume` (0-2) + `volumes[channel][step]` (0-1).
 
 ### Timing (Scheduler)
