@@ -233,7 +233,15 @@ export class SetlistEditorUI {
       <div class="sle-setlists-bar"></div>
       <div class="sle-panel-header">
         <span class="sle-panel-title">${t('ui.setlist.panelTitle')}</span>
-        <button class="sle-clear-btn">${t('ui.setlist.clearButton')}</button>
+        <div class="sle-panel-header-actions">
+          <button class="sle-clear-btn">${t('ui.setlist.clearButton')}</button>
+          <button class="sle-setlist-hdr-act sle-setlist-rename-btn" aria-label="${t('ui.setlist.renameAriaLabel')}" title="${t('ui.setlist.renameAriaLabel')}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          </button>
+          <button class="sle-setlist-hdr-act sle-setlist-share-btn" aria-label="Compartilhar" title="Compartilhar repertório">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          </button>
+        </div>
       </div>
       <div class="sle-search-wrap sle-setlist-search">
         <svg class="sle-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -328,10 +336,19 @@ export class SetlistEditorUI {
     }
 
     // Render dos chips de repertórios (desktop; no mobile o hub cobre)
-    this.renderSetlistsBar(
-      setlistPanel.querySelector('.sle-setlists-bar') as HTMLElement,
-      refreshAll
-    );
+    const setlistsBar = setlistPanel.querySelector('.sle-setlists-bar') as HTMLElement;
+    this.renderSetlistsBar(setlistsBar, refreshAll);
+
+    // Renomear repertório ativo (lápis ao lado do Limpar) → editor inline na barra
+    setlistPanel.querySelector('.sle-setlist-rename-btn')?.addEventListener('click', () => {
+      const active = this.setlistManager?.getSetlists().find(l => l.active);
+      if (active) this.openSetlistEditInline(setlistsBar, active.id, refreshAll);
+    });
+    // Compartilhar repertório ativo (ícone ao lado do lápis) → hook do main.ts
+    setlistPanel.querySelector('.sle-setlist-share-btn')?.addEventListener('click', () => {
+      const active = this.setlistManager?.getSetlists().find(l => l.active);
+      if (active) (window as any).__gdrumsShareSetlist?.(active.id);
+    });
 
     body.append(hubPanel, catalogPanel, setlistPanel);
     container.append(header, body);
@@ -564,7 +581,6 @@ export class SetlistEditorUI {
           <button class="sle-setlist-chip ${l.active ? 'active' : ''}" data-setlist-id="${l.id}">
             <span class="sle-setlist-chip-name">${this.escapeHtml(l.name)}</span>
             <span class="sle-setlist-chip-count">${l.count}</span>
-            ${l.active ? '<svg class="sle-setlist-chip-edit" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>' : ''}
           </button>
         `).join('')}
         ${lists.length < max
@@ -1301,6 +1317,30 @@ export class SetlistEditorUI {
         -webkit-tap-highlight-color: transparent;
       }
       .sle-clear-btn:hover { background: rgba(255, 100, 100, 0.15); color: rgba(255, 100, 100, 0.9); }
+      .sle-panel-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .sle-setlist-hdr-act {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(255, 255, 255, 0.75);
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all 0.15s;
+      }
+      .sle-setlist-hdr-act:hover {
+        background: rgba(0, 212, 255, 0.12);
+        border-color: rgba(0, 212, 255, 0.5);
+        color: #fff;
+      }
       .sle-clear-btn-confirm {
         background: rgba(255, 68, 102, 0.22) !important;
         border-color: rgba(255, 68, 102, 0.6) !important;
