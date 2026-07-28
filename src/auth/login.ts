@@ -304,6 +304,36 @@ class LoginPage {
     if (emailParam) {
       this.emailInput.value = emailParam;
     }
+    this.prefillFromRemembered(!!emailParam);
+  }
+
+  /**
+   * "Lembrar de mim": sincroniza o checkbox com a preferência salva e, se
+   * ativo, pré-preenche e-mail + senha (avançando pro step 2). Padrão =
+   * marcado (fica logado), igual ao comportamento antigo.
+   *
+   * ⚠️ A senha é guardada no aparelho (base64, NÃO é criptografia). Só existe
+   * porque o usuário pediu explicitamente. Quem tem acesso ao aparelho lê.
+   */
+  private prefillFromRemembered(hasEmailParam: boolean): void {
+    try {
+      const off = localStorage.getItem('gdrums-remember') === '0';
+      this.rememberMeCheckbox.checked = !off;
+      if (off) return;
+      const email = localStorage.getItem('gdrums-remember-email');
+      const pwB64 = localStorage.getItem('gdrums-remember-pw');
+      if (!email) return;
+      if (!hasEmailParam) this.emailInput.value = email;
+      if (pwB64) {
+        let pw = '';
+        try { pw = decodeURIComponent(escape(atob(pwB64))); } catch { pw = ''; }
+        if (pw) {
+          this.advanceToPasswordStep(this.emailInput.value.trim() || email, false);
+          this.passwordInput.value = pw;
+          this.rememberMeCheckbox.checked = true;
+        }
+      }
+    } catch { /* noop */ }
   }
 
   /**
@@ -659,13 +689,29 @@ class LoginPage {
     this.setLoading(true);
     this.hideAlert();
 
+    // "Lembrar de mim" define ONDE a sessão fica salva — precisa ser gravado
+    // ANTES do login (o storage adapter do supabase.ts lê essa flag).
+    const remember = this.rememberMeCheckbox.checked;
+    try { localStorage.setItem('gdrums-remember', remember ? '1' : '0'); } catch { /* noop */ }
+
     const response = await authService.login({
       email: this.emailInput.value.trim(),
       password,
-      rememberMe: this.rememberMeCheckbox.checked,
+      rememberMe: remember,
     });
 
     if (response.success && response.user) {
+      // Guarda (ou limpa) e-mail+senha pra pré-preencher na próxima vez.
+      // Senha em base64 (ofuscação leve, NÃO é criptografia) — a pedido.
+      try {
+        if (remember) {
+          localStorage.setItem('gdrums-remember-email', this.emailInput.value.trim());
+          localStorage.setItem('gdrums-remember-pw', btoa(unescape(encodeURIComponent(password))));
+        } else {
+          localStorage.removeItem('gdrums-remember-email');
+          localStorage.removeItem('gdrums-remember-pw');
+        }
+      } catch { /* noop */ }
       // Após login com senha DIGITADA no nativo: oferece ativar a
       // biometria (uma vez; "agora não" silencia por 7 dias). Fica
       // ANTES do redirect pra pessoa decidir com calma.
