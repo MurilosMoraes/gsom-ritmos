@@ -604,6 +604,9 @@ class RhythmSequencer {
     });
 
     this.patternEngine.setOnEndCymbal((time: number) => {
+      // Pisada dupla no 4º botão: NÃO toca o prato de FINALIZAR — o próximo
+      // ritmo entra com o prato de RETORNO dele cravado na batida 1.
+      if (this.finalizeThenNext) return;
       // Agendar prato no tempo exato após o último step do end
       // (prato automático — ganho reduzido, ver AUTO_CYMBAL_GAIN)
       if (this.cymbalBuffer) {
@@ -617,10 +620,33 @@ class RhythmSequencer {
       }
     });
 
-    this.patternEngine.setOnStop(() => {
+    this.patternEngine.setOnStop((scheduledTime?: number) => {
       // onStop é chamado SÓ quando um "Final" (end) termina de tocar.
+      const goNext = this.finalizeThenNext; // capturado ANTES do stop (que zera)
       this.stop();
-      this.maybeAutoAdvance();
+      if (goNext) {
+        // Pisada dupla no 4º botão: finalizou (arremate) → entra no próximo
+        // ritmo com a batida 1 (e o prato de retorno) cravada no downbeat do
+        // fim. O timing fica dentro do switch. Sem próximo → só retorna (parou).
+        this.switchToNextRhythmLive(scheduledTime);
+      } else {
+        this.maybeAutoAdvance();
+      }
+    });
+
+    // Downbeat do "main" (fim de compasso). Usado com o "Final" DESLIGADO:
+    // pisada dupla no 4º botão arma pendingNextAtDownbeat, e no próximo fim de
+    // compasso trocamos pro próximo ritmo (cortando o groove atual pra não
+    // vazar a cauda já agendada no lookahead). O onMainDownbeat dispara DENTRO
+    // do tick do scheduler → adiar via setTimeout(0) evita reentrância.
+    this.patternEngine.setOnMainDownbeat((time: number) => {
+      if (this.pendingNextAtDownbeat) {
+        this.pendingNextAtDownbeat = false;
+        window.setTimeout(() => this.switchToNextRhythmLive(time, true), 0);
+      } else if (this.pendingEndAtDownbeat) {
+        this.pendingEndAtDownbeat = false;
+        window.setTimeout(() => this.finalizeAtDownbeat(time), 0);
+      }
     });
 
     // StateManager -> UI observers
@@ -2836,9 +2862,7 @@ class RhythmSequencer {
       }
       if (this.pedalCount >= 4 && this.pedalEnd &&
           (kc === pedalEndCode || keyId === this.pedalEnd)) {
-        if (this.isPaused) this.resumeWithAction('end', 0);        // pausa → finaliza
-        else if (this.useFinal) this.patternEngine.playEndAndStop();
-        else this.stopAndMaybeAdvance();
+        this.handlePedalEnd();
         return;
       }
 
@@ -2853,11 +2877,9 @@ class RhythmSequencer {
       if (kc === 37) { this.handlePedalLeft(); return; }  // ArrowLeft(37)
       if (kc === 39) { this.handlePedalRight(); return; } // ArrowRight(39)
 
-      // Space = Play/Pause (só se NÃO é pedal mapeado)
-      if (kc === 32 || keyId === 'Space' || keyId === ' ') {
-        this.togglePlayStop();
-        return;
-      }
+      // Space NÃO é atalho fixo (disparava play sem querer ao digitar nome).
+      // Quem quiser usar espaço pra tocar mapeia ele em "Mapear pedal" — aí
+      // cai na checagem de pedal lá em cima (prioridade), não aqui.
 
     }, { capture: true, passive: false } as AddEventListenerOptions);
 
@@ -3011,8 +3033,21 @@ class RhythmSequencer {
   private pedalLeftLastPress = 0;
   private pedalLeftBaseVariation = 0;
   private pedalRightLastPress = 0;
+  // 4º botão: pisada dupla rápida → FINALIZA (arremate) e, ao terminar, entra
+  // no PRÓXIMO ritmo do repertório (em vez de parar).
+  private pedalEndLastPress = 0;
+  private finalizeThenNext = false;      // usado com o "Final" LIGADO (via onStop)
+  private pendingNextAtDownbeat = false; // "Final" DESLIGADO + tem próximo: troca no downbeat
+  private pendingEndAtDownbeat = false;  // "Final" DESLIGADO + SEM próximo: prato de fim no downbeat e para
 
   private handlePedalLeft(): void {
+    // Durante a PAUSA: Botão 1 apenas RETOMA (igual apertar a pausa de novo) —
+    // NÃO reinicia com intro. Sem o guard, caía no branch de "start" abaixo
+    // (isPaused → isPlaying() false) e tocava a contagem de intro.
+    if (this.isPaused) {
+      if (!this.resuming) this.resumeFromPause(true);
+      return;
+    }
     if (!this.stateManager.isPlaying()) {
       if (!this.hasRhythmLoaded()) return;
       this.patternEngine.activateRhythm(this.firstAvailableMainVariation()); // não iniciar em desativada
@@ -3046,18 +3081,155 @@ class RhythmSequencer {
       return;
     }
     if (!this.stateManager.isPlaying()) {
-      this.playCymbal();
+      // Parado: toca prato — MAS só em pedal de 2/3 botões. No de 4 botões o
+      // prato parado é o Botão 4 (dedicado), então aqui o Botão 2 não faz nada.
+      if (this.pedalCount < 4) this.playCymbal();
+    } else if (this.pedalCount >= 4) {
+      // Pedal de 4 botões: finalizar é o Botão 4 (dedicado). O duplo-toque do
+      // Botão 2 NÃO finaliza — só faz virada. O duplo-toque-finaliza vale só
+      // pra pedal sem botão de finalização (2/3 botões).
+      this.patternEngine.playRotatingFill();
     } else {
       const now = Date.now();
       if (now - this.pedalRightLastPress < 500 && this.pedalRightLastPress > 0) {
         // 2ª pisada: finalização assume a virada disparada pela 1ª
-        if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.stopAndMaybeAdvance(); }
+        if (this.useFinal) { this.patternEngine.playEndAndStop(); } else { this.finalizeNoFinal(); }
         this.pedalRightLastPress = 0;
       } else {
         this.pedalRightLastPress = now;
         this.patternEngine.playRotatingFill();
       }
     }
+  }
+
+  /**
+   * 4º botão (finalização) com pisada DUPLA:
+   *  - 1 pisada  → finaliza normal (quantizado no compasso), como antes.
+   *  - 2 pisadas rápidas (< 500ms), TOCANDO → cancela a finalização e troca
+   *    pro PRÓXIMO ritmo do repertório na virada do compasso, com prato de
+   *    retorno, pulando o intro. (Precisa do "Final" ligado — quando ligado,
+   *    a finalização fica pendente até o compasso, e a 2ª pisada a cancela.)
+   */
+  private handlePedalEnd(): void {
+    if (this.isPaused) { this.resumeWithAction('end', 0); return; }
+    if (!this.stateManager.isPlaying()) {
+      // Parado: toca o prato (teste — prato parado também no Botão 4, igual Botão 2).
+      this.playCymbal();
+      return;
+    }
+    const now = Date.now();
+    const isDouble = now - this.pedalEndLastPress < 500 && this.pedalEndLastPress > 0;
+
+    if (this.useFinal) {
+      // Final LIGADO: 1ª pisada finaliza na hora (arremate quantizado); 2ª
+      // promove pra finalizar + entrar no próximo (via onStop; prato de retorno
+      // na batida 1). Sem próximo → finaliza normal com prato de fim.
+      if (isDouble) {
+        this.pedalEndLastPress = 0;
+        this.finalizeThenNext = this.hasNextInSetlist();
+      } else {
+        this.pedalEndLastPress = now;
+        this.patternEngine.playEndAndStop();
+      }
+    } else {
+      // Final DESLIGADO: sem arremate. 1ª pisada espera ~300ms; se vier a 2ª e
+      // houver próximo → troca no FIM DO COMPASSO (via onMainDownbeat). Senão
+      // → para (comportamento antigo).
+      if (isDouble) {
+        this.pedalEndLastPress = 0;
+        // Com próximo → troca no fim do compasso. SEM próximo → finaliza no fim
+        // do compasso com o prato de fim (não para seco no meio).
+        if (this.hasNextInSetlist()) this.pendingNextAtDownbeat = true;
+        else this.pendingEndAtDownbeat = true;
+      } else {
+        this.pedalEndLastPress = now;
+        const stamp = now;
+        window.setTimeout(() => {
+          if (this.pedalEndLastPress === stamp) { // não veio 2ª → finaliza c/ prato
+            this.pedalEndLastPress = 0;
+            this.finalizeNoFinal();
+          }
+        }, 300);
+      }
+    }
+  }
+
+  /**
+   * Troca AO VIVO pro próximo ritmo do repertório. Roda FORA do tick do
+   * scheduler (via setTimeout, ver setOnMainDownbeat). Os samples do kit ficam
+   * em cache, então o load é rápido; a "deixa" de início (prato de retorno)
+   * cobre a virada. Entra direto no 'main' (sem intro).
+   */
+  /** Há um PRÓXIMO ritmo no repertório ativo depois do atual? (sem avançar o
+   *  índice). Falso se está tocando fora do repertório, vazio, ou no último. */
+  private hasNextInSetlist(): boolean {
+    return !this.playingOutsideSetlist
+      && !this.setlistManager.isEmpty()
+      && this.setlistManager.getCurrentIndex() < this.setlistManager.getLength() - 1;
+  }
+
+  private switchToNextRhythmLive(scheduledTime?: number, cutCurrent = false): void {
+    const next = this.setlistManager.next();
+    if (!next) return; // fim do repertório → finaliza normal (fica parado)
+    void (async () => {
+      await this.loadSetlistItem(next, { silent: true }); // pré-carrega (parado; já dá stop no scheduler)
+      // "Final" DESLIGADO: o groove antigo é contínuo, então o scheduler já
+      // agendou o step-0 do próximo compasso no lookahead. loadSetlistItem para
+      // o scheduler mas NÃO cancela o áudio já na fila → cortar aqui, do
+      // downbeat pra frente, pra não vazar por cima do próximo ritmo. A cauda
+      // do compasso atual (steps antes do downbeat) segue soando.
+      if (cutCurrent && scheduledTime !== undefined
+          && typeof this.audioManager.cancelScheduledAfter === 'function') {
+        this.audioManager.cancelScheduledAfter(scheduledTime);
+      }
+      this.ensurePlayableMainVariation();
+      this.stateManager.setActivePattern('main');         // entra no main, sem intro
+      this.stateManager.setShouldPlayStartSound(true);    // prato de RETORNO na batida 1
+      // Agenda o play pra a batida 1 (com o prato de retorno) cair EXATAMENTE
+      // no downbeat do fim do arremate. O scheduler.start toca o 1º step em
+      // getCurrentTime()+0.05, então disparo o play em (scheduledTime - 0.05).
+      const fire = (): void => { this.play(); this.updateSetlistUI(); };
+      if (scheduledTime !== undefined) {
+        const waitMs = Math.max(0, (scheduledTime - 0.05 - this.audioManager.getCurrentTime()) * 1000);
+        window.setTimeout(fire, waitMs);
+      } else {
+        fire();
+      }
+    })();
+  }
+
+  /**
+   * Finaliza com o "Final" DESLIGADO quando NÃO há próximo no repertório
+   * (pisada dupla no último ritmo). Deixa o compasso atual terminar, corta o
+   * groove no downbeat e crava o prato de fim ali — depois para. Sem o corte
+   * ficaria "música sobre prato"; sem o prato ficava um corte seco (a queixa
+   * do Cu de Arrasto). Roda FORA do tick (setTimeout, ver setOnMainDownbeat).
+   */
+  private finalizeAtDownbeat(time: number): void {
+    if (typeof this.audioManager.cancelScheduledAfter === 'function') {
+      this.audioManager.cancelScheduledAfter(time); // corta o groove antigo no downbeat
+    }
+    const gain = this.stateManager.getState().masterVolume * AUTO_CYMBAL_GAIN;
+    if (this.cymbalBuffer) {
+      this.audioManager.playSound(this.cymbalBuffer, time, gain); // prato de fim no downbeat
+    } else {
+      void this.audioManager.loadAudioFromPath('/midi/prato.mp3').then(buffer => {
+        this.cymbalBuffer = buffer;
+        this.audioManager.playSound(buffer, time, gain);
+      });
+    }
+    this.stopAndMaybeAdvance();
+  }
+
+  /**
+   * Finalização com o "Final" DESLIGADO: em vez de parar seco no meio do
+   * compasso, deixa o compasso terminar e crava o prato de fim no downbeat
+   * (arma pendingEndAtDownbeat → finalizeAtDownbeat no próximo fim de compasso).
+   * Se não estiver tocando, para na hora (nada pra esperar).
+   */
+  private finalizeNoFinal(): void {
+    if (this.stateManager.isPlaying()) this.pendingEndAtDownbeat = true;
+    else this.stopAndMaybeAdvance();
   }
 
   private longPressFired = false;
@@ -3129,7 +3301,7 @@ class RhythmSequencer {
             if (this.useFinal) {
               this.patternEngine.activateEndWithTiming(variationIndex);
             } else {
-              this.stopAndMaybeAdvance();
+              this.finalizeNoFinal();
             }
           } else if (this.isPaused) {
             // Finalização durante a pausa: sai da pausa e finaliza.
@@ -4337,6 +4509,7 @@ class RhythmSequencer {
     const STATE: Record<string, [string, string, string, string]> = {
       stopped: ['stopped', '#9aa3b2', 'rgba(154,163,178,0.12)', 'rgba(154,163,178,0.3)'],
       playing: ['playing', GREEN, 'rgba(0,230,140,0.12)', 'rgba(0,230,140,0.32)'],
+      single: ['single', GREEN, 'rgba(0,230,140,0.12)', 'rgba(0,230,140,0.32)'],
       double: ['double', ORANGE, 'rgba(249,160,60,0.14)', 'rgba(249,160,60,0.36)'],
     };
     const pill = (txt: string, col: string, bg: string, bd: string): string =>
@@ -4422,9 +4595,8 @@ class RhythmSequencer {
             <div style="flex:1;min-width:170px;">
               ${head('Botão 2', PURPLE)}
               ${line('playing', 'applyFill')}
-              ${line('stopped', 'cymbal')}
               <div style="margin-top:0.6rem;">${head('Botão 3', GREEN)}${plain('pauseResume')}</div>
-              <div style="margin-top:0.6rem;">${head('Botão 4', ORANGE)}${plain('finish')}</div>
+              <div style="margin-top:0.6rem;">${head('Botão 4', ORANGE)}${line('stopped', 'cymbal')}${line('single', 'finish')}${line('double', 'nextRhythm')}</div>
             </div>
           </div>
         </div>
@@ -4573,7 +4745,6 @@ class RhythmSequencer {
               <div class="m-visual">${pedal('2')}</div>
               <div class="m-text"><div class="m-name">${t('main.manual.pedalBtn2.name')}</div>
                 <ul class="m-list">
-                  <li>${t('main.manual.pedalBtn2.li1')}</li>
                   <li>${t('main.manual.pedalBtn2.li2')}</li>
                 </ul>
               </div>
@@ -4590,8 +4761,9 @@ class RhythmSequencer {
               <div class="m-visual">${pedal('4')}</div>
               <div class="m-text"><div class="m-name">${t('main.manual.pedalBtn4.name')}</div>
                 <ul class="m-list">
+                  <li>${t('main.manual.pedalBtn4.stopped')}</li>
                   <li>${t('main.manual.pedalBtn4.li1')}</li>
-                  <li>${t('main.manual.pedalBtn4.li2')}</li>
+                  <li>${t('main.manual.pedalBtn4.li3')}</li>
                 </ul>
               </div>
             </div>
@@ -4880,9 +5052,14 @@ class RhythmSequencer {
     };
 
     const render = () => {
+      // Com 4 botões, o direito (Botão 2) NÃO finaliza — finalizar é o Botão 4.
+      // Então o hint do direito perde o "2x: finaliza" nesse caso.
+      const rightHint = tempCount >= 4
+        ? t('main.pedalMapper.hint.rightNoFinish')
+        : t('main.pedalMapper.hint.right');
       const buttons: string[] = [
         pedalButton('left', t('main.pedalMapper.label.left'), tempLeft, '139,92,246', t('main.pedalMapper.hint.left')),
-        pedalButton('right', t('main.pedalMapper.label.right'), tempRight, '249,115,22', t('main.pedalMapper.hint.right')),
+        pedalButton('right', t('main.pedalMapper.label.right'), tempRight, '249,115,22', rightHint),
       ];
       if (tempCount >= 3) {
         buttons.push(pedalButton('playPause', t('main.pedalMapper.label.playPause'), tempPlayPause, '0,210,255', t('main.pedalMapper.hint.playPause')));
@@ -5566,7 +5743,7 @@ class RhythmSequencer {
           } else if (this.useFinal) {
             this.patternEngine.activateEndWithTiming(action.variationIndex);
           } else {
-            this.stopAndMaybeAdvance();
+            this.finalizeNoFinal();
           }
         } else {
           // Resume NORMAL: toca um prato de "deixa" no re-entry pra não
@@ -5768,7 +5945,7 @@ class RhythmSequencer {
       if (this.useFinal) {
         this.patternEngine.playEndAndStop();
       } else {
-        this.stopAndMaybeAdvance();
+        this.finalizeNoFinal();
       }
     } else {
       if (!this.hasRhythmLoaded()) {
@@ -5970,6 +6147,9 @@ class RhythmSequencer {
     this.stopCountLoop();
     this.resuming = false;
     this.pendingResumeAction = null;
+    this.finalizeThenNext = false; // não deixa "finalizar+próximo" preso p/ próximo play
+    this.pendingNextAtDownbeat = false; // idem p/ o caso "Final desligado" (com próximo)
+    this.pendingEndAtDownbeat = false;  // idem p/ o caso "Final desligado" (sem próximo)
     this.stateManager.setPlaying(false);
     this.isPaused = false;
     this.updatePauseButtonUI();
