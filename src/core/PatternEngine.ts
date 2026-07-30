@@ -11,8 +11,12 @@ export class PatternEngine {
   private isTestMode = false;
   private transitionInProgress = false;
   private onPatternChange?: (pattern: PatternType) => void;
-  private onStop?: () => void;
+  private onStop?: (time?: number) => void;
   private onEndCymbal?: (time: number) => void;
+  /** Disparado no DOWNBEAT de cada compasso de 'main' (com o tempo de áudio
+   *  do downbeat). Usado pela troca de ritmo quantizada (pisada dupla no 4º
+   *  botão). Fica ocioso: o handler no main.ts só age se houver troca armada. */
+  private onMainDownbeat?: (time: number) => void;
   /** Fura-fila do lookahead (Scheduler.resyncForCommand): chamado ANTES
    *  de todo cálculo de timing de comando (virada/finalização/troca) pra
    *  rebobinar a cabeça de agendamento pro audível — senão a entrada é
@@ -37,12 +41,16 @@ export class PatternEngine {
     this.onPatternChange = callback;
   }
 
-  setOnStop(callback: () => void): void {
+  setOnStop(callback: (time?: number) => void): void {
     this.onStop = callback;
   }
 
   setOnEndCymbal(callback: (time: number) => void): void {
     this.onEndCymbal = callback;
+  }
+
+  setOnMainDownbeat(callback: (time: number) => void): void {
+    this.onMainDownbeat = callback;
   }
 
   setBeforeTimingCommand(callback: () => void): void {
@@ -120,7 +128,7 @@ export class PatternEngine {
           this.handleIntroCompletion();
           break;
         case 'main':
-          this.handleMainCompletion();
+          this.handleMainCompletion(scheduledTime);
           break;
       }
     } finally {
@@ -163,7 +171,7 @@ export class PatternEngine {
     if (scheduledTime) {
       this.onEndCymbal?.(scheduledTime);
     }
-    this.onStop?.();
+    this.onStop?.(scheduledTime);
   }
 
   private handleIntroCompletion(): void {
@@ -172,7 +180,12 @@ export class PatternEngine {
     this.onPatternChange?.('main');
   }
 
-  private handleMainCompletion(): void {
+  private handleMainCompletion(scheduledTime?: number): void {
+    // Downbeat do compasso de 'main' — gancho pra troca de ritmo quantizada
+    // (pisada dupla no 4º botão). O handler no main.ts só age se houver troca
+    // armada; caso contrário é no-op barato.
+    if (scheduledTime !== undefined) this.onMainDownbeat?.(scheduledTime);
+
     this.stateManager.setShouldPlayStartSound(false);
     this.stateManager.setShouldPlayReturnSound(false);
 
