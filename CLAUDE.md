@@ -29,6 +29,8 @@ Problemas resolvidos cabeça de pissa mol:
 17- demo ao baixar o app nas lojas ✅
 18- ativar o "lembrar de mim" forçado ✅
 19- prato tocando ao soltar ✅
+20- passar pra próxima direto ✅
+21- bug do finalizar sem final ✅
 
 Sobre a demo:
 1️⃣ Primeira vez / demo ainda não esgotou → DEMO FORÇADA
