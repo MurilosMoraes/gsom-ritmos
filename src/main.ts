@@ -35,7 +35,7 @@ import { UserRhythmService } from './core/UserRhythmService';
 import { PreviewPlayer } from './core/PreviewPlayer';
 import { startMarquee, stopMarquee } from './utils/marquee';
 import { buildRhythmPayload, buildSetlistPayload, makeShareUrl, showShareResultModal, readImportFromUrl, clearImportFromUrl, type SharePayload } from './core/ShareLink';
-import { publishShare, fetchShare, shortUrl, readShareCodeFromPath, clearShareCodeFromPath, saveLocalShare, getLocalShare } from './core/ShareService';
+import { publishShare, fetchShare, shortUrl, readShareCodeFromPath, clearShareCodeFromPath, saveLocalShare, getLocalShare, readCommunityCodeFromPath, fetchCommunity, type CommunityRecipe } from './core/ShareService';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
 // Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
@@ -785,7 +785,12 @@ class RhythmSequencer {
           const parsed = JSON.parse(savedPedal);
           if (parsed.left) this.pedalLeft = parsed.left;
           if (parsed.right) this.pedalRight = parsed.right;
-          if (parsed.count === 3 || parsed.count === 4) this.pedalCount = parsed.count;
+          // Aceita 2 TAMBÉM: quem tem pedal de 2 botões salvava a escolha mas
+          // ela não voltava (a checagem só olhava 3/4), e o app caía no padrão
+          // de 4 — tirando o duplo-toque de finalizar e o prato do botão 2.
+          if (parsed.count === 2 || parsed.count === 3 || parsed.count === 4) {
+            this.pedalCount = parsed.count;
+          }
           if (parsed.playPause) this.pedalPlayPause = parsed.playPause;
           if (parsed.end) this.pedalEnd = parsed.end;
         } catch { /* usar padrão */ }
@@ -6670,7 +6675,81 @@ class RhythmSequencer {
 
   /** Se o app abriu por um link de compartilhar, mostra o preview.
    *  Suporta o link CURTO (/r/CÓDIGO, via backend) e o auto-contido (#import=). */
+  /** Caminho do JSON de um ritmo da biblioteca, pelo nome. */
+  private libraryPathFor(name: string): string | null {
+    const hit = this.availableRhythms.find(r => r.name === name);
+    return hit ? hit.path : (name ? `/rhythm/${name}.json` : null);
+  }
+
+  /** Carrega o JSON de um ritmo da biblioteca (o kit já está instalado). */
+  private async loadLibraryRhythmData(name: string): Promise<any | null> {
+    const path = this.libraryPathFor(name);
+    if (!path) return null;
+    try {
+      const res = await fetch(encodeURI(path));
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Remonta a RECEITA LEVE da comunidade (ritmo-base + BPM + nome) no formato
+   * que o preview de import já entende. O conteúdo em si vem da biblioteca
+   * local — por isso o link é minúsculo e o resultado é idêntico.
+   */
+  private async hydrateCommunityRecipe(recipe: CommunityRecipe): Promise<SharePayload | null> {
+    const cache = new Map<string, any>();
+    const libData = async (base: string): Promise<any | null> => {
+      if (cache.has(base)) return cache.get(base);
+      const data = await this.loadLibraryRhythmData(base);
+      if (data) cache.set(base, data);
+      return data;
+    };
+
+    if (recipe.t === 'r') {
+      if (!recipe.base) return null;
+      const data = await libData(recipe.base);
+      if (!data) return null;
+      if (recipe.bpm) data.tempo = recipe.bpm;
+      return { v: 1, t: 'r', title: recipe.title, bpm: recipe.bpm, base: recipe.base, data };
+    }
+
+    // Repertório: itens com `base` viram ritmos pessoais remontados da
+    // biblioteca; itens só com `path` seguem como referência da biblioteca.
+    const rhythms: Record<string, any> = {};
+    const items: any[] = [];
+    let n = 0;
+    for (const it of (recipe.items || [])) {
+      if (it.base) {
+        const data = await libData(it.base);
+        if (data) {
+          const clone = JSON.parse(JSON.stringify(data));
+          if (it.bpm) clone.tempo = it.bpm;
+          const k = 'r' + (n++);
+          rhythms[k] = { name: it.name, bpm: it.bpm || clone.tempo || 80, base: it.base, data: clone };
+          items.push({ name: it.name, path: it.path || '', bpm: it.bpm, base: it.base, k });
+          continue;
+        }
+      }
+      items.push({ name: it.name, path: it.path || '', bpm: it.bpm, base: it.base });
+    }
+    return { v: 1, t: 's', title: recipe.title, items, rhythms };
+  }
+
   private async handleShareImport(): Promise<void> {
+    // Link da COMUNIDADE (?c=CÓDIGO): traz a receita e remonta localmente.
+    const communityCode = readCommunityCodeFromPath();
+    if (communityCode) {
+      try { history.replaceState(null, '', '/'); } catch { /* noop */ }
+      const recipe = await fetchCommunity(communityCode);
+      const payload = recipe ? await this.hydrateCommunityRecipe(recipe) : null;
+      if (payload) { this.showImportPreview(payload); return; }
+      Toast.show('Não consegui abrir esse item da comunidade. Ele pode ter sido removido.', { type: 'warn', durationMs: 7000 });
+      return;
+    }
+
     const code = readShareCodeFromPath();
     if (code) {
       clearShareCodeFromPath();
