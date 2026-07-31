@@ -86,3 +86,40 @@ export function readShareCodeFromPath(): string | null {
 export function clearShareCodeFromPath(): void {
   try { history.replaceState(null, '', '/'); } catch { /* noop */ }
 }
+
+// ─── Comunidade (comunidade.gdrums.com.br) ─────────────────────────────
+// Link de download da vitrine: gdrums.com.br/?c=CÓDIGO. O conteúdo lá é a
+// RECEITA LEVE (ritmo-base + BPM + nome) — quem remonta é o app, carregando
+// o ritmo da biblioteca local. Ver supabase/migrations/20260730_community*.
+
+/** Receita leve publicada na comunidade. */
+export interface CommunityRecipe {
+  t: 'r' | 's';
+  title: string;
+  base?: string;
+  bpm?: number;
+  items?: Array<{ name: string; path?: string; base?: string; bpm?: number }>;
+}
+
+/** Lê o código da comunidade da URL (?c=CÓDIGO). null se não houver. */
+export function readCommunityCodeFromPath(): string | null {
+  try {
+    const q = new URLSearchParams(location.search).get('c');
+    if (q && /^\d{4,8}$/.test(q)) return q;
+  } catch { /* noop */ }
+  return null;
+}
+
+/** Busca a receita publicada na comunidade (e conta +1 download). */
+export async function fetchCommunity(code: string): Promise<CommunityRecipe | null> {
+  try {
+    const { supabase } = await import('../auth/supabase');
+    const { data, error } = await supabase.rpc('community_get', { p_code: code });
+    if (error) return null;
+    const row = Array.isArray(data) ? data[0] : data;
+    const p = row?.payload as CommunityRecipe | undefined;
+    return (p && (p.t === 'r' || p.t === 's')) ? p : null;
+  } catch {
+    return null;
+  }
+}
