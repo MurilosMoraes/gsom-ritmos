@@ -1,12 +1,12 @@
 {
   "version": "1.6",
-  "tempo": 190,
+  "tempo": 262,
   "beatsPerBar": 6,
   "patternSteps": {
     "main": 24,
     "fill": 12,
     "end": 8,
-    "intro": 12
+    "intro": 9
   },
   "variations": {
     "main": [
@@ -327,7 +327,7 @@
         ],
         "volumes": [
           [
-            0.7,
+            0.65,
             0.8,
             0.8,
             0.8,
@@ -335,7 +335,7 @@
             0.8,
             0.1,
             0.8,
-            0.66,
+            0.64,
             0.8,
             0.8,
             0.8,
@@ -347,7 +347,7 @@
             1,
             0.5,
             1,
-            0.66,
+            0.61,
             1,
             0.5,
             1
@@ -379,7 +379,7 @@
             1
           ],
           [
-            0.8,
+            0.66,
             0.5,
             0.5,
             0.5,
@@ -387,7 +387,7 @@
             0.5,
             0.5,
             0.5,
-            0.8,
+            0.66,
             0.5,
             0.5,
             0.2,
@@ -399,7 +399,7 @@
             1,
             0.06,
             1,
-            0.67,
+            0.57,
             1,
             0.5,
             0.2
@@ -1021,7 +1021,7 @@
         ],
         "volumes": [
           [
-            0.69,
+            0.64,
             0.8,
             0.8,
             0.8,
@@ -1041,7 +1041,7 @@
             1,
             0.5,
             1,
-            0.69,
+            0.64,
             1,
             0.5,
             1
@@ -1119,7 +1119,7 @@
             1,
             1,
             1,
-            0.16,
+            0.12,
             1,
             1,
             1
@@ -1449,39 +1449,15 @@
             false,
             false,
             false,
-            true,
-            false
-          ],
-          [
-            true,
-            false,
-            false,
-            false,
-            true,
-            false,
-            false,
-            false,
-            true,
-            false,
-            false,
-            false,
-            true,
-            false,
-            false,
-            false,
-            true,
-            false,
-            false,
-            false,
-            true,
-            false,
             false,
             false
           ],
           [
+            true,
             false,
             false,
             false,
+            true,
             false,
             false,
             false,
@@ -1493,11 +1469,35 @@
             false,
             false,
             false,
-            false,
+            true,
             false,
             false,
             false,
             true,
+            false,
+            false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
             false,
             false,
             false,
@@ -1715,7 +1715,7 @@
         ],
         "volumes": [
           [
-            0.69,
+            0.61,
             0.8,
             0.8,
             0.8,
@@ -1735,7 +1735,7 @@
             1,
             0.5,
             1,
-            0.68,
+            0.61,
             1,
             0.5,
             1
@@ -1767,23 +1767,23 @@
             1
           ],
           [
-            0.8,
+            0.64,
             0.5,
+            0.5,
+            0.5,
+            0.14,
+            0.5,
+            0.5,
+            0.5,
+            0.14,
             0.5,
             0.5,
             0.2,
-            0.5,
-            0.5,
-            0.5,
-            0.2,
-            0.5,
-            0.5,
-            0.2,
-            0.5,
+            0.46,
             1,
             0.09,
             1,
-            0.2,
+            0.17,
             1,
             0.06,
             1,
@@ -2498,7 +2498,7 @@
           }
         ],
         "steps": 12,
-        "speed": 2
+        "speed": 1
       },
       {
         "pattern": [
@@ -2904,7 +2904,7 @@
           }
         ],
         "steps": 12,
-        "speed": 2
+        "speed": 1
       },
       {
         "pattern": [
@@ -3310,7 +3310,7 @@
           }
         ],
         "steps": 12,
-        "speed": 2
+        "speed": 1
       }
     ],
     "end": [
@@ -3622,7 +3622,7 @@
           }
         ],
         "steps": 8,
-        "speed": 2
+        "speed": 1
       }
     ],
     "intro": [
@@ -3632,34 +3632,14 @@
             true,
             false,
             false,
-            false,
             true,
             false,
             false,
-            false,
             true,
             false,
-            false,
             false
           ],
           [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
             false,
             false,
             false,
@@ -3679,29 +3659,9 @@
             false,
             false,
             false,
-            false,
-            false,
-            false,
             false
           ],
           [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
             false,
             false,
             false,
@@ -3721,29 +3681,9 @@
             false,
             false,
             false,
-            false,
-            false,
-            false,
             false
           ],
           [
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false
-          ],
-          [
-            false,
-            false,
-            false,
             false,
             false,
             false,
@@ -3763,6 +3703,14 @@
             false,
             false,
             false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
             false,
             false,
             false,
@@ -3777,6 +3725,14 @@
             false,
             false,
             false,
+            false
+          ],
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
             false,
             false,
             false,
@@ -3786,6 +3742,14 @@
             false,
             false,
             false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          [
             false,
             false,
             false,
@@ -3802,9 +3766,17 @@
             0.8,
             0.8,
             0.8,
+            0.8,
             1,
             1,
+            0.8,
             1,
+            1
+          ],
+          [
+            0.8,
+            0.8,
+            0.8,
             1,
             1,
             1,
@@ -3821,32 +3793,12 @@
             1,
             1,
             1,
-            1,
-            1,
-            1,
             1
           ],
           [
             0.8,
             0.8,
             0.8,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            0.8,
-            0.8,
-            0.8,
-            1,
-            1,
-            1,
             1,
             1,
             1,
@@ -3863,32 +3815,12 @@
             1,
             1,
             1,
-            1,
-            1,
-            1,
             1
           ],
           [
             0.8,
             0.8,
             0.8,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            0.8,
-            0.8,
-            0.8,
-            1,
-            1,
-            1,
             1,
             1,
             1,
@@ -3905,32 +3837,12 @@
             1,
             1,
             1,
-            1,
-            1,
-            1,
             1
           ],
           [
             0.8,
             0.8,
             0.8,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ],
-          [
-            0.8,
-            0.8,
-            0.8,
-            1,
-            1,
-            1,
             1,
             1,
             1,
@@ -3947,6 +3859,14 @@
             1,
             1,
             1,
+            1
+          ],
+          [
+            0.8,
+            0.8,
+            0.8,
+            1,
+            1,
             1,
             1,
             1,
@@ -3959,6 +3879,14 @@
             1,
             1,
             1,
+            1,
+            1,
+            1
+          ],
+          [
+            0.8,
+            0.8,
+            0.8,
             1,
             1,
             1,
@@ -4029,18 +3957,18 @@
             "midiPath": ""
           }
         ],
-        "steps": 12,
+        "steps": 9,
         "speed": 1.5
       }
     ]
   },
   "fillStartSound": {
-    "fileName": "chimbal_fechado.wav",
-    "midiPath": "/midi/chimbal_fechado.wav"
+    "fileName": "prato.mp3",
+    "midiPath": "/midi/prato.mp3"
   },
   "fillReturnSound": {
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-05-03T19:38:59.982Z"
+  "timestamp": "2026-08-01T00:07:10.561Z"
 }
