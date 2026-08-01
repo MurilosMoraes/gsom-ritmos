@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comunidade GDrums | Ritmos e Repertórios da Galera</title>
+  <meta name="description" content="A comunidade oficial do GDrums. Pesquise ritmos e repertórios compartilhados por músicos de todo o Brasil, ou publique os seus. Baixe direto no seu app." />
+  <meta name="theme-color" content="#030014" />
+  <link rel="canonical" href="https://comunidade.gdrums.com.br" />
+
+  <link rel="icon" type="image/png" sizes="512x512" href="/img/icon-512.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/img/icon-192.png" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="GDrums" />
+  <meta property="og:title" content="Comunidade GDrums" />
+  <meta property="og:description" content="Pesquise e compartilhe ritmos e repertórios com músicos de todo o Brasil. Baixe direto no seu app." />
+  <meta property="og:image" content="https://gdrums.com.br/img/og-logo-1200.png" />
+  <meta property="og:locale" content="pt_BR" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --cyan: #00D4FF;
+      --blue: #0099FF;
+      --purple: #8B5CF6;
+      --pink: #EC4899;
+      --orange: #F97316;
+      --bg-dark: #030014;
+      --bg-card: rgba(15, 15, 35, 0.8);
+      --line: rgba(255, 255, 255, 0.08);
+      --text-primary: #FFFFFF;
+      --text-secondary: #A0AEC0;
+      --text-muted: #718096;
+      --gradient-main: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 50%, var(--pink) 100%);
+    }
+    /* Escala base menor que o padrão (16px): a página inteira usa rem, então
+       isso "dá um zoom out" geral sem mexer em cada medida. */
+    html { font-size: 14px; }
+    html, body { overflow-x: hidden; width: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 1.4rem; }
+
+    /* ── Fundo com orbs (igual landing) ── */
+    .page-bg { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.4; animation: float 22s ease-in-out infinite; }
+    .orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, var(--cyan) 0%, transparent 70%); top: -220px; left: -220px; }
+    .orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, var(--purple) 0%, transparent 70%); top: 15%; right: -180px; animation-delay: 6s; }
+    .orb-3 { width: 420px; height: 420px; background: radial-gradient(circle, var(--pink) 0%, transparent 70%); bottom: -140px; left: 45%; animation-delay: 12s; }
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(50px, -50px) scale(1.08); }
+      66% { transform: translate(-30px, 30px) scale(0.92); }
+    }
+    .page { position: relative; z-index: 1; }
+
+    /* ── Navbar ── */
+    .navbar { padding: 1rem 0; }
+    .nav-content { max-width: 1280px; margin: 0 auto; padding: 0 1.4rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+    .logo-nav { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+    .logo-img { height: 56px; width: auto; border-radius: 14px; background: #000; display: block; }
+    .logo-text {
+      font-size: 1.6rem; font-weight: 800; letter-spacing: -1px;
+      background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .nav-actions { display: flex; align-items: center; gap: 0.7rem; }
+    .nav-ico {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 38px; height: 38px; border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-secondary); transition: all 0.25s ease;
+    }
+    .nav-ico:hover { color: #fff; border-color: rgba(0, 212, 255, 0.5); transform: translateY(-1px); }
+    .me-chip {
+      display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer;
+      padding: 0.32rem 0.7rem 0.32rem 0.35rem; border-radius: 50px;
+      background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.14);
+      color: var(--text-secondary); font-family: inherit; font-size: 0.84rem; font-weight: 700;
+      transition: all 0.25s ease; max-width: 190px;
+    }
+    .me-chip:hover { color: #fff; border-color: rgba(0, 212, 255, 0.5); }
+    .me-avatar {
+      flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+      background: var(--gradient-main); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem; font-weight: 800; text-transform: uppercase;
+    }
+    .me-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Selo oficial: mini logo + rótulo, com anel em gradiente */
+    .seal {
+      display: inline-flex; align-items: center; gap: 0.28rem; vertical-align: middle;
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.14), rgba(139, 92, 246, 0.14));
+      border: 1px solid rgba(0, 212, 255, 0.42); border-radius: 50px;
+      padding: 0.08rem 0.42rem 0.08rem 0.1rem; white-space: nowrap;
+    }
+    .seal img {
+      width: 15px; height: 15px; border-radius: 50%; background: #000; display: block; flex-shrink: 0;
+    }
+    .seal span {
+      font-size: 0.56rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+      background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .me-chip .seal { padding-right: 0.36rem; }
+    .btn-nav {
+      padding: 0.55rem 1.3rem; background: var(--gradient-main); color: #fff; border-radius: 9px;
+      font-weight: 700; font-size: 0.88rem; text-decoration: none; transition: all 0.3s ease; white-space: nowrap;
+    }
+    .btn-nav:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 212, 255, 0.4); }
+
+    /* ── Hero ── */
+    .hero { text-align: center; padding: 1.8rem 0 1.6rem; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.55rem;
+      padding: 0.42rem 1.05rem; background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 50px;
+      font-size: 0.8rem; color: var(--cyan); font-weight: 600; margin-bottom: 1.2rem;
+    }
+    .eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+    .eq span { width: 3px; border-radius: 2px; background: var(--gradient-main); animation: eq 1.1s ease-in-out infinite; }
+    .eq span:nth-child(1) { height: 40%; animation-delay: 0s; }
+    .eq span:nth-child(2) { height: 90%; animation-delay: 0.15s; }
+    .eq span:nth-child(3) { height: 55%; animation-delay: 0.3s; }
+    .eq span:nth-child(4) { height: 100%; animation-delay: 0.45s; }
+    .eq span:nth-child(5) { height: 65%; animation-delay: 0.6s; }
+    @keyframes eq { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+    .hero h1 {
+      font-size: clamp(1.85rem, 4.6vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em;
+      line-height: 1.12; margin-bottom: 0.8rem;
+    }
+    .hero h1 .grad { background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero-sub { font-size: 1.02rem; color: var(--text-secondary); max-width: 560px; margin: 0 auto 1.6rem; }
+    .hero-stats { display: flex; justify-content: center; gap: 0.45rem; flex-wrap: wrap; }
+    .stat {
+      display: flex; align-items: baseline; gap: 0.32rem;
+      background: var(--bg-card); border: 1px solid var(--line); border-radius: 50px;
+      padding: 0.3rem 0.75rem; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    .stat b { font-size: 0.88rem; font-weight: 800; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .stat span { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; }
+
+    /* ── Deck de controles ── */
+    .deck {
+      background: var(--bg-card); border: 1px solid var(--line); border-radius: 15px;
+      padding: 0.75rem; margin-bottom: 1.1rem;
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    }
+    .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin-bottom: 0.6rem; }
+    .tab-btn {
+      display: flex; align-items: center; justify-content: center; gap: 0.42rem;
+      padding: 0.5rem 0.8rem; border-radius: 10px; cursor: pointer;
+      background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line);
+      color: var(--text-secondary); font-size: 0.84rem; font-weight: 700; font-family: inherit;
+      transition: all 0.25s ease;
+    }
+    .tab-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .tab-btn svg { opacity: 0.75; }
+    .tab-btn.on {
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.14), rgba(139, 92, 246, 0.14));
+      border-color: rgba(0, 212, 255, 0.45); color: #fff;
+    }
+    .tab-btn.on svg { opacity: 1; }
+    .deck-row { display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center; }
+    .search {
+      flex: 2 1 175px; display: flex; align-items: center; gap: 0.38rem;
+      background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); border-radius: 9px;
+      padding: 0 0.6rem; transition: border-color 0.2s;
+    }
+    .search svg { width: 14px; height: 14px; }
+    .search:focus-within { border-color: rgba(0, 212, 255, 0.5); }
+    .search svg { flex-shrink: 0; color: var(--text-muted); }
+    .search input {
+      flex: 1; padding: 0.42rem 0; background: transparent; border: none; outline: none;
+      color: #fff; font-size: 0.78rem; font-family: inherit; min-width: 0;
+    }
+    .search input::placeholder { color: var(--text-muted); }
+    .search input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+    .deck-row select {
+      flex: 1 1 130px; padding: 0.52rem 0.6rem; border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line);
+      color: #fff; font-size: 0.8rem; font-family: inherit; outline: none; cursor: pointer;
+    }
+    .deck-row select:focus { border-color: rgba(0, 212, 255, 0.5); }
+    /* A lista aberta do select é desenhada pelo sistema, com fundo branco —
+       sem isso as opções herdavam o texto branco e sumiam. */
+    .deck-row select option { color: #111; background: #fff; }
+    .seg { display: inline-flex; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .seg button {
+      padding: 0.52rem 0.75rem; border: none; background: transparent; color: var(--text-secondary);
+      font-size: 0.78rem; font-weight: 700; font-family: inherit; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .seg button.on { background: rgba(0, 212, 255, 0.13); color: var(--cyan); }
+    .share-cta {
+      flex: 0 1 auto; display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+      padding: 0.55rem 0.95rem; border: none; border-radius: 10px; cursor: pointer;
+      background: var(--gradient-main); color: #fff; font-size: 0.8rem; font-weight: 800; font-family: inherit;
+      transition: all 0.3s ease; white-space: nowrap;
+    }
+    .share-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 212, 255, 0.35); }
+
+    /* ── Grid de cards ── */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 0.65rem; padding-bottom: 1rem; }
+    .card {
+      background: var(--bg-card); border: 1px solid var(--line); border-radius: 13px;
+      padding: 0.75rem 0.8rem 0.7rem; display: flex; flex-direction: column; gap: 0.35rem;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .card:hover { transform: translateY(-3px); border-color: rgba(0, 212, 255, 0.35); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35); }
+    .card-top { display: flex; align-items: center; gap: 0.3rem 0.4rem; flex-wrap: wrap; }
+    .pill {
+      font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+      border-radius: 50px; padding: 0.16rem 0.55rem; white-space: nowrap;
+    }
+    .pill.rhythm { color: var(--purple); background: rgba(139, 92, 246, 0.13); border: 1px solid rgba(139, 92, 246, 0.35); }
+    .pill.setlist { color: var(--orange); background: rgba(249, 115, 22, 0.12); border: 1px solid rgba(249, 115, 22, 0.35); }
+    .chip { font-size: 0.72rem; color: var(--cyan); background: rgba(0, 212, 255, 0.07); border: 1px solid rgba(0, 212, 255, 0.22); border-radius: 50px; padding: 0.14rem 0.55rem; white-space: nowrap; }
+    .card-title { font-size: 0.92rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; word-break: break-word; }
+    .card-meta { font-size: 0.68rem; color: var(--text-secondary); white-space: nowrap; }
+    .card-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted); }
+    /* Rodapé do card: autor à esquerda, botões à direita — usa a largura que
+       antes ficava vazia e tira duas linhas de altura do card. */
+    .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; flex-wrap: wrap; margin-top: auto; padding-top: 0.15rem; }
+    .card-btns { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
+    .card-poster { font-size: 0.68rem; color: var(--text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card-poster b { color: var(--text-secondary); font-weight: 700; }
+    .like {
+      display: inline-flex; align-items: center; gap: 0.28rem; cursor: pointer;
+      background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); border-radius: 8px;
+      padding: 0.34rem 0.5rem; color: var(--text-secondary); font-size: 0.74rem; font-weight: 700; font-family: inherit;
+      transition: all 0.2s;
+    }
+    .like:hover:not(:disabled) { border-color: rgba(236, 72, 153, 0.45); color: var(--pink); }
+    .like.liked { color: var(--pink); border-color: rgba(236, 72, 153, 0.4); background: rgba(236, 72, 153, 0.1); }
+    .like:disabled { cursor: default; }
+    .dl-btn {
+      display: flex; align-items: center; justify-content: center; gap: 0.32rem;
+      padding: 0.38rem 0.55rem; border-radius: 8px; text-decoration: none;
+      background: var(--gradient-main); color: #fff; font-size: 0.76rem; font-weight: 800;
+      transition: all 0.25s ease;
+    }
+    .dl-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0, 212, 255, 0.35); }
+
+    /* Skeleton */
+    .sk { background: var(--bg-card); border: 1px solid var(--line); border-radius: 16px; padding: 1.05rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .sk div { border-radius: 7px; background: linear-gradient(100deg, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.11) 50%, rgba(255,255,255,0.05) 60%); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    .sk .l1 { height: 14px; width: 45%; }
+    .sk .l2 { height: 20px; width: 80%; }
+    .sk .l3 { height: 12px; width: 60%; }
+    .sk .l4 { height: 34px; width: 100%; margin-top: 0.3rem; }
+
+    .empty { text-align: center; color: var(--text-muted); font-size: 0.92rem; padding: 3.2rem 1rem; grid-column: 1 / -1; line-height: 1.6; }
+    .empty b { color: var(--text-secondary); display: block; font-size: 1.05rem; margin-bottom: 0.2rem; }
+
+    /* ── Modal compartilhar ── */
+    .modal-ov {
+      position: fixed; inset: 0; background: rgba(2, 2, 12, 0.85);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      z-index: 1000; display: none; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .modal-ov.open { display: flex; }
+    .modal {
+      background: rgba(10, 10, 26, 0.97); border: 1px solid var(--line); border-radius: 20px;
+      padding: 1.6rem; max-width: 460px; width: 100%; max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.01em; text-align: center; margin-bottom: 0.3rem; }
+    .modal-sub { font-size: 0.82rem; color: var(--text-secondary); text-align: center; margin-bottom: 1.2rem; }
+    .steps { display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 1.2rem; }
+    .step { display: flex; align-items: flex-start; gap: 0.65rem; font-size: 0.83rem; color: var(--text-secondary); line-height: 1.45; }
+    .step-n {
+      flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; margin-top: 0.05rem;
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.18), rgba(139, 92, 246, 0.18));
+      border: 1px solid rgba(0, 212, 255, 0.35); color: var(--cyan);
+      display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 800;
+    }
+    .fld { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.8rem; }
+    .fld label { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.7px; color: var(--text-muted); }
+    .fld input {
+      width: 100%; padding: 0.75rem 0.9rem; border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line);
+      color: #fff; font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.2s;
+    }
+    .fld input:focus { border-color: rgba(0, 212, 255, 0.5); }
+    .modal-btn {
+      width: 100%; padding: 0.85rem; border: none; border-radius: 12px; cursor: pointer;
+      background: var(--gradient-main); color: #fff; font-size: 0.95rem; font-weight: 800; font-family: inherit;
+      transition: all 0.25s ease;
+    }
+    .modal-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0, 212, 255, 0.35); }
+    .modal-btn:disabled { opacity: 0.55; cursor: default; }
+    .modal-close {
+      width: 100%; margin-top: 0.55rem; padding: 0.68rem; border-radius: 12px; cursor: pointer;
+      background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; font-family: inherit;
+    }
+    .modal-msg { font-size: 0.8rem; margin-top: 0.7rem; line-height: 1.45; min-height: 1rem; text-align: center; }
+    .modal-msg.err { color: var(--pink); }
+    .id-seg { width: 100%; margin-bottom: 1rem; }
+    .id-seg button { flex: 1; }
+    .id-note { font-size: 0.7rem; color: var(--text-muted); text-align: center; margin-top: 0.8rem; line-height: 1.45; }
+
+    /* Painel de usuários (admin) */
+    .u-list { max-height: 320px; overflow-y: auto; margin-bottom: 0.9rem; display: flex; flex-direction: column; gap: 0.4rem; }
+    .u-row {
+      background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); border-radius: 11px;
+      padding: 0.6rem 0.7rem; display: flex; align-items: center; gap: 0.6rem;
+    }
+    .u-info { flex: 1; min-width: 0; }
+    .u-name { font-size: 0.85rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .u-mail { font-size: 0.72rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .u-reset {
+      flex-shrink: 0; padding: 0.38rem 0.6rem; border-radius: 9px; cursor: pointer;
+      background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.32);
+      color: var(--cyan); font-size: 0.74rem; font-weight: 700; font-family: inherit;
+    }
+    .u-reset:hover { background: rgba(0, 212, 255, 0.18); }
+    .id-badge {
+      width: 56px; height: 56px; border-radius: 18px; margin: 0 auto 0.9rem;
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(139, 92, 246, 0.15));
+      border: 1px solid rgba(0, 212, 255, 0.35); color: var(--cyan);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .post-as {
+      font-size: 0.78rem; color: var(--text-muted); text-align: center; margin-bottom: 0.9rem;
+    }
+    .post-as b { color: var(--cyan); font-weight: 700; }
+
+    /* Modal de detalhes */
+    .d-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
+    #detailModal h2 { text-align: left; font-size: 1.3rem; line-height: 1.2; word-break: break-word; margin-bottom: 0.3rem; }
+    .d-poster { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem; }
+    .d-poster b { color: var(--text-secondary); font-weight: 700; }
+    .d-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(86px, 1fr)); gap: 0.5rem; margin-bottom: 1.1rem; }
+    .d-fact {
+      background: rgba(255, 255, 255, 0.035); border: 1px solid var(--line); border-radius: 12px;
+      padding: 0.6rem 0.55rem; text-align: center;
+    }
+    .d-fact b { display: block; font-size: 0.95rem; font-weight: 800; color: #fff; line-height: 1.25; word-break: break-word; }
+    .d-fact span { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+    .d-songs-wrap { margin-bottom: 1.1rem; }
+    .d-songs-h { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 0.45rem; }
+    .d-songs {
+      list-style: none; counter-reset: s; max-height: 210px; overflow-y: auto;
+      background: rgba(255, 255, 255, 0.025); border: 1px solid var(--line); border-radius: 12px; padding: 0.4rem;
+    }
+    .d-songs li {
+      counter-increment: s; display: flex; align-items: center; gap: 0.55rem;
+      padding: 0.4rem 0.5rem; font-size: 0.84rem; border-radius: 8px;
+    }
+    .d-songs li + li { border-top: 1px solid rgba(255, 255, 255, 0.05); }
+    .d-songs li::before {
+      content: counter(s); flex-shrink: 0; width: 19px; height: 19px; border-radius: 50%;
+      background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.25); color: var(--cyan);
+      display: flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 800;
+    }
+    .d-song-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .d-song-meta { flex-shrink: 0; font-size: 0.7rem; color: var(--text-muted); }
+    .d-dl { display: block; text-align: center; text-decoration: none; margin-bottom: 0.55rem; }
+    .modal-danger {
+      width: 100%; padding: 0.7rem; border-radius: 12px; cursor: pointer; margin-bottom: 0.55rem;
+      background: rgba(236, 72, 153, 0.1); border: 1px solid rgba(236, 72, 153, 0.4);
+      color: var(--pink); font-size: 0.86rem; font-weight: 700; font-family: inherit; transition: all 0.2s;
+    }
+    .modal-danger:hover:not(:disabled) { background: rgba(236, 72, 153, 0.18); }
+    .modal-danger.confirming { background: rgba(236, 72, 153, 0.25); border-color: var(--pink); color: #fff; }
+    .modal-danger:disabled { opacity: 0.55; cursor: default; }
+    .card { cursor: pointer; }
+    .card-actions .like, .card-actions .dl-btn { cursor: pointer; }
+    .modal-success { display: none; text-align: center; padding: 0.6rem 0 0.2rem; }
+    .modal-success.show { display: block; }
+    .check {
+      width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 0.9rem;
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(139, 92, 246, 0.15));
+      border: 1px solid rgba(0, 212, 255, 0.4); color: var(--cyan);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-success h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.25rem; }
+    .modal-success p { font-size: 0.83rem; color: var(--text-secondary); margin-bottom: 1.1rem; }
+
+    /* ── Footer ── */
+    .footer { border-top: 1px solid var(--line); margin-top: 2.6rem; padding: 2rem 0 1.6rem; background: rgba(1, 0, 8, 0.5); }
+    .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+    .footer-brand img { height: 56px; margin-bottom: 0.6rem; border-radius: 14px; background: #000; display: block; }
+    .footer-brand p { font-size: 0.82rem; color: var(--text-muted); max-width: 250px; }
+    .footer-col h4 { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 0.7rem; }
+    .footer-col a {
+      display: flex; align-items: center; gap: 0.45rem;
+      font-size: 0.84rem; color: var(--text-muted); text-decoration: none; padding: 0.22rem 0; transition: color 0.2s;
+    }
+    .footer-col a:hover { color: var(--cyan); }
+    .footer-col a svg { flex-shrink: 0; opacity: 0.8; }
+    .footer-bottom { border-top: 1px solid var(--line); padding-top: 1.15rem; display: flex; justify-content: center; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .footer-social { display: flex; gap: 0.55rem; }
+    .footer-social a {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line);
+      color: var(--text-secondary); transition: all 0.25s ease;
+    }
+    .footer-social a:hover { color: #fff; border-color: rgba(0, 212, 255, 0.5); transform: translateY(-2px); }
+    .footer-glory { text-align: center; margin-top: 1.6rem; font-size: 0.75rem; font-style: italic; color: rgba(255, 255, 255, 0.4); }
+
+    @media (max-width: 760px) {
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+      .hero { padding-top: 1.5rem; }
+      .nav-ico.hide-sm { display: none; }
+    }
+    @media (max-width: 560px) {
+      .container, .nav-content { padding: 0 0.9rem; }
+
+      /* Topo: logo menor e o chip de perfil sem empurrar o botão pra fora */
+      .navbar { padding: 0.75rem 0; }
+      .logo-img { height: 42px; border-radius: 11px; }
+      .logo-text { font-size: 1.25rem; }
+      .me-chip { max-width: 120px; padding: 0.28rem 0.55rem 0.28rem 0.28rem; font-size: 0.76rem; }
+      .me-avatar { width: 22px; height: 22px; font-size: 0.7rem; }
+      .btn-nav { padding: 0.45rem 0.9rem; font-size: 0.8rem; }
+
+      /* Hero mais curto pra vitrine aparecer logo */
+      .hero { padding: 1.1rem 0 1rem; }
+      .hero-badge { margin-bottom: 0.8rem; padding: 0.32rem 0.8rem; font-size: 0.72rem; }
+      .hero h1 { font-size: 1.65rem; }
+      .hero-sub { font-size: 0.85rem; margin-bottom: 1rem; }
+
+      /* Abas: 3 numa linha só cabem com texto e ícone menores. min-width:0
+         deixa a coluna encolher em telas bem estreitas em vez de estourar. */
+      .tab-btn { padding: 0.45rem 0.25rem; font-size: 0.68rem; gap: 0.25rem; min-width: 0; }
+      .tab-btn svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+      /* Busca e filtro de ritmo dividem a primeira linha (busca um pouco mais
+         larga); ordenação e compartilhar ficam nas linhas seguintes.
+         flex-basis 0 + min-width 0 impede o basis de 175px de forçar quebra. */
+      .search { flex: 1.4 1 0; min-width: 0; }
+      .deck-row select { flex: 1 1 0; min-width: 0; }
+      .share-cta { flex: 1 1 100%; padding: 0.6rem; }
+
+      /* Dois cards por linha aproveita bem mais a tela que um só */
+      .grid { grid-template-columns: repeat(auto-fill, minmax(142px, 1fr)); gap: 0.55rem; }
+      .card { padding: 0.65rem 0.7rem 0.6rem; }
+      .card-title { font-size: 0.86rem; }
+      /* Card estreito: autor em cima, botões ocupando a linha de baixo */
+      .card-foot { gap: 0.3rem; }
+      .card-poster { flex: 1 1 100%; }
+      .card-btns { flex: 1 1 100%; }
+      .card-btns .dl-btn { flex: 1; }
+
+      /* Modais coladinhos nas bordas em tela pequena */
+      .modal-ov { padding: 0.7rem; }
+      .modal { padding: 1.15rem; border-radius: 16px; }
+      .d-facts { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 0.4rem; }
+
+      /* No celular o rodapé virava uma coluna só e esticava a página à toa.
+         Agora: marca deitada (logo ao lado do texto) ocupando a linha inteira,
+         e as três listas de links lado a lado. */
+      .footer { margin-top: 2rem; padding: 1.5rem 0 1.2rem; }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 1rem 0.7rem; margin-bottom: 1.3rem; }
+      .footer-brand { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 0.7rem; }
+      .footer-brand img { height: 44px; margin-bottom: 0; flex-shrink: 0; }
+      .footer-brand p { max-width: none; font-size: 0.76rem; }
+      .footer-col h4 { margin-bottom: 0.4rem; }
+      .footer-col a { padding: 0.16rem 0; font-size: 0.8rem; }
+      .footer-glory { margin-top: 1.1rem; }
+      .seg { width: 100%; }
+      .seg button { flex: 1; }
+      .share-cta { flex-basis: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .orb, .eq span, .sk div { animation: none; }
+      .card, .btn-nav, .share-cta, .dl-btn, .nav-ico, .footer-social a { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="page">
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="nav-content">
+        <a class="logo-nav" href="https://gdrums.com.br" target="_blank" rel="noopener">
+          <img class="logo-img" src="/img/logo.png" alt="GDrums" />
+          <span class="logo-text">GDrums</span>
+        </a>
+        <div class="nav-actions">
+          <button id="usersBtn" class="nav-ico" type="button" style="display:none;" title="Usuários da comunidade" aria-label="Usuários da comunidade">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </button>
+          <button id="meChip" class="me-chip" type="button" style="display:none;" aria-label="Sua identidade na comunidade">
+            <span id="meAvatar" class="me-avatar">?</span>
+            <span id="meName" class="me-name"></span>
+            <span id="meAdmin" class="seal" style="display:none;" title="Equipe GDrums"><img src="/img/logo.png" alt="" /><span>GDrums</span></span>
+          </button>
+          <a class="nav-ico hide-sm" href="https://www.instagram.com/gdrums_app/" target="_blank" rel="noopener" aria-label="Instagram do GDrums">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+          <a class="btn-nav" href="https://gdrums.com.br" target="_blank" rel="noopener">Abrir o app</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <header class="hero container">
+      <div class="hero-badge">
+        <span class="eq" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></span>
+        Feita por músicos, pra músicos
+      </div>
+      <h1>A casa dos ritmos<br /><span class="grad">da galera</span></h1>
+      <p class="hero-sub">Pesquise ritmos e repertórios compartilhados por músicos de todo o Brasil, ou publique os seus. Baixe e toque direto no seu GDrums.</p>
+      <div class="hero-stats" id="stats" style="display:none;">
+        <div class="stat"><b id="stRhythms">0</b><span>ritmos</span></div>
+        <div class="stat"><b id="stSetlists">0</b><span>repertórios</span></div>
+        <div class="stat"><b id="stDownloads">0</b><span>downloads</span></div>
+      </div>
+    </header>
+
+    <!-- Controles -->
+    <main class="container">
+      <div class="deck">
+        <div class="tabs" role="tablist">
+          <button id="tabRhythm" class="tab-btn on" type="button" role="tab" aria-selected="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            Ritmos
+          </button>
+          <button id="tabSetlist" class="tab-btn" type="button" role="tab" aria-selected="false">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Repertórios
+          </button>
+          <button id="tabMine" class="tab-btn" type="button" role="tab" aria-selected="false">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Meus posts
+          </button>
+        </div>
+        <div class="deck-row">
+          <!-- Form próprio: sem um <form> em volta, o Chrome junta TODOS os
+               inputs da página num formulário implícito e derramava o e-mail
+               do perfil aqui. O input nasce readonly (browser não preenche
+               campo readonly) e é destravado no primeiro toque, via JS. -->
+          <form class="search" autocomplete="off" role="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="qSearch" type="search" name="busca-comunidade" placeholder="Pesquisar ritmo pelo nome"
+                   readonly autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                   data-lpignore="true" data-1p-ignore data-form-type="other" aria-label="Pesquisar" />
+          </form>
+          <select id="fRhythm" aria-label="Filtrar por ritmo">
+            <option value="">Todos os ritmos</option>
+          </select>
+          <div class="seg">
+            <button id="sRecent" class="on" type="button">Recentes</button>
+            <button id="sLikes" type="button">Mais curtidos</button>
+          </div>
+          <button id="shareCta" class="share-cta" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            Compartilhar ritmo
+          </button>
+        </div>
+      </div>
+
+      <div id="grid" class="grid"></div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand">
+            <img src="/img/logo.png" alt="GDrums" />
+            <p>Seu baterista virtual no palco. 155+ ritmos brasileiros, pedal Bluetooth e a comunidade que toca junto.</p>
+          </div>
+          <div class="footer-col">
+            <h4>O app</h4>
+            <a href="https://gdrums.com.br" target="_blank" rel="noopener">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              Abrir no navegador
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.gdrums.app&hl=pt" target="_blank" rel="noopener">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5v-17c0-.59.34-1.11.84-1.35L13.69 12l-9.85 9.85c-.5-.24-.84-.76-.84-1.35zm13.81-5.38L6.05 21.34l8.49-8.49 2.27 2.27zm3.35-4.31c.34.27.59.69.59 1.19s-.22.9-.57 1.18l-2.29 1.32-2.5-2.5 2.5-2.5 2.27 1.31zM6.05 2.66l10.76 6.22-2.27 2.27-8.49-8.49z"/></svg>
+              Baixar na Google Play
+            </a>
+            <a href="https://apps.apple.com/br/app/gdrums/id6766099516" target="_blank" rel="noopener">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              Baixar na App Store
+            </a>
+          </div>
+          <div class="footer-col">
+            <h4>Comunidade</h4>
+            <a href="https://www.instagram.com/gdrums_app/" target="_blank" rel="noopener">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+              Instagram
+            </a>
+            <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank" rel="noopener">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.2-.6.1-.2.3-.7.9-.8 1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.6-1.5-.9-2-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-1 .9-1 2.3s1 2.7 1.2 2.9c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.9-1.3A10 10 0 1 0 12 2z"/></svg>
+              Grupo no WhatsApp
+            </a>
+          </div>
+          <div class="footer-col">
+            <h4>GDrums</h4>
+            <a href="https://gdrums.com.br/landing" target="_blank" rel="noopener">Conheça o app</a>
+            <a href="https://gdrums.com.br/terms.html" target="_blank" rel="noopener">Termos de uso</a>
+            <a href="https://gdrums.com.br/privacy.html" target="_blank" rel="noopener">Privacidade</a>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <div class="footer-social">
+            <a href="https://www.instagram.com/gdrums_app/" target="_blank" rel="noopener" aria-label="Instagram">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            </a>
+            <a href="https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK" target="_blank" rel="noopener" aria-label="WhatsApp">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.2-.6.1-.2.3-.7.9-.8 1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.6-1.5-.9-2-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-1 .9-1 2.3s1 2.7 1.2 2.9c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.9-1.3A10 10 0 1 0 12 2z"/></svg>
+            </a>
+          </div>
+        </div>
+        <p class="footer-glory">Pra honra e glória de Deus</p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Modal: usuários (admin) -->
+  <div id="usersModal" class="modal-ov" role="dialog" aria-modal="true" aria-labelledby="uTitle">
+    <div class="modal">
+      <h2 id="uTitle">Usuários da comunidade</h2>
+      <p class="modal-sub">As senhas são guardadas cifradas e não podem ser lidas por ninguém. Quem esquecer, você define uma nova aqui.</p>
+      <div id="uList" class="u-list"></div>
+      <button id="uClose" class="modal-close" type="button">Fechar</button>
+      <div id="uMsg" class="modal-msg"></div>
+    </div>
+  </div>
+
+  <!-- Modal: detalhes do post -->
+  <div id="detailModal" class="modal-ov" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+    <div class="modal">
+      <div class="d-head">
+        <span id="dPill" class="pill rhythm">Ritmo</span>
+        <span id="dSeal"></span>
+      </div>
+      <h2 id="dTitle">...</h2>
+      <div id="dPoster" class="d-poster"></div>
+
+      <div id="dFacts" class="d-facts"></div>
+
+      <div id="dSongsWrap" class="d-songs-wrap" style="display:none;">
+        <div class="d-songs-h">Músicas do repertório</div>
+        <ol id="dSongs" class="d-songs"></ol>
+      </div>
+
+      <a id="dDownload" class="modal-btn d-dl" href="#" target="_blank" rel="noopener">Baixar no meu GDrums</a>
+      <button id="dDelete" class="modal-danger" type="button" style="display:none;">Excluir da comunidade</button>
+      <button id="dClose" class="modal-close" type="button">Fechar</button>
+      <div id="dMsg" class="modal-msg"></div>
+    </div>
+  </div>
+
+  <!-- Modal: identidade (primeiro acesso) -->
+  <div id="idModal" class="modal-ov" role="dialog" aria-modal="true" aria-labelledby="idTitle">
+    <div class="modal">
+      <div class="id-badge">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      </div>
+      <h2 id="idTitle">Bem-vindo à Comunidade</h2>
+      <p class="modal-sub" id="idSub">Crie sua conta pra compartilhar e gerenciar seus posts.</p>
+
+      <div class="seg id-seg">
+        <button id="idTabSignup" class="on" type="button">Criar conta</button>
+        <button id="idTabLogin" type="button">Já tenho conta</button>
+      </div>
+
+      <!-- Form próprio: mantém o autofill do navegador restrito a estes campos -->
+      <form id="idForm" autocomplete="on">
+        <div class="fld" id="idNameFld">
+          <label for="idName">Seu nome</label>
+          <input id="idName" type="text" maxlength="40" placeholder="Como você quer aparecer" autocomplete="name" />
+        </div>
+        <div class="fld">
+          <label for="idEmail">Seu e-mail</label>
+          <input id="idEmail" type="email" maxlength="120" placeholder="seu@email.com" autocomplete="email" />
+        </div>
+        <div class="fld">
+          <label for="idPass">Sua senha</label>
+          <input id="idPass" type="password" maxlength="80" placeholder="Mínimo 4 caracteres" autocomplete="current-password" />
+        </div>
+        <div class="fld" id="idAdminFld" style="display:none;">
+          <label for="idSecret">Senha de admin</label>
+          <input id="idSecret" type="password" maxlength="80" placeholder="Deixe em branco se não for usar" autocomplete="one-time-code" />
+        </div>
+      </form>
+      <button id="idBtn" class="modal-btn" type="button">Criar conta</button>
+      <button id="idCancel" class="modal-close" type="button" style="display:none;">Cancelar</button>
+      <div id="idMsg" class="modal-msg"></div>
+      <p class="id-note">Esqueceu a senha? Entre em contato que a gente redefine pra você.</p>
+    </div>
+  </div>
+
+  <!-- Modal: compartilhar -->
+  <div id="shareModal" class="modal-ov" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <div class="modal">
+      <div id="shareForm">
+        <h2 id="shareTitle">Compartilhar com a galera</h2>
+        <p class="modal-sub">Publique seu ritmo ou repertório na vitrine da comunidade.</p>
+        <div class="steps">
+          <div class="step"><span class="step-n">1</span><span>No app, abra o que você quer compartilhar e toque em <b>Compartilhar</b>.</span></div>
+          <div class="step"><span class="step-n">2</span><span>Copie o link gerado.</span></div>
+          <div class="step"><span class="step-n">3</span><span>Cole aqui embaixo, diga seu nome e publique.</span></div>
+        </div>
+        <div class="fld">
+          <label for="pLink">Link do app</label>
+          <input id="pLink" type="text" inputmode="url" placeholder="https://gdrums.com.br/?s=123456" autocomplete="off" />
+        </div>
+        <div class="post-as">Publicando como <b id="postAs"></b></div>
+        <button id="pBtn" class="modal-btn" type="button">Publicar na comunidade</button>
+        <button id="pCancel" class="modal-close" type="button">Cancelar</button>
+        <div id="pMsg" class="modal-msg"></div>
+      </div>
+      <div id="shareSuccess" class="modal-success">
+        <div class="check">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3>Publicado!</h3>
+        <p id="successText">Seu ritmo já está na vitrine da comunidade.</p>
+        <button id="pDone" class="modal-btn" type="button">Ver na vitrine</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/comunidade.ts"></script>
+</body>
+</html>

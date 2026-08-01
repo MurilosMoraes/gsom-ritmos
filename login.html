@@ -858,12 +858,15 @@
 
       <div class="login-divider"><span data-i18n="htmlAuth.login.firstTime">Primeira vez?</span></div>
 
-      <a href="/demo" class="login-trial-cta demo-cta-glow" id="loginDemoCta" style="margin:0 1.6rem;flex-direction:row;justify-content:center;gap:0.45rem;padding:0.62rem 1rem;">
+      <!-- O recuo lateral vem da LARGURA, não de margem fixa: no desktop o
+           .login-card > * centraliza com margin auto, e uma margem lateral
+           fixa aqui anulava isso (botões encostavam à esquerda, tortos). -->
+      <a href="/demo" class="login-trial-cta demo-cta-glow" id="loginDemoCta" style="width:calc(100% - 3.2rem);margin:0 auto;flex-direction:row;justify-content:center;gap:0.45rem;padding:0.62rem 1rem;">
         <span class="login-trial-cta-title" style="font-size:0.82rem;">▶ Teste rápido</span>
         <span class="login-trial-cta-sub" style="font-size:0.7rem;">· sem cadastro</span>
       </a>
 
-      <a href="/register" class="login-trial-cta" id="loginTrialCta" style="margin:0.75rem 2.4rem 0;padding:0.62rem 1rem;">
+      <a href="/register" class="login-trial-cta" id="loginTrialCta" style="width:calc(100% - 4.8rem);margin:0.75rem auto 0;padding:0.62rem 1rem;">
         <span class="login-trial-cta-title" data-i18n="htmlAuth.login.createFreeAccount" style="font-size:0.82rem;">Criar conta grátis</span>
         <span class="login-trial-cta-sub" data-i18n="htmlAuth.login.trialSub" style="font-size:0.66rem;">48h pra testar tudo · sem cartão</span>
       </a>
