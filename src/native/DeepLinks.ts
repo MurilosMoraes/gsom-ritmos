@@ -49,10 +49,11 @@ function routeFromUrl(url: string): string | null {
     // Normaliza: tira .html do path se vier
     const path = u.pathname.replace(/\.html$/i, '');
 
-    // Raiz com código: /?c=CODIGO (baixar da comunidade) ou /?s=CODIGO
+    // /app com código: ?c=CODIGO (baixar da comunidade) ou ?s=CODIGO
     // (link de compartilhar). Vai pro app principal, que lê a query e
     // mostra o preview de importar — ver handleShareImport() no main.ts.
-    if (path === '' || path === '/' || path === '/index') {
+    // A raiz tambem e aceita: links antigos (/?c=) continuam funcionando.
+    if (path === '/app' || path === '' || path === '/' || path === '/index') {
       const code = u.searchParams.get('c') || u.searchParams.get('s');
       return code ? '/index.html' + u.search : null;
     }

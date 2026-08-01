@@ -6,6 +6,7 @@
 
 import { supabase } from '../auth/supabase';
 import type { SharePayload } from './ShareLink';
+import { appHome } from '../native/Platform';
 
 /** Publica o payload e retorna o CÓDIGO curto. Lança em erro. */
 export async function publishShare(payload: SharePayload): Promise<string> {
@@ -37,11 +38,13 @@ export async function fetchShare(code: string): Promise<SharePayload | null> {
 // Domínio real do produto — o link compartilhado é sempre esse.
 const SHARE_DOMAIN = 'https://gdrums.com.br';
 
-/** Link de compartilhamento: gdrums.com.br/?s=CÓDIGO. Usa a RAIZ (/), que
- *  sempre serve o app — não depende de rewrite de rota no Vercel (que engasga
- *  com caminho /CÓDIGO). O app lê o ?s= e importa. */
+/** Link de compartilhamento: gdrums.com.br/app?s=CÓDIGO.
+ *  Aponta pro /app (e não pra raiz, que serve a vitrine) e usa query em vez
+ *  de caminho /CÓDIGO — a CDN da Vercel engasga com esse tipo de rota.
+ *  O app lê o ?s= e mostra o preview de importar. */
 export function shortUrl(code: string): string {
-  return `${SHARE_DOMAIN}/?s=${code}`;
+  // /app, não a raiz: a raiz serve a VITRINE (é o link que o Google indexa).
+  return `${SHARE_DOMAIN}/app?s=${code}`;
 }
 
 // ─── Link curto SEM backend (teste) ────────────────────────────────────
@@ -82,13 +85,14 @@ export function readShareCodeFromPath(): string | null {
   return m ? m[1] : null;
 }
 
-/** Limpa o /r/CÓDIGO da barra de endereço (volta pra "/") sem recarregar. */
+/** Limpa o código da barra de endereço sem recarregar. Volta pro endereço
+ *  do APP — se voltasse pra "/", um F5 jogaria a pessoa na vitrine. */
 export function clearShareCodeFromPath(): void {
-  try { history.replaceState(null, '', '/'); } catch { /* noop */ }
+  try { history.replaceState(null, '', appHome()); } catch { /* noop */ }
 }
 
 // ─── Comunidade (comunidade.gdrums.com.br) ─────────────────────────────
-// Link de download da vitrine: gdrums.com.br/?c=CÓDIGO. O conteúdo lá é a
+// Link de download da vitrine: gdrums.com.br/app?c=CÓDIGO. O conteúdo lá é a
 // RECEITA LEVE (ritmo-base + BPM + nome) — quem remonta é o app, carregando
 // o ritmo da biblioteca local. Ver supabase/migrations/20260730_community*.
 

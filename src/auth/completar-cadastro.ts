@@ -5,7 +5,7 @@
 
 import { supabase } from './supabase';
 import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
-import { internalNav } from '../native/Platform';
+import { internalNav, appHome } from '../native/Platform';
 import { t, hydrate } from '../i18n';
 
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
@@ -120,7 +120,7 @@ class CompletarCadastroPage {
       }
 
       this.showAlert(t('auth.completarCadastro.success'), 'success');
-      setTimeout(() => { window.location.href = '/'; }, 800);
+      setTimeout(() => { window.location.href = appHome(); }, 800);
     } catch {
       this.setLoading(false);
       this.showAlert(t('auth.completarCadastro.connectionError'), 'error');

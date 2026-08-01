@@ -28,7 +28,7 @@ import { StatusBarService } from './native/StatusBarService';
 import { AttributionService } from './native/AttributionService';
 // PushService removido — push agora é gerenciado pelo OneSignalService
 // (tanto web quanto Capacitor nativo via onesignal-cordova-plugin).
-import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore, isIOSNative, APP_STORE_URL } from './native/Platform';
+import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore, isIOSNative, APP_STORE_URL, appHome } from './native/Platform';
 import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
@@ -6808,7 +6808,7 @@ class RhythmSequencer {
     // Link da COMUNIDADE (?c=CÓDIGO): traz a receita e remonta localmente.
     const communityCode = readCommunityCodeFromPath();
     if (communityCode) {
-      try { history.replaceState(null, '', '/'); } catch { /* noop */ }
+      try { history.replaceState(null, '', appHome()); } catch { /* noop */ }
       const recipe = await fetchCommunity(communityCode);
       const payload = recipe ? await this.hydrateCommunityRecipe(recipe) : null;
       if (payload) { this.showImportPreview(payload); return; }

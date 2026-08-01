@@ -4,7 +4,7 @@ import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { validateCPF, formatCPF } from '../utils/cpf';
 import { AttributionService } from '../native/AttributionService';
-import { isNativeApp } from '../native/Platform';
+import { isNativeApp, appHome } from '../native/Platform';
 import { registerSchema, zodErrorsToFieldMap } from './schemas';
 import { updateRhythmCountInDom } from '../utils/rhythmCount';
 import { redirectIfRecoveryHash } from './recoveryGuard';
@@ -77,7 +77,7 @@ class RegisterPage {
       }
     } else if (await authService.isAuthenticated()) {
       console.log('[register] autenticado sem email — redirecionando pra /');
-      window.location.href = '/';
+      window.location.href = appHome();
       return;
     }
 
@@ -327,7 +327,7 @@ class RegisterPage {
       // mostrar 'baixe na loja' seria absurdo. Lá entra direto no app.
       if (isNativeApp()) {
         this.showAlert(t('auth.register.accountCreatedTrial'), 'success');
-        setTimeout(() => { window.location.href = '/'; }, 1000);
+        setTimeout(() => { window.location.href = appHome(); }, 1000);
       } else {
         this.showWelcomeDownload();
       }
@@ -381,7 +381,7 @@ class RegisterPage {
     requestAnimationFrame(() => overlay.classList.add('wd-visible'));
 
     overlay.querySelector('#wdContinue')?.addEventListener('click', () => {
-      window.location.href = '/';
+      window.location.href = appHome();
     });
 
     this.injectWelcomeStyles();

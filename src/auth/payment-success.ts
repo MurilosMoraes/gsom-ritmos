@@ -3,7 +3,7 @@
 import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { parseOrderNsu, getPlan } from './PaymentService';
-import { internalNav } from '../native/Platform';
+import { internalNav, appHome } from '../native/Platform';
 import { redirectIfRecoveryHash } from './recoveryGuard';
 import { trackPurchase } from '../utils/metaTracking';
 import { t, hydrate } from '../i18n';
@@ -166,6 +166,8 @@ class PaymentSuccessPage {
     const title = document.getElementById('statusTitle')!;
     const msg = document.getElementById('statusMsg')!;
     const btn = document.getElementById('accessBtn')!;
+    // Na web o app mora em /app (a raiz serve a vitrine); no nativo, em '/'.
+    btn.setAttribute('href', appHome());
 
     icon.className = 'success-icon ok';
     icon.innerHTML = '&#10003;';

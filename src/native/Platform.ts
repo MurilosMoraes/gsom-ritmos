@@ -21,6 +21,20 @@ export function isNativeApp(): boolean {
   }
 }
 
+/**
+ * Endereço do APP (o sequenciador em si).
+ *
+ * Na WEB a raiz `/` serve a VITRINE (landing) — é o link que o Google
+ * indexa —, então o app mora em `/app`. No NATIVO não existe servidor: o
+ * Capacitor abre o `index.html` do bundle, e a raiz já é o app.
+ *
+ * Use sempre isto em vez de escrever '/' na mão, senão o usuário logado
+ * cai na página de vendas (web) ou numa rota inexistente (nativo).
+ */
+export function appHome(): string {
+  return isNativeApp() ? '/' : '/app';
+}
+
 /** True se rodando no app nativo iOS (Capacitor). Usado pra IAP da Apple. */
 export function isIOSNative(): boolean {
   try {
