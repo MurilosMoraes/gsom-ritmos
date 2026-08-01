@@ -31,14 +31,14 @@
             "comment": "Painel admin"
           },
           {
-            "/": "/app",
+            "/": "/",
             "?": {
               "c": "*"
             },
-            "comment": "Baixar item da comunidade (/app?c=) (comunidade.gdrums.com.br)"
+            "comment": "Baixar item da comunidade (comunidade.gdrums.com.br)"
           },
           {
-            "/": "/app",
+            "/": "/",
             "?": {
               "s": "*"
             },

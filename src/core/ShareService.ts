@@ -38,13 +38,11 @@ export async function fetchShare(code: string): Promise<SharePayload | null> {
 // Domínio real do produto — o link compartilhado é sempre esse.
 const SHARE_DOMAIN = 'https://gdrums.com.br';
 
-/** Link de compartilhamento: gdrums.com.br/app?s=CÓDIGO.
- *  Aponta pro /app (e não pra raiz, que serve a vitrine) e usa query em vez
- *  de caminho /CÓDIGO — a CDN da Vercel engasga com esse tipo de rota.
+/** Link de compartilhamento: gdrums.com.br/?s=CÓDIGO. Query em vez de
+ *  caminho /CÓDIGO — a CDN da Vercel engasga com esse tipo de rota.
  *  O app lê o ?s= e mostra o preview de importar. */
 export function shortUrl(code: string): string {
-  // /app, não a raiz: a raiz serve a VITRINE (é o link que o Google indexa).
-  return `${SHARE_DOMAIN}/app?s=${code}`;
+  return `${SHARE_DOMAIN}/?s=${code}`;
 }
 
 // ─── Link curto SEM backend (teste) ────────────────────────────────────
@@ -92,7 +90,7 @@ export function clearShareCodeFromPath(): void {
 }
 
 // ─── Comunidade (comunidade.gdrums.com.br) ─────────────────────────────
-// Link de download da vitrine: gdrums.com.br/app?c=CÓDIGO. O conteúdo lá é a
+// Link de download da vitrine: gdrums.com.br/?c=CÓDIGO. O conteúdo lá é a
 // RECEITA LEVE (ritmo-base + BPM + nome) — quem remonta é o app, carregando
 // o ritmo da biblioteca local. Ver supabase/migrations/20260730_community*.
 
