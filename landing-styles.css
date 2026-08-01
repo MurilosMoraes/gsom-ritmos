@@ -1110,3 +1110,87 @@ body {
     opacity: 0.2;
   }
 }
+
+/* ============================================
+   DEPOIMENTOS — esteira de prints reais
+   Alturas iguais, larguras naturais: os prints
+   variam MUITO de proporção (0.42 a 1.67), e
+   forçar caixa fixa cortaria o texto.
+   ============================================ */
+.feedbacks {
+  padding: 5rem 0 4.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.fb-marquee {
+  margin: 2.2rem 0 2rem;
+  overflow: hidden;
+  /* Esmaece nas pontas pra esteira "entrar e sair" em vez de cortar seco */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+
+.fb-track {
+  display: flex;
+  gap: 0.85rem;
+  width: max-content;
+  animation: fb-scroll 160s linear infinite;
+}
+
+@keyframes fb-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }  /* lista duplicada no HTML */
+}
+
+.fb-card {
+  flex: 0 0 auto;
+  height: 220px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  background: rgba(15, 15, 35, 0.6);
+  overflow: hidden;
+}
+.fb-card img {
+  height: 100%;
+  width: auto;
+  display: block;
+  /* Prints de WhatsApp no escuro saem lavados e acinzentados; isso devolve
+     cor e presença sem estourar o texto branco (brilho baixo de proposito). */
+  filter: saturate(1.45) contrast(1.12) brightness(1.1);
+}
+
+.fb-ig {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto;
+  padding: 0.6rem 1.2rem;
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: all 0.25s ease;
+}
+.feedbacks .container:last-of-type { display: flex; justify-content: center; }
+.fb-ig:hover {
+  color: #fff;
+  border-color: rgba(0, 212, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  .feedbacks { padding: 3.5rem 0 3rem; }
+  .fb-card { height: 180px; border-radius: 10px; }
+  .fb-track { animation-duration: 120s; gap: 0.6rem; }
+  .fb-marquee { margin: 1.8rem 0 1.5rem; }
+}
+
+/* Respeita quem pediu menos movimento no sistema: vira rolagem manual */
+@media (prefers-reduced-motion: reduce) {
+  .fb-track { animation: none; }
+  .fb-marquee { overflow-x: auto; }
+}
