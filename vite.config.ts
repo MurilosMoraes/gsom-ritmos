@@ -27,7 +27,8 @@ export default defineConfig({
         excluirConta: './excluir-conta.html',
         links: './links.html',
         completarCadastro: './completar-cadastro.html',
-        download: './download.html'
+        download: './download.html',
+        comunidade: './comunidade.html'
       }
     }
   },
@@ -64,6 +65,15 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: '/',
         scope: '/',
+        // Links do próprio domínio (ex: /?c=CÓDIGO da comunidade) devem abrir
+        // NA PWA instalada, não numa aba do navegador:
+        //  - handle_links 'preferred'  -> pede pro navegador capturar os links
+        //  - launch_handler            -> reaproveita a janela já aberta em vez
+        //    de abrir outra (senão daria pra ficar com 2 GDrums abertos)
+        // O navegador ainda tem a palavra final; no Chrome desktop dá pra
+        // ligar/desligar em "Abrir links compatíveis no GDrums".
+        handle_links: 'preferred',
+        launch_handler: { client_mode: 'navigate-existing' },
         icons: [
           // "any" = ícone da PWA instalada no PC (desktop usa este). Arquivo
           // dedicado icon-pc-* pra NÃO afetar favicon/SERP/WhatsApp/celular,
