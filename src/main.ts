@@ -38,6 +38,9 @@ import { buildRhythmPayload, buildSetlistPayload, makeShareUrl, showShareResultM
 import { publishShare, fetchShare, shortUrl, readShareCodeFromPath, clearShareCodeFromPath, saveLocalShare, getLocalShare, readCommunityCodeFromPath, fetchCommunity, type CommunityRecipe } from './core/ShareService';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 
+/** Teclas de um modelo de pedal (ver PEDAL_STORE_KEY). */
+interface PedalMap { left?: string; right?: string; playPause?: string; end?: string }
+
 // Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
 // Play Store: Android continua usando checkout externo no Chrome
 // (Google Play permite link pra site fora do app pra assinaturas).
@@ -778,23 +781,15 @@ class RhythmSequencer {
         // Offline — setlist usa cache local automaticamente
       }
 
-      // Carregar teclas do pedal (formato suporta 2/3/4 botões)
-      const savedPedal = localStorage.getItem('gdrums_pedal_keys');
-      if (savedPedal) {
-        try {
-          const parsed = JSON.parse(savedPedal);
-          if (parsed.left) this.pedalLeft = parsed.left;
-          if (parsed.right) this.pedalRight = parsed.right;
-          // Aceita 2 TAMBÉM: quem tem pedal de 2 botões salvava a escolha mas
-          // ela não voltava (a checagem só olhava 3/4), e o app caía no padrão
-          // de 4 — tirando o duplo-toque de finalizar e o prato do botão 2.
-          if (parsed.count === 2 || parsed.count === 3 || parsed.count === 4) {
-            this.pedalCount = parsed.count;
-          }
-          if (parsed.playPause) this.pedalPlayPause = parsed.playPause;
-          if (parsed.end) this.pedalEnd = parsed.end;
-        } catch { /* usar padrão */ }
-      }
+      // Teclas do pedal: cada MODELO (2/3/4) tem o seu mapa; `count` diz qual
+      // está em uso. Formato antigo (mapa único) é migrado em readPedalStore.
+      const pedalStore = this.readPedalStore();
+      this.pedalCount = pedalStore.count;
+      const pedalMap = this.pedalMapFor(pedalStore.count, pedalStore);
+      this.pedalLeft = pedalMap.left!;
+      this.pedalRight = pedalMap.right!;
+      this.pedalPlayPause = pedalMap.playPause!;
+      this.pedalEnd = pedalMap.end!;
       localStorage.removeItem('gdrums_pedal_map'); // limpar formato antigo
 
       this.generateChannelsHTML();
@@ -3035,6 +3030,53 @@ class RhythmSequencer {
   //   ao ritmo da 1ª pisada (playFillToNextRhythm re-chamado com fill
   //   ativa só retarget-eia o destino, sem reiniciar a virada).
 
+  // ─── Mapeamento do pedal, POR MODELO (2/3/4 botões) ──────────────────
+  // Antes existia UM mapa só: configurar o pedal de 2 sobrescrevia o que
+  // estava salvo no de 3 e no de 4. Agora cada modelo guarda o seu, e o
+  // `count` diz qual está em uso. Formato:
+  //   { count: 4, byCount: { "2": {left,right}, "4": {left,right,...} } }
+  private static readonly PEDAL_STORE_KEY = 'gdrums_pedal_keys';
+  // Padrão de fábrica POR MODELO. O de 2 botões usa as setas esquerda/direita
+  // (o comum nesses pedais); o de 3/4 é o M-VAVE Chocolate já mapeado.
+  private static readonly PEDAL_DEFAULTS: Record<string, PedalMap> = {
+    '2': { left: 'ArrowLeft', right: 'ArrowRight', playPause: 'ArrowUp', end: 'ArrowDown' },
+    '3': { left: 'ArrowUp', right: 'ArrowDown', playPause: 'ArrowLeft', end: 'ArrowRight' },
+    '4': { left: 'ArrowUp', right: 'ArrowDown', playPause: 'ArrowLeft', end: 'ArrowRight' },
+  };
+
+  private readPedalStore(): { count: 2 | 3 | 4; byCount: Record<string, PedalMap> } {
+    try {
+      const raw = localStorage.getItem(RhythmSequencer.PEDAL_STORE_KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        const count: 2 | 3 | 4 = (p.count === 2 || p.count === 3 || p.count === 4) ? p.count : 4;
+        if (p.byCount && typeof p.byCount === 'object') return { count, byCount: p.byCount };
+        // Formato ANTIGO (mapa único na raiz): migra pro modelo que estava ativo.
+        if (p.left || p.right) {
+          return {
+            count,
+            byCount: { [String(count)]: { left: p.left, right: p.right, playPause: p.playPause, end: p.end } },
+          };
+        }
+        return { count, byCount: {} };
+      }
+    } catch { /* corrompido → padrão */ }
+    return { count: 4, byCount: {} };
+  }
+
+  /** Mapa de um modelo, completando com o padrão de fábrica o que faltar. */
+  private pedalMapFor(count: 2 | 3 | 4, store?: { byCount: Record<string, PedalMap> }): PedalMap {
+    const s = store || this.readPedalStore();
+    const d = RhythmSequencer.PEDAL_DEFAULTS[String(count)];
+    const m = s.byCount[String(count)] || {};
+    return {
+      left: m.left || d.left,
+      right: m.right || d.right,
+      playPause: m.playPause || d.playPause,
+      end: m.end || d.end,
+    };
+  }
+
   private pedalLeftLastPress = 0;
   private pedalLeftBaseVariation = 0;
   private pedalRightLastPress = 0;
@@ -5031,12 +5073,30 @@ class RhythmSequencer {
     };
     const getLabel = (code: string) => keyLabels[code] || code;
 
-    let tempLeft = this.pedalLeft;
-    let tempRight = this.pedalRight;
-    let tempPlayPause = this.pedalPlayPause;
-    let tempEnd = this.pedalEnd;
+    // Rascunho POR MODELO: alternar entre 2/3/4 mostra o mapa daquele modelo
+    // e não perde o que já foi mexido nos outros durante esta edição.
+    const pedalStore = this.readPedalStore();
+    const drafts: Record<string, PedalMap> = {
+      '2': this.pedalMapFor(2, pedalStore),
+      '3': this.pedalMapFor(3, pedalStore),
+      '4': this.pedalMapFor(4, pedalStore),
+    };
     let tempCount: 2 | 3 | 4 = this.pedalCount;
+    let tempLeft = drafts[String(tempCount)].left!;
+    let tempRight = drafts[String(tempCount)].right!;
+    let tempPlayPause = drafts[String(tempCount)].playPause!;
+    let tempEnd = drafts[String(tempCount)].end!;
     let listening: 'left' | 'right' | 'playPause' | 'end' | null = null;
+
+    /** Guarda o que está na tela no rascunho do modelo atual. */
+    const stashDraft = (): void => {
+      drafts[String(tempCount)] = { left: tempLeft, right: tempRight, playPause: tempPlayPause, end: tempEnd };
+    };
+    /** Carrega o rascunho de um modelo pra tela. */
+    const loadDraft = (c: 2 | 3 | 4): void => {
+      const m = drafts[String(c)];
+      tempLeft = m.left!; tempRight = m.right!; tempPlayPause = m.playPause!; tempEnd = m.end!;
+    };
 
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(20px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
@@ -5109,7 +5169,9 @@ class RhythmSequencer {
       overlay.querySelectorAll<HTMLButtonElement>('.pedalCountBtn').forEach(btn => {
         btn.addEventListener('click', (ev) => {
           ev.stopPropagation();
+          stashDraft(); // não perde o que foi mexido no modelo atual
           tempCount = parseInt(btn.getAttribute('data-count') || '2') as 2 | 3 | 4;
+          loadDraft(tempCount);
           listening = null;
           render();
           mapperInput.focus({ preventScroll: true });
@@ -5136,6 +5198,7 @@ class RhythmSequencer {
         tempLeft = 'ArrowUp'; tempRight = 'ArrowDown';
         tempPlayPause = 'ArrowLeft'; tempEnd = 'ArrowRight';
         tempCount = 4;
+        stashDraft(); // reset vale pro modelo de 4; 2 e 3 seguem como estavam
         listening = null; render();
         mapperInput.focus({ preventScroll: true });
       });
@@ -5150,11 +5213,14 @@ class RhythmSequencer {
         this.pedalPlayPause = tempPlayPause;
         this.pedalEnd = tempEnd;
         this.pedalCount = tempCount;
-        localStorage.setItem('gdrums_pedal_keys', JSON.stringify({
-          left: tempLeft, right: tempRight,
-          playPause: tempPlayPause, end: tempEnd,
-          count: tempCount,
-        }));
+        // Grava SÓ o modelo escolhido — os outros ficam como estavam. Antes
+        // era um mapa único e salvar em um modelo sobrescrevia os demais.
+        const store = this.readPedalStore();
+        store.count = tempCount;
+        store.byCount[String(tempCount)] = {
+          left: tempLeft, right: tempRight, playPause: tempPlayPause, end: tempEnd,
+        };
+        localStorage.setItem(RhythmSequencer.PEDAL_STORE_KEY, JSON.stringify(store));
         close();
         this.modalManager.show(t('main.pedalMapper.savedTitle'), t('main.pedalMapper.savedBody'), 'success');
       });
