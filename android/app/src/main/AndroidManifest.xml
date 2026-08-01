@@ -38,10 +38,10 @@
                 <data android:pathPrefix="/plans" />
                 <data android:pathPrefix="/payment-success" />
                 <data android:pathPrefix="/admin" />
-                <!-- Raiz: links de compartilhar (/?s=CODIGO) e de baixar da
-                     comunidade (/?c=CODIGO). A query nao entra no path, entao
-                     basta casar "/" exato. -->
-                <data android:path="/" />
+                <!-- App: links de compartilhar (/app?s=) e de baixar da
+                     comunidade (/app?c=). A raiz "/" NAO entra aqui porque
+                     passou a servir a vitrine (landing). -->
+                <data android:pathPrefix="/app" />
             </intent-filter>
 
         </activity>

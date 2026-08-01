@@ -63,7 +63,9 @@ export default defineConfig({
         background_color: '#030014',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        // A raiz serve a VITRINE; o app mora em /app. O scope segue '/'
+        // pra PWA continuar dona de todo o dominio (links, share, etc).
+        start_url: '/app',
         scope: '/',
         // Links do próprio domínio (ex: /?c=CÓDIGO da comunidade) devem abrir
         // NA PWA instalada, não numa aba do navegador:

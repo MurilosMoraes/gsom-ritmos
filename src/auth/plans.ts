@@ -4,7 +4,7 @@ import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { PLANS, generateOrderNsu, createCheckoutLink } from './PaymentService';
 import type { Plan } from './PaymentService';
-import { internalNav, isIOSNative } from '../native/Platform';
+import { internalNav, isIOSNative, appHome } from '../native/Platform';
 import { purchasePlan as iapPurchase, restorePurchases as iapRestore, loadProducts as iapLoadProducts } from '../native/IAPService';
 import { redirectIfRecoveryHash } from './recoveryGuard';
 import { t, hydrate } from '../i18n';
@@ -99,7 +99,7 @@ class PlansPage {
           const result = await res.json();
           if (result.success) {
             localStorage.removeItem('gdrums-pending-order');
-            window.location.href = '/';
+            window.location.href = appHome();
             return;
           }
         } catch { /* continuar normalmente */ }
@@ -113,7 +113,7 @@ class PlansPage {
 
     if (!isUpgrade && !isRenew && status === 'active' && plan && plan !== 'trial' && profile?.subscription_expires_at) {
       if (new Date(profile.subscription_expires_at) > new Date()) {
-        window.location.href = '/';
+        window.location.href = appHome();
         return;
       }
     }

@@ -2,7 +2,7 @@
 
 import { supabase } from './supabase';
 import { ModalManager } from '../ui/ModalManager';
-import { internalNav } from '../native/Platform';
+import { internalNav, appHome } from '../native/Platform';
 import { redirectIfRecoveryHash } from './recoveryGuard';
 import { appleCutFor, liqTx } from '../utils/appleCommission';
 
@@ -560,12 +560,12 @@ class AdminDashboard {
 
       if (error || !myProfile || myProfile.role !== 'admin') {
         console.error('[admin] not admin:', { error, myProfile, userId: user.id });
-        window.location.href = '/';
+        window.location.href = appHome();
         return;
       }
     } catch (e) {
       console.error('[admin] role check failed:', e);
-      window.location.href = '/';
+      window.location.href = appHome();
       return;
     }
 

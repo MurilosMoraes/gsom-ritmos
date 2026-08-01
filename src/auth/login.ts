@@ -4,7 +4,7 @@ import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { AttributionService } from '../native/AttributionService';
 import { loginSchema, zodErrorsToFieldMap } from './schemas';
-import { isNativeApp, openExternal, internalNav } from '../native/Platform';
+import { isNativeApp, openExternal, internalNav, appHome } from '../native/Platform';
 import { setupPasswordToggle } from '../utils/passwordToggle';
 import { OfflineCache } from '../native/OfflineCache';
 import { t, hydrate } from '../i18n';
@@ -42,7 +42,7 @@ class LoginPage {
     // (signInWithPassword exige rede) e ele tem assinatura ativa. Mesma
     // regra do app principal: cache válido = entra.
     if (OfflineCache.isOffline() && OfflineCache.hasValidOfflineAccess() && !OfflineCache.isAdmin()) {
-      internalNav('/');
+      internalNav(appHome());
       return;
     }
 
@@ -864,7 +864,7 @@ class LoginPage {
       const status = profile?.subscription_status;
       if ((status === 'active' || status === 'trial') && profile?.subscription_expires_at) {
         if (new Date(profile.subscription_expires_at) > new Date()) {
-          return '/';
+          return appHome();
         }
       }
       return '/plans';

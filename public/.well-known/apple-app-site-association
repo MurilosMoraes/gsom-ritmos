@@ -2,7 +2,9 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["2MW7WMBCB3.com.gdrums.app"],
+        "appIDs": [
+          "2MW7WMBCB3.com.gdrums.app"
+        ],
         "components": [
           {
             "/": "/login",
@@ -29,13 +31,17 @@
             "comment": "Painel admin"
           },
           {
-            "/": "/",
-            "?": { "c": "*" },
-            "comment": "Baixar item da comunidade (comunidade.gdrums.com.br)"
+            "/": "/app",
+            "?": {
+              "c": "*"
+            },
+            "comment": "Baixar item da comunidade (/app?c=) (comunidade.gdrums.com.br)"
           },
           {
-            "/": "/",
-            "?": { "s": "*" },
+            "/": "/app",
+            "?": {
+              "s": "*"
+            },
             "comment": "Link de compartilhamento de ritmo/repertorio"
           }
         ]
@@ -43,6 +49,8 @@
     ]
   },
   "webcredentials": {
-    "apps": ["2MW7WMBCB3.com.gdrums.app"]
+    "apps": [
+      "2MW7WMBCB3.com.gdrums.app"
+    ]
   }
 }
