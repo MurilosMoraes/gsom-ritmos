@@ -1639,6 +1639,20 @@ class RhythmSequencer {
    * mesmas chaves que a /demo usa). Esgotou → segue pro login/cadastro.
    * Cobre também "reabriu no meio da demo" (volta pra demo).
    */
+  /** A demo é a porta de entrada? Só quando veio da landing (?entrar=1) ou
+   *  quando é app instalado (nativo/PWA) — nunca no link cru do Google. */
+  private demoIsEntryPoint(): boolean {
+    try {
+      if (isNativeApp()) return true;
+      const standalone = window.matchMedia('(display-mode: standalone)').matches
+        || (window.navigator as any).standalone === true;
+      if (standalone) return true;
+      return new URLSearchParams(location.search).has('entrar');
+    } catch {
+      return false;
+    }
+  }
+
   private shouldForceDemo(): boolean {
     try {
       const expired = localStorage.getItem('gdrums_demo_used') === 'expired'
@@ -1734,8 +1748,19 @@ class RhythmSequencer {
         }
         return true;
       }
-      // Primeira vez (sem conta e demo ainda não esgotada) → demo forçada.
-      if (this.shouldForceDemo()) { internalNav('/demo'); return false; }
+      // Deslogado na WEB → LOGIN. A demo forçada não entra aqui: ela é o
+      // destino de quem clica "Tocar agora"/"Entrar" na landing (que mandam
+      // ?entrar=1). Assim o link que o Google indexa (gdrums.com.br/) cai
+      // no login, e a demo continua sendo a porta de entrada de quem vem
+      // pela vitrine.
+      //
+      // No APP NATIVO e na PWA instalada a demo forçada CONTINUA valendo no
+      // primeiro acesso — é o onboarding das lojas; mandar pro login ali
+      // mataria a feature.
+      if (this.shouldForceDemo() && this.demoIsEntryPoint()) {
+        internalNav('/demo');
+        return false;
+      }
       internalNav('/login');
       return false;
     }

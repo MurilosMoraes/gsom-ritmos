@@ -439,7 +439,7 @@ function renderCard(r: CommunityRow): HTMLElement {
         <button class="like ${already ? 'liked' : ''}" type="button" ${already ? 'disabled' : ''} aria-label="Curtir">
           ${HEART_SVG} <span class="like-n">${r.likes}</span>
         </button>
-        <a class="dl-btn" href="${APP_ORIGIN}/app?c=${encodeURIComponent(r.code)}" target="_blank" rel="noopener">${DL_SVG} Baixar</a>
+        <a class="dl-btn" href="${APP_ORIGIN}/?c=${encodeURIComponent(r.code)}" target="_blank" rel="noopener">${DL_SVG} Baixar</a>
       </span>
     </div>
   `;
@@ -573,7 +573,7 @@ async function openDetail(code: string): Promise<void> {
     $('dSongsWrap').style.display = 'block';
   }
 
-  $<HTMLAnchorElement>('dDownload').href = `${APP_ORIGIN}/app?c=${encodeURIComponent(r.code)}`;
+  $<HTMLAnchorElement>('dDownload').href = `${APP_ORIGIN}/?c=${encodeURIComponent(r.code)}`;
 
   // Excluir: autor logado (sessão), dono do navegador (manage_token) ou admin
   const isMinePost = !!me?.token && r.poster_name === me.name;

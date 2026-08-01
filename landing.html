@@ -187,22 +187,6 @@
   </script>
 
   <link rel="stylesheet" href="landing-styles.css">
-<script>
-  /* PWA instalada ANTES desta mudanca tem start_url '/', que agora serve a
-     vitrine. Se abrimos em modo standalone, vai direto pro app. */
-  (function () {
-    try {
-      var pwa = window.matchMedia('(display-mode: standalone)').matches
-        || window.navigator.standalone === true;
-      if (pwa) { window.location.replace('/app'); return; }
-      /* Links de compartilhar/comunidade ANTIGOS (/?s= e /?c=) foram gerados
-         apontando pra raiz. Encaminha pro app preservando o codigo, senao a
-         pessoa cairia na pagina de vendas e perderia o ritmo. */
-      var q = window.location.search || '';
-      if (/[?&](s|c)=\d{4,8}(&|$)/.test(q)) window.location.replace('/app' + q);
-    } catch (e) {}
-  })();
-</script>
 </head>
 <body>
   <!-- Hero Section -->
@@ -224,7 +208,7 @@
           <a href="#features">Recursos</a>
           <a href="#pricing">Planos</a>
           <a href="login.html" class="btn-nav-secondary">Entrar</a>
-          <a href="/app" class="btn-nav">Tocar Agora</a>
+          <a href="/?entrar=1" class="btn-nav">Tocar Agora</a>
         </div>
       </div>
     </nav>
@@ -301,7 +285,7 @@
           <span class="js-rhythm-count">155</span> ritmos, viradas e finalizações controladas pelo pedal.
         </p>
         <div class="hero-buttons">
-          <a href="/app" class="btn-primary large">
+          <a href="/?entrar=1" class="btn-primary large">
             <span>Tocar Agora</span>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -750,7 +734,7 @@
 
           <div class="footer-column">
             <h4>Conta</h4>
-            <a href="/app">Entrar</a>
+            <a href="/?entrar=1">Entrar</a>
             <a href="/register">Criar Conta</a>
           </div>
 
