@@ -27,6 +27,16 @@
           {
             "/": "/admin*",
             "comment": "Painel admin"
+          },
+          {
+            "/": "/",
+            "?": { "c": "*" },
+            "comment": "Baixar item da comunidade (comunidade.gdrums.com.br)"
+          },
+          {
+            "/": "/",
+            "?": { "s": "*" },
+            "comment": "Link de compartilhamento de ritmo/repertorio"
           }
         ]
       }
