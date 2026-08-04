@@ -204,6 +204,25 @@
     }
     .share-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 212, 255, 0.35); }
 
+
+    /* Paginação: 10 por página, seletor em cima e embaixo */
+    .pager { display: none; justify-content: center; align-items: center; gap: 0.3rem; flex-wrap: wrap; margin: 0.9rem 0; }
+    .pager.on { display: flex; }
+    .pager button {
+      min-width: 30px; padding: 0.34rem 0.55rem; border-radius: 9px; cursor: pointer;
+      background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line);
+      color: var(--text-secondary); font-size: 0.78rem; font-weight: 700; font-family: inherit;
+      transition: all 0.18s ease;
+    }
+    .pager button:hover:not(:disabled):not(.on) { color: #fff; border-color: rgba(0, 212, 255, 0.4); }
+    .pager button.on {
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.16), rgba(139, 92, 246, 0.16));
+      border-color: rgba(0, 212, 255, 0.5); color: #fff;
+    }
+    .pager button:disabled { opacity: 0.35; cursor: default; }
+    .pager .pager-gap { color: var(--text-muted); padding: 0 0.15rem; font-size: 0.78rem; }
+    .pager-info { font-size: 0.72rem; color: var(--text-muted); margin-left: 0.4rem; }
+
     /* ── Grid de cards ── */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 0.65rem; padding-bottom: 1rem; }
     .card {
@@ -566,7 +585,9 @@
         </div>
       </div>
 
+      <nav class="pager" id="pagerTop" aria-label="Páginas"></nav>
       <div id="grid" class="grid"></div>
+      <nav class="pager" id="pagerBottom" aria-label="Páginas"></nav>
     </main>
 
     <!-- Footer -->
