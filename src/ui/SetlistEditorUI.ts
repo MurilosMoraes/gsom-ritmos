@@ -539,8 +539,18 @@ export class SetlistEditorUI {
         e.stopPropagation();
         if (!btn.dataset.confirming) {
           btn.dataset.confirming = '1';
+          const rotulo = btn.innerHTML;
           btn.innerHTML = `<span style="font-size:0.68rem;font-weight:800;">${t('ui.setlist.deleteConfirm')}</span>`;
           btn.classList.add('sle-hub-del-confirm');
+          // Desarma sozinho em 3s, igual o "Limpar". Sem isso o botao fica
+          // armado indefinidamente e um toque muito depois apaga o
+          // repertorio — e a exclusao propaga pra todos os aparelhos.
+          window.setTimeout(() => {
+            if (!btn.isConnected || !btn.dataset.confirming) return;
+            delete btn.dataset.confirming;
+            btn.classList.remove('sle-hub-del-confirm');
+            btn.innerHTML = rotulo;
+          }, 3000);
           return;
         }
         mgr.deleteSetlist(btn.dataset.id!);
@@ -660,8 +670,16 @@ export class SetlistEditorUI {
       const btn = container.querySelector('.sle-setlist-edit-delete') as HTMLElement;
       if (!btn.dataset.confirming) {
         btn.dataset.confirming = '1';
+        const rotulo = btn.innerHTML;
         btn.innerHTML = `<span style="font-size:0.7rem;font-weight:700;">${t('ui.setlist.deleteConfirm')}</span>`;
         btn.classList.add('sle-setlist-edit-delete-confirm');
+        // Desarma em 3s (ver comentário no botão de excluir do hub).
+        window.setTimeout(() => {
+          if (!btn.isConnected || !btn.dataset.confirming) return;
+          delete btn.dataset.confirming;
+          btn.classList.remove('sle-setlist-edit-delete-confirm');
+          btn.innerHTML = rotulo;
+        }, 3000);
         return;
       }
       mgr.deleteSetlist(id);
