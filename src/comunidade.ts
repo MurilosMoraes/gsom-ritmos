@@ -33,6 +33,8 @@ let search = '';
 let rhythmFilter = '';
 let searchTimer = 0;
 let loadSeq = 0; // ignora respostas atrasadas de buscas antigas
+let page = 1;
+const PER_PAGE = 10;
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
@@ -463,28 +465,92 @@ function renderSkeleton(grid: HTMLElement): void {
   }
 }
 
+
+/** Desenha o seletor de páginas (nos dois lugares: topo e rodapé). */
+function renderPager(total: number): void {
+  const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const alvos = [$('pagerTop'), $('pagerBottom')];
+
+  if (pages <= 1) {
+    alvos.forEach((el) => { el.classList.remove('on'); el.innerHTML = ''; });
+    return;
+  }
+
+  // Janela de páginas: com muitas, mostra as vizinhas + primeira/última
+  // com reticências, senão a barra estoura a largura da tela no celular.
+  const nums: (number | '...')[] = [];
+  const push = (n: number | '...'): void => { if (nums[nums.length - 1] !== n) nums.push(n); };
+  for (let i = 1; i <= pages; i++) {
+    if (i === 1 || i === pages || Math.abs(i - page) <= 1) push(i);
+    else push('...');
+  }
+
+  const html = [
+    `<button type="button" data-go="${page - 1}" ${page === 1 ? 'disabled' : ''} aria-label="Página anterior">‹</button>`,
+    ...nums.map((n) => n === '...'
+      ? '<span class="pager-gap">…</span>'
+      : `<button type="button" data-go="${n}" class="${n === page ? 'on' : ''}" aria-label="Página ${n}"${n === page ? ' aria-current="page"' : ''}>${n}</button>`),
+    `<button type="button" data-go="${page + 1}" ${page === pages ? 'disabled' : ''} aria-label="Próxima página">›</button>`,
+    `<span class="pager-info">${total} ${total === 1 ? 'item' : 'itens'}</span>`,
+  ].join('');
+
+  alvos.forEach((el) => {
+    el.classList.add('on');
+    el.innerHTML = html;
+    el.querySelectorAll<HTMLButtonElement>('button[data-go]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const alvo = parseInt(b.dataset.go || '1', 10);
+        if (alvo < 1 || alvo > pages || alvo === page) return;
+        page = alvo;
+        void loadVitrine();
+        // Volta pro topo da lista: sem isso, clicar no seletor de baixo
+        // deixa a pessoa olhando o rodapé da página nova.
+        $('grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  });
+}
+
 async function loadVitrine(withSkeleton = true): Promise<void> {
   const seq = ++loadSeq;
   const grid = $('grid');
   if (withSkeleton) renderSkeleton(grid);
 
-  const res = tab === 'mine'
-    ? await supabase.rpc('community_mine', { p_email: me?.email || '' })
-    : await supabase.rpc('community_list', {
-        p_limit: 60, p_offset: 0, p_sort: sort,
-        p_rhythm: rhythmFilter || null, p_type: tab, p_search: search || null,
-      });
-  if (seq !== loadSeq) return; // busca mais nova já assumiu
+  let rows: CommunityRow[] = [];
+  let total = 0;
+  let error: unknown = null;
 
-  const { data, error } = res;
-  grid.innerHTML = '';
-  let rows = (Array.isArray(data) ? data : []) as CommunityRow[];
-
-  // "Meus posts" filtra no cliente (a RPC devolve tudo do e-mail).
-  if (tab === 'mine' && search) {
-    const q = search.toLowerCase();
-    rows = rows.filter((r) => r.title.toLowerCase().includes(q));
+  if (tab === 'mine') {
+    // "Meus posts" vem inteiro (a RPC já limita a 60) e pagina no cliente.
+    const res = await supabase.rpc('community_mine', { p_email: me?.email || '' });
+    if (seq !== loadSeq) return;
+    error = res.error;
+    let todos = (Array.isArray(res.data) ? res.data : []) as CommunityRow[];
+    if (search) {
+      const q = search.toLowerCase();
+      todos = todos.filter((r) => r.title.toLowerCase().includes(q));
+    }
+    total = todos.length;
+    rows = todos.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  } else {
+    // Vitrine: pagina no SERVIDOR (só os 10 da página vêm pela rede).
+    // A contagem usa os MESMOS filtros, senão o seletor ofereceria páginas
+    // que não existem no resultado filtrado.
+    const filtros = { p_rhythm: rhythmFilter || null, p_type: tab, p_search: search || null };
+    const [lista, cont] = await Promise.all([
+      supabase.rpc('community_list', {
+        ...filtros, p_limit: PER_PAGE, p_offset: (page - 1) * PER_PAGE, p_sort: sort,
+      }),
+      supabase.rpc('community_count', filtros),
+    ]);
+    if (seq !== loadSeq) return; // busca mais nova já assumiu
+    error = lista.error;
+    rows = (Array.isArray(lista.data) ? lista.data : []) as CommunityRow[];
+    total = cont.error ? rows.length : Number(cont.data) || 0;
   }
+
+  grid.innerHTML = '';
+  renderPager(error ? 0 : total);
 
   if (error || rows.length === 0) {
     const empty = document.createElement('div');
@@ -644,6 +710,7 @@ function setTab(next: Tab): void {
   if (tab === next) return;
   if (next === 'mine' && !me) { openIdentity(); return; }
   tab = next;
+  page = 1;
   for (const [id, val] of [['tabRhythm', 'rhythm'], ['tabSetlist', 'setlist'], ['tabMine', 'mine']] as const) {
     $(id).classList.toggle('on', tab === val);
     $(id).setAttribute('aria-selected', String(tab === val));
@@ -665,6 +732,7 @@ function setTab(next: Tab): void {
 function setSort(next: Sort): void {
   if (sort === next) return;
   sort = next;
+  page = 1;
   $('sRecent').classList.toggle('on', sort === 'recent');
   $('sLikes').classList.toggle('on', sort === 'likes');
   void loadVitrine();
@@ -779,12 +847,14 @@ function init(): void {
 
   qEl.addEventListener('input', (e) => {
     search = (e.target as HTMLInputElement).value.trim();
+    page = 1;
     window.clearTimeout(searchTimer);
     searchTimer = window.setTimeout(() => { void loadVitrine(false); }, 300);
   });
 
   $<HTMLSelectElement>('fRhythm').addEventListener('change', (e) => {
     rhythmFilter = (e.target as HTMLSelectElement).value;
+    page = 1;
     void loadVitrine();
   });
 

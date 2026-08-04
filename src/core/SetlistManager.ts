@@ -38,6 +38,14 @@ const IDB_KEY_V2 = 'setlists-v2';
 const OWNER_KEY = 'gdrums-setlists-v2-owner';
 const namespacedKey = (userId: string) => `gdrums-setlists-v2:${userId}`;
 
+// Fila da LIXEIRA de suporte: cópias de repertórios excluídos esperando
+// subir. Precisa de fila porque a exclusão acontece muito no palco, offline —
+// mandar direto perderia exatamente o caso que a lixeira existe pra cobrir.
+// Guardada fora do state do repertório de propósito: não é dado do usuário,
+// não entra no merge e não pode virar repertório de novo por acidente.
+const TRASH_QUEUE_KEY = 'gdrums-setlist-trash-queue';
+const MAX_TRASH_QUEUE = 20;
+
 // Chaves do formato antigo (v1) — só leitura, pra migração
 const LEGACY_LOCAL_KEY = 'gdrums-setlist';
 const LEGACY_BACKUP_KEY = 'gdrums-setlist-backup';
@@ -126,10 +134,13 @@ export class SetlistManager {
     // MERGE (lê o servidor, junta por id, reescreve a UNIÃO). Assim dois
     // aparelhos convergem pra união de tudo, sem um sobrescrever o outro.
     // Funciona em wifi ou dados móveis (navigator.onLine cobre os dois).
-    window.addEventListener('online', () => { void this.mergePush(); });
+    // A lixeira de suporte pega carona nos mesmos gatilhos: quem exclui
+    // repertório costuma estar no palco, offline, e a cópia fica esperando.
+    window.addEventListener('online', () => { void this.mergePush(); void this.flushTrash(); });
     setInterval(() => {
       if (navigator.onLine && this.userId && this.supabaseClient) {
         void this.mergePush();
+        void this.flushTrash();
       }
     }, 60000);
 
@@ -403,6 +414,7 @@ export class SetlistManager {
     if (this.state.setlists.length <= 1) return false;
     const idx = this.state.setlists.findIndex(x => x.id === id);
     if (idx === -1) return false;
+    this.queueTrash(this.state.setlists[idx]);
     this.state.setlists.splice(idx, 1);
     if (this.state.activeId === id) {
       this.state.activeId = this.state.setlists[Math.max(0, idx - 1)].id;
@@ -794,6 +806,74 @@ export class SetlistManager {
       }
     } catch { /* offline/sem sessão */ }
     return false;
+  }
+
+  // ─── LIXEIRA DE SUPORTE ────────────────────────────────────────────────
+  // Excluir repertório é DEFINITIVO e PROPAGA: o tombstone viaja pro servidor
+  // e mata a lista nos outros aparelhos. Um cliente já perdeu um repertório de
+  // 14 músicas com um toque acidental. As MÚSICAS sempre sobrevivem (moram em
+  // gdrums_user_rhythms, tabela separada) — o que some é a LISTA que agrupava
+  // elas, e remontar na mão leva tempo.
+  //
+  // Então toda exclusão deixa uma cópia no servidor. NÃO existe interface pra
+  // isso no app, de propósito: quem acessa é o suporte, quando o cliente pede.
+  // Um "desfazer" visível teria que reviver o id excluído nos outros aparelhos
+  // e brigar com o tombstone — problema bem maior do que resolve.
+
+  /** Enfileira a cópia e tenta subir. Nunca lança: se a lixeira falhar, a
+   *  exclusão em si tem que acontecer do mesmo jeito. */
+  private queueTrash(s: NamedSetlist): void {
+    try {
+      // Lista vazia não tem o que recuperar — não suja a lixeira.
+      if (!s || !Array.isArray(s.items) || s.items.length === 0) return;
+      const q = this.readTrashQueue();
+      q.push({
+        id: s.id,
+        name: s.name,
+        items: s.items.map(i => ({ ...i })),
+        deletedAt: new Date().toISOString(),
+      });
+      // Corta os mais ANTIGOS: numa faxina de repertórios, o que o cliente
+      // reclama depois costuma ser o último que ele apagou.
+      localStorage.setItem(TRASH_QUEUE_KEY, JSON.stringify(q.slice(-MAX_TRASH_QUEUE)));
+    } catch { /* localStorage cheio/bloqueado — segue a exclusão */ }
+    void this.flushTrash();
+  }
+
+  private readTrashQueue(): any[] {
+    try {
+      const raw = localStorage.getItem(TRASH_QUEUE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  }
+
+  /** Sobe a fila pra lixeira do servidor. Só tira da fila o que o banco
+   *  confirmou — falha de rede mantém a cópia esperando a próxima tentativa. */
+  private async flushTrash(): Promise<void> {
+    const q = this.readTrashQueue();
+    if (q.length === 0) return;
+    if (!navigator.onLine) return;
+    if (!(await this.ensureSession())) return;
+
+    const pendentes: any[] = [];
+    for (const entry of q) {
+      try {
+        // Promise.resolve: o builder do Supabase é thenable, não Promise real.
+        const { error } = await withNetTimeout<any>(
+          Promise.resolve(this.supabaseClient.rpc('setlist_trash_add', { p_setlist: entry })),
+          8000,
+        );
+        if (error) pendentes.push(entry);
+      } catch {
+        // Timeout/rede: guarda o resto sem tentar (a conexão está ruim agora).
+        pendentes.push(entry);
+      }
+    }
+    try {
+      if (pendentes.length) localStorage.setItem(TRASH_QUEUE_KEY, JSON.stringify(pendentes));
+      else localStorage.removeItem(TRASH_QUEUE_KEY);
+    } catch { /* noop */ }
   }
 
   /**
