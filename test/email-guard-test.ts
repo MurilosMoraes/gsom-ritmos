@@ -49,7 +49,7 @@ aceita('iago.lucas@weatherford.com', 'empresa real');
 aceita('aluno@fosjc.unesp.br', 'universidade');
 aceita('aluno@unirp.edu.br', 'universidade');
 aceita('contato@gdrums.com.br', 'nosso proprio dominio');
-aceita('dario@fmail.com', 'dominio real, suspeito mas NAO bloqueado');
+// (fmail.com saiu daqui e virou bloqueado — ver secao 2)
 // Domínios que ficam a 1 letra de gmail.com — por isso não usamos
 // similaridade automática, só lista explícita:
 aceita('alguem@email.com', 'REAL, e a 1 letra de gmail.com');
@@ -69,6 +69,9 @@ console.log('\n2. DESCARTÁVEIS — os "Teste" que apareceram no banco');
 recusa('wofamo2175@davopa.com', 'email_disposable', 'conta "Teste teste" real');
 recusa('wofamo9518@davopa.com', 'email_disposable', 'conta "Teste zerodois" real');
 recusa('xojom79190@kingcq.com', 'email_disposable', 'conta "Teste hum" real');
+// fmail.com: 9 contas de farming entre 04/07 e 05/08, todas trial, R$ 0 pago
+recusa('dario@fmail.com', 'email_disposable', 'farming: 9 contas no mesmo dominio');
+recusa('gerson@fmail.com', 'email_disposable', 'nome de cantor conhecido, conta fake');
 recusa('qualquer@mailinator.com', 'email_disposable');
 recusa('qualquer@yopmail.com', 'email_disposable');
 recusa('qualquer@guerrillamail.com', 'email_disposable');

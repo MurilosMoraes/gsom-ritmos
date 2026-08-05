@@ -19,8 +19,13 @@
 // volume mas não é barreira definitiva — a defesa real de trial farming
 // continua sendo o CPF/telefone único.
 export const DISPOSABLE_DOMAINS = new Set([
-  // vistos em produção
-  "davopa.com", "kingcq.com",
+  // Vistos em produção. O fmail.com entrou depois: na primeira olhada
+  // pareciam 3 contas soltas e um domínio real demais pra bloquear, mas o
+  // histórico completo mostrou 9 contas (04/07 a 05/08), todas trial, todas
+  // com R$ 0,00 pago, login uma vez e sumiram, com nome preenchido de
+  // qualquer jeito ("Carlos a", "Marco ot", "Claudio e"). As 12 foram
+  // apagadas em 05/08/2026.
+  "davopa.com", "kingcq.com", "fmail.com",
   // grandes serviços de temp mail
   "mailinator.com", "yopmail.com", "guerrillamail.com", "guerrillamail.info",
   "sharklasers.com", "grr.la", "temp-mail.org", "tempmail.com", "tempmail.net",
