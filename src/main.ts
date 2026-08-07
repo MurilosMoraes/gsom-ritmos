@@ -5037,8 +5037,15 @@ class RhythmSequencer {
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   }
 
-  /** Modal "Configurar Chocolate" — passo a passo pra configurar o pedal
-   *  M-VAVE Chocolate via o site de configuração (Web Bluetooth). */
+  /** Modal "Configurar Chocolate" — passo a passo pra deixar o M-VAVE
+   *  Chocolate pronto pro app. Existem DOIS caminhos (app Midi Suite ou o
+   *  site de configuração via Web Bluetooth), então o modal abre numa tela
+   *  de ESCOLHA e só depois mostra os passos do caminho escolhido.
+   *
+   *  Por que escolher antes em vez de empilhar os dois: os passos são
+   *  parecidos mas divergem em pontos críticos (na opção 1 você CONECTA no
+   *  FootCtrl, na 2 você NÃO conecta) — lado a lado, é convite pra seguir
+   *  metade de um e metade do outro e o pedal não funcionar. */
   private showChocolateConfig(): void {
     const CFG_URL = 'https://gdrums-chocolate.vercel.app';
     const c = '#d8a064'; // marrom "chocolate"
@@ -5050,39 +5057,102 @@ class RhythmSequencer {
     const b = (s: string): string => `<strong style="color:#fff;">${s}</strong>`;
     const arrowDown = `<span style="display:inline-block;color:${c};font-weight:800;font-size:1.35rem;line-height:0;vertical-align:middle;margin-left:0.25rem;">↓</span>`;
 
+    const btnFechar = `<button id="chocoCfgClose" style="width:100%;padding:0.9rem;border:none;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.65);font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer;">Fechar</button>`;
+
+    /** Casca do modal — igual nas duas telas, só muda o miolo. */
+    const shell = (titulo: string, sub: string, inner: string): string => `
+      <div style="background:rgba(10,10,26,0.98);border:1px solid rgba(180,120,60,0.35);border-radius:20px;padding:1.7rem 1.4rem;max-width:640px;width:100%;max-height:96vh;overflow-y:auto;">
+        <h2 style="font-size:1.6rem;font-weight:800;color:#fff;margin:0 0 0.3rem;text-align:center;">${titulo}</h2>
+        <p style="font-size:0.95rem;color:rgba(255,255,255,0.45);text-align:center;margin:0 0 1.4rem;">${sub}</p>
+        ${inner}
+      </div>`;
+
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:0.6rem;';
-    overlay.innerHTML = `
-      <div style="background:rgba(10,10,26,0.98);border:1px solid rgba(180,120,60,0.35);border-radius:20px;padding:1.7rem 1.4rem;max-width:640px;width:100%;max-height:96vh;overflow-y:auto;">
-        <h2 style="font-size:1.6rem;font-weight:800;color:#fff;margin:0 0 0.3rem;text-align:center;">Configurar Chocolate</h2>
-        <p style="font-size:0.95rem;color:rgba(255,255,255,0.45);text-align:center;margin:0 0 1.5rem;">Deixa o M-VAVE Chocolate pronto pro GDrums</p>
-
-        <ol style="list-style:none;padding:0;margin:0;">
-          ${step(1, `Ligue o pedal na chave ${b('H')}.`)}
-          ${step(2, `Aperte ao mesmo tempo o botão ${b('1 e 4')} (${b('A e D')}) e segure os dois por ${b('10 segundos')} pra resetar o pedal. Precisa aparecer ${b('000')} na tela. Desligue e ligue novamente no ${b('H')}, irá aparecer ${b('001')}.`)}
-          ${step(3, `Ligue o ${b('Bluetooth do celular')} e ${b('NÃO conecte o pedal ainda')}. Se ele já estiver conectado, ${b('desconecte')}.`)}
-          ${step(4, `Com a luz do pedal ${b('piscando')}, abra o site de configuração no botão abaixo ${arrowDown}`)}
-        </ol>
-
-        <button id="chocoCfgOpen" style="width:100%;padding:1.05rem;margin:0.2rem 0 0.4rem;border:none;border-radius:14px;background:linear-gradient(160deg,rgba(180,120,60,0.95),rgba(120,74,34,0.95));color:#fff;font-size:1.1rem;font-weight:800;font-family:inherit;cursor:pointer;">Abrir o site de configuração</button>
-
-        <ol style="list-style:none;padding:0;margin:1.2rem 0 0;">
-          ${step(5, `No site, toque em ${b('“Configurar meu pedal”')}. Vai abrir uma janela de conexão Bluetooth ${b('do site')} — não é a do celular.`)}
-          ${step(6, `Selecione o ${b('FootCtrl')} nessa janela e clique em ${b('PAREAR')}. A configuração é ${b('automática')}.`)}
-        </ol>
-
-        <div style="background:rgba(255,200,60,0.06);border:1px solid rgba(255,200,60,0.25);border-radius:14px;padding:0.95rem 1.05rem;margin:0.4rem 0 1.2rem;display:flex;flex-direction:column;gap:0.7rem;">
-          <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs 1:</strong> Na tela do pedal deve aparecer ${b('n10')}. Ao abrir a janela de Bluetooth do site, o celular pode pedir autorização da ferramenta — ${b('autorize')} pra dar certo.</span>
-          <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs 2:</strong> Se não funcionar, ${b('feche o app e abra de novo')}. Se mesmo assim não der certo, refaça o processo e escolha a opção ${b('Keyboard B')} (alternativo).</span>
-        </div>
-
-        <button id="chocoCfgClose" style="width:100%;padding:0.9rem;border:none;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.65);font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer;">Fechar</button>
-      </div>
-    `;
     document.body.appendChild(overlay);
+
     const close = (): void => { overlay.remove(); (window as any).__refocusPedal?.(); };
-    overlay.querySelector('#chocoCfgOpen')!.addEventListener('click', () => { openExternal(CFG_URL); });
-    overlay.querySelector('#chocoCfgClose')!.addEventListener('click', close);
+
+    // ─── Tela 1: escolha do caminho ──────────────────────────────────────
+    // O que diferencia os dois pro cliente é "preciso instalar algo?" — é
+    // isso que o subtítulo de cada cartão responde, pra decisão não depender
+    // de abrir os dois e comparar.
+    const cartao = (n: 1 | 2, titulo: string, sub: string): string => `
+      <button id="chocoOpt${n}" style="width:100%;display:flex;align-items:center;gap:0.9rem;text-align:left;padding:1.15rem 1rem;margin-bottom:0.9rem;border:1px solid rgba(180,120,60,0.35);border-radius:16px;background:rgba(180,120,60,0.06);font-family:inherit;cursor:pointer;">
+        <span style="flex-shrink:0;font-size:0.68rem;font-weight:800;letter-spacing:1.1px;color:${c};background:rgba(180,120,60,0.18);border:1px solid rgba(180,120,60,0.5);border-radius:999px;padding:0.3rem 0.65rem;">OPÇÃO ${n}</span>
+        <span style="flex:1;min-width:0;">
+          <span style="display:block;font-size:1.05rem;font-weight:700;color:#fff;line-height:1.3;">${titulo}</span>
+          <span style="display:block;font-size:0.85rem;color:rgba(255,255,255,0.5);line-height:1.35;margin-top:0.15rem;">${sub}</span>
+        </span>
+        <span style="flex-shrink:0;color:${c};font-size:1.4rem;font-weight:800;line-height:1;">›</span>
+      </button>`;
+
+    const renderEscolha = (): void => {
+      overlay.innerHTML = shell(
+        'Configurar Chocolate',
+        `Tem dois jeitos de deixar o M-VAVE Chocolate pronto.<br><span style="color:${c};font-weight:700;">Escolha um deles.</span>`,
+        `${cartao(1, 'Pelo aplicativo Midi Suite', 'Você baixa o Midi Suite e configura por lá')}
+         ${cartao(2, 'Pelo site de configuração', 'Sem instalar nada, direto no navegador')}
+         <div style="margin-top:0.4rem;">${btnFechar}</div>`,
+      );
+      overlay.querySelector('#chocoOpt1')!.addEventListener('click', () => renderPasso(1));
+      overlay.querySelector('#chocoOpt2')!.addEventListener('click', () => renderPasso(2));
+      overlay.querySelector('#chocoCfgClose')!.addEventListener('click', close);
+    };
+
+    // ─── Tela 2: passo a passo do caminho escolhido ──────────────────────
+    const btnVoltar = `<button id="chocoBack" style="width:100%;padding:0.85rem;margin-bottom:0.7rem;border-radius:14px;background:rgba(180,120,60,0.1);border:1px solid rgba(180,120,60,0.35);color:${c};font-size:0.95rem;font-weight:700;font-family:inherit;cursor:pointer;">Voltar e escolher a outra opção</button>`;
+
+    const passos1 = `
+      <ol style="list-style:none;padding:0;margin:0 0 0.6rem;">
+        ${step(1, `Ligue o pedal na chave ${b('H')}.`)}
+        ${step(2, `Aperte ao mesmo tempo o botão ${b('1 e 4')} (${b('A e D')}) e segure os dois por ${b('10 segundos')} pra resetar o pedal. Precisa aparecer ${b('000')} na tela. Desligue e ligue novamente no ${b('H')}, irá aparecer ${b('001')}.`)}
+        ${step(3, `Ative o ${b('Bluetooth do celular')} e ${b('conecte no FootCtrl')}.`)}
+        ${step(4, `Baixe o aplicativo ${b('Midi Suite')} e abra ele.`)}
+        ${step(5, `Clique em ${b('“Scan Devices”')}, depois clique no ${b('desenho do pedal')}.`)}
+        ${step(6, `Role as opções até encontrar o ${b('“Keyboard Mode A”')} e selecione essa.`)}
+        ${step(7, `Pronto! Agora é só entrar no GDrums, ir nas opções e ${b('mapear seu pedal de 4 botões')}.`)}
+      </ol>
+
+      <div style="background:rgba(255,200,60,0.06);border:1px solid rgba(255,200,60,0.25);border-radius:14px;padding:0.95rem 1.05rem;margin:0.4rem 0 1.2rem;">
+        <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs:</strong> Se não funcionar, ${b('feche o app e abra de novo')}. Se mesmo assim não der certo, refaça o processo e escolha a opção ${b('Keyboard Mode B')} (alternativo).</span>
+      </div>`;
+
+    const passos2 = `
+      <ol style="list-style:none;padding:0;margin:0;">
+        ${step(1, `Ligue o pedal na chave ${b('H')}.`)}
+        ${step(2, `Aperte ao mesmo tempo o botão ${b('1 e 4')} (${b('A e D')}) e segure os dois por ${b('10 segundos')} pra resetar o pedal. Precisa aparecer ${b('000')} na tela. Desligue e ligue novamente no ${b('H')}, irá aparecer ${b('001')}.`)}
+        ${step(3, `Ligue o ${b('Bluetooth do celular')} e ${b('NÃO conecte o pedal ainda')}. Se ele já estiver conectado, ${b('desconecte')}.`)}
+        ${step(4, `Com a luz do pedal ${b('piscando')}, abra o site de configuração no botão abaixo ${arrowDown}`)}
+      </ol>
+
+      <button id="chocoCfgOpen" style="width:100%;padding:1.05rem;margin:0.2rem 0 0.4rem;border:none;border-radius:14px;background:linear-gradient(160deg,rgba(180,120,60,0.95),rgba(120,74,34,0.95));color:#fff;font-size:1.1rem;font-weight:800;font-family:inherit;cursor:pointer;">Abrir o site de configuração</button>
+
+      <ol style="list-style:none;padding:0;margin:1.2rem 0 0;">
+        ${step(5, `No site, toque em ${b('“Configurar meu pedal”')}. Vai abrir uma janela de conexão Bluetooth ${b('do site')} — não é a do celular.`)}
+        ${step(6, `Selecione o ${b('FootCtrl')} nessa janela e clique em ${b('PAREAR')}. A configuração é ${b('automática')}.`)}
+      </ol>
+
+      <div style="background:rgba(255,200,60,0.06);border:1px solid rgba(255,200,60,0.25);border-radius:14px;padding:0.95rem 1.05rem;margin:0.4rem 0 1.2rem;display:flex;flex-direction:column;gap:0.7rem;">
+        <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs 1:</strong> Na tela do pedal deve aparecer ${b('n10')}. Ao abrir a janela de Bluetooth do site, o celular pode pedir autorização da ferramenta — ${b('autorize')} pra dar certo.</span>
+        <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs 2:</strong> Se não funcionar, ${b('feche o app e abra de novo')}. Se mesmo assim não der certo, refaça o processo e escolha a opção ${b('Keyboard B')} (alternativo).</span>
+      </div>`;
+
+    const renderPasso = (n: 1 | 2): void => {
+      overlay.innerHTML = shell(
+        `Opção ${n}`,
+        n === 1 ? 'Pelo aplicativo Midi Suite' : 'Pelo site de configuração',
+        `${n === 1 ? passos1 : passos2}${btnVoltar}${btnFechar}`,
+      );
+      // Só existe na opção 2 — por isso o optional chaining.
+      overlay.querySelector('#chocoCfgOpen')?.addEventListener('click', () => { openExternal(CFG_URL); });
+      overlay.querySelector('#chocoBack')!.addEventListener('click', renderEscolha);
+      overlay.querySelector('#chocoCfgClose')!.addEventListener('click', close);
+    };
+
+    renderEscolha();
+    // No overlay (não no miolo): sobrevive à troca de tela, que reescreve
+    // o innerHTML inteiro e levaria junto qualquer listener de dentro.
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   }
 
