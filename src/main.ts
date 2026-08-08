@@ -5048,6 +5048,7 @@ class RhythmSequencer {
    *  metade de um e metade do outro e o pedal não funcionar. */
   private showChocolateConfig(): void {
     const CFG_URL = 'https://gdrums-chocolate.vercel.app';
+    const VIDEO_URL = 'https://youtu.be/lDHfQTEepuk';
     const c = '#d8a064'; // marrom "chocolate"
     const step = (n: number, html: string): string => `
       <li style="display:flex;gap:0.85rem;align-items:flex-start;margin-bottom:1.05rem;">
@@ -5087,16 +5088,33 @@ class RhythmSequencer {
         <span style="flex-shrink:0;color:${c};font-size:1.4rem;font-weight:800;line-height:1;">›</span>
       </button>`;
 
+    // Terceiro botão: NÃO é uma "opção 3" de configuração — é o mesmo
+    // conteúdo em vídeo. Por isso sem o selo "OPÇÃO" e com visual próprio,
+    // pra ninguém achar que existe um terceiro caminho pra seguir.
+    const btnVideo = `
+      <button id="chocoVideo" style="width:100%;display:flex;align-items:center;gap:0.9rem;text-align:left;padding:1.05rem 1rem;margin:0.3rem 0 1rem;border:1px solid rgba(255,255,255,0.14);border-radius:16px;background:rgba(255,255,255,0.05);font-family:inherit;cursor:pointer;">
+        <span style="flex-shrink:0;width:2.3rem;height:2.3rem;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;">
+          <span style="width:0;height:0;border-left:11px solid rgba(255,255,255,0.9);border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px;"></span>
+        </span>
+        <span style="flex:1;min-width:0;">
+          <span style="display:block;font-size:1.05rem;font-weight:700;color:#fff;line-height:1.3;">Vídeo explicativo</span>
+          <span style="display:block;font-size:0.85rem;color:rgba(255,255,255,0.5);line-height:1.35;margin-top:0.15rem;">Prefere ver? Assista o passo a passo</span>
+        </span>
+        <span style="flex-shrink:0;color:rgba(255,255,255,0.5);font-size:1.4rem;font-weight:800;line-height:1;">›</span>
+      </button>`;
+
     const renderEscolha = (): void => {
       overlay.innerHTML = shell(
         'Configurar Chocolate',
         `Tem dois jeitos de deixar o M-VAVE Chocolate pronto.<br><span style="color:${c};font-weight:700;">Escolha um deles.</span>`,
         `${cartao(1, 'Pelo aplicativo Midi Suite', 'Você baixa o Midi Suite e configura por lá')}
          ${cartao(2, 'Pelo site de configuração', 'Sem instalar nada, direto no navegador')}
-         <div style="margin-top:0.4rem;">${btnFechar}</div>`,
+         ${btnVideo}
+         ${btnFechar}`,
       );
       overlay.querySelector('#chocoOpt1')!.addEventListener('click', () => renderPasso(1));
       overlay.querySelector('#chocoOpt2')!.addEventListener('click', () => renderPasso(2));
+      overlay.querySelector('#chocoVideo')!.addEventListener('click', () => { openExternal(VIDEO_URL); });
       overlay.querySelector('#chocoCfgClose')!.addEventListener('click', close);
     };
 
