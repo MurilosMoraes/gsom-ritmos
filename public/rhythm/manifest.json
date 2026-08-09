@@ -1,5 +1,5 @@
 {
-  "version": 49,
+  "version": 50,
   "rhythms": [
     "Anos 60.json",
     "Anunciação.json",
@@ -83,6 +83,7 @@
     "MPB.json",
     "Neo-Soul.json",
     "New Wave.json",
+    "Olodum.json",
     "Pagode de Viola.json",
     "Pagode Romântico.json",
     "Pagode.json",
@@ -207,6 +208,7 @@
       "Maxixe.json",
       "MPB Ballad.json",
       "MPB.json",
+      "Olodum.json",
       "Pagode de Viola.json",
       "Pagode Romântico.json",
       "Pagode.json",
