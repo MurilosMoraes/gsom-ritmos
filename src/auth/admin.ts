@@ -3284,6 +3284,9 @@ class AdminDashboard {
 
     const esc = (s: string) => (s || '').replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' } as Record<string,string>)[ch] || ch);
 
+    // Origem do ultimo pagamento. Num LEAD isso separa dois mundos: quem
+    // nunca pagou e aquisicao; quem ja pagou e caducou e REATIVACAO.
+    const origensLead = this.origemPagamentoPorUsuario();
     tbody.innerHTML = filtered.map(item => {
       const tierClass = item.score >= 70 ? 'tier-hot' : item.score >= 50 ? 'tier-warm' : 'tier-lukewarm';
       const tierEmoji = item.score >= 70 ? '🔥' : item.score >= 50 ? '🟠' : '🟡';
@@ -3314,6 +3317,14 @@ class AdminDashboard {
             <div style="font-weight:700;color:#fff;">${esc(item.name || '(sem nome)')}</div>
             <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);">${esc(item.email || '')}</div>
             ${item.phoneDisplay ? `<div style="font-size:0.7rem;color:rgba(255,255,255,0.35);margin-top:0.2rem;">${esc(item.phoneDisplay)}</div>` : ''}
+            ${(() => {
+              // Origem do último pagamento. Num LEAD isso separa dois mundos:
+              // quem nunca pagou (—) é aquisição; quem já pagou e caducou é
+              // reativação, conversa completamente diferente. E se pagou pela
+              // Apple, o cancelamento foi feito lá, não adianta oferecer link.
+              const o = origensLead.get(item.id);
+              return o ? `<div style="margin-top:0.25rem;">${this.badgeOrigem(o)}</div>` : '';
+            })()}
           </td>
           <td><div class="adm-chips">${chips}</div></td>
           <td>${statusBadge}</td>
