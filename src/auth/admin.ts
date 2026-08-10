@@ -3044,9 +3044,19 @@ class AdminDashboard {
       return;
     }
 
+    // Origem do último pagamento — aqui é o dado mais importante da tela.
+    // Quem assinou pela Apple RENOVA SOZINHO (a Apple cobra automático), então
+    // não deve entrar em régua de cobrança: mandar "sua assinatura vence" pra
+    // esse cara é ruído, e pior, pode fazê-lo cancelar algo que ia renovar.
+    const origens = this.origemPagamentoPorUsuario();
+
     tbody.innerHTML = paged.map(r => {
+      const origem = origens.get(r.p.id);
+      const ehApple = origem?.origem === 'apple' && !origem.sandbox;
       const v = validateBrPhone(r.p.phone);
-      const waLink = v.ok
+      const waLink = ehApple
+        ? `<span style="color:var(--a-text3);font-size:0.68rem;" title="Renovação automática pela Apple — não precisa cobrar">renova sozinho</span>`
+        : v.ok
         ? `<a href="https://wa.me/${v.e164}?text=${waMsg(r.p.name, r.p.subscription_plan, r.daysLeft)}" target="_blank" style="color:var(--a-green);text-decoration:none;font-size:0.72rem;" title="WhatsApp: ${v.display}">WhatsApp</a>`
         : `<span style="color:var(--a-text3);font-size:0.7rem;" title="${v.reason || 'sem telefone'}">sem zap</span>`;
       const urg = r.daysLeft <= 1 ? 'var(--a-red)' : r.daysLeft <= 3 ? 'var(--a-gold)' : 'var(--a-text2)';
@@ -3056,7 +3066,7 @@ class AdminDashboard {
         : '—';
       return `
         <tr>
-          <td>${r.p.name || '—'} ${r.isVip ? '<span title="Melhor cliente" style="color:var(--a-gold);">★</span>' : ''}</td>
+          <td>${r.p.name || '—'} ${r.isVip ? '<span title="Melhor cliente" style="color:var(--a-gold);">★</span>' : ''}<br>${this.badgeOrigem(origem)}</td>
           <td><span class="badge badge-primary">${r.p.subscription_plan}</span></td>
           <td><span style="color:${urg};font-weight:600;">${venceTxt}</span></td>
           <td>${sinceTxt}</td>
