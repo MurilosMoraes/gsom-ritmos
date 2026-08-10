@@ -21,6 +21,12 @@ interface AppliedCoupon {
 class PlansPage {
   private appliedCoupon: AppliedCoupon | null = null;
   private upgradeCredit = 0; // Crédito em centavos do plano atual (upgrade proporcional)
+  // Passe 3 Dias é COMPRA ÚNICA por pessoa (1x por CPF). Quem já usou não
+  // vê mais o plano. Motivo: virou assinatura barata infinita — 18 contas
+  // recompraram (uma delas 5x), trocando o mensal de R$29 por R$9,90
+  // repetidos. Isso aqui só esconde da tela; a trava de verdade está na
+  // edge function create-checkout, que recusa gerar o link de pagamento.
+  private jaUsouPasse = false;
 
   constructor() {
     this.init();
@@ -68,6 +74,21 @@ class PlansPage {
       .select('subscription_status, subscription_expires_at, subscription_plan')
       .eq('id', user.id)
       .single();
+
+    // Passe 3 Dias já usado? Se sim, some da lista (compra única por pessoa).
+    // Falha de rede aqui NÃO libera o plano indevidamente: o create-checkout
+    // recusa do mesmo jeito, então o pior caso é o card aparecer e o
+    // pagamento ser barrado com mensagem clara.
+    try {
+      const { data: passes } = await supabase
+        .from('gdrums_transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('plan', 'passe-3-dias')
+        .eq('status', 'confirmed')
+        .limit(1);
+      this.jaUsouPasse = !!(passes && passes.length > 0);
+    } catch { /* sem rede: mantém visível, backend barra */ }
 
     const status = profile?.subscription_status;
     const plan = profile?.subscription_plan;
@@ -403,9 +424,11 @@ class PlansPage {
     // No iOS, esconder planos sem IAP correspondente (hideOnIOS): a Apple
     // exige que TODO plano exibido tenha produto IAP submetido, senão
     // rejeição 2.1. Hoje: Rei dos Palcos e Modo Show 3 Dias (só web/Android).
-    const visiblePlans = isIOSNative()
+    // Passe 3 Dias sai da lista pra quem já comprou uma vez (compra única).
+    const visiblePlans = (isIOSNative()
       ? PLANS.filter(p => !p.hideOnIOS)
-      : PLANS;
+      : PLANS
+    ).filter(p => !(p.id === 'passe-3-dias' && this.jaUsouPasse));
 
     visiblePlans.forEach(plan => {
       const isHighlighted = plan.popular || highlight === plan.id;
