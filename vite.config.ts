@@ -27,8 +27,7 @@ export default defineConfig({
         excluirConta: './excluir-conta.html',
         links: './links.html',
         completarCadastro: './completar-cadastro.html',
-        download: './download.html',
-        comunidade: './comunidade.html'
+        download: './download.html'
       }
     }
   },
