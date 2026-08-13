@@ -2996,7 +2996,29 @@ class RhythmSequencer {
         // - .sle-overlay: editor de repertório (SetlistEditorUI)
         // - .install-tut-overlay: tutorial de instalação
         // - .wn-modal-overlay: What's New
+        // - .eq-overlay, .count-vol-overlay, .fs-overlay: painéis com SLIDER.
+        //   Faltavam aqui e o sintoma era claro no iOS: arrastar o slider do
+        //   equalizador só pegava na 3ª ou 4ª tentativa. Sem o guard, o
+        //   setInterval(1500) e o touchend chamavam pedalInput.focus() no meio
+        //   do arrasto; iOS cancela a sequência de toque quando outro elemento
+        //   recebe foco, e o drag morria. Não dá pra confiar no guard de
+        //   "activeElement é INPUT" pra esses: o Safari não foca
+        //   <input type="range"> no toque, então o pedal não via ninguém
+        //   focado e roubava o foco assim mesmo.
+        // - .manual-overlay: texto longo rolável — mesmo problema no scroll
         // - z-index:99999 inline: fallback pra outros dinâmicos antigos
+        //
+        // Os quatro acima já chamavam __refocusPedal() no close(), ou seja,
+        // sempre foram feitos pra estar nesta lista — faltava só entrar nela.
+        //
+        // ⚠️ FICARAM DE FORA de propósito:
+        // - .countdown-overlay: criado UMA vez e reusado com display
+        //   none/flex (this.countdownOverlay), igual ao .gm-overlay. Incluir
+        //   mataria o pedal.
+        // - .offline-modal-overlay e .renew-modal-overlay: são removidos no
+        //   close, mas não chamam __refocusPedal(). Incluir sem isso deixaria
+        //   o pedal mudo por até 1,5s (o setInterval) depois de fechar. Se um
+        //   dia precisarem entrar, adicione a chamada no close() junto.
         // Overlays em animação de saída (.x-exit, .sle-exit, etc) NÃO contam:
         // o close() já foi disparado, o user clicou pra fechar. O refocus
         // do pedal precisa rolar AGORA dentro do mesmo user gesture do iOS,
@@ -3005,6 +3027,8 @@ class RhythmSequencer {
           '.account-modal-overlay:not(.x-exit), .bpm-modal-overlay:not(.x-exit), ' +
           '.x-overlay:not(.x-exit), .sle-overlay:not(.sle-exit), ' +
           '.install-tut-overlay:not(.x-exit), .wn-modal-overlay:not(.x-exit), ' +
+          '.eq-overlay:not(.x-exit), .count-vol-overlay:not(.x-exit), ' +
+          '.fs-overlay:not(.x-exit), .manual-overlay:not(.x-exit), ' +
           '[style*="z-index: 99999"]:not(.x-exit), [style*="z-index:99999"]:not(.x-exit)'
         );
       };
