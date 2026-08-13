@@ -825,7 +825,7 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '3.3',
+    version: '3.4',
     overline: t('main.whatsNew.overline'),
     title: t('main.whatsNew.title'),
     subtitle: t('main.whatsNew.subtitle'),
