@@ -441,7 +441,7 @@ function renderCard(r: CommunityRow): HTMLElement {
         <button class="like ${already ? 'liked' : ''}" type="button" ${already ? 'disabled' : ''} aria-label="Curtir">
           ${HEART_SVG} <span class="like-n">${r.likes}</span>
         </button>
-        <a class="dl-btn" href="${APP_ORIGIN}/?c=${encodeURIComponent(r.code)}" target="_blank" rel="noopener">${DL_SVG} Baixar</a>
+        <a class="dl-btn" href="${APP_ORIGIN}/?c=${encodeURIComponent(r.code)}">${DL_SVG} Baixar</a>
       </span>
     </div>
   `;

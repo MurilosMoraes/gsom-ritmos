@@ -34,6 +34,15 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
                 <data android:host="gdrums.com.br" />
+                <!-- Subdominio da COMUNIDADE. Sem esta linha, link hospedado
+                     em comunidade.gdrums.com.br NUNCA abre o app: subdominio
+                     nao casa com o host do dominio raiz. ATENCAO: so declarar
+                     aqui nao basta, o Android exige
+                     comunidade.gdrums.com.br/.well-known/assetlinks.json
+                     (mesmo conteudo do dominio principal) pra VERIFICAR o
+                     link. Como a comunidade e outro projeto na Vercel, esse
+                     arquivo precisa ser publicado LA. -->
+                <data android:host="comunidade.gdrums.com.br" />
                 <data android:pathPrefix="/login" />
                 <data android:pathPrefix="/plans" />
                 <data android:pathPrefix="/payment-success" />
