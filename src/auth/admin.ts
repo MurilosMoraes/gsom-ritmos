@@ -1413,440 +1413,194 @@ class AdminDashboard {
     return AdminDashboard.DDD_STATE[ddd] || '??';
   }
 
-  // Instância do globo (lazy) — armazenada pra não recriar a cada render
-  private globeInstance: any = null;
+  // ─── Origem do pagamento e primeira compra ──────────────────────────
+  //
+  // Métodos que aparecem de fato no banco (conferido em 10/08/2026):
+  //   pix (1070) · credit_card (153) · manual (119) · apple_iap (63)
+  //   apple_iap_sandbox (35) · external (2) · manual_externo (1) · pix_manual (1)
+  //
+  // Agrupamos em 3 origens porque é o que muda a operação:
+  //   apple  → entrou pela App Store (Apple fica com a comissão; reembolso
+  //            e cancelamento são resolvidos por ELA, não por nós)
+  //   site   → checkout InfinitePay (pix/cartão) — dinheiro cai direto
+  //   manual → alguém registrou no painel ("pagou por fora")
+
+  /** Classifica um payment_method em apple / site / manual. */
+  private static origemDoPagamento(metodo: string | null): 'apple' | 'site' | 'manual' {
+    const m = (metodo || '').toLowerCase();
+    if (m.includes('apple')) return 'apple';
+    if (m === 'pix' || m === 'credit_card') return 'site';
+    return 'manual'; // manual, manual_externo, pix_manual, external, vazio
+  }
 
   /**
-   * Renderiza globo 3D interativo no container, com markers proporcionais
-   * ao volume de usuários por estado. Usa lazy import do globe.gl (~500KB)
-   * pra não inflar o bundle inicial — só carrega quando admin abre o
-   * Dashboard pela primeira vez.
+   * Origem do ÚLTIMO pagamento confirmado de cada usuário.
+   * Sandbox da Apple entra marcado à parte: não é dinheiro real (tester do
+   * App Review) e não pode ser lido como cliente pagante.
    */
-  private async renderGlobe(container: HTMLElement, userLocations: Array<{ state: string; phone: string; isActive: boolean }>): Promise<void> {
-    // Sem dados de telefone? Mostra empty state e sai.
+  private origemPagamentoPorUsuario(): Map<string, { origem: 'apple' | 'site' | 'manual'; sandbox: boolean; quando: number }> {
+    const mapa = new Map<string, { origem: 'apple' | 'site' | 'manual'; sandbox: boolean; quando: number }>();
+    for (const t of this.transactions) {
+      if (t.status !== 'confirmed') continue;
+      const quando = new Date(t.created_at).getTime();
+      const atual = mapa.get(t.user_id);
+      if (atual && atual.quando >= quando) continue; // já tenho um mais novo
+      mapa.set(t.user_id, {
+        origem: AdminDashboard.origemDoPagamento(t.payment_method),
+        sandbox: isSandboxTx(t),
+        quando,
+      });
+    }
+    return mapa;
+  }
+
+  /**
+   * Ids das transações que são a PRIMEIRA compra confirmada do usuário.
+   * Serve pro badge "Nova assinatura" x "Recorrente" na tela de transações:
+   * cliente novo recebe mensagem de boas-vindas, recorrente não.
+   *
+   * Sandbox é ignorado na contagem — senão um teste do App Review faria a
+   * primeira compra REAL do usuário parecer recorrente.
+   */
+  private idsDePrimeiraCompra(): Set<string> {
+    const primeiraPorUser = new Map<string, { id: string; quando: number }>();
+    for (const t of this.transactions) {
+      if (t.status !== 'confirmed' || isSandboxTx(t)) continue;
+      const quando = new Date(t.created_at).getTime();
+      const atual = primeiraPorUser.get(t.user_id);
+      if (!atual || quando < atual.quando) {
+        primeiraPorUser.set(t.user_id, { id: t.id, quando });
+      }
+    }
+    return new Set([...primeiraPorUser.values()].map(v => v.id));
+  }
+
+  /** HTML do badge de origem. Compacto pra caber na coluna da tabela. */
+  private badgeOrigem(info?: { origem: 'apple' | 'site' | 'manual'; sandbox: boolean }): string {
+    if (!info) return '<span class="adm-origem adm-origem-none" title="Nenhum pagamento confirmado">—</span>';
+    if (info.sandbox) return '<span class="adm-origem adm-origem-sandbox" title="Compra de teste do App Review — não é dinheiro real">sandbox</span>';
+    if (info.origem === 'apple') return '<span class="adm-origem adm-origem-apple" title="Assinou pela App Store (iOS). Cancelamento e reembolso são pela Apple.">Apple</span>';
+    if (info.origem === 'site') return '<span class="adm-origem adm-origem-site" title="Pagou pelo site (InfinitePay: pix ou cartão)">Site</span>';
+    return '<span class="adm-origem adm-origem-manual" title="Ativado manualmente no painel (pagou por fora)">Manual</span>';
+  }
+
+  // ─── Mapa de distribuição por estado (cartograma) ───────────────────
+  //
+  // Substituiu o globo 3D (globe.gl + three.js, ~1.9MB de bundle e canvas
+  // WebGL animado). O globo era bonito mas pesado: travava no PC do
+  // escritório e nem sempre carregava. Aqui é HTML/CSS puro — nada pra
+  // baixar, renderiza instantâneo e dá pra LER o número de cada estado,
+  // que é o que interessa na prática.
+  //
+  // Layout: tiles em grade aproximando o mapa do Brasil (cartograma). Não
+  // é geograficamente exato, mas cada estado fica na região certa, então
+  // bate o olho e entende de onde vem o público.
+
+  /** Posição de cada UF na grade: [linha, coluna]. Grade 10x7. */
+  private static readonly UF_GRID: Record<string, [number, number]> = {
+    RR: [1, 3], AP: [1, 5],
+    AM: [2, 2], PA: [2, 4], MA: [2, 5], CE: [2, 6], RN: [2, 7],
+    AC: [3, 1], RO: [3, 2], TO: [3, 4], PI: [3, 5], PB: [3, 6],
+    MT: [4, 3], BA: [4, 5], PE: [4, 6], AL: [4, 7],
+    MS: [5, 3], GO: [5, 4], DF: [5, 5], SE: [5, 6],
+    MG: [6, 4], ES: [6, 5],
+    SP: [7, 3], RJ: [7, 4],
+    PR: [8, 3],
+    SC: [9, 3],
+    RS: [10, 3],
+  };
+
+  private static readonly UF_REGIAO: Record<string, string> = {
+    AC: 'Norte', AM: 'Norte', AP: 'Norte', PA: 'Norte', RO: 'Norte', RR: 'Norte', TO: 'Norte',
+    AL: 'Nordeste', BA: 'Nordeste', CE: 'Nordeste', MA: 'Nordeste', PB: 'Nordeste',
+    PE: 'Nordeste', PI: 'Nordeste', RN: 'Nordeste', SE: 'Nordeste',
+    DF: 'Centro-Oeste', GO: 'Centro-Oeste', MT: 'Centro-Oeste', MS: 'Centro-Oeste',
+    ES: 'Sudeste', MG: 'Sudeste', RJ: 'Sudeste', SP: 'Sudeste',
+    PR: 'Sul', RS: 'Sul', SC: 'Sul',
+  };
+
+  /**
+   * Desenha o mapa de usuários por estado. Síncrono e sem dependência.
+   * `userLocations` já vem filtrado (só quem tem DDD reconhecido).
+   */
+  private renderRegionMap(container: HTMLElement, userLocations: Array<{ state: string; phone: string; isActive: boolean }>): void {
     if (userLocations.length === 0) {
       container.innerHTML = '<div style="color:var(--a-text3);font-size:0.75rem;text-align:center;padding:2rem;">Sem dados de telefone pra mapear</div>';
-      this.globeInstance = null;
       return;
     }
 
-    // Lazy import — só baixa globe.gl quando for usar.
-    container.innerHTML = '<div style="color:rgba(0,212,255,0.55);font-size:0.75rem;text-align:center;padding:2rem;display:flex;align-items:center;justify-content:center;height:100%;">Carregando globo…</div>';
-
-    let Globe: any;
-    try {
-      const mod = await import('globe.gl');
-      Globe = (mod as any).default || mod;
-      if (typeof Globe !== 'function') {
-        throw new Error('Globe is not a function (default export missing)');
-      }
-      // Hexbin não precisa de three/textura custom — usa o renderer
-      // nativo do globe.gl direto.
-    } catch (e) {
-      console.error('[admin] globe.gl falhou ao carregar:', e);
-      container.innerHTML = `<div style="color:var(--a-red);font-size:0.75rem;text-align:center;padding:2rem;">Erro ao carregar globo:<br><code style="font-size:0.65rem;opacity:0.6;">${String(e).slice(0, 200)}</code></div>`;
-      return;
+    // Agrega: total e ativos por UF
+    const porUF = new Map<string, { total: number; ativos: number }>();
+    for (const u of userLocations) {
+      const atual = porUF.get(u.state) || { total: 0, ativos: 0 };
+      atual.total++;
+      if (u.isActive) atual.ativos++;
+      porUF.set(u.state, atual);
     }
+    const maxTotal = Math.max(...[...porUF.values()].map(v => v.total), 1);
 
-    // 1 ponto POR USUÁRIO espalhado pela região do estado, com forma
-    // ORGÂNICA (não retângulo, não círculo).
-    //
-    // Estratégia:
-    // - Cada estado tem TAMANHO próprio (SP grande, SE pequeno)
-    // - Cada estado tem ROTAÇÃO própria (quebra alinhamento N/S/E/W)
-    // - Cada user usa power(random) pra concentrar mais perto do centro
-    //   sem virar gauss redondo
-    //
-    // Tamanho aproximado por UF em graus (raiz quadrada da área ÷ 50):
-    const stateExtent: Record<string, { rx: number; ry: number; rot: number }> = {
-      'SP': { rx: 2.5, ry: 1.8, rot: 0.3 },
-      'RJ': { rx: 1.3, ry: 0.9, rot: -0.5 },
-      'ES': { rx: 0.9, ry: 1.4, rot: 0.1 },
-      'MG': { rx: 3.5, ry: 2.6, rot: 0.4 },
-      'PR': { rx: 2.4, ry: 1.6, rot: -0.2 },
-      'SC': { rx: 1.8, ry: 1.0, rot: 0.1 },
-      'RS': { rx: 2.6, ry: 2.0, rot: 0.2 },
-      'DF': { rx: 0.5, ry: 0.5, rot: 0 },
-      'GO': { rx: 2.4, ry: 2.2, rot: -0.3 },
-      'TO': { rx: 1.8, ry: 2.8, rot: 0.2 },
-      'MT': { rx: 3.8, ry: 3.0, rot: -0.1 },
-      'MS': { rx: 2.6, ry: 2.4, rot: 0.4 },
-      'AC': { rx: 2.0, ry: 1.2, rot: 0.5 },
-      'RO': { rx: 2.2, ry: 1.8, rot: -0.3 },
-      'BA': { rx: 3.5, ry: 3.0, rot: -0.2 },
-      'SE': { rx: 0.7, ry: 0.7, rot: 0.3 },
-      'PE': { rx: 3.2, ry: 1.1, rot: -0.1 },
-      'AL': { rx: 1.2, ry: 0.8, rot: 0.2 },
-      'PB': { rx: 1.8, ry: 1.0, rot: 0.1 },
-      'RN': { rx: 1.8, ry: 1.0, rot: 0.4 },
-      'CE': { rx: 2.2, ry: 2.5, rot: -0.4 },
-      'PI': { rx: 2.5, ry: 3.2, rot: 0.3 },
-      'MA': { rx: 2.8, ry: 2.8, rot: -0.2 },
-      'PA': { rx: 4.0, ry: 3.5, rot: 0.3 },
-      'AM': { rx: 4.5, ry: 3.0, rot: -0.3 },
-      'RR': { rx: 1.8, ry: 1.8, rot: 0.5 },
-      'AP': { rx: 1.2, ry: 1.4, rot: -0.2 },
-    };
+    // Tiles do cartograma
+    const tiles = Object.entries(AdminDashboard.UF_GRID).map(([uf, [linha, coluna]]) => {
+      const d = porUF.get(uf);
+      const total = d?.total || 0;
+      const ativos = d?.ativos || 0;
+      // Intensidade log: sem isso SP ofusca todo o resto e o mapa vira
+      // uma mancha só com um quadrado aceso.
+      const intensidade = total === 0 ? 0 : Math.log2(total + 1) / Math.log2(maxTotal + 1);
+      const alpha = total === 0 ? 0.04 : 0.12 + intensidade * 0.75;
+      const cor = total === 0
+        ? 'rgba(255,255,255,0.04)'
+        : `rgba(139,92,246,${alpha.toFixed(3)})`;
+      const borda = total === 0 ? 'rgba(255,255,255,0.06)' : `rgba(167,139,250,${(0.2 + intensidade * 0.5).toFixed(3)})`;
+      const corTexto = intensidade > 0.55 ? '#fff' : 'rgba(255,255,255,0.55)';
+      const titulo = total === 0
+        ? `${uf}: nenhum usuário`
+        : `${uf} (${AdminDashboard.UF_REGIAO[uf]}): ${total} usuário(s), ${ativos} ativo(s)`;
+      return `<div class="adm-uf" style="grid-row:${linha};grid-column:${coluna};background:${cor};border-color:${borda};color:${corTexto};" title="${titulo}">
+        <span class="adm-uf-sigla">${uf}</span>
+        ${total > 0 ? `<span class="adm-uf-num">${total}</span>` : ''}
+      </div>`;
+    }).join('');
 
-    const points = userLocations.map((u, idx) => {
-      const cap = AdminDashboard.STATE_COORDS[u.state];
-      if (!cap) return null;
-      const ext = stateExtent[u.state] || { rx: 1.5, ry: 1.5, rot: 0 };
-
-      // 2 hashes independentes pra ter 2 randoms estáveis (0-1)
-      const seedStr = u.phone + ':' + idx;
-      const h1 = seedStr.split('').reduce((a, c) => ((a * 31) + c.charCodeAt(0)) | 0, 7);
-      const h2 = seedStr.split('').reduce((a, c) => ((a * 17) + c.charCodeAt(0) * 13) | 0, 41);
-      const r1 = ((h1 >>> 0) % 10000) / 10000;
-      const r2 = ((h2 >>> 0) % 10000) / 10000;
-
-      // Random no retângulo do estado, em coordenadas LOCAIS (-1 a +1)
-      const localX = (r1 - 0.5) * 2;
-      const localY = (r2 - 0.5) * 2;
-
-      // Aplica rotação do estado (quebra alinhamento N/S/E/W)
-      const cos = Math.cos(ext.rot);
-      const sin = Math.sin(ext.rot);
-      const rotX = localX * cos - localY * sin;
-      const rotY = localX * sin + localY * cos;
-
-      // Escala pelo tamanho do estado
-      const offLng = rotX * ext.rx;
-      const offLat = rotY * ext.ry;
-
-      return {
-        state: u.state,
-        city: cap.name,
-        lat: cap.lat + offLat,
-        lng: cap.lng + offLng,
-        isActive: u.isActive,
-      };
-    }).filter(p => p !== null) as Array<{ state: string; city: string; lat: number; lng: number; isActive: boolean }>;
-
-    // Se já tem globo criado, só atualiza dados
-    if (this.globeInstance) {
-      this.globeInstance.hexBinPointsData(points);
-      this.globeInstance.ringsData(this.topRingsFromActives(points));
-      return;
+    // Ranking por região (quem manda no faturamento vem daqui)
+    const porRegiao = new Map<string, { total: number; ativos: number }>();
+    for (const [uf, d] of porUF) {
+      const r = AdminDashboard.UF_REGIAO[uf] || 'Outra';
+      const atual = porRegiao.get(r) || { total: 0, ativos: 0 };
+      atual.total += d.total;
+      atual.ativos += d.ativos;
+      porRegiao.set(r, atual);
     }
+    const totalGeral = userLocations.length;
+    const regioes = [...porRegiao.entries()].sort((a, b) => b[1].total - a[1].total);
+    const listaRegioes = regioes.map(([nome, d]) => {
+      const pct = ((d.total / totalGeral) * 100).toFixed(0);
+      return `<div class="adm-reg-row">
+        <span class="adm-reg-nome">${nome}</span>
+        <div class="adm-reg-track"><div class="adm-reg-fill" style="width:${(d.total / regioes[0][1].total * 100).toFixed(1)}%"></div></div>
+        <span class="adm-reg-num">${d.total}<span class="adm-reg-pct">${pct}%</span></span>
+      </div>`;
+    }).join('');
 
-    // Limpa container (remove o "loading...")
-    container.innerHTML = '';
+    // Top 5 estados
+    const topUF = [...porUF.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, 5);
+    const listaTop = topUF.map(([uf, d], i) => `
+      <span class="adm-top-uf" title="${d.ativos} ativo(s) de ${d.total}">
+        <b>${i + 1}º</b> ${uf} <span class="adm-top-num">${d.total}</span>
+      </span>`).join('');
 
-    // Detecta mobile pra ajustar tamanho/zoom
-    const isMobile = window.innerWidth < 768;
-    const height = isMobile ? 280 : 360;
-
-    // Container precisa ter tamanho fixo pra globe medir
-    container.style.minHeight = `${height}px`;
-    container.style.height = `${height}px`;
-    container.style.background = 'radial-gradient(circle at center, rgba(0,30,60,0.4), rgba(3,0,20,0.95))';
-    container.style.borderRadius = '12px';
-    container.style.overflow = 'hidden';
-    container.style.cursor = 'grab';
-    container.style.touchAction = 'none'; // bloqueia scroll do browser quando arrasta o globo
-
-    // Aguarda 1 frame pra o layout calcular offsetWidth do container.
-    // No mobile, sem esse delay, offsetWidth pode vir 0 e o canvas fica
-    // com largura zero (invisível). Promise resolve com requestAnimationFrame.
-    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-
-    // Pega largura DEPOIS do layout. Fallback: largura da viewport menos
-    // padding da card (~64px) se ainda vier 0.
-    let width = container.offsetWidth;
-    if (width < 100) width = Math.max(300, window.innerWidth - 64);
-
-    // Cria instância
-    const globe = Globe()
-      .width(width)
-      .height(height)
-      .backgroundColor('rgba(0,0,0,0)') // transparente — gradient do container vaza
-      // Globo escuro com grade sutil (estilo "neon city")
-      // Textura local (em vez de unpkg.com — CSP do connect-src bloqueava
-      // e além disso evita roundtrip CDN externo, mais rápido).
-      .globeImageUrl('/img/earth-dark.jpg')
-      .showAtmosphere(true)
-      .atmosphereColor('#00D4FF')
-      .atmosphereAltitude(0.18)
-      // Hexbin: divide globo em hexágonos H3, agrega users em cada um.
-      // Estilo "world-population" do globe.gl, mas com altura MUITO baixa
-      // pra não ficar "pau crescendo" — cor faz o trabalho pesado.
-      .hexBinPointsData(points)
-      .hexBinResolution(5) // H3 res 5 = hexágonos ~75km (mais granular)
-      .hexBinMerge(false)
-      // Altura quase plana: 0.003 base + log suave. Hexágono cheio sobe
-      // apenas ~0.025 (vs 0.15 antes). Visual de "mapa de calor 3D leve".
-      .hexAltitude((d: any) => 0.003 + Math.log2(d.points.length + 1) * 0.005)
-      .hexTopColor((d: any) => this.hexColor(d.points))
-      .hexSideColor((d: any) => this.hexColor(d.points))
-      .hexLabel((d: any) => {
-        const total = d.points.length;
-        const active = d.points.filter((p: any) => p.isActive).length;
-        return `
-          <div style="background:rgba(3,0,20,0.95);border:1px solid rgba(0,212,255,0.4);border-radius:8px;padding:0.5rem 0.75rem;font-family:-apple-system,sans-serif;color:#fff;font-size:0.85rem;">
-            <div style="font-weight:700;">${total} usuário${total === 1 ? '' : 's'}</div>
-            <div style="color:rgba(160,100,246,0.95);font-size:0.75rem;">${active} ativos · ${total - active} demais</div>
-          </div>
-        `;
-      })
-      .hexTransitionDuration(800)
-      // Rings: anéis pulsantes nos top 5 estados com mais assinantes ativos
-      .ringsData(this.topRingsFromActives(points))
-      .ringColor(() => {
-        return (t: number) => `rgba(160, 100, 246, ${(1 - t) * 0.55})`;
-      })
-      .ringMaxRadius(5)
-      .ringPropagationSpeed(2.5)
-      .ringRepeatPeriod(1800)
-      .ringAltitude(0.005)
-      // Foco inicial em Brasil — altitude menor no mobile (zoom mais perto)
-      .pointOfView({ lat: -15, lng: -55, altitude: isMobile ? 2.2 : 1.8 }, 0);
-
-    globe(container);
-
-    // Pixel ratio do device (retina 2x/3x) — sem isso o canvas WebGL
-    // renderiza em 1x e fica blurry em telas modernas. Limite em 2 pra
-    // não comer GPU em telas 4K.
-    try {
-      const renderer = globe.renderer();
-      if (renderer && typeof renderer.setPixelRatio === 'function') {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        renderer.setPixelRatio(dpr);
-      }
-    } catch { /* noop */ }
-
-    // Auto-rotação suave (para quando user interage)
-    const controls = globe.controls();
-    if (controls) {
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.35;
-      controls.enableZoom = true;
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.1;
-
-      // Para a auto-rotação quando user clica/arrasta
-      container.addEventListener('mousedown', () => { controls.autoRotate = false; });
-      container.addEventListener('touchstart', () => { controls.autoRotate = false; }, { passive: true });
-    }
-
-    this.globeInstance = globe;
-
-    // Botão fullscreen — toggle de fullscreen API + resize do globo
-    const fsBtn = document.getElementById('globeFullscreenBtn');
-    if (fsBtn && !fsBtn.dataset.bound) {
-      fsBtn.addEventListener('click', () => this.toggleGlobeFullscreen(container));
-      fsBtn.dataset.bound = '1';
-
-      // Quando entra/sai de fullscreen, redimensiona o globo
-      document.addEventListener('fullscreenchange', () => {
-        setTimeout(() => {
-          if (!this.globeInstance) return;
-          const isFs = !!document.fullscreenElement;
-          const w = isFs ? window.innerWidth : container.offsetWidth;
-          const h = isFs ? window.innerHeight : height;
-          this.globeInstance.width(w);
-          this.globeInstance.height(h);
-        }, 100);
-      });
-    }
-
-    // Resize observer: se a card mudar de tamanho (sidebar fechou, etc), recalibra
-    const ro = new ResizeObserver(() => {
-      const w = container.offsetWidth;
-      if (w > 100 && this.globeInstance && !document.fullscreenElement) {
-        this.globeInstance.width(w);
-      }
-    });
-    ro.observe(container);
-
-    // Fallback extra mobile: se o canvas saiu com tamanho zerado (orientation
-    // change, viewport ainda calculando), força resize 200ms depois.
-    setTimeout(() => {
-      if (this.globeInstance) {
-        const w = container.offsetWidth;
-        if (w > 100) {
-          this.globeInstance.width(w);
-          this.globeInstance.height(height);
-        }
-      }
-    }, 200);
+    container.innerHTML = `
+      <div class="adm-mapa-wrap">
+        <div class="adm-mapa-grid">${tiles}</div>
+        <div class="adm-mapa-lado">
+          <div class="adm-mapa-titulo">Por região</div>
+          ${listaRegioes}
+          <div class="adm-mapa-titulo" style="margin-top:0.7rem;">Top estados</div>
+          <div class="adm-top-wrap">${listaTop}</div>
+          <div class="adm-mapa-rodape">${totalGeral} usuários com DDD identificado</div>
+        </div>
+      </div>`;
   }
-
-  /**
-   * Toggle fullscreen no container do globo. Usa Fullscreen API.
-   * Safari iOS não suporta fullscreen elementInternals → faz fallback
-   * com position:fixed + z-index alto.
-   */
-  private toggleGlobeFullscreen(container: HTMLElement): void {
-    const isFs = !!document.fullscreenElement;
-
-    if (isFs) {
-      document.exitFullscreen().catch(() => {});
-      container.classList.remove('adm-globe-fs-fallback');
-    } else {
-      // Fullscreen API real (desktop + Android Chrome)
-      if (container.requestFullscreen) {
-        container.requestFullscreen().catch(() => {
-          // Fallback CSS pra Safari iOS
-          container.classList.add('adm-globe-fs-fallback');
-        });
-      } else {
-        // Sem Fullscreen API — fallback CSS
-        container.classList.add('adm-globe-fs-fallback');
-        // ESC pra sair
-        const escHandler = (e: KeyboardEvent) => {
-          if (e.key === 'Escape') {
-            container.classList.remove('adm-globe-fs-fallback');
-            document.removeEventListener('keydown', escHandler);
-          }
-        };
-        document.addEventListener('keydown', escHandler);
-      }
-    }
-  }
-
-  /**
-   * THREE module + textura circular cacheados. Carregados uma vez antes
-   * de criar o primeiro sprite, daí ficam sincronos pro resto.
-   */
-  private threeMod: any = null;
-  private glowTexture: any = null;
-
-  private async ensureThreeAndTexture(): Promise<void> {
-    if (this.threeMod && this.glowTexture) return;
-    // @ts-expect-error — three sem types instalados, usado dinamicamente
-    this.threeMod = await import('three');
-    // Canvas 512x512 — alta resolução pra sprite ficar nítido em zoom max
-    // + retina. Texture só é gerada 1x e reusada por todos os sprites
-    // (cacheada em this.glowTexture), então 512² é trivial.
-    const SIZE = 512;
-    const canvas = document.createElement('canvas');
-    canvas.width = SIZE;
-    canvas.height = SIZE;
-    const ctx = canvas.getContext('2d')!;
-    const cx = SIZE / 2;
-    const grad = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
-    // Núcleo MUITO opaco no centro (ponto definido) e halo decai rápido —
-    // resultado: luz com "miolo" nítido e auréola sutil em vez de borrão.
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.08, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.18, 'rgba(255,255,255,0.85)');
-    grad.addColorStop(0.4, 'rgba(255,255,255,0.25)');
-    grad.addColorStop(0.7, 'rgba(255,255,255,0.05)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, SIZE, SIZE);
-    this.glowTexture = new this.threeMod.CanvasTexture(canvas);
-    // Filtros pra impedir desfoque na amostragem
-    this.glowTexture.minFilter = this.threeMod.LinearMipmapLinearFilter;
-    this.glowTexture.magFilter = this.threeMod.LinearFilter;
-    this.glowTexture.anisotropy = 4;
-    this.glowTexture.generateMipmaps = true;
-  }
-
-  /**
-   * Cor do hexágono no hexbin. Como a altura ficou quase plana, a COR é
-   * quem comunica densidade — escala vibrante:
-   *   1-3 users:  cyan claro
-   *   4-10:       cyan vivo
-   *   11-30:      azul-roxo
-   *   31-80:      roxo forte
-   *   81+:        roxo brilhante quase branco (hotspot)
-   * Mantém a influência de "% ativos" como sutil shift hue (mais ativos
-   * = puxa pro roxo, mas escala principal é DENSIDADE).
-   */
-  private hexColor(pts: Array<{ isActive: boolean }>): string {
-    const total = pts.length;
-    if (total === 0) return 'rgba(0, 212, 255, 0.3)';
-    const active = pts.filter(p => p.isActive).length;
-    const activeRatio = active / total;
-
-    // Densidade em escala logarítmica (0-1)
-    // 1 user = 0, 10 = 0.5, 100 = 1
-    const densityScale = Math.min(1, Math.log10(total + 1) / 2);
-
-    // Escala de cor por densidade (5 stops)
-    let r: number, g: number, b: number;
-    if (densityScale < 0.25) {
-      // cyan claro → cyan vivo
-      const t = densityScale / 0.25;
-      r = Math.round(0 + (0 - 0) * t);
-      g = Math.round(180 + (212 - 180) * t);
-      b = Math.round(230 + (255 - 230) * t);
-    } else if (densityScale < 0.5) {
-      // cyan vivo → azul-roxo
-      const t = (densityScale - 0.25) / 0.25;
-      r = Math.round(0 + (90 - 0) * t);
-      g = Math.round(212 + (140 - 212) * t);
-      b = Math.round(255 + (250 - 255) * t);
-    } else if (densityScale < 0.75) {
-      // azul-roxo → roxo forte
-      const t = (densityScale - 0.5) / 0.25;
-      r = Math.round(90 + (160 - 90) * t);
-      g = Math.round(140 + (100 - 140) * t);
-      b = Math.round(250 + (246 - 250) * t);
-    } else {
-      // roxo forte → branco-roxo (hotspot)
-      const t = (densityScale - 0.75) / 0.25;
-      r = Math.round(160 + (230 - 160) * t);
-      g = Math.round(100 + (180 - 100) * t);
-      b = Math.round(246 + (255 - 246) * t);
-    }
-
-    // Sutil: se hexágono tem muitos ativos, puxa um pouco mais pro roxo
-    // (não muda escala, só dá um "boost" pra regiões com pagantes)
-    if (activeRatio > 0.5 && densityScale > 0.3) {
-      r = Math.min(255, r + 20);
-    }
-
-    // Alpha cresce com densidade pra dar mais "peso visual"
-    const alpha = 0.6 + Math.min(0.35, densityScale * 0.4);
-
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-
-  /** Cor da intensidade em hex (pro material do Three) */
-  private intensityToHex(intensity: number): number {
-    if (intensity < 0.3) return 0x00d4ff;   // cyan
-    if (intensity < 0.6) return 0x4ba2ff;   // blue
-    if (intensity < 0.85) return 0x7c82ff;  // blue-purple
-    return 0xa064f6;                         // purple
-  }
-
-  /**
-   * Retorna cor cyan→purple baseada na intensidade (0-1).
-   * Estados com mais usuários = todos os pontos viram purple.
-   */
-  private intensityColor(intensity: number): string {
-    // Interpolação cyan (00D4FF) → blue → purple (8B5CF6) por densidade
-    if (intensity < 0.3) return 'rgba(0, 212, 255, 0.9)';    // cyan claro — poucos users
-    if (intensity < 0.6) return 'rgba(75, 162, 255, 1)';     // cyan-blue
-    if (intensity < 0.85) return 'rgba(120, 130, 255, 1)';   // blue-purple
-    return 'rgba(160, 100, 246, 1)';                          // purple — região quente
-  }
-
-  /**
-   * Pega top-5 estados com mais assinantes ativos pros rings.
-   * Recebe lista de pontos individuais (1 por user) — agrega por estado.
-   */
-  private topRingsFromActives(
-    points: Array<{ state: string; lat: number; lng: number; isActive: boolean }>,
-  ): Array<{ state: string; lat: number; lng: number }> {
-    const activeByState = new Map<string, number>();
-    points.forEach(p => {
-      if (!p.isActive) return;
-      activeByState.set(p.state, (activeByState.get(p.state) || 0) + 1);
-    });
-    return [...activeByState.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([state]) => {
-        const c = AdminDashboard.STATE_COORDS[state];
-        return { state, lat: c.lat, lng: c.lng };
-      });
-  }
-
-  // ─── Dashboard ──────────────────────────────────────────────────────
 
   private renderDashboard(): void {
     const adminIds = new Set(this.profiles.filter(p => p.role === 'admin').map(p => p.id));
@@ -2077,7 +1831,7 @@ class AdminDashboard {
           });
         }
       });
-      this.renderGlobe(regionEl, userLocations);
+      this.renderRegionMap(regionEl, userLocations);
     }
 
     // Ultimas transações
@@ -2164,9 +1918,9 @@ class AdminDashboard {
       countEl.textContent = `${filtered.length} usuários${periodLabel}`;
     }
 
-    // Empty state (mas só renderiza dentro de <tr><td colspan="8">)
+    // Empty state (mas só renderiza dentro de <tr><td colspan="9">)
     if (paged.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" style="padding:0;">${emptyState({
+      tbody.innerHTML = `<tr><td colspan="9" style="padding:0;">${emptyState({
         title: 'Nenhum usuário',
         desc: this.userSearch || this.userFilter !== 'all' ? 'Ajuste os filtros acima pra ver mais resultados.' : 'Ainda não há usuários cadastrados.',
         inline: true,
@@ -2175,6 +1929,10 @@ class AdminDashboard {
       if (pagEl) pagEl.innerHTML = '';
       return;
     }
+
+    // Origem do último pagamento confirmado — calculada UMA vez pra página
+    // inteira (evita varrer todas as transações a cada linha).
+    const origens = this.origemPagamentoPorUsuario();
 
     tbody.innerHTML = paged.map(p => {
       const statusColor = p.subscription_status === 'active' ? 'success' :
@@ -2192,6 +1950,7 @@ class AdminDashboard {
           <td><span class="badge badge-primary">${p.role}</span></td>
           <td><span class="badge badge-${statusColor}">${p.subscription_status}</span></td>
           <td>${p.subscription_plan || '—'}</td>
+          <td>${this.badgeOrigem(origens.get(p.id))}</td>
           <td style="${isExpired ? 'color:#ff3366;' : ''}">${expires}</td>
           <td>${created}</td>
           <td>
@@ -2316,6 +2075,20 @@ class AdminDashboard {
 
     // Email
     (document.getElementById('editUserEmail') as HTMLInputElement).value = profile.email || '— ?? —';
+
+    // Origem do último pagamento confirmado (Apple / Site / Manual).
+    // Importa no suporte: se veio da Apple, cancelamento e reembolso são
+    // resolvidos por ELA — não adianta mexer aqui no painel.
+    const origemEl = document.getElementById('editUserOrigem');
+    if (origemEl) {
+      const info = this.origemPagamentoPorUsuario().get(profile.id);
+      origemEl.innerHTML = info
+        ? this.badgeOrigem(info) +
+          (info.origem === 'apple' && !info.sandbox
+            ? '<span style="font-size:0.62rem;color:var(--a-gold);margin-left:0.4rem;">assinatura gerenciada pela Apple</span>'
+            : '')
+        : '<span style="font-size:0.7rem;color:var(--a-text3);">nunca pagou</span>';
+    }
 
     // Popular dropdown de cupons ativos pra ativação manual
     const couponSel = document.getElementById('manualCoupon') as HTMLSelectElement;
@@ -2725,9 +2498,22 @@ class AdminDashboard {
       return encodeURIComponent(`${oi}\n\n${body}`);
     };
 
+    // Primeira compra de cada cliente — pro badge "Nova" x "Recorrente".
+    // Calculado uma vez pra página toda, não por linha.
+    const primeiras = this.idsDePrimeiraCompra();
+
     tbody.innerHTML = paged.map(t => {
       const user = this.profiles.find(p => p.id === t.user_id);
       const statusColor = t.status === 'confirmed' ? 'success' : t.status === 'pending' ? 'warning' : 'error';
+
+      // Nova assinatura x recorrente (só faz sentido em compra confirmada).
+      // "Nova" = é a primeira compra confirmada DESTE cliente, ou seja, é
+      // quem deve receber a mensagem de boas-vindas.
+      const tipoCliente = t.status !== 'confirmed'
+        ? ''
+        : primeiras.has(t.id)
+          ? '<span class="adm-origem adm-cli-nova" title="Primeira compra deste cliente — mandar boas-vindas">Nova</span>'
+          : '<span class="adm-origem adm-cli-recorrente" title="Cliente já havia comprado antes — renovação/recompra">Recorrente</span>';
       const date = new Date(t.created_at).toLocaleDateString('pt-BR', {
         day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'
       });
@@ -2746,11 +2532,11 @@ class AdminDashboard {
 
       return `
         <tr>
-          <td>${user?.name || '—'}</td>
+          <td>${user?.name || '—'}${tipoCliente ? '<br>' + tipoCliente : ''}</td>
           <td><span class="badge badge-primary">${t.plan}</span></td>
           <td><span class="badge badge-${statusColor}">${t.status}</span></td>
           <td>R$ ${(t.amount_cents / 100).toFixed(2)}</td>
-          <td>${t.payment_method || '—'}</td>
+          <td>${this.badgeOrigem(t.status === 'confirmed' ? { origem: AdminDashboard.origemDoPagamento(t.payment_method), sandbox: isSandboxTx(t) } : undefined)}<br><span style="font-size:0.62rem;color:var(--a-text3);">${t.payment_method || '—'}</span></td>
           <td>${t.coupon_code || '—'}</td>
           <td>${date}</td>
           <td style="white-space:nowrap;">
@@ -3258,9 +3044,19 @@ class AdminDashboard {
       return;
     }
 
+    // Origem do último pagamento — aqui é o dado mais importante da tela.
+    // Quem assinou pela Apple RENOVA SOZINHO (a Apple cobra automático), então
+    // não deve entrar em régua de cobrança: mandar "sua assinatura vence" pra
+    // esse cara é ruído, e pior, pode fazê-lo cancelar algo que ia renovar.
+    const origens = this.origemPagamentoPorUsuario();
+
     tbody.innerHTML = paged.map(r => {
+      const origem = origens.get(r.p.id);
+      const ehApple = origem?.origem === 'apple' && !origem.sandbox;
       const v = validateBrPhone(r.p.phone);
-      const waLink = v.ok
+      const waLink = ehApple
+        ? `<span style="color:var(--a-text3);font-size:0.68rem;" title="Renovação automática pela Apple — não precisa cobrar">renova sozinho</span>`
+        : v.ok
         ? `<a href="https://wa.me/${v.e164}?text=${waMsg(r.p.name, r.p.subscription_plan, r.daysLeft)}" target="_blank" style="color:var(--a-green);text-decoration:none;font-size:0.72rem;" title="WhatsApp: ${v.display}">WhatsApp</a>`
         : `<span style="color:var(--a-text3);font-size:0.7rem;" title="${v.reason || 'sem telefone'}">sem zap</span>`;
       const urg = r.daysLeft <= 1 ? 'var(--a-red)' : r.daysLeft <= 3 ? 'var(--a-gold)' : 'var(--a-text2)';
@@ -3270,7 +3066,7 @@ class AdminDashboard {
         : '—';
       return `
         <tr>
-          <td>${r.p.name || '—'} ${r.isVip ? '<span title="Melhor cliente" style="color:var(--a-gold);">★</span>' : ''}</td>
+          <td>${r.p.name || '—'} ${r.isVip ? '<span title="Melhor cliente" style="color:var(--a-gold);">★</span>' : ''}<br>${this.badgeOrigem(origem)}</td>
           <td><span class="badge badge-primary">${r.p.subscription_plan}</span></td>
           <td><span style="color:${urg};font-weight:600;">${venceTxt}</span></td>
           <td>${sinceTxt}</td>
@@ -3488,6 +3284,9 @@ class AdminDashboard {
 
     const esc = (s: string) => (s || '').replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' } as Record<string,string>)[ch] || ch);
 
+    // Origem do ultimo pagamento. Num LEAD isso separa dois mundos: quem
+    // nunca pagou e aquisicao; quem ja pagou e caducou e REATIVACAO.
+    const origensLead = this.origemPagamentoPorUsuario();
     tbody.innerHTML = filtered.map(item => {
       const tierClass = item.score >= 70 ? 'tier-hot' : item.score >= 50 ? 'tier-warm' : 'tier-lukewarm';
       const tierEmoji = item.score >= 70 ? '🔥' : item.score >= 50 ? '🟠' : '🟡';
@@ -3518,6 +3317,14 @@ class AdminDashboard {
             <div style="font-weight:700;color:#fff;">${esc(item.name || '(sem nome)')}</div>
             <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);">${esc(item.email || '')}</div>
             ${item.phoneDisplay ? `<div style="font-size:0.7rem;color:rgba(255,255,255,0.35);margin-top:0.2rem;">${esc(item.phoneDisplay)}</div>` : ''}
+            ${(() => {
+              // Origem do último pagamento. Num LEAD isso separa dois mundos:
+              // quem nunca pagou (—) é aquisição; quem já pagou e caducou é
+              // reativação, conversa completamente diferente. E se pagou pela
+              // Apple, o cancelamento foi feito lá, não adianta oferecer link.
+              const o = origensLead.get(item.id);
+              return o ? `<div style="margin-top:0.25rem;">${this.badgeOrigem(o)}</div>` : '';
+            })()}
           </td>
           <td><div class="adm-chips">${chips}</div></td>
           <td>${statusBadge}</td>

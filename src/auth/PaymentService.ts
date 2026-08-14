@@ -150,7 +150,10 @@ export async function createCheckoutLink(
     const data = await response.json();
 
     if (!response.ok || !data.url) {
-      return { success: false, error: data.error || t('plans.checkout.createError') };
+      // `message` é texto pronto pro usuário (ex: passe de compra única já
+      // usado). `error` é código interno ("plan_already_used") — não pode
+      // aparecer na tela. Por isso message vem primeiro.
+      return { success: false, error: data.message || data.error || t('plans.checkout.createError') };
     }
 
     return { success: true, url: data.url };

@@ -1639,14 +1639,19 @@ class RhythmSequencer {
    * mesmas chaves que a /demo usa). Esgotou → segue pro login/cadastro.
    * Cobre também "reabriu no meio da demo" (volta pra demo).
    */
-  /** A demo é a porta de entrada? Só quando veio da landing (?entrar=1) ou
-   *  quando é app instalado (nativo/PWA) — nunca no link cru do Google. */
+  /** A demo é a porta de entrada?
+   *
+   *  APP NATIVO E PWA INSTALADA: NÃO. Já foi `true` e prendia o usuário —
+   *  quem abria o app sem sessão caía na /demo, e a demo só oferece link
+   *  pro login na tela de "esgotada". Resultado: cliente PAGANTE do iOS
+   *  não conseguia entrar de jeito nenhum, ficava em loop na demo.
+   *  Quem quiser demonstração usa o botão que existe na tela de login.
+   *
+   *  Só continua valendo pra quem vem da landing com ?entrar=1 (clicou em
+   *  "Tocar agora" na vitrine, ou seja, PEDIU a demo). O link cru do
+   *  Google (gdrums.com.br) segue caindo no login. */
   private demoIsEntryPoint(): boolean {
     try {
-      if (isNativeApp()) return true;
-      const standalone = window.matchMedia('(display-mode: standalone)').matches
-        || (window.navigator as any).standalone === true;
-      if (standalone) return true;
       return new URLSearchParams(location.search).has('entrar');
     } catch {
       return false;

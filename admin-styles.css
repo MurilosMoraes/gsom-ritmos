@@ -488,6 +488,24 @@ select.adm-input option {
 .badge-purple { background: rgba(139,92,246,0.08); color: var(--a-purple); border: 1px solid rgba(139,92,246,0.15); }
 .badge-muted { background: rgba(255,255,255,0.03); color: var(--a-text3); border: 1px solid rgba(255,255,255,0.05); }
 
+/* ─── Origem do pagamento + tipo de cliente ──────────────────────
+   Cores escolhidas pra diferenciar de relance na tabela:
+   Apple = branco/prata (marca), Site = verde (dinheiro direto),
+   Manual = âmbar (atenção: entrou fora do gateway),
+   Nova = roxo (manda boas-vindas), Recorrente = cinza (não manda). */
+.adm-origem {
+  display: inline-block; padding: 0.12rem 0.4rem;
+  border-radius: 5px; font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.3px; white-space: nowrap;
+}
+.adm-origem-apple   { background: rgba(255,255,255,0.10); color: #f2f2f7; border: 1px solid rgba(255,255,255,0.22); }
+.adm-origem-site    { background: rgba(0,230,140,0.08);  color: var(--a-green); border: 1px solid rgba(0,230,140,0.18); }
+.adm-origem-manual  { background: rgba(240,180,41,0.08); color: var(--a-gold);  border: 1px solid rgba(240,180,41,0.18); }
+.adm-origem-sandbox { background: rgba(240,68,102,0.08); color: var(--a-red);   border: 1px solid rgba(240,68,102,0.18); }
+.adm-origem-none    { background: transparent; color: var(--a-text3); border: 1px solid transparent; }
+.adm-cli-nova        { background: rgba(139,92,246,0.12); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.28); }
+.adm-cli-recorrente  { background: rgba(255,255,255,0.04); color: var(--a-text3); border: 1px solid rgba(255,255,255,0.08); }
+
 /* ─── Action Buttons ─────────────────────────────────────────── */
 .action-buttons { display: flex; gap: 0.25rem; flex-wrap: wrap; }
 .btn-action {
@@ -1198,4 +1216,56 @@ select.adm-input option {
   color: rgba(255, 200, 60, 0.9);
   font-weight: 600;
   font-size: 0.68rem;
+}
+
+/* ─── Mapa de distribuição por estado (cartograma) ────────────────
+   Substituiu o globo 3D (globe.gl + three.js). HTML/CSS puro: nada
+   pra baixar, sem WebGL, sem animação comendo CPU. */
+.adm-mapa-wrap {
+  display: flex; gap: 1rem; align-items: flex-start;
+  width: 100%; height: 100%; padding: 0.4rem;
+}
+.adm-mapa-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(10, 1fr);
+  gap: 3px; flex: 0 0 auto;
+  width: 190px; aspect-ratio: 7 / 10;
+}
+.adm-uf {
+  border: 1px solid transparent; border-radius: 4px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-size: 0.5rem; line-height: 1; cursor: default;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.adm-uf:hover { transform: scale(1.18); filter: brightness(1.35); z-index: 2; }
+.adm-uf-sigla { font-weight: 800; letter-spacing: 0.2px; }
+.adm-uf-num { font-size: 0.46rem; opacity: 0.85; margin-top: 1px; }
+
+.adm-mapa-lado { flex: 1; min-width: 0; }
+.adm-mapa-titulo {
+  font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--a-text3); margin-bottom: 0.4rem; font-weight: 700;
+}
+.adm-reg-row { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.28rem; }
+.adm-reg-nome { width: 74px; font-size: 0.66rem; color: var(--a-text2); flex: 0 0 auto; }
+.adm-reg-track { flex: 1; height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+.adm-reg-fill { height: 100%; background: linear-gradient(90deg, #8B5CF6, #00D4FF); border-radius: 3px; }
+.adm-reg-num { font-size: 0.66rem; font-weight: 700; color: #fff; width: 56px; text-align: right; flex: 0 0 auto; }
+.adm-reg-pct { font-size: 0.55rem; color: var(--a-text3); margin-left: 3px; font-weight: 500; }
+
+.adm-top-wrap { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.adm-top-uf {
+  font-size: 0.6rem; padding: 0.15rem 0.4rem; border-radius: 5px;
+  background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.18);
+  color: var(--a-text2); white-space: nowrap;
+}
+.adm-top-uf b { color: var(--a-purple); margin-right: 2px; }
+.adm-top-num { color: #fff; font-weight: 700; margin-left: 2px; }
+.adm-mapa-rodape { font-size: 0.55rem; color: var(--a-text3); margin-top: 0.6rem; }
+
+@media (max-width: 640px) {
+  .adm-mapa-wrap { flex-direction: column; align-items: center; }
+  .adm-mapa-lado { width: 100%; }
 }

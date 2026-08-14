@@ -12,6 +12,7 @@ import { HapticsService } from './native/HapticsService';
 import { AttributionService } from './native/AttributionService';
 import { RHYTHM_COUNT, LOCKED_RHYTHM_COUNT, updateRhythmCountInDom } from './utils/rhythmCount';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
+import { isNativeApp, internalNav } from './native/Platform';
 import { t, hydrate } from './i18n';
 import { injectLanguagePill } from './i18n/selector';
 
@@ -1306,8 +1307,44 @@ class DemoPlayer {
   }
 }
 
+/**
+ * Faz os links da demo funcionarem DENTRO do app nativo.
+ *
+ * BUG QUE PRENDIA O USUÁRIO NO iOS: os CTAs da demo são <a href="/login">
+ * e <a href="/register"> escritos direto no HTML. Na web isso funciona
+ * porque a Vercel reescreve /login -> login.html. No app Capacitor os
+ * arquivos são LOCAIS: existe login.html, não existe /login. Então o botão
+ * "ENTRAR" do topo simplesmente não ia a lugar nenhum, e como o app nativo
+ * ainda forçava a demo na entrada, o cliente ficava preso sem conseguir
+ * chegar no login — inclusive quem já pagava.
+ *
+ * Aqui a gente intercepta o clique e manda pelo internalNav, que é quem
+ * sabe adicionar o .html quando é nativo. Vale pra QUALQUER link interno
+ * da página, então CTA novo que alguém adicionar amanhã já nasce certo.
+ *
+ * Usa captura (true) e checa defaultPrevented pra não brigar com handlers
+ * que já tratam o próprio clique.
+ */
+function corrigirLinksInternosNoApp(): void {
+  if (!isNativeApp()) return; // na web o href cru já funciona
+  document.addEventListener('click', (ev) => {
+    const alvo = (ev.target as HTMLElement | null)?.closest?.('a');
+    if (!alvo) return;
+    const href = alvo.getAttribute('href') || '';
+    // Só links internos absolutos (/login, /register...). Ignora externos,
+    // âncoras, mailto/tel/wa.me e o que já aponta pra .html.
+    if (!href.startsWith('/') || href.startsWith('//')) return;
+    if (href.includes('.html')) return;
+    if (alvo.getAttribute('target') === '_blank') return;
+    if (ev.defaultPrevented) return;
+    ev.preventDefault();
+    internalNav(href);
+  }, true);
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   if (redirectIfRecoveryHash()) return;
+  corrigirLinksInternosNoApp();
   AttributionService.init();
   new DemoPlayer();
 });
