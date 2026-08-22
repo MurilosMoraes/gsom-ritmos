@@ -2170,11 +2170,14 @@ input:checked + .slider:before {
   gap: 0.8rem;
   margin-bottom: 1.2rem;
 }
+/* Mesmo caso do .eq-slider: alvo de toque de 6px dentro de modal.
+   Ver o comentário lá pra explicação completa. */
 .count-vol-slider {
   flex: 1;
-  height: 6px;
+  height: 28px;
   accent-color: #00D4FF;
   cursor: pointer;
+  touch-action: none;
 }
 .count-vol-value {
   min-width: 3.2ch;
@@ -2383,7 +2386,18 @@ input:checked + .slider:before {
 .eq-band-name { font-size: 0.8rem; font-weight: 700; color: #fff; }
 .eq-band-freq { font-size: 0.68rem; color: rgba(255,255,255,0.4); }
 .eq-band-row { display: flex; align-items: center; gap: 0.7rem; }
-.eq-slider { flex: 1; height: 6px; accent-color: #00D4FF; cursor: pointer; }
+/* iOS: arrastar aqui só pegava na 3ª/4ª tentativa. Duas causas no CSS:
+   o alvo de toque tinha 6px (dedo não acerta), e o slider mora dentro do
+   .eq-body, que é overflow-y:auto — qualquer desvio vertical no arrasto
+   fazia o Safari entender o gesto como rolagem e tomar o toque do slider.
+   touch-action:none diz que o gesto é do slider. A altura maior é só área
+   de toque: o range nativo desenha a trilha fina centralizada na caixa,
+   então o visual não muda. (A 3ª causa era o pedal roubando foco no meio
+   do arrasto — resolvida no hasModalOpen() do main.ts.) */
+.eq-slider {
+  flex: 1; height: 28px; accent-color: #00D4FF; cursor: pointer;
+  touch-action: none;
+}
 .eq-val { min-width: 4.5ch; text-align: right; font-size: 0.76rem; font-weight: 700; color: #00D4FF; }
 .eq-reverb { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.9rem; }
 .eq-reverb .eq-slider { accent-color: #8B5CF6; }
