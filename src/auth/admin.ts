@@ -76,6 +76,31 @@ interface ScoredLead {
   signals: ScoreSignal[];
 }
 
+/** Escapa HTML antes de interpolar texto vindo do banco/usuario.
+ *  Estava duplicado dentro de 3 funcoes; agora e um so. */
+function esc(v: string): string {
+  return (v || '').replace(/[&<>"']/g, ch =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[ch] || ch);
+}
+
+interface MessageTemplate {
+  id?: string;
+  key: string;
+  label: string;
+  descricao: string | null;
+  corpo: string;
+  variaveis: string[];
+  updated_at?: string;
+}
+
+/**
+ * Troca {{variavel}} pelos valores. Variavel que nao veio vira string vazia
+ * em vez de aparecer como "{{plano}}" cru na mensagem do cliente.
+ */
+function preencherTemplate(corpo: string, vars: Record<string, string>): string {
+  return corpo.replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (_m, chave) => vars[chave] ?? '');
+}
+
 interface Coupon {
   id: string;
   code: string;
@@ -378,6 +403,9 @@ class AdminDashboard {
   private profiles: Profile[] = [];
   private transactions: Transaction[] = [];
   private coupons: Coupon[] = [];
+  // Textos de contato editáveis pelo admin (tabela gdrums_message_templates).
+  // Antes eram fixos aqui no código: trocar uma vírgula exigia deploy.
+  private templates: MessageTemplate[] = [];
   private demoTotal = 0;
   private demoUnique = 0;
   private currentSection = 'dashboard';
@@ -759,10 +787,11 @@ class AdminDashboard {
     // Profiles e transactions ainda são fetched completos porque telas de
     // lista precisam dos dados crus pra filtros/ordenação. Mas cacheados.
 
-    const [profiles, transactions, coupons, demoStats, emails] = await Promise.all([
+    const [profiles, transactions, coupons, templates, demoStats, emails] = await Promise.all([
       cached('profiles', () => adminFetch('gdrums_profiles')),
       cached('transactions', () => adminFetch('gdrums_transactions')),
       cached('coupons', () => adminFetch('gdrums_coupons')),
+      cached('templates', () => adminFetch('gdrums_message_templates')).catch(() => []),
       // RPC agregada — substitui fetch de 59k linhas + count no JS
       cached('demo_stats', () => adminRpc('admin_demo_stats')).catch(() => ({ total: 0, unique: 0 })),
       // Emails do auth.users (também pesa — 1990 hoje, vai crescer)
@@ -772,6 +801,7 @@ class AdminDashboard {
     this.profiles = Array.isArray(profiles) ? profiles : [];
     this.transactions = Array.isArray(transactions) ? transactions : [];
     this.coupons = Array.isArray(coupons) ? coupons : [];
+    this.templates = Array.isArray(templates) ? templates : [];
     this.demoTotal = demoStats?.total || 0;
     this.demoUnique = demoStats?.unique || 0;
 
@@ -815,6 +845,7 @@ class AdminDashboard {
       case 'applesales': this.renderAppleSales(); break;
       case 'coupons': this.renderCoupons(); break;
       case 'leads': this.renderLeads(); break;
+      case 'messages': this.renderMessages(); break;
       case 'renewal': this.renderRenewal(); break;
       case 'intelligence': this.renderIntelligence(); break;
       case 'affiliates': this.renderAffiliates(); break;
@@ -1476,6 +1507,12 @@ class AdminDashboard {
   }
 
   /** HTML do badge de origem. Compacto pra caber na coluna da tabela. */
+  /** Texto do template pelo key. Cai no fallback (texto que o codigo usava
+   *  antes) se a tabela nao carregou — assim o botao nunca manda vazio. */
+  private txt(key: string, fallback: string): string {
+    return this.templates.find(t => t.key === key)?.corpo || fallback;
+  }
+
   private badgeOrigem(info?: { origem: 'apple' | 'site' | 'manual'; sandbox: boolean }): string {
     if (!info) return '<span class="adm-origem adm-origem-none" title="Nenhum pagamento confirmado">—</span>';
     if (info.sandbox) return '<span class="adm-origem adm-origem-sandbox" title="Compra de teste do App Review — não é dinheiro real">sandbox</span>';
@@ -2486,16 +2523,19 @@ class AdminDashboard {
     // Mensagem WhatsApp pronta — ciente do status da transação
     const txWhatsMsg = (name: string, status: string, plan: string) => {
       const first = (name || '').split(' ')[0] || '';
-      const oi = `Oi${first ? ' ' + first : ''}! Tudo bem? Aqui é o pessoal do GDrums 🥁`;
-      let body: string;
-      if (status === 'confirmed') {
-        body = `Vi que sua assinatura do plano ${plan} está ativa. Qualquer dúvida pra usar o app é só me chamar por aqui!`;
-      } else if (status === 'pending') {
-        body = `Vi que você começou a assinatura do plano ${plan} mas o pagamento ficou pendente. Posso te ajudar a finalizar?`;
-      } else {
-        body = `Vi que sua assinatura do plano ${plan} expirou. Quer que eu te ajude a renovar? Posso liberar uma condição especial pra você.`;
-      }
-      return encodeURIComponent(`${oi}\n\n${body}`);
+      // Um template por situacao: confirmada / pendente / expirada.
+      const key = status === 'confirmed' ? 'tx_confirmed'
+                : status === 'pending'   ? 'tx_pending'
+                :                          'tx_expired';
+      const padrao: Record<string, string> = {
+        tx_confirmed: 'Oi{{saudacao_nome}}! Tudo bem? Aqui é o pessoal do GDrums 🥁\n\nVi que sua assinatura do plano {{plano}} está ativa. Qualquer dúvida pra usar o app é só me chamar por aqui!',
+        tx_pending:   'Oi{{saudacao_nome}}! Tudo bem? Aqui é o pessoal do GDrums 🥁\n\nVi que você começou a assinatura do plano {{plano}} mas o pagamento ficou pendente. Posso te ajudar a finalizar?',
+        tx_expired:   'Oi{{saudacao_nome}}! Tudo bem? Aqui é o pessoal do GDrums 🥁\n\nVi que sua assinatura do plano {{plano}} expirou. Quer que eu te ajude a renovar? Posso liberar uma condição especial pra você.',
+      };
+      return encodeURIComponent(preencherTemplate(this.txt(key, padrao[key]), {
+        saudacao_nome: first ? ' ' + first : '',
+        plano: plan,
+      }));
     };
 
     // Primeira compra de cada cliente — pro badge "Nova" x "Recorrente".
@@ -2662,6 +2702,129 @@ class AdminDashboard {
     }).join('');
   }
 
+
+  // ─── Mensagens (textos de contato editaveis) ────────────────────────
+  //
+  // Os textos do WhatsApp viviam fixos no codigo: mudar uma virgula pedia
+  // deploy. Agora ficam em gdrums_message_templates e o time edita aqui.
+  // As telas de Leads/Transacoes/Renovacoes leem via this.txt(key, fallback),
+  // entao se a tabela nao carregar o botao continua funcionando com o texto
+  // antigo em vez de mandar mensagem vazia.
+  private renderMessages(): void {
+    const wrap = document.getElementById('messagesList');
+    if (!wrap) return;
+
+    if (this.templates.length === 0) {
+      wrap.innerHTML = emptyState({
+        title: 'Nenhuma mensagem carregada',
+        desc: 'Nao consegui ler os textos do banco. Recarrega a pagina; os botoes seguem funcionando com o texto padrao.',
+      });
+      return;
+    }
+
+    // Ordem fixa e logica (jornada do cliente), nao alfabetica
+    const ordem = ['lead_whatsapp', 'tx_pending', 'tx_confirmed', 'tx_expired', 'renovacao', 'renovacao_cupom'];
+    const lista = [...this.templates].sort(
+      (a, b) => (ordem.indexOf(a.key) + 99) % 99 - (ordem.indexOf(b.key) + 99) % 99
+    );
+
+    wrap.innerHTML = lista.map(t => {
+      const vars = (t.variaveis || []).map(v =>
+        '<span class="adm-var" title="Clique para inserir no texto" data-var="' + v + '" data-key="' + t.key + '">{{' + v + '}}</span>'
+      ).join(' ');
+      return [
+        '<div class="adm-msg-card">',
+        '  <div class="adm-msg-head">',
+        '    <div>',
+        '      <div class="adm-msg-label">' + esc(t.label) + '</div>',
+        '      <div class="adm-msg-desc">' + esc(t.descricao || '') + '</div>',
+        '    </div>',
+        '    <span class="adm-msg-key">' + esc(t.key) + '</span>',
+        '  </div>',
+        '  <textarea class="adm-msg-input" id="msg_" data-key="' + esc(t.key) + '" rows="7">' + esc(t.corpo) + '</textarea>',
+        '  <div class="adm-msg-foot">',
+        '    <div class="adm-msg-vars">Variaveis: ' + (vars || '<span style="opacity:0.5">nenhuma</span>') + '</div>',
+        '    <div class="adm-msg-actions">',
+        '      <span class="adm-msg-status" data-status="' + esc(t.key) + '"></span>',
+        '      <button class="adm-btn adm-btn-sm adm-btn-ghost" data-preview="' + esc(t.key) + '">Ver exemplo</button>',
+        '      <button class="adm-btn adm-btn-sm adm-btn-primary" data-save="' + esc(t.key) + '">Salvar</button>',
+        '    </div>',
+        '  </div>',
+        '</div>',
+      ].join('');
+    }).join('');
+
+    // Clicar na variavel insere no cursor — evita erro de digitacao
+    wrap.querySelectorAll<HTMLElement>('[data-var]').forEach(el => {
+      el.addEventListener('click', () => {
+        const ta = wrap.querySelector<HTMLTextAreaElement>('textarea[data-key="' + el.dataset.key + '"]');
+        if (!ta) return;
+        const token = '{{' + el.dataset.var + '}}';
+        const ini = ta.selectionStart ?? ta.value.length;
+        ta.value = ta.value.slice(0, ini) + token + ta.value.slice(ta.selectionEnd ?? ini);
+        ta.focus();
+        ta.selectionStart = ta.selectionEnd = ini + token.length;
+      });
+    });
+
+    // Ver exemplo: mostra a mensagem com valores ficticios, do jeito que o
+    // cliente recebe. Pega erro de variavel escrita errada antes de enviar.
+    wrap.querySelectorAll<HTMLButtonElement>('[data-preview]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.preview!;
+        const ta = wrap.querySelector<HTMLTextAreaElement>('textarea[data-key="' + key + '"]');
+        if (!ta) return;
+        const exemplo = preencherTemplate(ta.value, {
+          saudacao_nome: ' Joao',
+          plano: 'mensal',
+          quando: 'vence em 3 dias',
+          cupom: 'TRATORADA',
+          bloco_cupom: preencherTemplate(
+            this.txt('renovacao_cupom', ''), { cupom: 'TRATORADA' }),
+        });
+        modalManager.show('Como o cliente recebe', exemplo, 'info');
+      });
+    });
+
+    // Salvar
+    wrap.querySelectorAll<HTMLButtonElement>('[data-save]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const key = btn.dataset.save!;
+        const ta = wrap.querySelector<HTMLTextAreaElement>('textarea[data-key="' + key + '"]');
+        const status = wrap.querySelector<HTMLElement>('[data-status="' + key + '"]');
+        const tpl = this.templates.find(t => t.key === key);
+        if (!ta || !tpl) return;
+
+        const corpo = ta.value.trim();
+        if (!corpo) {
+          modalManager.show('Texto vazio', 'A mensagem nao pode ficar em branco.', 'error');
+          return;
+        }
+
+        btn.disabled = true;
+        const rotulo = btn.textContent;
+        btn.textContent = 'Salvando...';
+        try {
+          await adminUpdate('gdrums_message_templates', tpl.id!, {
+            corpo,
+            updated_at: new Date().toISOString(),
+          });
+          tpl.corpo = corpo; // reflete na hora, sem recarregar
+          if (status) {
+            status.textContent = 'salvo';
+            status.style.color = 'var(--a-green)';
+            setTimeout(() => { status.textContent = ''; }, 2500);
+          }
+        } catch (e) {
+          modalManager.show('Erro', 'Nao consegui salvar: ' + String(e), 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = rotulo;
+        }
+      });
+    });
+  }
+
   // ─── Leads (expirados para contato) ─────────────────────────────────
 
   private renderLeads(): void {
@@ -2795,7 +2958,11 @@ class AdminDashboard {
     // Mensagem WhatsApp pronta
     const whatsMsg = (name: string) => {
       const first = (name || '').split(' ')[0] || '';
-      return encodeURIComponent(`Oi${first ? ' ' + first : ''}! Tudo bem? Aqui é a Camila.\n\nRecebemos seu cadastro no nosso Aplicativo de ritmos GDrums e liberamos um cupom especial de 30% OFF pra você!\n\nPosso te enviar por aqui?`);
+      return encodeURIComponent(preencherTemplate(
+        this.txt('lead_whatsapp',
+          'Oi{{saudacao_nome}}! Tudo bem? Aqui é a Camila.\n\nRecebemos seu cadastro no nosso Aplicativo de ritmos GDrums e liberamos um cupom especial de 30% OFF pra você!\n\nPosso te enviar por aqui?'),
+        { saudacao_nome: first ? ' ' + first : '' }
+      ));
     };
 
     tbody.innerHTML = paged.map(l => {
@@ -3017,14 +3184,18 @@ class AdminDashboard {
     const waMsg = (name: string, plano: string, dias: number) => {
       const first = (name || '').split(' ')[0] || '';
       const quando = dias <= 1 ? 'vence amanhã' : `vence em ${dias} dias`;
-      const cupomTxt = selectedCoupon
-        ? `\n\nE pra renovar agora, usa o cupom *${selectedCoupon}* que tem desconto. 😉`
+      // O trecho do cupom e um template SEPARADO: so entra quando ha cupom
+      // selecionado na tela, e da pra editar independente do corpo.
+      const blocoCupom = selectedCoupon
+        ? preencherTemplate(
+            this.txt('renovacao_cupom', '\n\nE pra renovar agora, usa o cupom *{{cupom}}* que tem desconto. 😉'),
+            { cupom: selectedCoupon })
         : '';
-      return encodeURIComponent(
-        `Oi${first ? ' ' + first : ''}! Tudo certo? 🥁\n\n` +
-        `Aqui é do GDrums. Teu plano ${plano} ${quando} — não quero que tu fique sem a tua banda no palco!${cupomTxt}\n\n` +
-        `Quer que eu te ajude a renovar?`
-      );
+      return encodeURIComponent(preencherTemplate(
+        this.txt('renovacao',
+          'Oi{{saudacao_nome}}! Tudo certo? 🥁\n\nAqui é do GDrums. Teu plano {{plano}} {{quando}} — não quero que tu fique sem a tua banda no palco!{{bloco_cupom}}\n\nQuer que eu te ajude a renovar?'),
+        { saudacao_nome: first ? ' ' + first : '', plano, quando, bloco_cupom: blocoCupom }
+      ));
     };
 
     // Paginação
