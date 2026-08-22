@@ -874,6 +874,27 @@
                 <input type="date" id="couponValidUntil" class="adm-input" required />
               </div>
             </div>
+
+            <!-- Regras do cupom: em quais planos vale e se e uso unico -->
+            <div class="adm-field">
+              <label>Vale para quais planos?</label>
+              <div class="adm-plan-picker" id="couponPlanos">
+                <label><input type="checkbox" value="passe-3-dias"> Modo Show 3 Dias</label>
+                <label><input type="checkbox" value="mensal"> Mensal</label>
+                <label><input type="checkbox" value="trimestral"> Trimestral</label>
+                <label><input type="checkbox" value="semestral"> Semestral</label>
+                <label><input type="checkbox" value="anual"> Anual</label>
+                <label><input type="checkbox" value="rei-dos-palcos"> Rei dos Palcos</label>
+              </div>
+              <div class="adm-field-hint">Nenhum marcado = vale em todos os planos.</div>
+            </div>
+            <div class="adm-field">
+              <label class="adm-check-line">
+                <input type="checkbox" id="couponUmaPorConta">
+                <span>Só pode ser usado <strong>1 vez por conta</strong></span>
+              </label>
+              <div class="adm-field-hint">Ideal para cupom de boas-vindas. Sem isso, a mesma pessoa pode usar quantas vezes quiser até estourar o limite total.</div>
+            </div>
           </div>
           <div class="adm-modal-foot">
             <button type="button" class="adm-btn adm-btn-ghost" data-modal="couponModal">Cancelar</button>

@@ -111,6 +111,10 @@ interface Coupon {
   valid_until: string;
   active: boolean;
   created_at: string;
+  /** Planos em que o cupom vale. Vazio = todos (comportamento historico). */
+  planos?: string[];
+  /** true = cada conta so usa este cupom uma vez. */
+  uma_por_conta?: boolean;
 }
 
 // ─── Helper: validar telefone BR ───────────────────────────────────
@@ -3744,6 +3748,8 @@ class AdminDashboard {
       (document.getElementById('couponMaxUses') as HTMLInputElement).value = '';
       (document.getElementById('couponValidFrom') as HTMLInputElement).value = new Date().toISOString().split('T')[0];
       (document.getElementById('couponValidUntil') as HTMLInputElement).value = '';
+      this.preencherPlanosDoCupom([]);
+      (document.getElementById('couponUmaPorConta') as HTMLInputElement).checked = false;
       modal.classList.add('active');
     });
 
@@ -3765,6 +3771,9 @@ class AdminDashboard {
         valid_from: new Date(validFrom).toISOString(),
         valid_until: new Date(validUntil + 'T23:59:59').toISOString(),
         active: true,
+        // Regras novas. Lista vazia = vale em todos os planos.
+        planos: this.lerPlanosDoCupom(),
+        uma_por_conta: (document.getElementById('couponUmaPorConta') as HTMLInputElement)?.checked || false,
       };
 
       if (editId) {
@@ -3782,6 +3791,19 @@ class AdminDashboard {
     modal.querySelectorAll('[data-modal]').forEach(btn => {
       btn.addEventListener('click', () => modal.classList.remove('active'));
     });
+  }
+
+  /** Planos marcados no modal do cupom. Vazio = vale em todos. */
+  private lerPlanosDoCupom(): string[] {
+    return [...document.querySelectorAll<HTMLInputElement>('#couponPlanos input:checked')]
+      .map(i => i.value);
+  }
+
+  /** Marca os checkboxes conforme o cupom (ou limpa, se for cupom novo). */
+  private preencherPlanosDoCupom(planos?: string[]): void {
+    const set = new Set(planos || []);
+    document.querySelectorAll<HTMLInputElement>('#couponPlanos input')
+      .forEach(i => { i.checked = set.has(i.value); });
   }
 
   private renderCoupons(): void {
@@ -3821,7 +3843,13 @@ class AdminDashboard {
 
       return `
         <tr>
-          <td><strong style="letter-spacing:0.5px;">${c.code}</strong></td>
+          <td>
+            <strong style="letter-spacing:0.5px;">${c.code}</strong>
+            ${(c.planos && c.planos.length > 0)
+              ? `<div class="adm-cup-regra" title="So vale nestes planos">${c.planos.join(' · ')}</div>`
+              : ''}
+            ${c.uma_por_conta ? '<div class="adm-cup-regra adm-cup-1x">1x por conta</div>' : ''}
+          </td>
           <td>${c.discount_percent}%</td>
           <td>${c.current_uses} / ${c.max_uses}</td>
           <td>${from}</td>
@@ -3854,6 +3882,8 @@ class AdminDashboard {
         (document.getElementById('couponMaxUses') as HTMLInputElement).value = coupon.max_uses.toString();
         (document.getElementById('couponValidFrom') as HTMLInputElement).value = new Date(coupon.valid_from).toISOString().split('T')[0];
         (document.getElementById('couponValidUntil') as HTMLInputElement).value = new Date(coupon.valid_until).toISOString().split('T')[0];
+        this.preencherPlanosDoCupom(coupon.planos);
+        (document.getElementById('couponUmaPorConta') as HTMLInputElement).checked = !!coupon.uma_por_conta;
         modal.classList.add('active');
       });
     });
