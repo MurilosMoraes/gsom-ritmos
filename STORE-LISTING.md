@@ -85,7 +85,7 @@ GDrums é seu baterista virtual, sua banda inteira, sua flexibilidade pro show a
 
 📲 Termos de uso: gdrums.com.br/terms
 🔒 Política de privacidade: gdrums.com.br/privacy
-💬 Suporte: chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK
+💬 Suporte: chat.whatsapp.com/LBZhUH3vnNQBkauNLFCbWu
 🌐 Site: gdrums.com.br
 ```
 
