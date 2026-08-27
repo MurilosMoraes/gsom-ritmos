@@ -422,7 +422,7 @@
             <div style="flex:1;min-width:160px;">
               <label style="display:block;font-size:0.65rem;font-weight:600;color:var(--a-text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.25rem;">Cupom da campanha</label>
               <select class="adm-select" id="renewalCoupon">
-                <option value="">— sem cupom —</option>
+                <option value="">, sem cupom, </option>
               </select>
             </div>
             <div style="flex:2;min-width:200px;">
@@ -464,7 +464,7 @@
           <div class="adm-section-top">
             <div>
               <h2 class="adm-title">Inteligência</h2>
-              <div class="adm-subtitle">Leads com alta probabilidade de comprar — ordenados por score</div>
+              <div class="adm-subtitle">Leads com alta probabilidade de comprar, ordenados por score</div>
             </div>
             <button class="adm-btn adm-btn-outline" id="intelRefreshBtn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
@@ -551,8 +551,7 @@
               <h2 class="adm-title">Links</h2>
               <div class="adm-subtitle">
                 Configure os links que aparecem em
-                <a href="/links" target="_blank" style="color:var(--a-cyan);">gdrums.com.br/links</a>
-                — arraste pra reordenar.
+                <a href="/links" target="_blank" style="color:var(--a-cyan);">gdrums.com.br/links</a>, arraste pra reordenar.
               </div>
             </div>
             <div style="display:flex;gap:0.5rem;align-items:center;">
@@ -575,7 +574,7 @@
               <h2 class="adm-title">Smart Links</h2>
               <div class="adm-subtitle">
                 Links únicos que redirecionam Android, iOS e Desktop pra destinos diferentes.<br/>
-                URL: <code style="color:var(--a-cyan);">gdrums.com.br/download/&lt;slug&gt;</code> — o slug <code>download</code> é o link principal sem path extra.
+                URL: <code style="color:var(--a-cyan);">gdrums.com.br/download/&lt;slug&gt;</code>, o slug <code>download</code> é o link principal sem path extra.
               </div>
             </div>
             <div style="display:flex;gap:0.5rem;align-items:center;">
@@ -623,17 +622,17 @@
                 <div class="adm-field">
                   <label>Cupom a aplicar (opcional)</label>
                   <select id="pushCoupon" class="adm-input">
-                    <option value="">— Sem cupom —</option>
+                    <option value="">, Sem cupom, </option>
                   </select>
                   <div style="font-size:0.7rem;color:var(--a-text2);margin-top:0.25rem;">
-                    Anexa <code style="color:var(--a-cyan);">?coupon=CÓDIGO</code> na URL — cupom é aplicado automaticamente no checkout.
+                    Anexa <code style="color:var(--a-cyan);">?coupon=CÓDIGO</code> na URL, cupom é aplicado automaticamente no checkout.
                   </div>
                 </div>
                 <div class="adm-field">
                   <label>Tag de campanha (opcional)</label>
                   <input type="text" id="pushCampaign" class="adm-input" placeholder="ex: black_friday_2026, volta50_winback" maxlength="40" />
                   <div style="font-size:0.7rem;color:var(--a-text2);margin-top:0.25rem;">
-                    Pra rastrear conversões — vira <code style="color:var(--a-cyan);">?utm_source=push&utm_campaign=...</code>
+                    Pra rastrear conversões, vira <code style="color:var(--a-cyan);">?utm_source=push&utm_campaign=...</code>
                   </div>
                 </div>
                 <div class="adm-field">
@@ -778,19 +777,19 @@
               <div class="adm-field">
                 <label>Plano a ativar</label>
                 <select id="manualPlan" class="adm-select">
-                  <option value="">— selecione —</option>
-                  <option value="passe-3-dias">Modo Show 3 Dias — R$ 9,90 (3 dias)</option>
-                  <option value="mensal">Mensal — R$ 29</option>
-                  <option value="trimestral">Trimestral — R$ 81</option>
-                  <option value="semestral">Semestral — R$ 144</option>
-                  <option value="anual">Anual — R$ 228</option>
-                  <option value="rei-dos-palcos">Rei dos Palcos — R$ 522</option>
+                  <option value="">, selecione, </option>
+                  <option value="passe-3-dias">Modo Show 3 Dias: R$ 9,90 (3 dias)</option>
+                  <option value="mensal">Mensal, R$ 29</option>
+                  <option value="trimestral">Trimestral, R$ 81</option>
+                  <option value="semestral">Semestral, R$ 144</option>
+                  <option value="anual">Anual, R$ 228</option>
+                  <option value="rei-dos-palcos">Rei dos Palcos, R$ 522</option>
                 </select>
               </div>
               <div class="adm-field">
                 <label>Cupom (opcional)</label>
                 <select id="manualCoupon" class="adm-select">
-                  <option value="">— sem cupom —</option>
+                  <option value="">, sem cupom, </option>
                 </select>
               </div>
               <div id="manualPreview" style="font-size:0.78rem;color:var(--a-text2,#9aa);background:rgba(0,0,0,0.2);border-radius:6px;padding:0.5rem 0.7rem;margin-bottom:0.5rem;display:none;"></div>
