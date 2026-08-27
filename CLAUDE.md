@@ -687,7 +687,7 @@ supabase functions deploy <name> --project-ref qsfziivubwdgtmwyztfw
 
 ## 17. Contatos e recursos externos
 
-- **WhatsApp suporte/comunidade:** https://chat.whatsapp.com/CnTLQogcUNFEVeFkyKzkyK
+- **WhatsApp suporte/comunidade:** https://chat.whatsapp.com/LBZhUH3vnNQBkauNLFCbWu
 - **Supabase dashboard:** https://supabase.com/dashboard/project/qsfziivubwdgtmwyztfw
 - **Vercel:** deploy via push (repositório conectado)
 - **InfinitePay:** https://api.infinitepay.io — docs oficiais; handle `checkout-gdrums`
