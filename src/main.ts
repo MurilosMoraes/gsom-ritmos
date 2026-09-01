@@ -6672,7 +6672,10 @@ class RhythmSequencer {
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('active'));
 
+    this.bindPreviewSync();
+
     const close = (): void => {
+      this.previewPlayer?.stop();
       overlay.classList.remove('active');
       overlay.classList.add('x-exit');
       (window as any).__refocusPedal?.(); // refocus síncrono p/ pedal iOS
@@ -9275,6 +9278,104 @@ class RhythmSequencer {
     }));
   }
 
+  /**
+   * Categoria e busca do modal TODOS, guardadas entre aberturas.
+   *
+   * Antes eram variaveis locais, entao toda vez que o musico voltava pro
+   * modal ele reabria em "Todos", sem busca e rolado no topo: quem tinha
+   * acabado de escolher uma musica no meio da lista pra testar nos pads
+   * caia de volta na primeira e tinha que procurar tudo de novo. O painel
+   * do desktop ja guardava (deskCategory/deskSearch); o celular nao.
+   */
+  private allSheetCategory = 'Todos';
+  private allSheetSearch = '';
+
+  /** JSON dos ritmos ja ouvidos, pra segunda previa sair na hora. */
+  private previewDataCache = new Map<string, any>();
+  private previewSyncBound = false;
+
+  /**
+   * Deixa todo botao de previa da tela em sincronia com o que esta tocando.
+   *
+   * Um listener so, pendurado na primeira vez que alguma lista precisa
+   * dele. As listas se redesenham bastante (escolher um ritmo reconstroi o
+   * painel inteiro), e cada uma cuidar do proprio inscrito daria vazamento
+   * na certa.
+   */
+  private bindPreviewSync(): void {
+    if (this.previewSyncBound || !this.previewPlayer) return;
+    this.previewSyncBound = true;
+    this.previewPlayer.onChange((tocando) => {
+      document.querySelectorAll<HTMLElement>('[data-prev-path]').forEach(btn => {
+        btn.classList.toggle('prev-playing', btn.dataset.prevPath === tocando);
+      });
+    });
+  }
+
+  /**
+   * Liga e desliga a previa de um ritmo da biblioteca.
+   *
+   * O PreviewPlayer toca um ciclo curto sem mexer no sequenciador, entao a
+   * pessoa ouve antes de decidir, sem perder o que ja estava montado.
+   */
+  private async togglePreview(path: string): Promise<void> {
+    const player = this.previewPlayer;
+    if (!player || !path) return;
+
+    if (player.isActive(path)) {
+      player.stop();
+      return;
+    }
+
+    try {
+      let data = this.previewDataCache.get(path);
+      if (!data) {
+        const res = await fetch(path);
+        if (!res.ok) return;
+        data = await res.json();
+        this.previewDataCache.set(path, data);
+      }
+      await player.play(path, data);
+    } catch (err) {
+      console.warn('[preview] nao rolou:', err);
+    }
+  }
+
+  /** Os dois icones do botao; o CSS mostra um ou outro. */
+  private previewIcon(): string {
+    return `<svg class="prev-ico-play" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`
+         + `<svg class="prev-ico-stop" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+  }
+
+  /** Marcacao do botao de previa, igual nas duas listas. */
+  private previewBtnHtml(path: string, esc: (s: string) => string): string {
+    if (!this.previewPlayer || !path) return '';
+    const tocando = this.previewPlayer.isActive(path) ? ' prev-playing' : '';
+    return `<button class="prev-btn${tocando}" data-prev-path="${esc(path)}"
+                    aria-label="${t('ui.setlist.previewAriaLabel')}"
+                    title="${t('ui.setlist.previewAriaLabel')}">${this.previewIcon()}</button>`;
+  }
+
+  /** Liga os botoes de previa que existirem dentro de um trecho da tela. */
+  private bindPreviewButtons(scope: HTMLElement): void {
+    scope.querySelectorAll<HTMLButtonElement>('.prev-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        // Sem isto o clique tambem carregaria o ritmo, que e o oposto do
+        // que a pessoa pediu ao apertar "ouvir".
+        e.stopPropagation();
+        e.preventDefault();
+
+        // Resume SINCRONO, ainda dentro do gesto. No iOS qualquer await
+        // antes disto quebra a cadeia do toque e a previa sai muda (a
+        // regra do audioContext no CLAUDE.md). O toggle busca o JSON
+        // depois, e ai ja nao importa.
+        if (this.audioContext?.state === 'suspended') void this.audioContext.resume();
+
+        void this.togglePreview(btn.dataset.prevPath!);
+      });
+    });
+  }
+
   private showAllRhythmsSheet(): void {
     const overlay = document.createElement('div');
     // x-overlay: hasModalOpen() do pedal detecta → foco liberado dentro
@@ -9294,7 +9395,9 @@ class RhythmSequencer {
     const countOf = (c: string): number =>
       c === 'Todos' ? all.length : all.filter(r => r.cat === c).length;
 
-    let activeCat = 'Todos';
+    // Se o catalogo mudou e a categoria guardada sumiu, volta pra Todos.
+    if (!pills.includes(this.allSheetCategory)) this.allSheetCategory = 'Todos';
+    let activeCat = this.allSheetCategory;
 
     const close = (): void => {
       overlay.classList.remove('active');
@@ -9318,7 +9421,7 @@ class RhythmSequencer {
         <div class="x-body catg-body-wrap">
           <div class="catg-search-wrap">
             <svg class="catg-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" class="catg-search-input" id="catgSearch" placeholder="${t('main.rhythmSearch.placeholder')}" autocomplete="off" />
+            <input type="text" class="catg-search-input" id="catgSearch" placeholder="${t('main.rhythmSearch.placeholder')}" autocomplete="off" value="${esc(this.allSheetSearch)}" />
           </div>
           <div class="catg-pills">
             ${pills.map(c => `
@@ -9355,15 +9458,22 @@ class RhythmSequencer {
         : `${titleHtml}
            <div class="catg-row">
              ${list.map(r => `
-               <button class="catg-card ${r.name === this.currentRhythmName ? 'active' : ''}"
-                       data-name="${esc(r.name)}" data-path="${esc(r.path)}">${esc(r.name)}</button>
+               <div class="catg-cell">
+                 <button class="catg-card ${r.name === this.currentRhythmName ? 'active' : ''}"
+                         data-name="${esc(r.name)}" data-path="${esc(r.path)}"><span class="rt-name">${esc(r.name)}</span></button>
+                 ${this.previewBtnHtml(r.path, esc)}
+               </div>
              `).join('')}
            </div>`;
+
+      this.bindPreviewButtons(body);
 
       body.querySelectorAll<HTMLButtonElement>('.catg-card').forEach(btn => {
         btn.addEventListener('click', async () => {
           const name = btn.dataset.name!;
           const path = btn.dataset.path!;
+          // Escolher e pra tocar de verdade: a previa sai da frente.
+          this.previewPlayer?.stop();
           close();
           await this.loadRhythm(name, path);
           this.renderRhythmStrip();
@@ -9374,6 +9484,7 @@ class RhythmSequencer {
     overlay.querySelectorAll<HTMLButtonElement>('.catg-pill').forEach(pill => {
       pill.addEventListener('click', () => {
         activeCat = pill.dataset.cat!;
+        this.allSheetCategory = activeCat;
         overlay.querySelectorAll('.catg-pill').forEach(p =>
           p.classList.toggle('active', p === pill));
         renderBody();
@@ -9382,9 +9493,20 @@ class RhythmSequencer {
 
     // Busca em tempo real (input funciona no iPhone: x-overlay tá no
     // hasModalOpen() do pedal)
-    searchInput?.addEventListener('input', renderBody);
+    searchInput?.addEventListener('input', () => {
+      this.allSheetSearch = searchInput.value;
+      renderBody();
+    });
 
     renderBody();
+
+    // Abre mostrando a musica que esta tocando, nao o topo da lista. Rola
+    // sem animacao e num tick depois, senao briga com a entrada do sheet.
+    // So na abertura: rolar a cada tecla digitada na busca seria pior.
+    setTimeout(() => {
+      const atual = body.querySelector('.catg-card.active') as HTMLElement | null;
+      atual?.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }, 0);
   }
 
   // ─── Painéis laterais DESKTOP (≥1024px) ─────────────────────────────
@@ -9398,6 +9520,18 @@ class RhythmSequencer {
   private deskCategory = '';
   /** Busca ativa no painel esquerdo do desktop (filtra TODAS as categorias). */
   private deskSearch = '';
+  /**
+   * Qual lista o painel esquerdo desenhou por ultimo.
+   *
+   * Serve pra saber se vale devolver o scroll: escolher um ritmo redesenha
+   * o painel inteiro por innerHTML, e o innerHTML zera o scroll do proprio
+   * elemento que rola. Resultado: quem clicava numa musica no meio da lista
+   * era jogado de volta pro comeco e tinha que procurar tudo de novo.
+   * Trocar de categoria ou buscar muda a lista, e ai comecar do topo e o
+   * certo, por isso a comparacao.
+   */
+  private deskLastCat = '';
+  private deskLastSearch = '';
 
   private renderDesktopPanels(): void {
     const esc = (s: string): string =>
@@ -9433,18 +9567,26 @@ class RhythmSequencer {
         list.length === 0
           ? `<div class="desk-empty">${t('main.allRhythms.emptyResults')}</div>`
           : list.map(r => `
-              <button class="desk-r-card ${r.name === this.currentRhythmName ? 'active' : ''}"
-                      data-name="${esc(r.name)}" data-path="${esc(r.path)}">${esc(r.name)}</button>
+              <div class="desk-r-cell">
+                <button class="desk-r-card ${r.name === this.currentRhythmName ? 'active' : ''}"
+                        data-name="${esc(r.name)}" data-path="${esc(r.path)}"><span class="rt-name">${esc(r.name)}</span></button>
+                ${this.previewBtnHtml(r.path, esc)}
+              </div>
             `).join('');
 
       const bindCards = (scope: HTMLElement): void => {
+        this.bindPreviewButtons(scope);
         scope.querySelectorAll<HTMLButtonElement>('.desk-r-card').forEach(btn => {
           btn.addEventListener('click', async () => {
+            // Escolher e pra tocar de verdade: a previa sai da frente.
+            this.previewPlayer?.stop();
             await this.loadRhythm(btn.dataset.name!, btn.dataset.path!);
             this.renderDesktopPanels();
           });
         });
       };
+
+      this.bindPreviewSync();
 
       // ⚠️ PEDAL: input inline FORA de modal não funciona em iOS (o
       // pedalInput sagrado disputa o foco — ver história do strip).
@@ -9452,6 +9594,13 @@ class RhythmSequencer {
       // (iPad usa o TODOS, que é x-overlay e o pedal respeita).
       const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
         (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+      // Mesma lista de antes? Entao a posicao dela ainda faz sentido.
+      const mesmaLista = this.deskCategory === this.deskLastCat &&
+                         this.deskSearch === this.deskLastSearch;
+      const scrollAntes = mesmaLista ? left.scrollTop : 0;
+      this.deskLastCat = this.deskCategory;
+      this.deskLastSearch = this.deskSearch;
 
       left.innerHTML = `
         ${!isIOSDevice ? `
@@ -9470,6 +9619,13 @@ class RhythmSequencer {
       `;
 
       bindCards(left);
+
+      // Devolve a lista pra onde estava e, se mesmo assim o ritmo atual
+      // ficou fora da vista (veio de outro lugar, tipo o repertorio),
+      // traz ele pro campo de visao sem sacudir o resto.
+      left.scrollTop = scrollAntes;
+      const atual = left.querySelector<HTMLElement>('.desk-r-card.active');
+      atual?.scrollIntoView({ block: 'nearest', behavior: 'auto' });
 
       left.querySelectorAll<HTMLButtonElement>('.desk-cat-pill').forEach(btn => {
         btn.addEventListener('click', () => {
