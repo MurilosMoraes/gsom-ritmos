@@ -570,6 +570,7 @@ export const main: Record<string, string> = {
   'main.rhythmSearch.placeholder': 'Search rhythms...',
   'main.rhythmCategory.all': 'All',
   'main.rhythmCategory.others': 'Other',
+  'main.allRhythms.previewLabel': 'listen',
   'main.allRhythms.emptyResults': 'Nothing found',
   'main.allRhythms.emptyResultsQuery': 'Nothing found for "{query}"',
   'main.desktopPanel.setlistEmptyHint': "Setlist's empty.<br>Build one with the SETLIST button.",

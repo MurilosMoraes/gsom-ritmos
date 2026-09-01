@@ -9353,7 +9353,7 @@ class RhythmSequencer {
     const tocando = this.previewPlayer.isActive(path) ? ' prev-playing' : '';
     return `<button class="prev-btn${tocando}" data-prev-path="${esc(path)}"
                     aria-label="${t('ui.setlist.previewAriaLabel')}"
-                    title="${t('ui.setlist.previewAriaLabel')}">${this.previewIcon()}</button>`;
+                    title="${t('ui.setlist.previewAriaLabel')}">${this.previewIcon()}<span class="prev-txt">${t('main.allRhythms.previewLabel')}</span></button>`;
   }
 
   /** Liga os botoes de previa que existirem dentro de um trecho da tela. */

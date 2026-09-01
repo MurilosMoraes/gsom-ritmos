@@ -570,6 +570,7 @@ export const main: Record<string, string> = {
   'main.rhythmSearch.placeholder': 'Buscar ritmo...',
   'main.rhythmCategory.all': 'Todos',
   'main.rhythmCategory.others': 'Otros',
+  'main.allRhythms.previewLabel': 'escuchar',
   'main.allRhythms.emptyResults': 'No se encontró nada',
   'main.allRhythms.emptyResultsQuery': 'No se encontró nada para "{query}"',
   'main.desktopPanel.setlistEmptyHint': 'Repertorio vacío.<br>Arma uno en el botón REPERTORIO.',
