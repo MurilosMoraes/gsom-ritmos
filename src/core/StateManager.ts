@@ -24,6 +24,7 @@ export class StateManager {
       fillSpeed: 1,
       endSpeed: 1,
       masterVolume: 2.0,
+      rhythmGain: 1,
       beatsPerBar: 4,
       patternSteps: {
         main: 16,
@@ -158,6 +159,13 @@ export class StateManager {
   setTempo(tempo: number): void {
     this.state.tempo = tempo;
     this.notify('tempo');
+  }
+
+  /** Fator de nivelamento do ritmo carregado. Trava larga so por seguranca:
+   *  um numero torto no JSON nao pode mutar nem estourar o app. */
+  setRhythmGain(gain: number): void {
+    const g = Number(gain);
+    this.state.rhythmGain = (isFinite(g) && g > 0) ? Math.max(0.25, Math.min(4, g)) : 1;
   }
 
   setMasterVolume(volume: number): void {

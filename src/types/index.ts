@@ -6,7 +6,7 @@ export const MAX_CHANNELS = 12;
 // do pause) relativo ao volume base. Em 1.0 soavam mais altos que o
 // groove — 0.8 assenta na mixagem. O prato MANUAL (botão/pedal parado)
 // segue em 1.0: é performático, o músico controla.
-export const AUTO_CYMBAL_GAIN = 0.8;
+export const AUTO_CYMBAL_GAIN = 0.7;
 
 // Tipos principais do sequenciador
 
@@ -54,6 +54,9 @@ export interface SequencerState {
   isPlaying: boolean;
   currentStep: number;
   tempo: number;
+  // Nivelamento de loudness: fator do ritmo carregado, medido offline pra
+  // todos soarem parelhos. 1 = sem ajuste (ritmo do usuario, ou antigo).
+  rhythmGain: number;
   fillSpeed: number;
   endSpeed: number;
   masterVolume: number;
@@ -141,6 +144,8 @@ export interface SavedVariation {
 export interface SavedProject {
   version: string;
   tempo: number;
+  /** Nivelamento de loudness (ver rhythmGain). Ausente = 1, toca como sempre. */
+  gain?: number;
   beatsPerBar?: number;
   patternSteps?: PatternSteps;
   // Legacy support - padrões únicos (será removido em versões futuras)

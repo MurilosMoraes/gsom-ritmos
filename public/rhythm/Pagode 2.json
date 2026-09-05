@@ -4042,5 +4042,6 @@
     "fileName": "prato.mp3",
     "midiPath": "/midi/prato.mp3"
   },
-  "timestamp": "2026-09-01T17:08:27.029Z"
+  "timestamp": "2026-09-01T17:08:27.029Z",
+  "gain": 0.89
 }
