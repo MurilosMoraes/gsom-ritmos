@@ -2245,6 +2245,43 @@ body:has(#pedalBtInput) .user-layout {
 .prev-btn.prev-playing .prev-ico-play { display: none; }
 .prev-btn.prev-playing .prev-ico-stop { display: block; }
 
+/* PC: o rodapé só sobe quando o mouse chega no ladrilho.
+ *
+ * Só onde existe mouse de verdade (hover:hover + pointer:fine). No celular
+ * não existe "passar o mouse" — lá o rodapé continua sempre à vista, senão
+ * o botão viraria inalcançável.
+ *
+ * O espaço dele segue reservado no ladrilho (o padding-bottom não muda),
+ * então nada se mexe de lugar quando ele entra: só o rodapé desliza.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .prev-btn {
+    transform: translateY(100%);
+    opacity: 0;
+    /* escondido ele desce por cima da fileira de baixo; sem isto roubaria
+     * o clique do ladrilho seguinte */
+    pointer-events: none;
+    transition: transform 0.16s ease, opacity 0.16s ease,
+                background 0.12s, color 0.12s, border-color 0.12s;
+  }
+
+  /* Sobe pelo hover no LADRILHO INTEIRO, não no rodapé: mirar numa tira de
+   * 25px invisível seria impossível.
+   *
+   * :focus-visible mantém ele alcançável por teclado.
+   *
+   * E tocando ele FICA, com o mouse longe: é o aviso de qual ritmo está
+   * soando, e sem isso não dá pra parar sem caçar o ladrilho de volta. */
+  .catg-cell:hover .prev-btn,
+  .desk-r-cell:hover .prev-btn,
+  .prev-btn:focus-visible,
+  .prev-btn.prev-playing {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 /* Nome muito comprido em tela estreita: o rótulo sai e fica só o ícone,
  * que continua entendível, em vez de quebrar linha dentro do rodapé. */
 @media (max-width: 360px) {

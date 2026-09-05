@@ -1,5 +1,5 @@
 {
-  "version": 51,
+  "version": 52,
   "rhythms": [
     "Afoxe.json",
     "Anos 60.json",
@@ -51,6 +51,8 @@
     "Disco.json",
     "Electro Funk.json",
     "Filho do Piseiro.json",
+    "Flamenco.json",
+    "Flashback.json",
     "Forro.json",
     "Forró (Aviões).json",
     "Forró (Cajon).json",
@@ -84,6 +86,7 @@
     "Marcha Schlager.json",
     "Maxixe.json",
     "Milonga.json",
+    "MPB 2.json",
     "MPB Ballad.json",
     "MPB.json",
     "Neo-Soul.json",
@@ -118,6 +121,7 @@
     "Pop.json",
     "Punk Rock.json",
     "Quadrilha.json",
+    "R&B.json",
     "Rancheira.json",
     "Rap.json",
     "Reggae 2.json",
@@ -136,6 +140,7 @@
     "Rockabilly.json",
     "Roda de Samba.json",
     "RPM.json",
+    "Rumba.json",
     "Salsa.json",
     "Samba (pandeiro).json",
     "Samba Enredo.json",
@@ -218,6 +223,7 @@
       "Lambadão.json",
       "Marcha de Carnaval.json",
       "Maxixe.json",
+      "MPB 2.json",
       "MPB Ballad.json",
       "MPB.json",
       "Olodum.json",
@@ -276,6 +282,7 @@
       "Dance.json",
       "Disco.json",
       "Electro Funk.json",
+      "Flashback.json",
       "Funk das Antigas.json",
       "Funk Groove.json",
       "Fusion.json",
@@ -299,6 +306,7 @@
       "Pop Rock.json",
       "Pop.json",
       "Punk Rock.json",
+      "R&B.json",
       "Rap.json",
       "Rock 'n' Roll.json",
       "Rock (cajon).json",
@@ -358,10 +366,12 @@
       "Reggaeton.json"
     ],
     "Internacional": [
+      "Flamenco.json",
       "Foxtrot.json",
       "Marcha Schlager.json",
       "New Wave.json",
       "Polka.json",
+      "Rumba.json",
       "Soul & Swing.json",
       "Train Beat.json"
     ]
