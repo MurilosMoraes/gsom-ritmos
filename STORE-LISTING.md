@@ -25,7 +25,7 @@ Sua banda completa no palco. Compatível com pedal Bluetooth.
 **Alternativa caso queira testar:**
 
 ```
-Acompanhamento profissional ao vivo. 72+ ritmos, suporte a pedal BT.
+Acompanhamento profissional ao vivo. 180+ ritmos, suporte a pedal BT.
 ```
 
 (68 chars — mais técnica)
@@ -120,7 +120,7 @@ GDrums é seu baterista virtual, sua banda inteira, sua flexibilidade pro show a
 GDrums chegou! 🎵
 
 Acompanhamento profissional pra tocar ao vivo:
-• 72+ ritmos profissionais (gauchescos, brasileiros, pop/rock, gospel)
+• 180+ ritmos profissionais (gauchescos, brasileiros, pop/rock, gospel)
 • Pedal Bluetooth — controle hands-free no palco
 • Modo offline completo
 • Repertório personalizável

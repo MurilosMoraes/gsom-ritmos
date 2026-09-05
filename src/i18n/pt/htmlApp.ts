@@ -1,7 +1,7 @@
 // Strings do HTML estático (hidratação data-i18n) — preenchido por agente
 export const htmlApp: Record<string, string> = {
   // ── <title> da aba ──
-  'htmlApp.docTitle': 'GDrums | Baterista Virtual com 155 Ritmos',
+  'htmlApp.docTitle': 'GDrums | Baterista Virtual com 180 Ritmos',
 
   // ── Topbar global ──
   'htmlApp.topbar.downloadPlayStore': 'Baixar na Play Store',
