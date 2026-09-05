@@ -245,7 +245,6 @@
       "Quadrilha.json",
       "Retropical.json",
       "Roda de Samba.json",
-      "Rumba.json",
       "Salsa.json",
       "Samba (pandeiro).json",
       "Samba Enredo.json",
@@ -372,6 +371,7 @@
       "Marcha Schlager.json",
       "New Wave.json",
       "Polka.json",
+      "Rumba.json",
       "Soul & Swing.json",
       "Train Beat.json"
     ]
