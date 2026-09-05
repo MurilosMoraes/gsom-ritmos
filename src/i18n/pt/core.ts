@@ -8,7 +8,7 @@ export const core: Record<string, string> = {
   // UserRhythmService.ts — syncOne() erros visíveis no badge "pendente sync"
   'core.sync.rhythmNotFound': 'ritmo não encontrado',
   'core.sync.noInternet': 'sem internet',
-  'core.sync.sessionNotStarted': 'sessão não iniciada',
+  'core.sync.sessionNotStarted': 'sua sessão expirou — entre na conta de novo',
   'core.sync.networkFailure': 'falha de rede',
 
   // BiometricService.ts — textos do prompt nativo de biometria

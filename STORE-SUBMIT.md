@@ -185,7 +185,7 @@ URL: `https://gdrums.com.br/privacy`
 1. Menu lateral → **Versões → Testes → Internos**
 2. **Criar nova versão**
 3. Upload do `app-release.aab`
-4. Notas da versão: "Primeira versão pública. Acompanhamento profissional ao vivo, pedal Bluetooth, 72+ ritmos."
+4. Notas da versão: "Primeira versão pública. Acompanhamento profissional ao vivo, pedal Bluetooth, 180+ ritmos."
 5. **Salvar** → **Revisar versão** → **Iniciar lançamento para teste interno**
 
 Aguardar Play processar (~10-30 min).
@@ -214,7 +214,7 @@ Quando teste interno OK:
    ```
    GDrums chegou! 🎵
    Sua banda completa no celular. Acompanhamento profissional ao vivo
-   com mais de 70 ritmos, pedal Bluetooth e modo offline.
+   com mais de 180 ritmos, pedal Bluetooth e modo offline.
    ```
 5. **Salvar → Revisar → Iniciar lançamento**
 

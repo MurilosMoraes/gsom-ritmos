@@ -66,6 +66,9 @@ export interface IAudioEngine {
   /** Ganho de uma banda do equalizador, em dB. No-op em engines sem suporte. */
   setEqGain(index: number, db: number): void;
 
+  /** Junta os dois lados numa saida so. No-op em engines sem suporte. */
+  setMonoOutput(on: boolean): void;
+
   /** Quantidade de reverb (0 a 1). No-op em engines sem suporte. */
   setReverbAmount(amount: number): void;
 

@@ -79,6 +79,10 @@ export class WebAudioEngine implements IAudioEngine {
     this.inner.setEqGain(index, db);
   }
 
+  setMonoOutput(on: boolean): void {
+    this.inner.setMonoOutput(on);
+  }
+
   setReverbAmount(amount: number): void {
     this.inner.setReverbAmount(amount);
   }

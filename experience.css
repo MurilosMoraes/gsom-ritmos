@@ -1738,7 +1738,9 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
 }
 .catg-search-input {
   width: 100%;
-  padding: 0.8rem 1rem 0.8rem 2.5rem;
+  /* folga na direita pro X de limpar, senao o nome digitado passa por
+     baixo dele */
+  padding: 0.8rem 2.6rem 0.8rem 2.5rem;
   border-radius: 14px;
   border: 1.5px solid rgba(0, 212, 255, 0.35);
   background: rgba(255, 255, 255, 0.04);
@@ -2188,8 +2190,12 @@ body:has(#pedalBtInput) .user-layout {
 .desk-r-cell > .desk-r-card {
   width: 100%;
   aspect-ratio: 1.42 / 1;
-  /* altura do rodapé, pra que o nome nunca chegue nele */
-  padding-bottom: 27px !important;
+  /* Parado, o nome fica centralizado no ladrilho INTEIRO, como se o rodapé
+   * não existisse. O espaço dele só é aberto quando ele entra — box-sizing
+   * é border-box, então isto não muda o tamanho do ladrilho, só empurra o
+   * nome pra cima. */
+  padding-bottom: 0.35rem !important;
+  transition: padding-bottom 0.16s ease;
 }
 
 /* Trava: flex centralizado transborda pros dois lados quando o texto não
@@ -2227,7 +2233,8 @@ body:has(#pedalBtInput) .user-layout {
   letter-spacing: 0.09em;
   text-transform: uppercase;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  transition: transform 0.16s ease, opacity 0.16s ease,
+              background 0.12s, color 0.12s, border-color 0.12s;
 }
 
 .prev-btn:hover {
@@ -2244,6 +2251,67 @@ body:has(#pedalBtInput) .user-layout {
 }
 .prev-btn.prev-playing .prev-ico-play { display: none; }
 .prev-btn.prev-playing .prev-ico-stop { display: block; }
+
+/* O rodapé nasce DENTRO do ladrilho: a célula recorta, então ele sobe de
+ * trás da borda de baixo em vez de entrar voando de fora da grade. */
+.catg-cell,
+.desk-r-cell {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+/* Escondido é o estado PADRÃO, nos dois mundos. Quem revela é o mouse (PC)
+ * ou o primeiro toque (celular, via .prev-open no JS). */
+.prev-btn {
+  transform: translateY(100%);
+  opacity: 0;
+  /* atrás da borda de baixo ele ainda roubaria o toque de quem passasse
+   * por ali; sem isto o ladrilho de baixo perde o clique */
+  pointer-events: none;
+}
+
+/* Aberto: o rodapé sobe e o nome abre espaço pra ele, subindo junto.
+ *
+ * .prev-playing entra aqui de propósito — tocando, o rodapé FICA à vista
+ * mesmo sem hover e sem toque: é o aviso de qual ritmo está soando, e sem
+ * ele não dá pra parar sem caçar o ladrilho de volta. */
+.catg-cell.prev-open .prev-btn,
+.desk-r-cell.prev-open .prev-btn,
+.prev-btn:focus-visible,
+.prev-btn.prev-playing {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.catg-cell.prev-open > .catg-card,
+.desk-r-cell.prev-open > .desk-r-card,
+.catg-cell:has(.prev-btn.prev-playing) > .catg-card,
+.desk-r-cell:has(.prev-btn.prev-playing) > .desk-r-card {
+  padding-bottom: 27px !important;
+}
+
+/* PC: quem revela é o mouse, sem precisar de toque nenhum. Só onde existe
+ * mouse de verdade — no celular "passar o mouse" não existe, e lá o
+ * primeiro toque é que abre.
+ *
+ * O gatilho é o LADRILHO INTEIRO, não o rodapé: mirar numa tira de 25px
+ * invisível seria impossível. */
+@media (hover: hover) and (pointer: fine) {
+  .catg-cell:hover .prev-btn,
+  .desk-r-cell:hover .prev-btn {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .catg-cell:hover > .catg-card,
+  .desk-r-cell:hover > .desk-r-card,
+  .catg-cell:focus-within > .catg-card,
+  .desk-r-cell:focus-within > .desk-r-card {
+    padding-bottom: 27px !important;
+  }
+}
 
 /* Nome muito comprido em tela estreita: o rótulo sai e fica só o ícone,
  * que continua entendível, em vez de quebrar linha dentro do rodapé. */

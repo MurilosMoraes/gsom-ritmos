@@ -794,9 +794,18 @@ export class SetlistManager {
    *  no boot, clicou cedo), busca a sessão atual na hora — evita o "sessão
    *  não iniciada" que só saía fechando/reabrindo o app. */
   private async ensureSession(): Promise<boolean> {
-    if (this.userId && this.supabaseClient) return true;
     try {
       const { supabase } = await import('../auth/supabase');
+      // getSession() do supabase-js RENOVA sozinho quando o token esta
+      // vencido ou perto disso. Sem rede so quando ha renovacao de verdade —
+      // no caso normal e leitura local, entao da pra chamar sempre.
+      //
+      // BUG ANTIGO: a gente devolvia true direto quando ja tinha o userId
+      // guardado, e ai nunca mais conferia nada. O token vencia (app aberto
+      // ha horas, ou celular que dormiu e o timer de refresh nao rodou), o
+      // ensureSession seguia dizendo que estava tudo bem, e a sincronizacao
+      // batia no servidor com token morto. Por isso "sair e entrar" resolvia:
+      // era a unica forma de pegar token novo.
       const { data } = await supabase.auth.getSession();
       const uid = data.session?.user?.id;
       if (uid) {
@@ -804,8 +813,10 @@ export class SetlistManager {
         this.userId = uid;
         return true;
       }
-    } catch { /* offline/sem sessão */ }
-    return false;
+    } catch { /* offline/sem sessao */ }
+    // Sem sessao boa agora: se ja houve uma antes, seguimos com ela — offline
+    // a fila local continua funcionando e sobe quando a rede voltar.
+    return !!(this.userId && this.supabaseClient);
   }
 
   // ─── LIXEIRA DE SUPORTE ────────────────────────────────────────────────

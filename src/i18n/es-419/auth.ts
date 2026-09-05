@@ -56,7 +56,7 @@ export const auth: Record<string, string> = {
   'auth.register.connectionError': 'Error de conexión. Revisa tu internet e intenta de nuevo.',
   'auth.register.welcomeTitle': '¡Cuenta creada! 🎉',
   'auth.register.welcomeBadge': '✓ 48 horas gratis, sin tarjeta',
-  'auth.register.welcomeSub': 'Ahora <strong>descarga la app</strong> para tocar con todo: pedal Bluetooth, más de 130 ritmos y tu repertorio en el escenario.',
+  'auth.register.welcomeSub': 'Ahora <strong>descarga la app</strong> para tocar con todo: pedal Bluetooth, más de 180 ritmos y tu repertorio en el escenario.',
   'auth.register.continueInBrowserBtn': 'Continuar en el navegador por ahora',
   'auth.register.appStoreLabel': '<small>Descargar en</small>App Store',
   'auth.register.playStoreLabel': '<small>Descargar en</small>Google Play',
