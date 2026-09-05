@@ -2642,7 +2642,7 @@ class RhythmSequencer {
 
     if (tempoUpUser) {
       this.attachHoldRepeat(tempoUpUser,
-        () => this.stateManager.setTempo(Math.min(280, this.stateManager.getTempo() + 1)),
+        () => this.stateManager.setTempo(Math.min(360, this.stateManager.getTempo() + 1)),
         () => this.saveCustomBpm());
     }
 
@@ -2667,7 +2667,7 @@ class RhythmSequencer {
     const tempoDown = document.getElementById('tempoDown');
 
     const updateTempo = (value: number) => {
-      const newTempo = Math.max(40, Math.min(280, value));
+      const newTempo = Math.max(40, Math.min(360, value));
       this.stateManager.setTempo(newTempo);
     };
 
@@ -4898,6 +4898,7 @@ class RhythmSequencer {
     try {
       const rv = parseFloat(localStorage.getItem('gdrums-reverb') || '');
       if (!isNaN(rv)) this.audioManager.setReverbAmount(rv);
+      this.audioManager.setMonoOutput(localStorage.getItem('gdrums-mono') === '1');
     } catch { /* noop */ }
   }
 
@@ -4965,6 +4966,8 @@ class RhythmSequencer {
     try { const s = JSON.parse(localStorage.getItem('gdrums-eq') || 'null'); if (Array.isArray(s)) eq = s.map((x: any) => Number(x) || 0); } catch { /* noop */ }
     let reverb = 0;
     try { const r = parseFloat(localStorage.getItem('gdrums-reverb') || ''); if (!isNaN(r)) reverb = r; } catch { /* noop */ }
+    let mono = false;
+    try { mono = localStorage.getItem('gdrums-mono') === '1'; } catch { /* noop */ }
 
     const overlay = document.createElement('div');
     overlay.className = 'eq-overlay';
@@ -4980,6 +4983,10 @@ class RhythmSequencer {
       <div class="eq-card">
         <div class="eq-head">
           <div class="eq-title">${t('main.eq.title')}</div>
+          <div class="eq-head-mono">
+            <button class="eq-switch${mono ? ' on' : ''}" id="eqMono" role="switch" aria-checked="${mono}" aria-label="${t('main.eq.monoLabel')}" title="${t('main.eq.monoLabel')} — ${t('main.eq.monoHint')}"><span class="eq-switch-dot"></span></button>
+            <span class="eq-mono-txt" id="eqMonoVal">${mono ? 'mono' : 'stereo'}</span>
+          </div>
           <button class="eq-close" id="eqClose" aria-label="${t('main.eq.closeAriaLabel')}">&#10005;</button>
         </div>
         <div class="eq-body">
@@ -5009,6 +5016,18 @@ class RhythmSequencer {
         if (v) v.textContent = `${db > 0 ? '+' : ''}${db} dB`;
         localStorage.setItem('gdrums-eq', JSON.stringify(eq));
       });
+    });
+
+    const monoBtn = overlay.querySelector('#eqMono') as HTMLButtonElement | null;
+    const monoVal = overlay.querySelector('#eqMonoVal') as HTMLElement | null;
+    monoBtn?.addEventListener('click', () => {
+      mono = !mono;
+      monoBtn.classList.toggle('on', mono);
+      monoBtn.setAttribute('aria-checked', String(mono));
+      if (monoVal) monoVal.textContent = mono ? 'mono' : 'stereo';
+      this.audioManager.setMonoOutput(mono);
+      try { localStorage.setItem('gdrums-mono', mono ? '1' : '0'); } catch { /* noop */ }
+      HapticsService.light();
     });
 
     const rvSlider = overlay.querySelector('#eqReverb') as HTMLInputElement;
@@ -6578,7 +6597,15 @@ class RhythmSequencer {
       snap.tempo = bpm;
       return snap;
     }
-    return this.fileManager.exportProjectAsJSON();
+    // BUG ate aqui: este caminho recebia o bpm e jogava fora, entao o ritmo
+    // salvava com o tempo que estava no editor e nao com o digitado no
+    // disquete. So aparecia pra quem cai neste ramo — admin, ou sem foto.
+    //
+    // O buildProjectSnapshot monta um objeto novo a cada chamada, entao
+    // escrever o tempo aqui nao encosta no estado vivo.
+    const data = this.fileManager.exportProjectAsJSON();
+    data.tempo = bpm;
+    return data;
   }
 
   private showSaveRhythmModal(): void {
@@ -6690,11 +6717,11 @@ class RhythmSequencer {
     setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
 
     // ── BPM: stepper pill (mesmo do Meus Ritmos) ──
-    let bpmValue = Math.max(40, Math.min(280, Math.round(currentBpm)));
+    let bpmValue = Math.max(40, Math.min(360, Math.round(currentBpm)));
     const bpmCtrl = overlay.querySelector('#xSaveBpmCtrl') as HTMLElement;
     const bpmVal = overlay.querySelector('#xSaveBpmVal') as HTMLElement;
     const setBpmValue = (v: number): void => {
-      bpmValue = Math.max(40, Math.min(280, Math.round(v)));
+      bpmValue = Math.max(40, Math.min(360, Math.round(v)));
       bpmVal.textContent = String(bpmValue);
     };
     bpmCtrl.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(btn => {
@@ -6706,7 +6733,7 @@ class RhythmSequencer {
     // Tap no número → digita direto
     bpmVal.addEventListener('click', () => {
       if (bpmCtrl.querySelector('.x-bpm-input')) return;
-      bpmVal.innerHTML = `<input type="number" class="x-bpm-input" value="${bpmValue}" min="40" max="280" inputmode="numeric" />`;
+      bpmVal.innerHTML = `<input type="number" class="x-bpm-input" value="${bpmValue}" min="40" max="360" inputmode="numeric" />`;
       const input = bpmVal.querySelector('input') as HTMLInputElement;
       input.focus();
       input.select();
@@ -6739,7 +6766,7 @@ class RhythmSequencer {
         Toast.show(t('main.saveRhythm.nameRequiredToast'), { type: 'warn' });
         return null;
       }
-      // bpmValue é sempre válido por construção (clamp 40-280 no stepper)
+      // bpmValue é sempre válido por construção (clamp 40-360 no stepper)
       return { name, bpm: bpmValue };
     };
 
@@ -7212,7 +7239,7 @@ class RhythmSequencer {
       const commitBpm = (id: string, bpm: number): void => {
         const rhythm = this.userRhythmService.getById(id);
         if (!rhythm) return;
-        const clamped = Math.max(40, Math.min(280, bpm));
+        const clamped = Math.max(40, Math.min(360, bpm));
         const valEl = overlay.querySelector(`[data-bpm-val="${id}"]`);
         if (valEl) valEl.textContent = String(clamped);
         if (bpmTimers[id]) clearTimeout(bpmTimers[id]);
@@ -7241,7 +7268,7 @@ class RhythmSequencer {
         valEl?.addEventListener('click', () => {
           if (ctrl.querySelector('.x-bpm-input')) return;
           const cur = valEl.textContent || '';
-          valEl.innerHTML = `<input type="number" class="x-bpm-input" value="${cur}" min="40" max="280" inputmode="numeric" />`;
+          valEl.innerHTML = `<input type="number" class="x-bpm-input" value="${cur}" min="40" max="360" inputmode="numeric" />`;
           const input = valEl.querySelector('input') as HTMLInputElement;
           input.focus();
           input.select();
@@ -7546,12 +7573,12 @@ class RhythmSequencer {
             <div class="x-tap-nudge">
               <button class="x-tap-nudge-btn" data-nudge="-5" aria-label="${t('main.bpmModal.nudgeMinus5AriaLabel')}">−5</button>
               <button class="x-tap-nudge-btn" data-nudge="-1" aria-label="${t('main.bpmModal.nudgeMinus1AriaLabel')}">−1</button>
-              <input type="number" class="x-tap-nudge-input" id="xBpmInput" min="40" max="280" inputmode="numeric" value="${currentBpm}" aria-label="BPM" />
+              <input type="number" class="x-tap-nudge-input" id="xBpmInput" min="40" max="360" inputmode="numeric" value="${currentBpm}" aria-label="BPM" />
               <button class="x-tap-nudge-btn" data-nudge="1" aria-label="${t('main.bpmModal.nudgePlus1AriaLabel')}">+1</button>
               <button class="x-tap-nudge-btn" data-nudge="5" aria-label="${t('main.bpmModal.nudgePlus5AriaLabel')}">+5</button>
             </div>
 
-            <input type="range" class="x-tap-slider" id="xBpmSlider" min="40" max="280" value="${currentBpm}" aria-label="${t('main.bpmModal.sliderAriaLabel')}" />
+            <input type="range" class="x-tap-slider" id="xBpmSlider" min="40" max="360" value="${currentBpm}" aria-label="${t('main.bpmModal.sliderAriaLabel')}" />
 
             ${this.currentRhythmOriginalBpm > 0 && currentBpm !== this.currentRhythmOriginalBpm
               ? `<button class="x-tap-restore" id="xBpmRestore">${t('main.bpmModal.restoreButton', { bpm: this.currentRhythmOriginalBpm })}</button>`
@@ -7571,7 +7598,7 @@ class RhythmSequencer {
     const hintEl = overlay.querySelector('#xTapHint') as HTMLElement;
 
     const applyBpm = (bpm: number, source?: 'input' | 'slider' | 'tap'): void => {
-      currentBpm = Math.max(40, Math.min(280, Math.round(bpm)));
+      currentBpm = Math.max(40, Math.min(360, Math.round(bpm)));
       valueEl.textContent = String(currentBpm);
       if (source !== 'input') inputEl.value = String(currentBpm);
       if (source !== 'slider') sliderEl.value = String(currentBpm);
@@ -7591,7 +7618,7 @@ class RhythmSequencer {
     // Input direto
     inputEl.addEventListener('input', () => {
       const v = parseInt(inputEl.value);
-      if (!isNaN(v) && v >= 40 && v <= 280) applyBpm(v, 'input');
+      if (!isNaN(v) && v >= 40 && v <= 360) applyBpm(v, 'input');
     });
     inputEl.addEventListener('focus', () => inputEl.select());
 
@@ -7646,7 +7673,7 @@ class RhythmSequencer {
       const avg = sum / (tapTimes.length - 1);
       const bpm = Math.round(60000 / avg);
 
-      if (bpm >= 40 && bpm <= 280) {
+      if (bpm >= 40 && bpm <= 360) {
         applyBpm(bpm, 'tap');
         const taps = tapTimes.length;
         hintEl.innerHTML = taps >= 4
@@ -9356,6 +9383,35 @@ class RhythmSequencer {
                     title="${t('ui.setlist.previewAriaLabel')}">${this.previewIcon()}<span class="prev-txt">${t('main.allRhythms.previewLabel')}</span></button>`;
   }
 
+  /**
+   * Aparelho com mouse de verdade. No PC o rodape da previa aparece sozinho
+   * no hover, entao o clique no ladrilho ja carrega o ritmo de primeira.
+   * No toque nao existe hover: la o primeiro toque e que abre o rodape.
+   */
+  private temMouse(): boolean {
+    return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  }
+
+  /**
+   * Primeiro toque no ladrilho, em aparelho sem mouse: em vez de carregar,
+   * abre o rodape. Dai o ladrilho fica com duas zonas — em cima o nome, que
+   * carrega o ritmo, e embaixo o rodape, que so deixa ouvir.
+   *
+   * Devolve true quando ENGOLIU o toque (so abriu), pra quem chamou parar
+   * ali e nao carregar nada.
+   */
+  private abriuPreviaNoToque(btn: HTMLElement): boolean {
+    if (this.temMouse()) return false;
+    const cell = btn.closest('.catg-cell, .desk-r-cell');
+    if (!cell || cell.classList.contains('prev-open')) return false;
+
+    // So um aberto por vez: dois rodapes abertos viram ruido numa grade de
+    // 180, e o de baixo some da vista quando a lista rola.
+    document.querySelectorAll('.prev-open').forEach(c => c.classList.remove('prev-open'));
+    cell.classList.add('prev-open');
+    return true;
+  }
+
   /** Liga os botoes de previa que existirem dentro de um trecho da tela. */
   private bindPreviewButtons(scope: HTMLElement): void {
     scope.querySelectorAll<HTMLButtonElement>('.prev-btn').forEach(btn => {
@@ -9400,6 +9456,11 @@ class RhythmSequencer {
     let activeCat = this.allSheetCategory;
 
     const close = (): void => {
+      // A previa morre COM o sheet. Fechando aqui vale pras tres saidas — o
+      // X, o toque no fundo e a escolha do ritmo — senao a pessoa volta pra
+      // tela principal e o som continua tocando sozinho, sem nenhum botao
+      // na tela pra parar.
+      this.previewPlayer?.stop();
       overlay.classList.remove('active');
       overlay.classList.add('x-exit');
       (window as any).__refocusPedal?.();
@@ -9422,6 +9483,9 @@ class RhythmSequencer {
           <div class="catg-search-wrap">
             <svg class="catg-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" class="catg-search-input" id="catgSearch" placeholder="${t('main.rhythmSearch.placeholder')}" autocomplete="off" value="${esc(this.allSheetSearch)}" />
+            <button class="x-search-clear ${this.allSheetSearch ? 'visible' : ''}" id="catgClear" aria-label="${t('main.myRhythms.clearSearchAriaLabel')}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
           <div class="catg-pills">
             ${pills.map(c => `
@@ -9470,6 +9534,10 @@ class RhythmSequencer {
 
       body.querySelectorAll<HTMLButtonElement>('.catg-card').forEach(btn => {
         btn.addEventListener('click', async () => {
+          // Sem mouse, o primeiro toque so abre o rodape da previa. O
+          // segundo — ja no nome, em cima — e que carrega.
+          if (this.abriuPreviaNoToque(btn)) return;
+
           const name = btn.dataset.name!;
           const path = btn.dataset.path!;
           // Escolher e pra tocar de verdade: a previa sai da frente.
@@ -9493,9 +9561,23 @@ class RhythmSequencer {
 
     // Busca em tempo real (input funciona no iPhone: x-overlay tá no
     // hasModalOpen() do pedal)
+    const searchClear = overlay.querySelector('#catgClear') as HTMLElement | null;
+
     searchInput?.addEventListener('input', () => {
       this.allSheetSearch = searchInput.value;
+      searchClear?.classList.toggle('visible', !!searchInput.value);
       renderBody();
+    });
+
+    searchClear?.addEventListener('click', () => {
+      if (!searchInput) return;
+      searchInput.value = '';
+      this.allSheetSearch = '';
+      searchClear.classList.remove('visible');
+      renderBody();
+      // Devolve o foco: quem limpou quase sempre vai digitar outra coisa, e
+      // sem isto o teclado do celular fecha e a pessoa toca de novo.
+      searchInput.focus();
     });
 
     renderBody();
@@ -9578,6 +9660,9 @@ class RhythmSequencer {
         this.bindPreviewButtons(scope);
         scope.querySelectorAll<HTMLButtonElement>('.desk-r-card').forEach(btn => {
           btn.addEventListener('click', async () => {
+            // iPad cai aqui e e toque: primeiro abre o rodape, depois carrega.
+            if (this.abriuPreviaNoToque(btn)) return;
+
             // Escolher e pra tocar de verdade: a previa sai da frente.
             this.previewPlayer?.stop();
             await this.loadRhythm(btn.dataset.name!, btn.dataset.path!);

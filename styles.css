@@ -2388,6 +2388,34 @@ input:checked + .slider:before {
 .eq-reverb { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.9rem; }
 .eq-reverb .eq-slider { accent-color: #8B5CF6; }
 .eq-reverb .eq-val { color: #a78bfa; }
+/* Saida mono no cabecalho, ao lado do titulo: e um modo da saida inteira,
+   nao mais uma banda — fica onde se enxerga sem rolar o painel.
+   Verde pra nao competir com o azul do EQ nem com o roxo do reverb. */
+.eq-head-mono {
+  display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+  margin-left: auto; margin-right: 0.7rem;
+}
+.eq-mono-txt {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #3ee8a7; line-height: 1;
+}
+.eq-switch {
+  flex: 0 0 auto; width: 42px; height: 24px; padding: 0; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.06);
+  cursor: pointer; position: relative; transition: background 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.eq-switch-dot {
+  position: absolute; top: 50%; left: 3px; transform: translateY(-50%);
+  width: 16px; height: 16px; border-radius: 50%;
+  background: rgba(255,255,255,0.55); transition: left 0.15s, background 0.15s;
+}
+.eq-switch.on { background: rgba(62,232,167,0.22); border-color: #3ee8a7; }
+.eq-switch.on .eq-switch-dot { left: 21px; background: #3ee8a7; }
+@media (prefers-reduced-motion: reduce) {
+  .eq-switch, .eq-switch-dot { transition: none; }
+}
+
 .eq-actions {
   display: flex; gap: 0.6rem; padding: 0.9rem 1.2rem 1.1rem;
   border-top: 1px solid rgba(255,255,255,0.07); flex-shrink: 0;

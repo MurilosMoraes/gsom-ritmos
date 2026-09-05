@@ -295,6 +295,8 @@ export const main: Record<string, string> = {
   'main.eq.closeAriaLabel': 'Close',
   'main.eq.reverbLabel': 'Reverb',
   'main.eq.reverbHint': 'smooths out the sound',
+  'main.eq.monoLabel': 'Mono output',
+  'main.eq.monoHint': 'sums both sides',
   'main.eq.resetButton': 'Reset',
   'main.eq.doneButton': 'Done',
 
