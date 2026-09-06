@@ -138,4 +138,13 @@ export const ui: Record<string, string> = {
   'ui.setlist.moveUpAriaLabel': 'Mover pra cima',
   'ui.setlist.moveDownAriaLabel': 'Mover pra baixo',
   'ui.setlist.removeAriaLabel': 'Remover do repertório',
+  'ui.setlist.editItemAriaLabel': 'Editar',
+  'ui.setlist.editItemTitle': 'Editar música',
+  'ui.setlist.editNameLabel': 'Nome',
+  'ui.setlist.editBpmLabel': 'BPM',
+  'ui.setlist.editSavesCopy': 'A edição vira um ritmo seu em Meus Ritmos. O ritmo original não muda.',
+  'ui.setlist.editRemove': 'Excluir do repertório',
+  'ui.setlist.editCancel': 'Cancelar',
+  'ui.setlist.editSave': 'Salvar',
+  'ui.setlist.editSaving': 'Salvando…',
 };
