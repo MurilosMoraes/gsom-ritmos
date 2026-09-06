@@ -453,6 +453,12 @@ input:checked + .slider:before {
   transition: color 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
+/* <a> e inline: o width:100% acima nao pega nele, e dois links seguidos
+   ficam LADO A LADO. Os <button> nao sofrem disso porque ja sao
+   inline-block. Escopado no seletor de elemento pra nao mexer no layout
+   dos botoes. */
+a.topbar-dropdown-btn { display: block; }
+
 .topbar-dropdown-btn:hover { color: rgba(255, 80, 80, 1); }
 .topbar-dropdown-btn-info { color: rgba(0, 212, 255, 0.7); }
 .topbar-dropdown-btn-info:hover { color: rgba(0, 212, 255, 1); }

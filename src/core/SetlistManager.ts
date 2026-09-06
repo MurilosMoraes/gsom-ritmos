@@ -546,6 +546,17 @@ export class SetlistManager {
     this.notify();
   }
 
+  /** Muda nome/BPM/vinculo de um item no lugar. Usado pelo editar da lista:
+   *  a edicao vira um ritmo pessoal e o item passa a apontar pra ele. */
+  updateItem(index: number, patch: Partial<SetlistItem>): void {
+    const a = this.active();
+    const item = a.items[index];
+    if (!item) return;
+    Object.assign(item, patch);
+    this.touch(a);
+    this.notify();
+  }
+
   moveItem(fromIndex: number, toIndex: number): void {
     const a = this.active();
     const items = a.items;

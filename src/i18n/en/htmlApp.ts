@@ -15,6 +15,7 @@ export const htmlApp: Record<string, string> = {
   'htmlApp.topbar.installBtn': 'Install app',
   'htmlApp.topbar.myAccountBtn': 'My Account',
   'htmlApp.topbar.supportLink': 'Support / Community',
+  'htmlApp.topbar.freeRhythmsLink': 'Ready-made rhythms and setlists',
   'htmlApp.topbar.footerCredit': 'For the honor and glory of God',
 
   // ── Modo Usuário ──

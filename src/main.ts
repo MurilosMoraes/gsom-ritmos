@@ -8676,6 +8676,48 @@ class RhythmSequencer {
         }));
         const fullCatalog = [...personalRhythms, ...libraryWithCategory];
 
+        // Editar musica do repertorio: a edicao NAO toca no ritmo da
+        // biblioteca. Vira um ritmo pessoal, e o item passa a apontar pra
+        // ele — outro repertorio que use o mesmo ritmo fica intacto.
+        //
+        // O nome da copia leva o repertorio entre parenteses ("Arrocha (Show
+        // de sabado)") pra dar pra distinguir dentro de Meus Ritmos, onde
+        // varias edicoes do mesmo ritmo base iriam parar juntas.
+        const onEditItem = async (index: number, nome: string, bpm: number): Promise<void> => {
+          const item = this.setlistManager.getItems()[index];
+          if (!item) return;
+
+          const repertorio = this.setlistManager.getSetlists().find(l => l.active)?.name || '';
+          const nomeCopia = repertorio ? `${nome} (${repertorio})` : nome;
+
+          // Ja e um ritmo pessoal: atualiza no lugar. Sem isto, mexer no BPM
+          // tres vezes criaria tres ritmos iguais em Meus Ritmos.
+          if (item.userRhythmId) {
+            const meu = this.userRhythmService.getById(item.userRhythmId);
+            if (meu) {
+              const dados = JSON.parse(JSON.stringify(meu.rhythm_data || {}));
+              dados.tempo = bpm;
+              await this.userRhythmService.update(item.userRhythmId, nomeCopia, bpm, dados);
+              this.setlistManager.updateItem(index, { name: nome, bpm });
+              this.updateSetlistUI();
+              return;
+            }
+          }
+
+          // Ritmo da biblioteca: copia o JSON com o BPM novo e salva como meu.
+          const base = await resolveRhythmData({ userRhythmId: item.userRhythmId, path: item.path });
+          if (!base) throw new Error('ritmo base nao encontrado');
+          const copia = JSON.parse(JSON.stringify(base));
+          copia.tempo = bpm;
+          const salvo = await this.userRhythmService.save(
+            nomeCopia, bpm, copia, item.baseRhythmName || item.name);
+          this.setlistManager.updateItem(index, {
+            name: nome, bpm, userRhythmId: salvo.id, path: '',
+            baseRhythmName: item.baseRhythmName || item.name,
+          });
+          this.updateSetlistUI();
+        };
+
         this.setlistEditor.open(
           fullCatalog,
           this.setlistManager,
@@ -8683,6 +8725,7 @@ class RhythmSequencer {
           {
             previewPlayer: this.previewPlayer,
             resolveRhythmData,
+            onEditItem,
           }
         );
       } catch (err) {
