@@ -142,6 +142,8 @@ export const ui: Record<string, string> = {
   'ui.setlist.editItemTitle': 'Editar canción',
   'ui.setlist.editNameLabel': 'Nombre',
   'ui.setlist.editBpmLabel': 'BPM',
+  'ui.setlist.editPosLabel': 'Posición en la lista',
+  'ui.setlist.editPosOf': 'de {total}',
   'ui.setlist.editSavesCopy': 'La edición se guarda como un ritmo tuyo en Mis Ritmos. El original no cambia.',
   'ui.setlist.editRemove': 'Quitar del repertorio',
   'ui.setlist.editCancel': 'Cancelar',

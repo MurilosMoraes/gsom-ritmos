@@ -984,6 +984,7 @@ export class SetlistEditorUI {
   private abrirEdicaoDoItem(index: number, container: HTMLElement): void {
     const item = this.setlistManager?.getItems()[index];
     if (!item || !this.overlay) return;
+    const total = this.setlistManager?.getItems().length || 1;
 
     this.overlay.querySelectorAll('.sle-edit-pop').forEach(el => el.remove());
 
@@ -1010,9 +1011,23 @@ export class SetlistEditorUI {
           <button class="sle-edit-step" data-passo="5">+5</button>
         </div>
 
-        <button class="sle-edit-ouvir" id="sleEdOuvir" aria-label="${t('ui.setlist.previewAriaLabel')}" title="${t('ui.setlist.previewAriaLabel')}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-        </button>
+        <div class="sle-edit-linha">
+          <button class="sle-edit-ouvir" id="sleEdOuvir" aria-label="${t('ui.setlist.previewAriaLabel')}" title="${t('ui.setlist.previewAriaLabel')}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+
+          <div class="sle-edit-pos-grupo">
+          <label class="sle-edit-label sle-edit-label-pos">${t('ui.setlist.editPosLabel')}</label>
+          <div class="sle-edit-pos" title="${t('ui.setlist.editPosLabel')}">
+            <button class="sle-edit-step" data-pos="-1" aria-label="−">−</button>
+            <input type="number" class="sle-edit-input sle-edit-pos-val" id="sleEdPos"
+                   min="1" max="${total}" inputmode="numeric" value="${index + 1}"
+                   aria-label="${t('ui.setlist.editPosLabel')}" />
+            <button class="sle-edit-step" data-pos="1" aria-label="+">+</button>
+          </div>
+          <span class="sle-edit-de">${t('ui.setlist.editPosOf', { total: String(total) })}</span>
+          </div>
+        </div>
 
         <div class="sle-edit-acoes">
           <button class="sle-edit-del" id="sleEdDel">${t('ui.setlist.editRemove')}</button>
@@ -1035,12 +1050,25 @@ export class SetlistEditorUI {
 
     const nomeEl = pop.querySelector('#sleEdNome') as HTMLInputElement;
     const bpmEl = pop.querySelector('#sleEdBpm') as HTMLInputElement;
+    // Guarda o que o painel MOSTROU ao abrir. Comparar com item.bpm nao serve:
+    // ritmo de biblioteca costuma vir sem bpm proprio e o campo abre em 100,
+    // entao (item.bpm || 0) dava 0 e QUALQUER save parecia alteracao — criava
+    // copia pessoal (nome roxo) so por mover a musica de posicao.
+    const nomeInicial = nomeEl.value.trim();
+    const bpmInicial = Number(bpmEl.value);
     const limpaBpm = (v: number): number => Math.max(40, Math.min(360, Math.round(v) || 100));
+
+    const posEl = pop.querySelector('#sleEdPos') as HTMLInputElement;
+    const limpaPos = (v: number): number => Math.max(1, Math.min(total, Math.round(v) || 1));
 
     pop.querySelectorAll<HTMLButtonElement>('.sle-edit-step').forEach(b => {
       b.addEventListener('click', () => {
-        bpmEl.value = String(limpaBpm(Number(bpmEl.value) + Number(b.dataset.passo)));
-        bpmEl.dispatchEvent(new Event('input'));
+        if (b.dataset.passo) {
+          bpmEl.value = String(limpaBpm(Number(bpmEl.value) + Number(b.dataset.passo)));
+          bpmEl.dispatchEvent(new Event('input'));
+        } else if (b.dataset.pos) {
+          posEl.value = String(limpaPos(Number(posEl.value) + Number(b.dataset.pos)));
+        }
       });
     });
 
@@ -1109,10 +1137,19 @@ export class SetlistEditorUI {
     ok.addEventListener('click', () => {
       const nome = nomeEl.value.trim().slice(0, 40);
       const bpm = limpaBpm(Number(bpmEl.value));
+      const pos = limpaPos(Number(posEl.value));
       if (!nome) { nomeEl.focus(); return; }
 
-      // Nada mudou: nao cria copia a toa.
-      if (nome === (item.name || '') && bpm === (item.bpm || 0)) { fechar(); return; }
+      const mudouPosicao = pos - 1 !== index;
+      const mudouConteudo = nome !== nomeInicial || bpm !== bpmInicial;
+
+      // So a posicao mudou: move e pronto, sem criar copia nenhuma.
+      if (!mudouConteudo) {
+        if (mudouPosicao) this.setlistManager?.moveItem(index, pos - 1);
+        fechar();
+        this.renderSetlist(container);
+        return;
+      }
 
       ok.disabled = true;
       ok.textContent = t('ui.setlist.editSaving');
@@ -1120,7 +1157,13 @@ export class SetlistEditorUI {
         ? this.onEditItem(index, nome, bpm)
         : Promise.resolve(this.setlistManager?.updateItem(index, { name: nome, bpm }))
       ).catch((err) => { console.error('[repertorio] editar falhou:', err); })
-       .then(() => { fechar(); this.renderSetlist(container); });
+       .then(() => {
+         // A posicao muda DEPOIS: o salvar acima trabalha com o indice atual,
+         // e mover antes faria ele editar a musica errada.
+         if (mudouPosicao) this.setlistManager?.moveItem(index, pos - 1);
+         fechar();
+         this.renderSetlist(container);
+       });
     });
 
     window.setTimeout(() => { nomeEl.focus(); nomeEl.select(); }, 40);
@@ -1781,6 +1824,54 @@ export class SetlistEditorUI {
       .sle-edit-bpm { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.85rem; }
       .sle-edit-bpm .sle-edit-input { margin: 0; text-align: center; }
       .sle-edit-bpm-val { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+      .sle-edit-de {
+        flex: 0 0 auto; font-size: 0.72rem; font-weight: 700;
+        color: rgba(255,255,255,0.4); padding-left: 0.1rem;
+      }
+      /* Play a esquerda, posicao a direita, na mesma linha. */
+      .sle-edit-linha {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 0.6rem; margin-bottom: 0.9rem;
+      }
+      /* A posicao e um numero de 1 a 2 digitos — nao precisa da linha toda
+         como o BPM. */
+      .sle-edit-pos { display: flex; align-items: center; gap: 0.35rem; }
+      /* Grade de 2 colunas: o rotulo e os tres botoes ocupam a PRIMEIRA, e o
+         "de N" fica na segunda. Assim o rotulo centraliza sobre os botoes de
+         verdade — antes ele centralizava sobre o grupo inteiro, "de N"
+         incluso, e saia deslocado. */
+      .sle-edit-pos-grupo {
+        display: grid;
+        grid-template-columns: auto auto;
+        align-items: center;
+        column-gap: 0.4rem;
+        row-gap: 0.3rem;
+      }
+      .sle-edit-label-pos {
+        grid-column: 1; grid-row: 1;
+        margin: 0; justify-self: center;
+      }
+      .sle-edit-pos-grupo > .sle-edit-pos { grid-column: 1; grid-row: 2; }
+      .sle-edit-pos-grupo > .sle-edit-de { grid-column: 2; grid-row: 2; }
+      /* Altura igual nos tres: sem isto o input e os passos ficam
+         desencontrados, porque cada um tem seu proprio padding. */
+      .sle-edit-pos .sle-edit-step,
+      .sle-edit-pos .sle-edit-input {
+        height: 36px; padding-top: 0; padding-bottom: 0; margin: 0;
+        display: flex; align-items: center; justify-content: center;
+      }
+      /* Centro do play no centro do par "-5" e "-" da linha do BPM logo
+         acima: dois botoes de 38px com 0,35rem entre eles = 81,6px, meio em
+         40,8px; menos metade do play (20px). */
+      .sle-edit-linha .sle-edit-ouvir {
+        margin-left: calc((38px * 2 + 0.35rem) / 2 - 20px);
+      }
+      .sle-edit-pos-val {
+        flex: 0 0 62px;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+      }
+      .sle-edit-pos .sle-edit-step { min-width: 34px; }
       .sle-edit-step {
         flex: 0 0 auto; min-width: 38px; padding: 0.55rem 0.4rem;
         border-radius: 9px; border: 1px solid rgba(0, 212, 255, 0.25);
@@ -1830,7 +1921,7 @@ export class SetlistEditorUI {
       /* So o play, redondo. O texto so repetia o que o icone ja diz. */
       .sle-edit-ouvir {
         display: flex; align-items: center; justify-content: center;
-        width: 40px; height: 40px; margin: 0 auto 0.9rem;
+        flex: 0 0 auto; width: 40px; height: 40px;
         border-radius: 50%;
         border: 1px solid rgba(62, 232, 167, 0.35);
         background: rgba(62, 232, 167, 0.1);
