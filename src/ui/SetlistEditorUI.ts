@@ -442,14 +442,22 @@ export class SetlistEditorUI {
             <button class="sle-hub-act sle-hub-share" data-id="${l.id}" aria-label="Compartilhar">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
+            ${lists.length > 1 ? `<button class="sle-hub-act sle-hub-del" data-id="${l.id}" aria-label="${t('ui.setlist.deleteAriaLabel')}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>` : '<span class="sle-hub-vazio" aria-hidden="true"></span>'}
             <button class="sle-hub-act sle-hub-dup" data-id="${l.id}" aria-label="${t('ui.setlist.duplicateAriaLabel')}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             </button>
-            ${lists.length > 1 ? `<button class="sle-hub-act sle-hub-del" data-id="${l.id}" aria-label="${t('ui.setlist.deleteAriaLabel')}">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </button>` : ''}
-            <button class="sle-hub-act sle-hub-open" data-id="${l.id}" aria-label="${t('ui.setlist.editAriaLabel')}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </div>
+
+          <div class="sle-hub-rodape">
+            <button class="sle-hub-tocar" data-id="${l.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              <span>${t('ui.setlist.playSetlistButton')}</span>
+            </button>
+            <button class="sle-hub-open" data-id="${l.id}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <span>${t('ui.setlist.openListButton')}</span>
             </button>
           </div>
         </div>
@@ -475,6 +483,18 @@ export class SetlistEditorUI {
     });
 
     // Editar (abrir a lista do repertório)
+    // "Tocar": troca pro repertorio e FECHA o editor, entregando a tela do
+    // palco ja com ele carregado. Diferente do "Ver", que abre a lista de
+    // musicas aqui dentro pra organizar.
+    container.querySelectorAll<HTMLElement>('.sle-hub-tocar').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mgr.switchSetlist(btn.dataset.id!);
+        onChanged();
+        this.close();
+      });
+    });
+
     container.querySelectorAll<HTMLElement>('.sle-hub-open').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -547,8 +567,9 @@ export class SetlistEditorUI {
         if (!btn.dataset.confirming) {
           btn.dataset.confirming = '1';
           const rotulo = btn.innerHTML;
-          btn.innerHTML = `<span style="font-size:0.68rem;font-weight:800;">${t('ui.setlist.deleteConfirm')}</span>`;
+          btn.innerHTML = `<span style="font-size:0.8rem;font-weight:800;white-space:nowrap;">${t('ui.setlist.deleteConfirm')}</span>`;
           btn.classList.add('sle-hub-del-confirm');
+          btn.setAttribute('aria-label', t('ui.setlist.deleteConfirm'));
           // Desarma sozinho em 3s, igual o "Limpar". Sem isso o botao fica
           // armado indefinidamente e um toque muito depois apaga o
           // repertorio — e a exclusao propaga pra todos os aparelhos.
@@ -556,6 +577,7 @@ export class SetlistEditorUI {
             if (!btn.isConnected || !btn.dataset.confirming) return;
             delete btn.dataset.confirming;
             btn.classList.remove('sle-hub-del-confirm');
+            btn.setAttribute('aria-label', t('ui.setlist.deleteAriaLabel'));
             btn.innerHTML = rotulo;
           }, 3000);
           return;
@@ -984,6 +1006,7 @@ export class SetlistEditorUI {
   private abrirEdicaoDoItem(index: number, container: HTMLElement): void {
     const item = this.setlistManager?.getItems()[index];
     if (!item || !this.overlay) return;
+    const total = this.setlistManager?.getItems().length || 1;
 
     this.overlay.querySelectorAll('.sle-edit-pop').forEach(el => el.remove());
 
@@ -1010,9 +1033,23 @@ export class SetlistEditorUI {
           <button class="sle-edit-step" data-passo="5">+5</button>
         </div>
 
-        <button class="sle-edit-ouvir" id="sleEdOuvir" aria-label="${t('ui.setlist.previewAriaLabel')}" title="${t('ui.setlist.previewAriaLabel')}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-        </button>
+        <div class="sle-edit-linha">
+          <button class="sle-edit-ouvir" id="sleEdOuvir" aria-label="${t('ui.setlist.previewAriaLabel')}" title="${t('ui.setlist.previewAriaLabel')}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+
+          <div class="sle-edit-pos-grupo">
+          <label class="sle-edit-label sle-edit-label-pos">${t('ui.setlist.editPosLabel')}</label>
+          <div class="sle-edit-pos" title="${t('ui.setlist.editPosLabel')}">
+            <button class="sle-edit-step" data-pos="-1" aria-label="−">−</button>
+            <input type="number" class="sle-edit-input sle-edit-pos-val" id="sleEdPos"
+                   min="1" max="${total}" inputmode="numeric" value="${index + 1}"
+                   aria-label="${t('ui.setlist.editPosLabel')}" />
+            <button class="sle-edit-step" data-pos="1" aria-label="+">+</button>
+          </div>
+          <span class="sle-edit-de">${t('ui.setlist.editPosOf', { total: String(total) })}</span>
+          </div>
+        </div>
 
         <div class="sle-edit-acoes">
           <button class="sle-edit-del" id="sleEdDel">${t('ui.setlist.editRemove')}</button>
@@ -1035,12 +1072,25 @@ export class SetlistEditorUI {
 
     const nomeEl = pop.querySelector('#sleEdNome') as HTMLInputElement;
     const bpmEl = pop.querySelector('#sleEdBpm') as HTMLInputElement;
+    // Guarda o que o painel MOSTROU ao abrir. Comparar com item.bpm nao serve:
+    // ritmo de biblioteca costuma vir sem bpm proprio e o campo abre em 100,
+    // entao (item.bpm || 0) dava 0 e QUALQUER save parecia alteracao — criava
+    // copia pessoal (nome roxo) so por mover a musica de posicao.
+    const nomeInicial = nomeEl.value.trim();
+    const bpmInicial = Number(bpmEl.value);
     const limpaBpm = (v: number): number => Math.max(40, Math.min(360, Math.round(v) || 100));
+
+    const posEl = pop.querySelector('#sleEdPos') as HTMLInputElement;
+    const limpaPos = (v: number): number => Math.max(1, Math.min(total, Math.round(v) || 1));
 
     pop.querySelectorAll<HTMLButtonElement>('.sle-edit-step').forEach(b => {
       b.addEventListener('click', () => {
-        bpmEl.value = String(limpaBpm(Number(bpmEl.value) + Number(b.dataset.passo)));
-        bpmEl.dispatchEvent(new Event('input'));
+        if (b.dataset.passo) {
+          bpmEl.value = String(limpaBpm(Number(bpmEl.value) + Number(b.dataset.passo)));
+          bpmEl.dispatchEvent(new Event('input'));
+        } else if (b.dataset.pos) {
+          posEl.value = String(limpaPos(Number(posEl.value) + Number(b.dataset.pos)));
+        }
       });
     });
 
@@ -1109,10 +1159,19 @@ export class SetlistEditorUI {
     ok.addEventListener('click', () => {
       const nome = nomeEl.value.trim().slice(0, 40);
       const bpm = limpaBpm(Number(bpmEl.value));
+      const pos = limpaPos(Number(posEl.value));
       if (!nome) { nomeEl.focus(); return; }
 
-      // Nada mudou: nao cria copia a toa.
-      if (nome === (item.name || '') && bpm === (item.bpm || 0)) { fechar(); return; }
+      const mudouPosicao = pos - 1 !== index;
+      const mudouConteudo = nome !== nomeInicial || bpm !== bpmInicial;
+
+      // So a posicao mudou: move e pronto, sem criar copia nenhuma.
+      if (!mudouConteudo) {
+        if (mudouPosicao) this.setlistManager?.moveItem(index, pos - 1);
+        fechar();
+        this.renderSetlist(container);
+        return;
+      }
 
       ok.disabled = true;
       ok.textContent = t('ui.setlist.editSaving');
@@ -1120,7 +1179,13 @@ export class SetlistEditorUI {
         ? this.onEditItem(index, nome, bpm)
         : Promise.resolve(this.setlistManager?.updateItem(index, { name: nome, bpm }))
       ).catch((err) => { console.error('[repertorio] editar falhou:', err); })
-       .then(() => { fechar(); this.renderSetlist(container); });
+       .then(() => {
+         // A posicao muda DEPOIS: o salvar acima trabalha com o indice atual,
+         // e mover antes faria ele editar a musica errada.
+         if (mudouPosicao) this.setlistManager?.moveItem(index, pos - 1);
+         fechar();
+         this.renderSetlist(container);
+       });
     });
 
     window.setTimeout(() => { nomeEl.focus(); nomeEl.select(); }, 40);
@@ -1781,6 +1846,54 @@ export class SetlistEditorUI {
       .sle-edit-bpm { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.85rem; }
       .sle-edit-bpm .sle-edit-input { margin: 0; text-align: center; }
       .sle-edit-bpm-val { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+      .sle-edit-de {
+        flex: 0 0 auto; font-size: 0.72rem; font-weight: 700;
+        color: rgba(255,255,255,0.4); padding-left: 0.1rem;
+      }
+      /* Play a esquerda, posicao a direita, na mesma linha. */
+      .sle-edit-linha {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 0.6rem; margin-bottom: 0.9rem;
+      }
+      /* A posicao e um numero de 1 a 2 digitos — nao precisa da linha toda
+         como o BPM. */
+      .sle-edit-pos { display: flex; align-items: center; gap: 0.35rem; }
+      /* Grade de 2 colunas: o rotulo e os tres botoes ocupam a PRIMEIRA, e o
+         "de N" fica na segunda. Assim o rotulo centraliza sobre os botoes de
+         verdade — antes ele centralizava sobre o grupo inteiro, "de N"
+         incluso, e saia deslocado. */
+      .sle-edit-pos-grupo {
+        display: grid;
+        grid-template-columns: auto auto;
+        align-items: center;
+        column-gap: 0.4rem;
+        row-gap: 0.3rem;
+      }
+      .sle-edit-label-pos {
+        grid-column: 1; grid-row: 1;
+        margin: 0; justify-self: center;
+      }
+      .sle-edit-pos-grupo > .sle-edit-pos { grid-column: 1; grid-row: 2; }
+      .sle-edit-pos-grupo > .sle-edit-de { grid-column: 2; grid-row: 2; }
+      /* Altura igual nos tres: sem isto o input e os passos ficam
+         desencontrados, porque cada um tem seu proprio padding. */
+      .sle-edit-pos .sle-edit-step,
+      .sle-edit-pos .sle-edit-input {
+        height: 36px; padding-top: 0; padding-bottom: 0; margin: 0;
+        display: flex; align-items: center; justify-content: center;
+      }
+      /* Centro do play no centro do par "-5" e "-" da linha do BPM logo
+         acima: dois botoes de 38px com 0,35rem entre eles = 81,6px, meio em
+         40,8px; menos metade do play (20px). */
+      .sle-edit-linha .sle-edit-ouvir {
+        margin-left: calc((38px * 2 + 0.35rem) / 2 - 20px);
+      }
+      .sle-edit-pos-val {
+        flex: 0 0 62px;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+      }
+      .sle-edit-pos .sle-edit-step { min-width: 34px; }
       .sle-edit-step {
         flex: 0 0 auto; min-width: 38px; padding: 0.55rem 0.4rem;
         border-radius: 9px; border: 1px solid rgba(0, 212, 255, 0.25);
@@ -1830,7 +1943,7 @@ export class SetlistEditorUI {
       /* So o play, redondo. O texto so repetia o que o icone ja diz. */
       .sle-edit-ouvir {
         display: flex; align-items: center; justify-content: center;
-        width: 40px; height: 40px; margin: 0 auto 0.9rem;
+        flex: 0 0 auto; width: 40px; height: 40px;
         border-radius: 50%;
         border: 1px solid rgba(62, 232, 167, 0.35);
         background: rgba(62, 232, 167, 0.1);
@@ -2024,12 +2137,17 @@ export class SetlistEditorUI {
       .sle-hub { display: none; }
       .sle-hub-list { padding: 0.75rem; }
       .sle-hub-card {
+        position: relative;   /* ancora dos 4 botoes no canto de cima */
         display: flex;
         flex-direction: column;
         align-items: stretch;
         gap: 0.55rem;
-        padding: 0.7rem 0.85rem;
-        min-height: 0;
+        padding: 0.35rem 0.85rem 0.7rem;
+        /* Os botoes sao absolutos e NAO empurram a altura, entao o piso
+           precisa cobrir o bloco 2x2: onde ele comeca (top) + duas linhas de
+           38px + o vao entre elas + a folga de baixo. Nem um pixel a mais —
+           o resto da altura quem define e o conteudo. */
+        min-height: calc(1.5rem + 38px * 2 + 0.35rem + 0.7rem);
         border-radius: 14px;
         border: 1.5px solid rgba(255, 255, 255, 0.1);
         background: rgba(255, 255, 255, 0.03);
@@ -2076,12 +2194,24 @@ export class SetlistEditorUI {
         font-weight: 800;
         letter-spacing: 0.08em;
       }
+      /* Os 4 (editar, compartilhar, copiar, excluir) vao pro canto superior
+         direito, em 2 x 2. Em fila unica embaixo eles ocupavam a largura
+         toda do card e empurravam o conteudo pra cima. */
       .sle-hub-card-actions {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 0.4rem;
+        position: absolute;
+        top: 1.15rem;
+        right: 0.6rem;
+        display: grid;
+        /* Colunas FIXAS: com "auto" qualquer botao que crescesse (o excluir
+           armado, por exemplo) alargava a coluna e empurrava o de cima. */
+        grid-template-columns: repeat(2, 38px);
+        gap: 0.35rem;
         flex-shrink: 0;
+      }
+      /* Espaco pro bloco dos botoes: 2 colunas de 38px + o vao entre elas +
+         a folga da borda. Sem isto o nome do repertorio passa por baixo. */
+      .sle-hub-card-main {
+        padding-right: calc(38px * 2 + 0.35rem + 0.9rem);
       }
       .sle-hub-act {
         width: 38px; height: 38px;
@@ -2097,12 +2227,71 @@ export class SetlistEditorUI {
         font-family: inherit;
       }
       .sle-hub-del { color: #ff6b83; border-color: rgba(255, 68, 102, 0.3); }
+      /* Buraco no lugar da lixeira quando o repertorio nao pode ser excluido
+         (so existe um). Sem ele a grade se fecha e o copiar pula pra coluna
+         da esquerda. */
+      .sle-hub-vazio { display: block; width: 38px; height: 38px; }
+
+      /* Armado: cresce PRA ESQUERDA, por cima do espaco vazio do card.
+         As colunas da grade continuam travadas em 38px, entao o botao de
+         cima nao se mexe — antes ele era empurrado junto. A margem negativa
+         e a largura extra: 96 - 38 = 58. */
       .sle-hub-del-confirm {
-        width: auto !important;
-        padding: 0 0.55rem;
-        background: rgba(255, 68, 102, 0.18) !important;
+        width: 108px !important;
+        margin-left: -70px;
+        /* Passa POR CIMA do que estiver ao lado. Sem isto ele cresce pra
+           esquerda e fica por baixo dos vizinhos, cortando o texto. */
+        position: relative;
+        z-index: 5;
+        padding: 0 0.5rem;
+        background: #ff4466 !important;
+        border-color: #ff4466 !important;
+        color: #fff !important;
+        animation: sle-del-pulsa 0.9s ease-in-out infinite;
       }
+      @keyframes sle-del-pulsa {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(255, 68, 102, 0.5); }
+        50%      { box-shadow: 0 0 0 5px rgba(255, 68, 102, 0); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .sle-hub-del-confirm { animation: none; }
+      }
+      /* "Abrir": saiu da grade dos 4 e virou botao de texto, no canto de
+         baixo a DIREITA, alinhado com os outros. Na grade de 38px nao
+         caberia palavra nenhuma. */
+      /* Tocar e Ver lado a lado, no canto de baixo a direita. */
+      /* Absoluto, igual aos 4 de cima. Com margin-bottom pra "subir" eles, a
+         margem empurrava o fundo do card e sobrava um vazio embaixo — o card
+         crescia junto em vez de so mover o botao. Fora do fluxo, o card volta
+         a ter a altura do bloco de botoes e nada mais. */
+      .sle-hub-rodape {
+        position: absolute;
+        right: 9.5rem;
+        bottom: 0.95rem;
+        display: flex; align-items: center; gap: 0.45rem;
+      }
+      /* Azul cheio: e a acao principal do card — leva a musica pro palco. */
+      .sle-hub-tocar {
+        display: flex; align-items: center; gap: 0.35rem;
+        padding: 0.45rem 0.85rem;
+        border-radius: 10px;
+        border: none;
+        background: #00D4FF;
+        color: #04121a;
+        font-size: 0.76rem; font-weight: 800; font-family: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .sle-hub-tocar:hover { background: #35dfff; }
       .sle-hub-open {
+        display: flex; align-items: center; gap: 0.4rem;
+        padding: 0.45rem 0.8rem;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 212, 255, 0.35);
+        background: rgba(0, 212, 255, 0.08);
+        font-size: 0.76rem; font-weight: 700; font-family: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
         color: #00D4FF;
         border-color: rgba(0, 212, 255, 0.35) !important;
         background: rgba(0, 212, 255, 0.06) !important;
