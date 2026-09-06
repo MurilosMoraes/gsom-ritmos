@@ -120,6 +120,8 @@ export const ui: Record<string, string> = {
   'ui.setlist.duplicateAriaLabel': 'Duplicate',
   'ui.setlist.deleteAriaLabel': 'Delete',
   'ui.setlist.editAriaLabel': 'Edit setlist (open list)',
+  'ui.setlist.openListButton': 'View',
+  'ui.setlist.playSetlistButton': 'Play',
   'ui.setlist.newRepertoire': 'New setlist',
   'ui.setlist.hubLimit': 'Limit of {max} setlists reached',
   'ui.setlist.saveAriaLabel': 'Save',

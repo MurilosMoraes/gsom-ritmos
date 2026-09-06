@@ -442,14 +442,22 @@ export class SetlistEditorUI {
             <button class="sle-hub-act sle-hub-share" data-id="${l.id}" aria-label="Compartilhar">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
+            ${lists.length > 1 ? `<button class="sle-hub-act sle-hub-del" data-id="${l.id}" aria-label="${t('ui.setlist.deleteAriaLabel')}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>` : '<span class="sle-hub-vazio" aria-hidden="true"></span>'}
             <button class="sle-hub-act sle-hub-dup" data-id="${l.id}" aria-label="${t('ui.setlist.duplicateAriaLabel')}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             </button>
-            ${lists.length > 1 ? `<button class="sle-hub-act sle-hub-del" data-id="${l.id}" aria-label="${t('ui.setlist.deleteAriaLabel')}">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </button>` : ''}
-            <button class="sle-hub-act sle-hub-open" data-id="${l.id}" aria-label="${t('ui.setlist.editAriaLabel')}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </div>
+
+          <div class="sle-hub-rodape">
+            <button class="sle-hub-tocar" data-id="${l.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              <span>${t('ui.setlist.playSetlistButton')}</span>
+            </button>
+            <button class="sle-hub-open" data-id="${l.id}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <span>${t('ui.setlist.openListButton')}</span>
             </button>
           </div>
         </div>
@@ -475,6 +483,18 @@ export class SetlistEditorUI {
     });
 
     // Editar (abrir a lista do repertório)
+    // "Tocar": troca pro repertorio e FECHA o editor, entregando a tela do
+    // palco ja com ele carregado. Diferente do "Ver", que abre a lista de
+    // musicas aqui dentro pra organizar.
+    container.querySelectorAll<HTMLElement>('.sle-hub-tocar').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mgr.switchSetlist(btn.dataset.id!);
+        onChanged();
+        this.close();
+      });
+    });
+
     container.querySelectorAll<HTMLElement>('.sle-hub-open').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -547,8 +567,9 @@ export class SetlistEditorUI {
         if (!btn.dataset.confirming) {
           btn.dataset.confirming = '1';
           const rotulo = btn.innerHTML;
-          btn.innerHTML = `<span style="font-size:0.68rem;font-weight:800;">${t('ui.setlist.deleteConfirm')}</span>`;
+          btn.innerHTML = `<span style="font-size:0.8rem;font-weight:800;white-space:nowrap;">${t('ui.setlist.deleteConfirm')}</span>`;
           btn.classList.add('sle-hub-del-confirm');
+          btn.setAttribute('aria-label', t('ui.setlist.deleteConfirm'));
           // Desarma sozinho em 3s, igual o "Limpar". Sem isso o botao fica
           // armado indefinidamente e um toque muito depois apaga o
           // repertorio — e a exclusao propaga pra todos os aparelhos.
@@ -556,6 +577,7 @@ export class SetlistEditorUI {
             if (!btn.isConnected || !btn.dataset.confirming) return;
             delete btn.dataset.confirming;
             btn.classList.remove('sle-hub-del-confirm');
+            btn.setAttribute('aria-label', t('ui.setlist.deleteAriaLabel'));
             btn.innerHTML = rotulo;
           }, 3000);
           return;
@@ -2115,12 +2137,17 @@ export class SetlistEditorUI {
       .sle-hub { display: none; }
       .sle-hub-list { padding: 0.75rem; }
       .sle-hub-card {
+        position: relative;   /* ancora dos 4 botoes no canto de cima */
         display: flex;
         flex-direction: column;
         align-items: stretch;
         gap: 0.55rem;
-        padding: 0.7rem 0.85rem;
-        min-height: 0;
+        padding: 0.35rem 0.85rem 0.7rem;
+        /* Os botoes sao absolutos e NAO empurram a altura, entao o piso
+           precisa cobrir o bloco 2x2: onde ele comeca (top) + duas linhas de
+           38px + o vao entre elas + a folga de baixo. Nem um pixel a mais —
+           o resto da altura quem define e o conteudo. */
+        min-height: calc(1.5rem + 38px * 2 + 0.35rem + 0.7rem);
         border-radius: 14px;
         border: 1.5px solid rgba(255, 255, 255, 0.1);
         background: rgba(255, 255, 255, 0.03);
@@ -2167,12 +2194,24 @@ export class SetlistEditorUI {
         font-weight: 800;
         letter-spacing: 0.08em;
       }
+      /* Os 4 (editar, compartilhar, copiar, excluir) vao pro canto superior
+         direito, em 2 x 2. Em fila unica embaixo eles ocupavam a largura
+         toda do card e empurravam o conteudo pra cima. */
       .sle-hub-card-actions {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 0.4rem;
+        position: absolute;
+        top: 1.15rem;
+        right: 0.6rem;
+        display: grid;
+        /* Colunas FIXAS: com "auto" qualquer botao que crescesse (o excluir
+           armado, por exemplo) alargava a coluna e empurrava o de cima. */
+        grid-template-columns: repeat(2, 38px);
+        gap: 0.35rem;
         flex-shrink: 0;
+      }
+      /* Espaco pro bloco dos botoes: 2 colunas de 38px + o vao entre elas +
+         a folga da borda. Sem isto o nome do repertorio passa por baixo. */
+      .sle-hub-card-main {
+        padding-right: calc(38px * 2 + 0.35rem + 0.9rem);
       }
       .sle-hub-act {
         width: 38px; height: 38px;
@@ -2188,12 +2227,71 @@ export class SetlistEditorUI {
         font-family: inherit;
       }
       .sle-hub-del { color: #ff6b83; border-color: rgba(255, 68, 102, 0.3); }
+      /* Buraco no lugar da lixeira quando o repertorio nao pode ser excluido
+         (so existe um). Sem ele a grade se fecha e o copiar pula pra coluna
+         da esquerda. */
+      .sle-hub-vazio { display: block; width: 38px; height: 38px; }
+
+      /* Armado: cresce PRA ESQUERDA, por cima do espaco vazio do card.
+         As colunas da grade continuam travadas em 38px, entao o botao de
+         cima nao se mexe — antes ele era empurrado junto. A margem negativa
+         e a largura extra: 96 - 38 = 58. */
       .sle-hub-del-confirm {
-        width: auto !important;
-        padding: 0 0.55rem;
-        background: rgba(255, 68, 102, 0.18) !important;
+        width: 108px !important;
+        margin-left: -70px;
+        /* Passa POR CIMA do que estiver ao lado. Sem isto ele cresce pra
+           esquerda e fica por baixo dos vizinhos, cortando o texto. */
+        position: relative;
+        z-index: 5;
+        padding: 0 0.5rem;
+        background: #ff4466 !important;
+        border-color: #ff4466 !important;
+        color: #fff !important;
+        animation: sle-del-pulsa 0.9s ease-in-out infinite;
       }
+      @keyframes sle-del-pulsa {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(255, 68, 102, 0.5); }
+        50%      { box-shadow: 0 0 0 5px rgba(255, 68, 102, 0); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .sle-hub-del-confirm { animation: none; }
+      }
+      /* "Abrir": saiu da grade dos 4 e virou botao de texto, no canto de
+         baixo a DIREITA, alinhado com os outros. Na grade de 38px nao
+         caberia palavra nenhuma. */
+      /* Tocar e Ver lado a lado, no canto de baixo a direita. */
+      /* Absoluto, igual aos 4 de cima. Com margin-bottom pra "subir" eles, a
+         margem empurrava o fundo do card e sobrava um vazio embaixo — o card
+         crescia junto em vez de so mover o botao. Fora do fluxo, o card volta
+         a ter a altura do bloco de botoes e nada mais. */
+      .sle-hub-rodape {
+        position: absolute;
+        right: 9.5rem;
+        bottom: 0.95rem;
+        display: flex; align-items: center; gap: 0.45rem;
+      }
+      /* Azul cheio: e a acao principal do card — leva a musica pro palco. */
+      .sle-hub-tocar {
+        display: flex; align-items: center; gap: 0.35rem;
+        padding: 0.45rem 0.85rem;
+        border-radius: 10px;
+        border: none;
+        background: #00D4FF;
+        color: #04121a;
+        font-size: 0.76rem; font-weight: 800; font-family: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .sle-hub-tocar:hover { background: #35dfff; }
       .sle-hub-open {
+        display: flex; align-items: center; gap: 0.4rem;
+        padding: 0.45rem 0.8rem;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 212, 255, 0.35);
+        background: rgba(0, 212, 255, 0.08);
+        font-size: 0.76rem; font-weight: 700; font-family: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
         color: #00D4FF;
         border-color: rgba(0, 212, 255, 0.35) !important;
         background: rgba(0, 212, 255, 0.06) !important;
