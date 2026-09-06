@@ -33,19 +33,33 @@ interface ActivePreview {
   sources: AudioBufferSourceNode[];
   stopTimer: number;
   onStop?: () => void;
+  /** Estado do loop: as camadas do main, e a partir de quando repor. */
+  loop?: {
+    timer: number;
+    proximoCiclo: number;
+    indice: number;              // camada da vez
+    camadas: Array<{
+      duracaoCiclo: number;
+      passos: number;
+      duracaoPasso: number;
+      pattern: boolean[][];
+      volumes: number[][];
+      canais: Array<{ ch: number; buffer: AudioBuffer | null }>;
+    }>;
+  };
 }
 
 const PREVIEW_GAIN = 0.35; // ≈ -9dB
 const CROSSFADE_MS = 50;
-// Duração MÍNIMA do preview em segundos. Repetimos o ciclo completo da
-// variação até atingir pelo menos isso. Se o ciclo for longo (ex: 32 steps
-// a speed=2), já passa esse mínimo no 1º ciclo e preview para ao fim dele.
-// Se curto (ex: 8 steps a speed=1, ritmo rápido), repete pra dar contexto.
-// ≈ 6s é tempo suficiente pra "sentir" o ritmo sem virar loop infinito.
-const PREVIEW_MIN_DURATION_S = 6;
-// Teto de segurança pra não tocar eternamente se o ciclo por algum motivo
-// medir 0s (evita loop travado).
-const PREVIEW_MAX_DURATION_S = 14;
+// A prévia toca o ciclo COMPLETO da variação main 1, em loop, até a pessoa
+// parar ou sair. Antes ela se auto-parava depois de ~6s: quem estava
+// escolhendo ritmo tinha que ficar reapertando pra continuar ouvindo.
+//
+// Como cada batida é um BufferSource (que só toca uma vez), loop infinito
+// não dá pra agendar de uma vez. Então agendamos uma JANELA à frente e um
+// temporizador reabastece antes de ela acabar.
+const AGENDA_JANELA_S = 2.5;   // quanto de áudio fica agendado à frente
+const AGENDA_TICK_MS = 700;    // de quanto em quanto tempo reabastece
 
 export class PreviewPlayer {
   private audioContext: AudioContext;
@@ -110,68 +124,63 @@ export class PreviewPlayer {
       this.stopActive(true);
     }
 
-    // Extrai variação main 0
-    const variation = rhythmData.variations?.main?.[0];
-    if (!variation) throw new Error('Ritmo sem variação main');
+    // So a VARIACAO 1 do main, em loop. Cheguei a fazer a previa revezar as
+    // tres camadas achando que o Frevo soava picotado por causa disso — mas
+    // a previa e pra dar uma amostra do ritmo, nao tocar o arranjo inteiro.
+    const variacoes = (rhythmData.variations?.main || []).slice(0, 1);
+    if (!variacoes.length) throw new Error('Ritmo sem variação main');
 
-    const steps = variation.steps || 16;
-    const speed = variation.speed || 1;
     // bpmOverride tem prioridade — user pode ter salvado ritmo com BPM custom
     // e rhythm_data.tempo ficou com valor do export, não do save.
     const tempo = opts?.bpmOverride && opts.bpmOverride > 0
       ? opts.bpmOverride
       : (rhythmData.tempo || 80);
-
-    const pattern = expandPattern(variation.pattern || []);
-    const volumes = expandVolumes(variation.volumes || []);
-    const audioFiles = variation.audioFiles || [];
-
-    // Duração do step em segundos — mesma fórmula do Scheduler.
-    // (secondsPerBeat/2)/speed → step é sempre "semicolcheia" do beat,
-    // ajustado pela velocidade da variação.
     const secondsPerBeat = 60 / tempo;
-    const stepDuration = (secondsPerBeat / 2) / (speed || 1);
-    const cycleDuration = steps * stepDuration;
 
-    // Safety: se ciclo for degenerado, não toca (evita loop travado ou
-    // agendamento instantâneo). 50ms é o mínimo razoável pra um ciclo.
-    if (!(cycleDuration > 0.05)) {
-      throw new Error(`PreviewPlayer: ciclo degenerado (${cycleDuration}s)`);
-    }
+    const camadas: Array<{
+      duracaoCiclo: number; passos: number; duracaoPasso: number;
+      pattern: boolean[][]; volumes: number[][];
+      canais: Array<{ ch: number; buffer: AudioBuffer | null }>;
+    }> = [];
 
-    // Quantos ciclos tocar — garante duração mínima sem virar loop eterno.
-    // Sempre pelo menos 1 ciclo, mesmo que passe do máximo (pra não cortar
-    // ritmo no meio e soar estranho).
-    let cyclesToPlay = Math.max(1, Math.ceil(PREVIEW_MIN_DURATION_S / cycleDuration));
-    if (cyclesToPlay * cycleDuration > PREVIEW_MAX_DURATION_S) {
-      // Se mesmo 1 ciclo passa do máximo, deixa tocar (ritmo muito lento).
-      // Senão, reduz pra caber no teto.
-      if (cycleDuration <= PREVIEW_MAX_DURATION_S) {
-        cyclesToPlay = Math.max(1, Math.floor(PREVIEW_MAX_DURATION_S / cycleDuration));
+    for (const variation of variacoes) {
+      const steps = variation.steps || 16;
+      const speed = variation.speed || 1;
+      // (secondsPerBeat/2)/speed → step é sempre "semicolcheia" do beat,
+      // ajustado pela velocidade da variação. Mesma fórmula do Scheduler.
+      const stepDuration = (secondsPerBeat / 2) / (speed || 1);
+      const cycleDuration = steps * stepDuration;
+      // Ciclo degenerado: pula essa camada em vez de derrubar a previa toda.
+      if (!(cycleDuration > 0.05)) continue;
+
+      // Passar `steps` aqui NAO e opcional: o padrao dessas funcoes e 16, e
+      // sem o argumento elas CORTAM a linha nesse tamanho. Ritmo de 32 passos
+      // (Frevo e mais 23) perdia a segunda metade do compasso e a previa
+      // tocava meio compasso e ficava 16 passos em silencio — o "toca e para"
+      // que o Staner ouviu. Pega 47 dos 180 ritmos: os de 8, 12, 24 e 32.
+      const pattern = expandPattern(variation.pattern || [], steps);
+      const volumes = expandVolumes(variation.volumes || [], steps);
+      const audioFiles = variation.audioFiles || [];
+
+      const canais: Array<{ ch: number; buffer: AudioBuffer | null }> = [];
+      for (let ch = 0; ch < pattern.length; ch++) {
+        if (!pattern[ch].some(x => x)) continue;
+        const audioFile = audioFiles[ch];
+        if (!audioFile?.midiPath) { canais.push({ ch, buffer: null }); continue; }
+        try {
+          const buffer = await this.audioManager.loadAudioFromPath(normalizeMidiPath(audioFile.midiPath));
+          canais.push({ ch, buffer });
+        } catch {
+          canais.push({ ch, buffer: null });
+        }
       }
-    }
-    const totalDuration = cyclesToPlay * cycleDuration;
-
-    // Carrega samples dos canais ativos (os que têm pelo menos 1 step true)
-    const activeChannels: Array<{ ch: number; buffer: AudioBuffer | null }> = [];
-    for (let ch = 0; ch < pattern.length; ch++) {
-      const hasHit = pattern[ch].some(s => s);
-      if (!hasHit) continue;
-      const audioFile = audioFiles[ch];
-      if (!audioFile?.midiPath) { activeChannels.push({ ch, buffer: null }); continue; }
-      try {
-        const path = normalizeMidiPath(audioFile.midiPath);
-        const buffer = await this.audioManager.loadAudioFromPath(path);
-        activeChannels.push({ ch, buffer });
-      } catch {
-        activeChannels.push({ ch, buffer: null });
-      }
+      camadas.push({ duracaoCiclo: cycleDuration, passos: steps, duracaoPasso: stepDuration, pattern, volumes, canais });
     }
 
-    // Durante o await acima outro play() pode ter iniciado. Se o estado
-    // ativo não for mais este, aborta silenciosamente.
-    // (Sem cancellation token aqui — check simples baseado em tempo.)
-    // Também protege iOS onde Web Audio pode ter sido suspenso de novo.
+    if (!camadas.length) throw new Error('PreviewPlayer: nenhuma camada tocavel');
+
+    // Durante os await acima o AudioContext pode ter sido suspenso de novo
+    // (iOS faz isso ao sair e voltar).
     if (this.audioContext.state === 'suspended') {
       try { await this.audioContext.resume(); } catch { /* ok */ }
     }
@@ -184,53 +193,77 @@ export class PreviewPlayer {
 
     const startTime = this.audioContext.currentTime + 0.04;
     const fadeInEnd = startTime + CROSSFADE_MS / 1000;
-    const fadeOutStart = startTime + totalDuration;
-    const endTime = fadeOutStart + CROSSFADE_MS / 1000;
 
     // Envelope do gain bus: 0 → PREVIEW_GAIN → 0. As rampas precisam dos
     // setValueAtTime de ANCORAGEM antes, senão linearRampToValueAtTime
     // interpola desde o último valor conhecido e pode começar em zero
     // demorando até fadeOutStart pra atingir PREVIEW_GAIN — causando o
     // "mudo" intermitente que o user reportou.
+    // Sobe e FICA. O fade de saida e agendado no stop, nao aqui — o loop
+    // nao tem fim previsto.
     const busGain = this.previewGain(); // 20% abaixo do volume geral
     gainNode.gain.linearRampToValueAtTime(busGain, fadeInEnd);
-    gainNode.gain.setValueAtTime(busGain, fadeOutStart);
-    gainNode.gain.linearRampToValueAtTime(0, endTime);
 
     const sources: AudioBufferSourceNode[] = [];
 
-    // Agenda TODOS os ciclos. Cada hit é um BufferSourceNode próprio
-    // (Web Audio: source só pode start() uma vez).
-    for (let cycle = 0; cycle < cyclesToPlay; cycle++) {
-      const cycleStart = startTime + cycle * cycleDuration;
-      for (let step = 0; step < steps; step++) {
-        const stepTime = cycleStart + step * stepDuration;
-        for (const { ch, buffer } of activeChannels) {
+    this.active = {
+      id, gainNode, sources, stopTimer: 0,
+      loop: { timer: 0, proximoCiclo: startTime, indice: 0, camadas },
+    };
+
+    // Primeira leva agendada na hora; o resto vem do temporizador.
+    this.abastecerLoop();
+    this.active.loop!.timer = window.setInterval(() => this.abastecerLoop(), AGENDA_TICK_MS);
+
+    this.notify();
+  }
+
+  /**
+   * Mantem a fila de audio cheia enquanto a previa estiver tocando.
+   *
+   * Cada batida e um BufferSource, que so pode tocar UMA vez — entao loop
+   * infinito nao da pra agendar de uma so vez. Agenda-se uma janela a
+   * frente e este metodo repoe antes de ela secar.
+   */
+  private abastecerLoop(): void {
+    const a = this.active;
+    if (!a?.loop) return;
+    const L = a.loop;
+    const limite = this.audioContext.currentTime + AGENDA_JANELA_S;
+
+    while (L.proximoCiclo < limite) {
+      const C = L.camadas[L.indice % L.camadas.length];
+      const inicio = L.proximoCiclo;
+      for (let step = 0; step < C.passos; step++) {
+        const quando = inicio + step * C.duracaoPasso;
+        for (const { ch, buffer } of C.canais) {
           if (!buffer) continue;
-          if (!pattern[ch][step]) continue;
-          const vol = volumes[ch]?.[step] ?? 1;
+          if (!C.pattern[ch][step]) continue;
+          const vol = C.volumes[ch]?.[step] ?? 1;
           if (vol <= 0) continue;
 
           const src = this.audioContext.createBufferSource();
           src.buffer = buffer;
           const stepGain = this.audioContext.createGain();
           stepGain.gain.value = Math.min(vol, 1.5);
-          src.connect(stepGain).connect(gainNode);
-          try { src.start(stepTime); } catch { /* tempo no passado, ignora */ }
-          sources.push(src);
+          src.connect(stepGain).connect(a.gainNode);
+          try { src.start(quando); } catch { /* tempo no passado, ignora */ }
+          a.sources.push(src);
         }
       }
+      L.proximoCiclo += C.duracaoCiclo;
+      L.indice++;
     }
 
-    // Auto-stop após endTime (fadeOut + folga)
-    const stopTimer = window.setTimeout(() => {
-      if (this.active?.id === id) {
-        this.stopActive(false);
-      }
-    }, (endTime - this.audioContext.currentTime) * 1000 + 100);
-
-    this.active = { id, gainNode, sources, stopTimer };
-    this.notify();
+    // A lista de sources so cresce; solta as que ja tocaram, senao um preview
+    // deixado tocando por minutos vira vazamento de memoria.
+    if (a.sources.length > 400) {
+      const agora = this.audioContext.currentTime;
+      a.sources = a.sources.filter(src => {
+        const fim = (src as any).__fimEm as number | undefined;
+        return fim === undefined || fim > agora;
+      }).slice(-400);
+    }
   }
 
   /**
@@ -243,8 +276,11 @@ export class PreviewPlayer {
 
   private stopActive(immediate: boolean): void {
     if (!this.active) return;
-    const { gainNode, sources, stopTimer, onStop } = this.active;
+    const { gainNode, sources, stopTimer, onStop, loop } = this.active;
     clearTimeout(stopTimer);
+    // Desliga o reabastecimento ANTES de tudo: sem isto o temporizador
+    // continua agendando batidas de um preview que ja parou.
+    if (loop?.timer) clearInterval(loop.timer);
 
     const now = this.audioContext.currentTime;
     if (immediate) {

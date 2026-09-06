@@ -242,9 +242,6 @@ export class SetlistEditorUI {
         <span class="sle-panel-title">${t('ui.setlist.panelTitle')}</span>
         <div class="sle-panel-header-actions">
           <button class="sle-clear-btn">${t('ui.setlist.clearButton')}</button>
-          <button class="sle-setlist-hdr-act sle-setlist-rename-btn" aria-label="${t('ui.setlist.renameAriaLabel')}" title="${t('ui.setlist.renameAriaLabel')}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-          </button>
           <button class="sle-setlist-hdr-act sle-setlist-share-btn" aria-label="Compartilhar" title="Compartilhar repertório">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           </button>
@@ -347,10 +344,6 @@ export class SetlistEditorUI {
     this.renderSetlistsBar(setlistsBar, refreshAll);
 
     // Renomear repertório ativo (lápis ao lado do Limpar) → editor inline na barra
-    setlistPanel.querySelector('.sle-setlist-rename-btn')?.addEventListener('click', () => {
-      const active = this.setlistManager?.getSetlists().find(l => l.active);
-      if (active) this.openSetlistEditInline(setlistsBar, active.id, refreshAll);
-    });
     // Compartilhar repertório ativo (ícone ao lado do lápis) → hook do main.ts
     setlistPanel.querySelector('.sle-setlist-share-btn')?.addEventListener('click', () => {
       const active = this.setlistManager?.getSetlists().find(l => l.active);
