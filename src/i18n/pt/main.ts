@@ -398,7 +398,7 @@ export const main: Record<string, string> = {
   'main.saveRhythm.addToSetlistLabel': 'Adicionar ao repertório',
   'main.saveRhythm.noAddButton': 'Não adicionar',
   'main.saveRhythm.saveAsNewButton': 'Salvar como novo',
-  'main.saveRhythm.updateButton': 'Atualizar "{name}"',
+  'main.saveRhythm.updateButton': 'Atualizar ritmo',
   'main.saveRhythm.cancelButton': 'Cancelar',
   'main.saveRhythm.saveButton': 'Salvar ritmo',
   'main.saveRhythm.nameRequiredToast': 'Dê um nome ao ritmo',
@@ -576,6 +576,11 @@ export const main: Record<string, string> = {
   'main.allRhythms.emptyResults': 'Nada achado',
   'main.allRhythms.emptyResultsQuery': 'Nada achado pra "{query}"',
   'main.desktopPanel.setlistEmptyHint': 'Repertório vazio.<br>Monte no botão REPERTÓRIO.',
+  'main.desktopPanel.setlistSearchPlaceholder': 'Buscar repertório',
+  'main.desktopPanel.sortRecent': 'Recentes',
+  'main.desktopPanel.sortAz': 'A-Z',
+  'main.desktopPanel.sortAriaLabel': 'Ordenar repertórios',
+  'main.desktopPanel.setlistNoMatch': 'Nenhum repertório com esse nome.',
 
   // ── Duplicate / clone rhythm (admin editor) ──
   'main.alert.rhythmLoadFailedNamed': 'Erro ao carregar ritmo "{name}"',
