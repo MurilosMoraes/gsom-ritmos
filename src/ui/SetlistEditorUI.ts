@@ -1215,6 +1215,9 @@ export class SetlistEditorUI {
     const item = this.setlistManager?.getItems()[index];
     if (!item || !this.overlay) return;
     const total = this.setlistManager?.getItems().length || 1;
+    // Mesmo valor que a lista mostra embaixo do nome. Se ainda nao chegou,
+    // abre em 100 e o fetch corrige logo abaixo.
+    const bpmMostrado = this.bpmConhecido(item);
 
     this.overlay.querySelectorAll('.sle-edit-pop').forEach(el => el.remove());
 
@@ -1236,7 +1239,7 @@ export class SetlistEditorUI {
           <button class="sle-edit-step" data-passo="-5">−5</button>
           <button class="sle-edit-step" data-passo="-1">−</button>
           <input type="number" class="sle-edit-input sle-edit-bpm-val" id="sleEdBpm"
-                 min="40" max="360" inputmode="numeric" value="${item.bpm || 100}" />
+                 min="40" max="360" inputmode="numeric" value="${bpmMostrado ?? 100}" />
           <button class="sle-edit-step" data-passo="1">+</button>
           <button class="sle-edit-step" data-passo="5">+5</button>
         </div>
@@ -1285,7 +1288,20 @@ export class SetlistEditorUI {
     // entao (item.bpm || 0) dava 0 e QUALQUER save parecia alteracao — criava
     // copia pessoal (nome roxo) so por mover a musica de posicao.
     const nomeInicial = nomeEl.value.trim();
-    const bpmInicial = Number(bpmEl.value);
+    let bpmInicial = Number(bpmEl.value);
+
+    // O BPM real do ritmo pode nao ter chegado a tempo de abrir o painel.
+    // Quando chegar, entra no campo — e vira o valor de referencia, senao
+    // salvar sem mexer em nada contaria como alteracao e criaria copia.
+    // So sobrescreve se ninguem tocou no campo ainda.
+    if (bpmMostrado === null) {
+      void this.buscarBpm(item).then(bpm => {
+        if (bpm === null || !bpmEl.isConnected || bpmEl.dataset.mexido) return;
+        bpmEl.value = String(bpm);
+        bpmInicial = bpm;
+      });
+    }
+    bpmEl.addEventListener('input', () => { bpmEl.dataset.mexido = '1'; });
     const limpaBpm = (v: number): number => Math.max(40, Math.min(360, Math.round(v) || 100));
 
     const posEl = pop.querySelector('#sleEdPos') as HTMLInputElement;
@@ -1568,24 +1584,39 @@ export class SetlistEditorUI {
   private pintarBpm(item: SetlistItem, el: HTMLElement): void {
     const escrever = (bpm: number): void => { el.textContent = `${bpm} BPM`; };
 
-    if (item.bpm) { escrever(item.bpm); return; }
+    const jaSei = this.bpmConhecido(item);
+    if (jaSei !== null) { escrever(jaSei); return; }
 
+    void this.buscarBpm(item).then(bpm => {
+      // A lista pode ter sido re-renderizada enquanto o fetch corria.
+      if (bpm !== null && el.isConnected) escrever(bpm);
+    });
+  }
+
+  /** BPM que da pra saber AGORA, sem ir buscar nada. null = so o JSON sabe.
+   *  Card e painel de editar leem daqui — foi assim que um mostrava 136 e o
+   *  outro 100: o painel abria num 100 chumbado em vez de perguntar. */
+  private bpmConhecido(item: SetlistItem): number | null {
+    if (item.bpm) return item.bpm;
     const chave = item.userRhythmId || item.path;
-    if (!chave) return;
+    return (chave && this.bpmCache.get(chave)) || null;
+  }
 
-    const emCache = this.bpmCache.get(chave);
-    if (emCache) { escrever(emCache); return; }
-    if (!this.resolveRhythmData) return;
-
-    void this.resolveRhythmData({ name: item.name, path: item.path, userRhythmId: item.userRhythmId })
-      .then(data => {
-        const bpm = Number(data?.tempo);
-        if (!Number.isFinite(bpm) || bpm <= 0) return;
-        this.bpmCache.set(chave, bpm);
-        // A lista pode ter sido re-renderizada enquanto o fetch corria.
-        if (el.isConnected) escrever(bpm);
-      })
-      .catch(() => { /* sem BPM a linha fica vazia; o espaco ja esta reservado */ });
+  /** Le o BPM no JSON do ritmo e guarda. Ritmo pessoal (o que vem da
+   *  comunidade tambem) sai do servico local, sem rede. */
+  private async buscarBpm(item: SetlistItem): Promise<number | null> {
+    const chave = item.userRhythmId || item.path;
+    if (!chave || !this.resolveRhythmData) return null;
+    try {
+      const data = await this.resolveRhythmData(
+        { name: item.name, path: item.path, userRhythmId: item.userRhythmId });
+      const bpm = Number(data?.tempo);
+      if (!Number.isFinite(bpm) || bpm <= 0) return null;
+      this.bpmCache.set(chave, bpm);
+      return bpm;
+    } catch {
+      return null;
+    }
   }
 
   private iconPreview(): string {
