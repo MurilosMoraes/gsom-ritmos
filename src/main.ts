@@ -8687,6 +8687,27 @@ class RhythmSequencer {
           const item = this.setlistManager.getItems()[index];
           if (!item) return;
 
+          // O player esta com ESTA musica carregada? Tem que ser medido AGORA:
+          // o caminho da biblioteca troca o nome e o id do item logo abaixo, e
+          // depois disso nao da mais pra reconhecer o que estava na tela.
+          const noPlayer = item.userRhythmId
+            ? item.userRhythmId === this.currentUserRhythmId
+            : (!this.currentUserRhythmId && item.name === this.currentRhythmName);
+
+          // Salvou o BPM da musica que esta no player: entra na hora, tocando
+          // ou parada. Antes o valor novo so valia no proximo carregamento —
+          // quem estava com ela na tela continuava no andamento velho, e no
+          // meio do show isso e o BPM errado tocando.
+          const aplicarNoPlayer = (): void => {
+            if (!noPlayer) return;
+            // setTempo ja avisa quem escuta 'tempo' — o campo, o slider e o
+            // subtitulo "· BPM" se atualizam sozinhos.
+            this.stateManager.setTempo(bpm);
+            // O "restaurar BPM original" passa a apontar pro valor recem-salvo:
+            // depois da edicao e ELE o BPM da musica, nao o de antes.
+            this.currentRhythmOriginalBpm = bpm;
+          };
+
           const repertorio = this.setlistManager.getSetlists().find(l => l.active)?.name || '';
           const nomeCopia = repertorio ? `${nome} (${repertorio})` : nome;
 
@@ -8699,6 +8720,7 @@ class RhythmSequencer {
               dados.tempo = bpm;
               await this.userRhythmService.update(item.userRhythmId, nomeCopia, bpm, dados);
               this.setlistManager.updateItem(index, { name: nome, bpm });
+              aplicarNoPlayer();
               this.updateSetlistUI();
               return;
             }
@@ -8715,6 +8737,7 @@ class RhythmSequencer {
             name: nome, bpm, userRhythmId: salvo.id, path: '',
             baseRhythmName: item.baseRhythmName || item.name,
           });
+          aplicarNoPlayer();
           this.updateSetlistUI();
         };
 
