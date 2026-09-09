@@ -398,7 +398,7 @@ export const main: Record<string, string> = {
   'main.saveRhythm.addToSetlistLabel': 'Add to setlist',
   'main.saveRhythm.noAddButton': "Don't add",
   'main.saveRhythm.saveAsNewButton': 'Save as new',
-  'main.saveRhythm.updateButton': 'Update "{name}"',
+  'main.saveRhythm.updateButton': 'Update rhythm',
   'main.saveRhythm.cancelButton': 'Cancel',
   'main.saveRhythm.saveButton': 'Save rhythm',
   'main.saveRhythm.nameRequiredToast': 'Give the rhythm a name',
@@ -576,6 +576,11 @@ export const main: Record<string, string> = {
   'main.allRhythms.emptyResults': 'Nothing found',
   'main.allRhythms.emptyResultsQuery': 'Nothing found for "{query}"',
   'main.desktopPanel.setlistEmptyHint': "Setlist's empty.<br>Build one with the SETLIST button.",
+  'main.desktopPanel.setlistSearchPlaceholder': 'Search setlist',
+  'main.desktopPanel.sortRecent': 'Recent',
+  'main.desktopPanel.sortAz': 'A-Z',
+  'main.desktopPanel.sortAriaLabel': 'Sort setlists',
+  'main.desktopPanel.setlistNoMatch': 'No setlist with that name.',
 
   // ── Duplicate / clone rhythm (admin editor) ──
   'main.alert.rhythmLoadFailedNamed': 'Error loading rhythm "{name}"',

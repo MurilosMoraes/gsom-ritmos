@@ -2099,7 +2099,85 @@ body:has(#pedalBtInput) .user-layout {
   box-shadow: 0 0 14px rgba(0, 212, 255, 0.3);
 }
 
-/* ── Painel desktop DIREITO: chips de seleção de repertório ─────── */
+/* ── Painel desktop DIREITO: lista de repertórios ──────────────── */
+/* Barra de cima: busca por nome + botão de ordem (A-Z / Recentes). */
+.desk-setlists-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-bottom: 0.4rem;
+}
+/* A busca toma a sobra; o botão de ordem tem a largura do texto dele. */
+.desk-setlists-search { flex: 1; min-width: 0; }
+.desk-setlist-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(0, 212, 255, 0.85);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.desk-setlist-sort:hover {
+  border-color: rgba(0, 212, 255, 0.8);
+  background: rgba(0, 212, 255, 0.08);
+  color: #fff;
+}
+/* Um repertório por linha. Em fileira de chips, muitos deles embrulhavam em
+   varias linhas e o nome longo virava reticencia. */
+.desk-setlists-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  /* Lista grande nao pode empurrar as musicas do repertorio ativo pra fora
+     da tela: acima de ~6 linhas ela rola dentro do proprio bloco. */
+  max-height: 30vh;
+  overflow-y: auto;
+  margin-bottom: 0.5rem;
+}
+.desk-setlist-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.42rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.desk-setlist-row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.desk-setlist-row:hover { border-color: rgba(0, 212, 255, 0.4); color: #fff; }
+.desk-setlist-row.active {
+  border-color: #00D4FF;
+  color: #00D4FF;
+  background: rgba(0, 212, 255, 0.08);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
+}
+
 .desk-setlists-chips {
   display: flex;
   flex-wrap: wrap;

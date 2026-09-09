@@ -354,13 +354,16 @@ export class SetlistManager {
 
   // ─── API de MÚLTIPLOS repertórios ───────────────────────────────────
 
-  getSetlists(): Array<{ id: string; name: string; count: number; active: boolean; shared: boolean }> {
+  getSetlists(): Array<{ id: string; name: string; count: number; active: boolean; shared: boolean; lastModified: number }> {
     return this.state.setlists.map(s => ({
       id: s.id,
       name: s.name,
       count: s.items.length,
       active: s.id === this.state.activeId,
       shared: s.sharedImport === true,
+      // Repertorio de antes do campo existir vale 0 — vai pro fim da
+      // ordem por recentes em vez de fingir que acabou de ser mexido.
+      lastModified: s.lastModified || 0,
     }));
   }
 

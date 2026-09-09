@@ -6687,8 +6687,8 @@ class RhythmSequencer {
           </div>
           <div class="x-save-actions">
             ${editing
-              ? `<button class="x-btn x-btn-ghost" id="xSaveAsNew" type="button">${t('main.saveRhythm.saveAsNewButton')}</button>
-                 <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">${t('main.saveRhythm.updateButton', { name: esc(editing.name.length > 18 ? editing.name.slice(0, 18) + '…' : editing.name) })}</button>`
+              ? `<button class="x-btn x-btn-ghost" id="xSaveConfirm" type="button">${t('main.saveRhythm.updateButton')}</button>
+                 <button class="x-btn x-btn-primary" id="xSaveAsNew" type="button">${t('main.saveRhythm.saveAsNewButton')}</button>`
               : `<button class="x-btn x-btn-ghost" id="xSaveCancel" type="button">${t('main.saveRhythm.cancelButton')}</button>
                  <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">${t('main.saveRhythm.saveButton')}</button>`}
           </div>
@@ -6715,6 +6715,20 @@ class RhythmSequencer {
 
     const nameInput = overlay.querySelector('#xSaveName') as HTMLInputElement;
     setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
+
+    // Nome trocado: "Atualizar 'Ritmo 1'" nao pode mais fazer o que diz, e
+    // apaga. Quem fica de pe e o "Salvar como novo", que e o que a troca de
+    // nome pede. Antes o botao seguia aceso e regravava o ritmo por cima.
+    if (editing) {
+      const btnAtualizar = overlay.querySelector('#xSaveConfirm') as HTMLButtonElement | null;
+      nameInput.addEventListener('input', () => {
+        if (!btnAtualizar) return;
+        const mesmoNome = nameInput.value.trim() === editing.name;
+        btnAtualizar.disabled = !mesmoNome;
+        btnAtualizar.style.opacity = mesmoNome ? '' : '0.35';
+        btnAtualizar.style.cursor = mesmoNome ? '' : 'not-allowed';
+      });
+    }
 
     // ── BPM: stepper pill (mesmo do Meus Ritmos) ──
     let bpmValue = Math.max(40, Math.min(360, Math.round(currentBpm)));
@@ -6816,6 +6830,14 @@ class RhythmSequencer {
       if (!editing) return doSaveAsNew();
       const v = validate();
       if (!v) return;
+
+      // Trocou o nome = quer OUTRO ritmo, nao regravar este.
+      //
+      // Depois do primeiro save o app passa a considerar que o ritmo
+      // carregado E o que acabou de ser salvo, entao o save seguinte abria
+      // em modo Atualizar. Quem salvava "Ritmo 1" e depois "Ritmo 2" via o
+      // 1 virar 2: um ritmo so em Meus Ritmos, e o primeiro perdido.
+      if (v.name !== editing.name) return doSaveAsNew();
 
       const rhythmData = this.rhythmDataForSave(v.bpm);
       await this.userRhythmService.update(editing.id, v.name, v.bpm, rhythmData);
@@ -9706,6 +9728,9 @@ class RhythmSequencer {
   private deskCategory = '';
   /** Busca ativa no painel esquerdo do desktop (filtra TODAS as categorias). */
   private deskSearch = '';
+  // Painel direito (so PC): busca por nome do repertorio e ordem da lista.
+  private deskSetlistQuery = '';
+  private deskSetlistSort: 'recent' | 'az' = 'recent';
   /**
    * Qual lista o painel esquerdo desenhou por ultimo.
    *
@@ -9846,16 +9871,63 @@ class RhythmSequencer {
       const items = this.setlistManager.getItems();
       const cur = this.setlistManager.getCurrentIndex();
 
-      const chipsHtml = lists.length > 1 ? `
-        <div class="desk-setlists-chips">
-          ${lists.map(l => `
-            <button class="desk-setlist-chip ${l.active ? 'active' : ''}" data-setlist-id="${esc(l.id)}">
-              <span class="desk-setlist-chip-name">${esc(l.name)}</span>
-              <span class="desk-setlist-chip-count">${l.count}</span>
-            </button>
-          `).join('')}
+      // Os repertorios saem da fileira de chips e viram LISTA, um por linha:
+      // com muitos deles a fileira embrulhava em varias linhas e o nome
+      // longo virava reticencia. Junto vem busca por nome e a ordem (A-Z ou
+      // mais recentes), que e o que resolve lista grande.
+      //
+      // ⚠️ PEDAL: input inline fora de modal nao funciona no iOS (mesma
+      // historia da busca do painel esquerdo). O painel aparece no iPad, e
+      // la a busca fica de fora — a ordem continua valendo.
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+      const semAcento = (v: string): string =>
+        v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+      const listaVisivel = (): typeof lists => {
+        const q = semAcento(this.deskSetlistQuery.trim());
+        const filtrada = q ? lists.filter(l => semAcento(l.name).includes(q)) : lists.slice();
+        return this.deskSetlistSort === 'az'
+          ? filtrada.sort((a, b) => a.name.localeCompare(b.name))
+          // Repertorio de antes do lastModified existir vale 0 e cai pro fim.
+          : filtrada.sort((a, b) => b.lastModified - a.lastModified);
+      };
+
+      const linhasHtml = (): string => {
+        const visiveis = listaVisivel();
+        if (visiveis.length === 0) {
+          return `<div class="desk-empty">${t('main.desktopPanel.setlistNoMatch')}</div>`;
+        }
+        return visiveis.map(l => `
+          <button class="desk-setlist-row ${l.active ? 'active' : ''}" data-setlist-id="${esc(l.id)}">
+            <span class="desk-setlist-row-name">${esc(l.name)}</span>
+            <span class="desk-setlist-chip-count">${l.count}</span>
+          </button>
+        `).join('');
+      };
+
+      const rotuloOrdem = this.deskSetlistSort === 'az'
+        ? t('main.desktopPanel.sortAz')
+        : t('main.desktopPanel.sortRecent');
+
+      // A lista aparece SEMPRE, mesmo com um repertorio so: e por ela que se
+      // ve quais existem e se troca de um pro outro. Escondida ate ter dois,
+      // quem tinha um so nao descobria que dava pra ter mais.
+      const chipsHtml = `
+        <div class="desk-setlists-bar">
+          ${!isIOS ? `
+            <div class="desk-search-wrap desk-setlists-search">
+              <svg class="desk-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" class="desk-search-input" id="deskSetlistSearch" placeholder="${t('main.desktopPanel.setlistSearchPlaceholder')}" autocomplete="off" value="${esc(this.deskSetlistQuery)}" />
+            </div>` : ''}
+          <button class="desk-setlist-sort" id="deskSetlistSort" title="${t('main.desktopPanel.sortAriaLabel')}" aria-label="${t('main.desktopPanel.sortAriaLabel')}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="9" y2="18"/></svg>
+            <span id="deskSetlistSortLabel">${rotuloOrdem}</span>
+          </button>
         </div>
-      ` : '';
+        <div class="desk-setlists-rows" id="deskSetlistRows">${linhasHtml()}</div>
+      `;
 
       const itemsHtml = items.length === 0
         ? `<div class="desk-empty">${t('main.desktopPanel.setlistEmptyHint')}</div>`
@@ -9869,13 +9941,41 @@ class RhythmSequencer {
       right.innerHTML = chipsHtml + itemsHtml;
 
       // Trocar de repertório (não corta o som — item só carrega no clique)
-      right.querySelectorAll<HTMLButtonElement>('.desk-setlist-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const id = chip.dataset.setlistId!;
-          if (this.setlistManager.switchSetlist(id)) {
-            this.updateSetlistUI(); // re-renderiza painéis + fav-bar
-          }
+      const ligarLinhas = (): void => {
+        right.querySelectorAll<HTMLButtonElement>('.desk-setlist-row').forEach(linha => {
+          linha.addEventListener('click', () => {
+            const id = linha.dataset.setlistId!;
+            if (this.setlistManager.switchSetlist(id)) {
+              this.updateSetlistUI(); // re-renderiza painéis + fav-bar
+            }
+          });
         });
+      };
+      ligarLinhas();
+
+      // Busca redesenha SO as linhas: re-render do painel inteiro mataria o
+      // foco do input a cada tecla (mesma armadilha do painel esquerdo).
+      const buscaSet = right.querySelector<HTMLInputElement>('#deskSetlistSearch');
+      const redesenharLinhas = (): void => {
+        const caixa = right.querySelector<HTMLElement>('#deskSetlistRows');
+        if (!caixa) return;
+        caixa.innerHTML = linhasHtml();
+        ligarLinhas();
+      };
+      buscaSet?.addEventListener('input', () => {
+        this.deskSetlistQuery = buscaSet.value;
+        redesenharLinhas();
+      });
+
+      right.querySelector<HTMLButtonElement>('#deskSetlistSort')?.addEventListener('click', () => {
+        this.deskSetlistSort = this.deskSetlistSort === 'az' ? 'recent' : 'az';
+        const rot = right.querySelector<HTMLElement>('#deskSetlistSortLabel');
+        if (rot) {
+          rot.textContent = this.deskSetlistSort === 'az'
+            ? t('main.desktopPanel.sortAz')
+            : t('main.desktopPanel.sortRecent');
+        }
+        redesenharLinhas();
       });
 
       right.querySelectorAll<HTMLButtonElement>('.desk-setlist-item').forEach(btn => {
