@@ -7019,9 +7019,21 @@ class RhythmSequencer {
           // 2) cria o repertório (marcado como compartilhado) e monta os itens
           const newId = this.setlistManager.createSetlist(payload.title || 'Repertório', true);
           if (newId) {
+            // Cada import cria ritmos com ids NOVOS, entao eles ja nascem
+            // exclusivos deste repertorio: marcar ownRhythm evita que a
+            // primeira edicao largue uma copia orfa em Meus Ritmos. So vale
+            // pra chave usada por um item so — repetida, o ritmo e dividido
+            // entre eles e editar um nao pode mexer no outro.
+            const usos: Record<string, number> = {};
+            for (const it of (payload.items || [])) {
+              if (it.k) usos[it.k] = (usos[it.k] || 0) + 1;
+            }
             for (const it of (payload.items || [])) {
               const item: any = { name: it.name, path: it.path || '', bpm: it.bpm, baseRhythmName: it.base };
-              if (it.k && map[it.k]) item.userRhythmId = map[it.k];
+              if (it.k && map[it.k]) {
+                item.userRhythmId = map[it.k];
+                if (usos[it.k] === 1) item.ownRhythm = true;
+              }
               this.setlistManager.addItemTo(newId, item);
             }
           }
@@ -8676,9 +8688,20 @@ class RhythmSequencer {
         }));
         const fullCatalog = [...personalRhythms, ...libraryWithCategory];
 
-        // Editar musica do repertorio: a edicao NAO toca no ritmo da
-        // biblioteca. Vira um ritmo pessoal, e o item passa a apontar pra
-        // ele — outro repertorio que use o mesmo ritmo fica intacto.
+        // Editar musica do repertorio NUNCA altera o ritmo de origem — nem o
+        // da biblioteca, nem o pessoal (que e o mesmo caso do baixado da
+        // comunidade). A edicao vira uma COPIA e so este item passa a apontar
+        // pra ela, entao o mesmo ritmo em outros repertorios fica intacto.
+        //
+        // O ritmo pessoal era o furo: ele era atualizado no lugar, e quem
+        // tinha o mesmo ritmo em dez repertorios via os dez mudarem juntos.
+        // Pior, os outros seguiam MOSTRANDO o BPM velho (que fica no item) e
+        // tocando o novo (que vem do ritmo).
+        //
+        // Quem manda agora e o item.ownRhythm: ele marca que o userRhythmId
+        // e uma copia nascida da edicao DESTE item, que so ele usa. Com a
+        // marca, editar de novo mexe nela no lugar — senao mexer no BPM tres
+        // vezes deixaria tres ritmos iguais em Meus Ritmos.
         //
         // O nome da copia leva o repertorio entre parenteses ("Arrocha (Show
         // de sabado)") pra dar pra distinguir dentro de Meus Ritmos, onde
@@ -8711,22 +8734,36 @@ class RhythmSequencer {
           const repertorio = this.setlistManager.getSetlists().find(l => l.active)?.name || '';
           const nomeCopia = repertorio ? `${nome} (${repertorio})` : nome;
 
-          // Ja e um ritmo pessoal: atualiza no lugar. Sem isto, mexer no BPM
-          // tres vezes criaria tres ritmos iguais em Meus Ritmos.
-          if (item.userRhythmId) {
-            const meu = this.userRhythmService.getById(item.userRhythmId);
+          // Copia que ja pertence a este item: atualiza no lugar.
+          //
+          // A segunda condicao e ponte pros itens editados ANTES do ownRhythm
+          // existir: eles nao tem a marca, mas a copia daquela epoca ficou
+          // com o nome do repertorio no fim. Sem isso, a primeira edicao de
+          // cada um deles largaria uma copia orfa em Meus Ritmos.
+          const meuAtual = item.userRhythmId
+            ? this.userRhythmService.getById(item.userRhythmId)
+            : null;
+          const soDesteItem = !!item.userRhythmId && (
+            item.ownRhythm === true ||
+            (item.ownRhythm === undefined && !!repertorio && meuAtual?.name === `${item.name} (${repertorio})`)
+          );
+
+          if (soDesteItem) {
+            const meu = meuAtual;
             if (meu) {
               const dados = JSON.parse(JSON.stringify(meu.rhythm_data || {}));
               dados.tempo = bpm;
-              await this.userRhythmService.update(item.userRhythmId, nomeCopia, bpm, dados);
-              this.setlistManager.updateItem(index, { name: nome, bpm });
+              await this.userRhythmService.update(meu.id, nomeCopia, bpm, dados);
+              this.setlistManager.updateItem(index, { name: nome, bpm, ownRhythm: true });
               aplicarNoPlayer();
               this.updateSetlistUI();
               return;
             }
           }
 
-          // Ritmo da biblioteca: copia o JSON com o BPM novo e salva como meu.
+          // Primeira edicao deste item: copia o JSON com o BPM novo e salva
+          // como ritmo meu. O resolveRhythmData ja atende os dois lados — le
+          // do servico local quando ha userRhythmId e busca o path quando nao.
           const base = await resolveRhythmData({ userRhythmId: item.userRhythmId, path: item.path });
           if (!base) throw new Error('ritmo base nao encontrado');
           const copia = JSON.parse(JSON.stringify(base));
@@ -8736,6 +8773,7 @@ class RhythmSequencer {
           this.setlistManager.updateItem(index, {
             name: nome, bpm, userRhythmId: salvo.id, path: '',
             baseRhythmName: item.baseRhythmName || item.name,
+            ownRhythm: true,
           });
           aplicarNoPlayer();
           this.updateSetlistUI();
