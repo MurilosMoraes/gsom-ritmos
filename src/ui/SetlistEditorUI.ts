@@ -27,7 +27,6 @@ export class SetlistEditorUI {
   private catalog: CatalogItem[] = [];
   private onClose?: () => void;
   private styleInjected = false;
-  private dragSourceIndex: number = -1;
   private activeCategory: string = 'all'; // 'all' | 'Meus' | 'Favoritos' | <category name>
   private currentQuery: string = '';
   private setlistQuery: string = ''; // busca DENTRO do repertório (lista de músicas)
@@ -42,6 +41,27 @@ export class SetlistEditorUI {
     | ((item: CatalogItem) => Promise<any | null>)
     | null = null;
   private previewUnsubscribe: (() => void) | null = null;
+  /** BPM dos ritmos que so o JSON conhece, por path/id. Reordenar e buscar
+   *  re-renderizam a lista inteira; sem cache cada render refaria os fetch. */
+  private bpmCache = new Map<string, number>();
+  /** Arrasto em curso (desktop). Ver o bloco de metodos dnd* la embaixo. */
+  private dnd: {
+    container: HTMLElement;
+    row: HTMLElement;
+    rows: HTMLElement[];
+    from: number;
+    to: number;
+    passo: number;
+    ponteiroY: number;
+    inicioY: number;
+    scrollInicial: number;
+    raf: number;
+    arrastando: boolean;
+  } | null = null;
+  private dndMoveHandler: ((e: PointerEvent) => void) | null = null;
+  private dndUpHandler: (() => void) | null = null;
+  /** Liga entre o soltar e o click que o navegador dispara logo depois. */
+  private dndAcabouDeArrastar = false;
   /** Salva a edicao de um item como ritmo PESSOAL. Quem implementa e o
    *  main.ts, que tem o UserRhythmService e sabe buscar o JSON do ritmo. */
   private onEditItem:
@@ -241,10 +261,13 @@ export class SetlistEditorUI {
       <div class="sle-panel-header">
         <span class="sle-panel-title">${t('ui.setlist.panelTitle')}</span>
         <div class="sle-panel-header-actions">
-          <button class="sle-clear-btn">${t('ui.setlist.clearButton')}</button>
+          <button class="sle-setlist-hdr-act sle-setlist-rename-btn" aria-label="${t('ui.setlist.renameAriaLabel')}" title="${t('ui.setlist.renameAriaLabel')}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
           <button class="sle-setlist-hdr-act sle-setlist-share-btn" aria-label="Compartilhar" title="Compartilhar repertório">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           </button>
+          <button class="sle-clear-btn">${t('ui.setlist.clearButton')}</button>
         </div>
       </div>
       <div class="sle-search-wrap sle-setlist-search">
@@ -343,7 +366,24 @@ export class SetlistEditorUI {
     const setlistsBar = setlistPanel.querySelector('.sle-setlists-bar') as HTMLElement;
     this.renderSetlistsBar(setlistsBar, refreshAll);
 
-    // Renomear repertório ativo (lápis ao lado do Limpar) → editor inline na barra
+    // Renomear repertório ativo (lápis, primeiro da fileira) → mesmo editor
+    // inline que abre ao tocar no chip ativo. Quem quer trocar o nome procura
+    // um lápis no cabeçalho, não adivinha que o chip é clicável.
+    setlistPanel.querySelector('.sle-setlist-rename-btn')?.addEventListener('click', () => {
+      const active = this.setlistManager?.getSetlists().find(l => l.active);
+      if (!active) return;
+      // No mobile a barra de chips fica escondida (o hub faz o papel dela),
+      // entao abrir o editor inline ali nao mostraria nada: manda pro hub e
+      // dispara o lapis do card do repertorio ativo.
+      if (window.matchMedia('(max-width: 640px)').matches) {
+        this.setMobileView('hub');
+        (hubPanel.querySelector(`.sle-hub-rename[data-id="${active.id}"]`) as HTMLElement | null)?.click();
+        return;
+      }
+      this.openSetlistEditInline(setlistsBar, active.id, refreshAll);
+      (setlistsBar.querySelector('.sle-setlist-edit-input') as HTMLInputElement | null)?.focus();
+    });
+
     // Compartilhar repertório ativo (ícone ao lado do lápis) → hook do main.ts
     setlistPanel.querySelector('.sle-setlist-share-btn')?.addEventListener('click', () => {
       const active = this.setlistManager?.getSetlists().find(l => l.active);
@@ -414,6 +454,7 @@ export class SetlistEditorUI {
   // tá no hasModalOpen() do pedal).
 
   private renderHub(container: HTMLElement, onChanged: () => void): void {
+    this.setRenamingChrome(false);
     const mgr = this.setlistManager;
     if (!mgr) return;
     const allLists = mgr.getSetlists();
@@ -514,6 +555,7 @@ export class SetlistEditorUI {
         const card = container.querySelector(`.sle-hub-card[data-hub-id="${id}"]`) as HTMLElement;
         const current = mgr.getSetlists().find(l => l.id === id);
         if (!card || !current) return;
+        this.setRenamingChrome(true);
         card.innerHTML = `
           <div class="sle-setlist-edit" style="flex:1;">
             <input type="text" class="sle-setlist-edit-input" value="${this.escapeHtml(current.name)}" maxlength="40" autocomplete="off" />
@@ -597,7 +639,15 @@ export class SetlistEditorUI {
   // no iPhone porque o sle-overlay é detectado pelo hasModalOpen() do
   // pedal (o pedal libera o foco enquanto o editor está aberto).
 
+  /** Liga/desliga o "modo edicao de nome": esconde o X do cabecalho.
+      Com os dois X na tela o dedo fecha o painel inteiro achando que esta
+      cancelando o rename. Enquanto edita o nome so existe o X do editor. */
+  private setRenamingChrome(on: boolean): void {
+    this.overlay?.classList.toggle('sle-renaming', on);
+  }
+
   private renderSetlistsBar(container: HTMLElement, onSwitched: () => void): void {
+    this.setRenamingChrome(false);
     const mgr = this.setlistManager;
     if (!mgr || typeof (mgr as any).getSetlists !== 'function') {
       container.style.display = 'none';
@@ -650,6 +700,7 @@ export class SetlistEditorUI {
 
   /** Edição inline do repertório: input pra renomear + excluir + cancelar. */
   private openSetlistEditInline(container: HTMLElement, id: string, onSwitched: () => void): void {
+    this.setRenamingChrome(true);
     const mgr = this.setlistManager!;
     const lists = mgr.getSetlists();
     const current = lists.find(l => l.id === id);
@@ -839,6 +890,170 @@ export class SetlistEditorUI {
 
   /** Anima a troca (slide) das duas linhas e só depois re-renderiza — dá o
    *  efeito da música de cima trocar de lugar com a de baixo. */
+  // ─── Arrastar pra reordenar (desktop) ────────────────────────────────
+  // Trocou o drag-drop HTML5 por ponteiro: com o nativo nao da pra mover a
+  // linha junto do mouse, abrir a vaga com animacao nem rolar a lista — ele
+  // so avisa "passou por cima" e o resto e desenho por borda.
+  //
+  // Todas as linhas tem a MESMA altura (nome + BPM, nome sem quebra), entao
+  // o deslocamento em passos inteiros de linha resolve a posicao: quantas
+  // linhas o dedo andou = quantas casas a musica anda.
+
+  private dndArm(e: PointerEvent, container: HTMLElement, row: HTMLElement, index: number): void {
+    if (e.button !== 0 || !e.isPrimary) return;
+    // Desktop so: no celular quem reordena sao as setas, e um dedo parado
+    // em cima da lista tem que continuar rolando a tela.
+    if (!window.matchMedia('(pointer: fine)').matches) return;
+    // Com busca ativa a tela esconde linhas mas os indices seguem os REAIS:
+    // arrastar contaria casas que nao estao a vista e a musica cairia longe.
+    if (this.setlistQuery.trim()) return;
+    const alvo = e.target as HTMLElement;
+    if (alvo.closest('button, input, .sle-item-actions, .sle-item-reorder')) return;
+
+    const rows = Array.from(container.querySelectorAll<HTMLElement>('.sle-setlist-item'));
+    if (rows.length < 2) return;
+
+    this.dnd = {
+      container, row, rows,
+      from: index,
+      to: index,
+      // Passo = distancia entre o topo de uma linha e o da proxima, ou seja
+      // altura + o espaco entre elas. Medir so a altura deixaria a vaga
+      // menor que a linha e o encaixe sairia torto.
+      passo: rows[1].offsetTop - rows[0].offsetTop,
+      ponteiroY: e.clientY,
+      inicioY: e.clientY,
+      scrollInicial: container.scrollTop,
+      raf: 0,
+      arrastando: false,
+    };
+
+    this.dndMoveHandler = (ev: PointerEvent) => this.dndMove(ev);
+    this.dndUpHandler = () => this.dndSoltar();
+    window.addEventListener('pointermove', this.dndMoveHandler);
+    window.addEventListener('pointerup', this.dndUpHandler);
+    window.addEventListener('pointercancel', this.dndUpHandler);
+  }
+
+  private dndMove(e: PointerEvent): void {
+    const d = this.dnd;
+    if (!d) return;
+    d.ponteiroY = e.clientY;
+
+    // So vira arrasto depois de 4px: sem isso o clique pra selecionar a
+    // musica (que sempre treme um pixel) entrava como reordenacao.
+    if (!d.arrastando) {
+      if (Math.abs(e.clientY - d.inicioY) < 4) return;
+      d.arrastando = true;
+      d.container.classList.add('sle-dnd-on');
+      d.row.classList.add('sle-dnd-pegue');
+      d.rows.forEach(r => { if (r !== d.row) r.classList.add('sle-dnd-desliza'); });
+      d.raf = window.requestAnimationFrame(() => this.dndTick());
+    }
+    e.preventDefault();
+    this.dndPintar();
+  }
+
+  /** Roda a cada quadro so pra rolar a lista sozinha perto das bordas. */
+  private dndTick(): void {
+    const d = this.dnd;
+    if (!d || !d.arrastando) return;
+
+    const caixa = d.container.getBoundingClientRect();
+    const zona = 64;                 // faixa quente em cima e embaixo
+    const vmax = 14;                 // px por quadro no limite da borda
+    let v = 0;
+    if (d.ponteiroY < caixa.top + zona) {
+      v = -vmax * Math.min(1, (caixa.top + zona - d.ponteiroY) / zona);
+    } else if (d.ponteiroY > caixa.bottom - zona) {
+      v = vmax * Math.min(1, (d.ponteiroY - (caixa.bottom - zona)) / zona);
+    }
+
+    if (v !== 0) {
+      const antes = d.container.scrollTop;
+      d.container.scrollTop = antes + v;
+      // So repinta se a lista REALMENTE rolou: no topo e no fim ela trava e
+      // continuar recalculando faria a linha escorregar sozinha.
+      if (d.container.scrollTop !== antes) this.dndPintar();
+    }
+
+    d.raf = window.requestAnimationFrame(() => this.dndTick());
+  }
+
+  /** Poe a linha pega embaixo do mouse e abre a vaga onde ela vai cair. */
+  private dndPintar(): void {
+    const d = this.dnd;
+    if (!d || !d.arrastando) return;
+
+    // O quanto a linha andou em coordenadas da LISTA, nao da tela: o que o
+    // mouse subiu mais o que a lista rolou por baixo dele.
+    const desloc = (d.ponteiroY - d.inicioY) + (d.container.scrollTop - d.scrollInicial);
+    d.row.style.transform = `translateY(${desloc}px)`;
+
+    const casas = Math.round(desloc / d.passo);
+    const destino = Math.max(0, Math.min(d.rows.length - 1, d.from + casas));
+    if (destino === d.to) return;
+    d.to = destino;
+
+    // Quem estava no caminho anda uma casa pro lado contrario, abrindo a
+    // vaga. Como a transicao esta ligada nelas, isso ja sai animado.
+    d.rows.forEach((r, i) => {
+      if (i === d.from) return;
+      let dy = 0;
+      if (d.from < d.to && i > d.from && i <= d.to) dy = -d.passo;
+      else if (d.from > d.to && i >= d.to && i < d.from) dy = d.passo;
+      r.style.transform = dy ? `translateY(${dy}px)` : '';
+    });
+  }
+
+  private dndSoltar(): void {
+    const d = this.dnd;
+    if (this.dndMoveHandler) window.removeEventListener('pointermove', this.dndMoveHandler);
+    if (this.dndUpHandler) {
+      window.removeEventListener('pointerup', this.dndUpHandler);
+      window.removeEventListener('pointercancel', this.dndUpHandler);
+    }
+    this.dndMoveHandler = null;
+    this.dndUpHandler = null;
+    if (!d) return;
+    this.dnd = null;
+    if (d.raf) window.cancelAnimationFrame(d.raf);
+
+    // Nao passou do limiar: foi clique, nao arrasto. Nada a desfazer.
+    if (!d.arrastando) return;
+
+    // O click do navegador vem logo depois do pointerup; a linha ja fecha a
+    // janela no proprio quadro seguinte.
+    this.dndAcabouDeArrastar = true;
+    window.setTimeout(() => { this.dndAcabouDeArrastar = false; }, 0);
+
+    const fechar = (): void => {
+      d.container.classList.remove('sle-dnd-on');
+      d.rows.forEach(r => {
+        r.classList.remove('sle-dnd-pegue', 'sle-dnd-desliza');
+        r.style.transform = '';
+        r.style.transition = '';
+      });
+      if (d.from !== d.to) this.setlistManager?.moveItem(d.from, d.to);
+      this.renderSetlist(d.container);
+      // A selecao segue a musica movida, igual ao reordenar pelas setas.
+      const movida = d.container.querySelector<HTMLElement>(
+        `.sle-setlist-item[data-index="${d.to}"]`);
+      const nome = movida?.querySelector<HTMLElement>('.sle-item-name');
+      if (movida && nome) this.selectRow(movida, nome);
+    };
+
+    // Encaixe: a linha pega desce (ou sobe) ate a vaga aberta em vez de
+    // saltar pra la. Soltar em cima da propria casa tambem anima, voltando
+    // pro lugar — sem isso ela ficaria grudada onde o mouse parou.
+    d.row.style.transition = 'transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1)';
+    d.row.style.transform = `translateY(${(d.to - d.from) * d.passo}px)`;
+    let feito = false;
+    const fim = (): void => { if (feito) return; feito = true; fechar(); };
+    d.row.addEventListener('transitionend', fim, { once: true });
+    window.setTimeout(fim, 260); // transitionend nao dispara se o alvo ja era o atual
+  }
+
   private animateSwapAndRender(container: HTMLElement, indexA: number, indexB: number): void {
     const commit = () => {
       // O "atual do show" (.sle-now) acompanha a MUSICA, nao a posicao.
@@ -1217,8 +1432,8 @@ export class SetlistEditorUI {
       // selecao de clique, e as duas acesas ao mesmo tempo faziam parecer que
       // a selecao anterior nao saia. Quem mostra a posicao do show e a
       // fav-bar, que fica visivel enquanto se toca.
-      // Drag-drop HTML5 ainda ativo em desktop (CSS controla cursor no handle)
-      row.setAttribute('draggable', 'true');
+      // draggable NAO: o drag nativo sequestra o ponteiro no meio do gesto e
+      // mata o pointermove. Quem reordena aqui e o dnd* (ver metodos).
       row.setAttribute('data-index', index.toString());
 
       // Grip visual (também serve pra desktop drag handle)
@@ -1236,6 +1451,15 @@ export class SetlistEditorUI {
       name.innerHTML = item.userRhythmId
         ? `<span class="sle-item-personal">${item.name}</span>`
         : item.name;
+
+      // Nome e BPM empilhados: quem monta o show precisa bater o andamento
+      // de uma musica com a seguinte sem abrir o editor de cada uma.
+      const main = document.createElement('div');
+      main.className = 'sle-item-main';
+      const bpmEl = document.createElement('span');
+      bpmEl.className = 'sle-item-bpm';
+      main.append(name, bpmEl);
+      this.pintarBpm(item, bpmEl);
 
       // Actions: preview + editar + remover (grade), e as SETAS a parte —
       // elas viram uma coluna na borda direita, subir em cima e descer
@@ -1307,44 +1531,24 @@ export class SetlistEditorUI {
       actions.appendChild(editBtn);
 
 
-      row.append(handle, num, name, actions, reorder);
+      row.append(handle, num, main, actions, reorder);
       container.appendChild(row);
 
       // Clicar no corpo da linha: seleciona + liga o letreiro no nome.
       // Botões internos têm stopPropagation, então não disparam aqui.
       row.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('.sle-item-actions, .sle-item-reorder')) return;
+        // Soltar o arrasto dispara um click logo em seguida: sem isto, largar
+        // a musica tambem mexeria na selecao.
+        if (this.dndAcabouDeArrastar) return;
 
         this.selectRow(row, name);
       });
 
-      // ─── Drag-drop HTML5 (desktop) ──────────────────────────────
-      // Em mobile trocamos por botões ▲▼; o drag fica disponível só como
-      // bonus em desktop (mouse é preciso, dedo não).
-      row.addEventListener('dragstart', (e) => {
-        this.dragSourceIndex = index;
-        row.classList.add('sle-dragging');
-        e.dataTransfer?.setData('text/plain', index.toString());
-      });
-      row.addEventListener('dragend', () => {
-        row.classList.remove('sle-dragging');
-        container.querySelectorAll('.sle-drag-over').forEach(el => el.classList.remove('sle-drag-over'));
-      });
-      row.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        container.querySelectorAll('.sle-drag-over').forEach(el => el.classList.remove('sle-drag-over'));
-        row.classList.add('sle-drag-over');
-      });
-      row.addEventListener('drop', (e) => {
-        e.preventDefault();
-        row.classList.remove('sle-drag-over');
-        const targetIndex = index;
-        if (this.dragSourceIndex !== targetIndex && this.dragSourceIndex >= 0) {
-          this.setlistManager?.moveItem(this.dragSourceIndex, targetIndex);
-          this.renderSetlist(container);
-        }
-        this.dragSourceIndex = -1;
-      });
+      // ─── Arrastar pra reordenar (desktop) ───────────────────────
+      // Em mobile continua nas setas ▲▼ — dedo nao tem a precisao do mouse
+      // e um toque parado na lista precisa seguir rolando a tela.
+      row.addEventListener('pointerdown', (e) => this.dndArm(e, container, row, index));
     });
 
     // Busca sem resultado dentro do repertório
@@ -1354,6 +1558,34 @@ export class SetlistEditorUI {
 
     // Após render, re-sincroniza estado do preview pros botões recém-criados
     this.updatePreviewButtons();
+  }
+
+  /** Escreve "120 BPM" embaixo do nome da musica.
+   *  O item so guarda bpm proprio quando alguem editou ele; no resto o
+   *  andamento mora no JSON do ritmo, que e buscado sob demanda (o pessoal
+   *  vem do servico local, sem rede) e fica em cache. A linha ja nasce com
+   *  altura reservada no CSS, entao o card nao pula quando o valor chega. */
+  private pintarBpm(item: SetlistItem, el: HTMLElement): void {
+    const escrever = (bpm: number): void => { el.textContent = `${bpm} BPM`; };
+
+    if (item.bpm) { escrever(item.bpm); return; }
+
+    const chave = item.userRhythmId || item.path;
+    if (!chave) return;
+
+    const emCache = this.bpmCache.get(chave);
+    if (emCache) { escrever(emCache); return; }
+    if (!this.resolveRhythmData) return;
+
+    void this.resolveRhythmData({ name: item.name, path: item.path, userRhythmId: item.userRhythmId })
+      .then(data => {
+        const bpm = Number(data?.tempo);
+        if (!Number.isFinite(bpm) || bpm <= 0) return;
+        this.bpmCache.set(chave, bpm);
+        // A lista pode ter sido re-renderizada enquanto o fetch corria.
+        if (el.isConnected) escrever(bpm);
+      })
+      .catch(() => { /* sem BPM a linha fica vazia; o espaco ja esta reservado */ });
   }
 
   private iconPreview(): string {
@@ -1567,6 +1799,10 @@ export class SetlistEditorUI {
         -webkit-tap-highlight-color: transparent;
       }
       .sle-close-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+      /* Editando o nome do repertorio: some o X do cabecalho. Dois X na
+         tela e o dedo fecha o painel inteiro achando que cancela o rename.
+         Fica so o X do editor, que cancela de verdade. */
+      .sle-overlay.sle-renaming .sle-close-btn { display: none; }
 
       .sle-body {
         display: grid;
@@ -1745,17 +1981,28 @@ export class SetlistEditorUI {
         touch-action: pan-y;
       }
       .sle-setlist-item:hover { background: rgba(255, 255, 255, 0.05); }
-      .sle-setlist-item.sle-dragging { opacity: 0.3; }
-      .sle-setlist-item.sle-drag-over {
+      /* ─── Arrasto pra reordenar ─── */
+      /* A linha PEGA anda junto do mouse, entao nao pode ter transicao: ela
+         seguiria o ponteiro com atraso. Quem anima sao as OUTRAS, que abrem
+         a vaga. */
+      .sle-setlist-item.sle-dnd-desliza {
+        transition: transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
+      }
+      .sle-setlist-item.sle-dnd-pegue {
+        position: relative;
+        z-index: 20;
+        cursor: grabbing;
         border-color: rgba(0, 212, 255, 0.5);
-        background: rgba(0, 212, 255, 0.06);
+        background: rgba(15, 15, 35, 0.96);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
       }
-      .sle-touch-ghost {
-        opacity: 0.85;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-        border-color: rgba(0, 212, 255, 0.4) !important;
-        background: rgba(15, 15, 35, 0.95) !important;
+      /* Enquanto arrasta, nada de selecionar texto nem de o cursor virar
+         "I" por cima dos nomes. */
+      .sle-panel-list.sle-dnd-on {
+        user-select: none;
+        cursor: grabbing;
       }
+      .sle-panel-list.sle-dnd-on * { cursor: grabbing !important; }
 
       .sle-drag-handle {
         color: rgba(255, 255, 255, 0.2);
@@ -1783,6 +2030,32 @@ export class SetlistEditorUI {
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      /* Nome em cima, BPM embaixo. A coluna carrega o flex:1 que era do
+         nome — dentro dela o nome nao pode crescer, senao estica na vertical
+         e empurra o BPM pro fundo do card. */
+      .sle-setlist-item .sle-item-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+      .sle-setlist-item .sle-item-main .sle-item-name {
+        flex: 0 0 auto;
+        width: 100%;
+      }
+      /* min-height reserva a linha desde o primeiro render: o BPM de ritmo
+         de biblioteca chega depois do fetch, e sem o espaco guardado a lista
+         inteira pularia de altura quando os valores caissem. */
+      .sle-item-bpm {
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        line-height: 1.2;
+        min-height: 0.85rem;
+        color: rgba(0, 212, 255, 0.55);
+      }
+
       .sle-remove-btn {
         width: 28px;
         height: 28px;
@@ -2639,6 +2912,14 @@ export class SetlistEditorUI {
           box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.12);
         }
         .sle-search-icon { color: rgba(0, 212, 255, 0.6); }
+        /* Catalogo: OUVIR e ADICIONAR lado a lado. A regra geral do
+           .sle-item-actions empilha (serve ao repertorio, que tem tres
+           acoes); aqui sao so dois botoes e empilhados dobravam a altura
+           do card a toa. Em fila o card fica na altura do nome. */
+        .sle-catalog-item .sle-item-actions {
+          flex-direction: row;
+          gap: 8px;
+        }
         /* Itens do catálogo: hover neon + borda visível */
         .sle-catalog-item {
           border: 1px solid rgba(255, 255, 255, 0.05);
