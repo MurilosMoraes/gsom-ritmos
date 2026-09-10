@@ -90,10 +90,10 @@ export const main: Record<string, string> = {
 
   // ── What's New modal ──
   'main.whatsNew.overline': 'Update',
-  'main.whatsNew.title': '166 rhythms, three languages, and fingerprint login.',
+  'main.whatsNew.title': '180 rhythms, three languages, and fingerprint login.',
   'main.whatsNew.subtitle': 'A bigger library, the app in your language, and a faster way to sign in. Plus everything synced across your devices.',
-  'main.whatsNew.section1.label': '11 new rhythms',
-  'main.whatsNew.section1.body': 'Olodum, Zouk, Lofi, Grunge, Rock 90, Country Soft, Chamarra, Sina, Vaneira com Pandeiro, Xote Mesclado, and CBJr. Now 166 in total, all equalized.',
+  'main.whatsNew.section1.label': '25 new rhythms',
+  'main.whatsNew.section1.body': 'Olodum, Zouk, Flamenco, Rumba, Jovem Guarda, Afoxé, Fusion, R&B, Smooth Jazz Groove, Lofi, Grunge, and 14 more. Now 180 in total, all equalized.',
   'main.whatsNew.section2.label': 'Sign in without typing a password',
   'main.whatsNew.section2.body': 'Turn on Face ID or your fingerprint and get into GDrums instantly. Your password stays in this device\'s secure vault, and email login is still there if you prefer it.',
   'main.whatsNew.section3.label': 'Everything synced',

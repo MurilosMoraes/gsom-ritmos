@@ -90,10 +90,10 @@ export const main: Record<string, string> = {
 
   // ── What's New modal ──
   'main.whatsNew.overline': 'Actualización',
-  'main.whatsNew.title': '166 ritmos, tres idiomas y acceso con huella.',
+  'main.whatsNew.title': '180 ritmos, tres idiomas y acceso con huella.',
   'main.whatsNew.subtitle': 'Biblioteca más grande, la app en tu idioma y una forma más rápida de entrar. Además, todo sincronizado entre tus dispositivos.',
-  'main.whatsNew.section1.label': '11 ritmos nuevos',
-  'main.whatsNew.section1.body': 'Olodum, Zouk, Lofi, Grunge, Rock 90, Country Soft, Chamarra, Sina, Vaneira com Pandeiro, Xote Mesclado y CBJr. Ahora son 166 en total, todos ecualizados.',
+  'main.whatsNew.section1.label': '25 ritmos nuevos',
+  'main.whatsNew.section1.body': 'Olodum, Zouk, Flamenco, Rumba, Jovem Guarda, Afoxé, Fusion, R&B, Smooth Jazz Groove, Lofi, Grunge y 14 más. Ahora son 180 en total, todos ecualizados.',
   'main.whatsNew.section2.label': 'Entra sin escribir la contraseña',
   'main.whatsNew.section2.body': 'Activa Face ID o la huella y entra a GDrums al instante. Tu contraseña queda guardada solo en la bóveda segura de este dispositivo, y el acceso por correo sigue disponible si lo prefieres.',
   'main.whatsNew.section3.label': 'Todo sincronizado',

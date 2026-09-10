@@ -90,10 +90,10 @@ export const main: Record<string, string> = {
 
   // ── What's New modal ──
   'main.whatsNew.overline': 'Atualização',
-  'main.whatsNew.title': '166 ritmos, três idiomas e login pela digital.',
+  'main.whatsNew.title': '180 ritmos, três idiomas e login pela digital.',
   'main.whatsNew.subtitle': 'Biblioteca maior, o app na sua língua e um jeito mais rápido de entrar. Além de tudo sincronizado entre seus aparelhos.',
-  'main.whatsNew.section1.label': '11 ritmos novos',
-  'main.whatsNew.section1.body': 'Olodum, Zouk, Lofi, Grunge, Rock 90, Country Soft, Chamarra, Sina, Vaneira com Pandeiro, Xote Mesclado e CBJr. Agora são 166 no total, todos equalizados.',
+  'main.whatsNew.section1.label': '25 ritmos novos',
+  'main.whatsNew.section1.body': 'Olodum, Zouk, Flamenco, Rumba, Jovem Guarda, Afoxé, Fusion, R&B, Smooth Jazz Groove, Lofi, Grunge e mais 14. Agora são 180 no total, todos equalizados.',
   'main.whatsNew.section2.label': 'Entre sem digitar senha',
   'main.whatsNew.section2.body': 'Ative o Face ID ou a digital e entre no GDrums na hora. Sua senha fica guardada só no cofre seguro do aparelho, e o login por e-mail continua ali se você preferir.',
   'main.whatsNew.section3.label': 'Tudo sincronizado',
