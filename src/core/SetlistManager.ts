@@ -114,17 +114,21 @@ export class SetlistManager {
     this.onRemoteStateChange = cb;
   }
 
+  /** Resolve depois que o boot decidiu localStorage vs IndexedDB. Nenhuma
+   *  escrita no IDB acontece antes disso, senão um save disparado durante o
+   *  restore apagaria o backup bom (era o que o antigo guard de "não grava
+   *  vazio" tentava evitar, ao custo de ressuscitar item excluído). */
+  private idbReady: Promise<void>;
+
   constructor() {
     this.state = this.loadLocal();
     // Storage persistente (Chrome/Firefox) — pede ao browser pra não apagar
     // IndexedDB quando disco encher. Idempotente, fire-and-forget.
     requestPersistentStorage().catch(() => { /* noop */ });
-    // Se localStorage estava vazio mas IndexedDB pode ter backup, recupera
-    // assíncrono. Cobre o caso onde o browser limpou localStorage mas
-    // preservou IndexedDB (cenário comum em Safari iOS).
-    if (this.totalItemCount() === 0) {
-      this.tryRestoreFromIndexedDB();
-    }
+    // SEMPRE consulta o IndexedDB, não só quando o localStorage veio vazio:
+    // com a cota estourada ele fica com uma versão antiga porém não-vazia, e
+    // aí o backup precisa vencer por timestamp. Ver tryRestoreFromIndexedDB.
+    this.idbReady = this.tryRestoreFromIndexedDB();
     // Retry de reconexão + periódico — mesma defesa que o UserRhythmService
     // tem pro badge "pendente sync". Sem isso, uma falha silenciosa de
     // saveRemote() (rede ruim, ou edição feita antes do initWithUser
@@ -190,15 +194,32 @@ export class SetlistManager {
     try {
       // v2 primeiro
       const recovered = await persistGet<MultiSetlistState>(IDB_KEY_V2);
-      if (recovered && Array.isArray(recovered.setlists) &&
-          recovered.setlists.reduce((n, s) => n + (s.items?.length || 0), 0) > 0) {
-        if (this.totalItemCount() === 0 && !this.ownedByOther()) {
-          console.warn('[SetlistManager] Recuperando setlists v2 do IndexedDB');
+      if (recovered && Array.isArray(recovered.setlists)) {
+        // Quem vence é o MAIS RECENTE, não "o localStorage sempre".
+        //
+        // Antes só restaurava quando o localStorage estava VAZIO. Isso
+        // tornava o IndexedDB um backup inútil no caso mais comum de perda:
+        // com a cota estourada, o localStorage congela numa versão ANTIGA
+        // (mas não vazia), o IndexedDB recebe a nova — e o boot ficava com a
+        // antiga, porque "não estava vazio". Era exatamente o repertório
+        // sumindo depois de fechar o app.
+        const idbAt = recovered.lastModified || 0;
+        const localAt = this.state.lastModified || 0;
+        const idbItems = recovered.setlists.reduce((n, s) => n + (s.items?.length || 0), 0);
+
+        // Empate de timestamp (ou os dois sem carimbo): não encolhe.
+        const idbIsNewer = idbAt > localAt || (idbAt === localAt && idbItems > this.totalItemCount());
+
+        if (idbIsNewer && !this.ownedByOther()) {
+          console.warn(
+            `[SetlistManager] IndexedDB mais recente (${idbItems} músicas @ ${idbAt}) ` +
+            `que o localStorage (${this.totalItemCount()} @ ${localAt}) — restaurando`,
+          );
           this.state = this.normalizeState(recovered);
           this.writeToLocalStorage();
           this.onChange?.();
         }
-        return;
+        if (idbItems > 0 || idbAt > 0) return;
       }
       // Fallback: IDB do formato v1 (pré-migração)
       const legacy = await persistGet<Setlist & { lastModified?: number }>(LEGACY_IDB_KEY);
@@ -600,28 +621,60 @@ export class SetlistManager {
 
   private saveLocal(): void {
     this.writeToLocalStorage();
-    // IndexedDB em paralelo (fire-and-forget) — última linha de defesa.
-    // Só grava estados com itens (não sobrescreve IDB bom com vazio).
-    if (this.totalItemCount() > 0) {
-      persistSet(IDB_KEY_V2, this.state).catch(() => { /* noop */ });
-    }
+    // IndexedDB SEMPRE, inclusive quando o estado ficou vazio.
+    //
+    // Antes havia um `if (totalItemCount() > 0)` aqui, pra "não sobrescrever
+    // um IDB bom com vazio". O efeito colateral era pior que o problema: ao
+    // excluir a última música, o IDB ficava com a versão ANTERIOR, e no
+    // próximo boot ela voltava — repertório excluído ressuscitando sozinho.
+    //
+    // O que aquele guard realmente protegia era uma CORRIDA: o restore do
+    // IDB é assíncrono, e um save disparado antes dele terminar apagaria o
+    // backup. Isso agora é resolvido de forma correta esperando `idbReady`,
+    // que só resolve depois do boot decidir quem é mais novo.
+    void this.idbReady.then(() =>
+      persistSet(IDB_KEY_V2, this.state).catch(() => { /* noop */ }),
+    );
   }
 
+  /** true quando o localStorage recusou a última escrita (cota estourada).
+   *  Nesse aparelho o IndexedDB passa a ser a fonte confiável. */
+  private lsUnreliable = false;
+
+  isLocalStorageUnreliable(): boolean { return this.lsUnreliable; }
+
   private writeToLocalStorage(): void {
+    const serialized = JSON.stringify(this.state);
+
+    // A cópia PRINCIPAL é a que não pode faltar. Se a cota estourar, libera
+    // espaço jogando fora as cópias redundantes (backup + espelho, que são
+    // o MESMO conteúdo) e tenta de novo. Repertório grande gravado 3x era o
+    // que estourava os ~5MB do Safari iOS antes da hora.
     try {
-      const serialized = JSON.stringify(this.state);
       localStorage.setItem(LOCAL_KEY_V2, serialized);
-      // Backup secundário — não sobrescreve backup bom com vazio
-      if (this.totalItemCount() > 0) {
-        localStorage.setItem(LOCAL_BACKUP_KEY_V2, serialized);
-      }
-      // Espelho namespaced por conta — permite restaurar certo se ESTE
-      // usuário voltar a usar este mesmo device depois de outra conta
-      // ter usado no meio (ver isolateFromOtherAccounts).
+      this.lsUnreliable = false;
+    } catch {
+      try { localStorage.removeItem(LOCAL_BACKUP_KEY_V2); } catch { /* noop */ }
       if (this.userId) {
-        localStorage.setItem(namespacedKey(this.userId), serialized);
+        try { localStorage.removeItem(namespacedKey(this.userId)); } catch { /* noop */ }
       }
-    } catch { /* localStorage cheio — toleramos */ }
+      try {
+        localStorage.setItem(LOCAL_KEY_V2, serialized);
+        this.lsUnreliable = false;
+      } catch {
+        // Nem assim coube. O dado NÃO se perde: o IndexedDB (bem maior)
+        // recebe tudo em saveLocal() e o boot restaura de lá por timestamp.
+        this.lsUnreliable = true;
+        console.warn('[SetlistManager] localStorage sem espaço — IndexedDB assume');
+        return;
+      }
+    }
+
+    // Cópias redundantes: são conveniência, nunca podem derrubar a principal.
+    try { localStorage.setItem(LOCAL_BACKUP_KEY_V2, serialized); } catch { /* sem espaço, ok */ }
+    if (this.userId) {
+      try { localStorage.setItem(namespacedKey(this.userId), serialized); } catch { /* sem espaço, ok */ }
+    }
   }
 
   private loadLocal(): MultiSetlistState {

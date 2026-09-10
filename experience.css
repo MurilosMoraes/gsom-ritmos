@@ -2321,6 +2321,25 @@ body:has(#pedalBtInput) .user-layout {
 }
 
 .prev-btn .prev-ico-stop { display: none; }
+.prev-btn .prev-ico-lock { display: none; }
+
+/* TRAVADO: com um ritmo tocando, a prévia não pode entrar por cima (mesmo
+ * AudioContext, sairia sobreposto). O botão continua visível — sumir faria
+ * a pessoa achar que a prévia quebrou — mas em vermelho e com cadeado, pra
+ * ficar claro que é bloqueio e não defeito. */
+.prev-btn.prev-locked {
+  background: rgba(255, 82, 82, 0.10);
+  border-top-color: rgba(255, 82, 82, 0.30);
+  color: #ff7676;
+  cursor: not-allowed;
+}
+.prev-btn.prev-locked:hover {
+  background: rgba(255, 82, 82, 0.16);
+  border-top-color: rgba(255, 82, 82, 0.45);
+}
+.prev-btn.prev-locked .prev-ico-play,
+.prev-btn.prev-locked .prev-ico-stop { display: none; }
+.prev-btn.prev-locked .prev-ico-lock { display: block; }
 
 .prev-btn.prev-playing {
   background: #3ee8a7;

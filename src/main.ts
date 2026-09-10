@@ -15,6 +15,12 @@ import { FileManager } from './io/FileManager';
 import { UIManager } from './ui/UIManager';
 import { ModalManager } from './ui/ModalManager';
 import { Toast } from './ui/Toast';
+
+/** Tira o gate de boot posto no <head> do index.html. Idempotente: pode ser
+ *  chamado quantas vezes for. Ver o comentário do <style> gd-booting lá. */
+function revealApp(): void {
+  try { document.documentElement.classList.remove('gd-booting'); } catch { /* noop */ }
+}
 import { SetlistManager } from './core/SetlistManager';
 import { SetlistEditorUI } from './ui/SetlistEditorUI';
 import { ConversionManager } from './ui/ConversionManager';
@@ -656,6 +662,9 @@ class RhythmSequencer {
     this.stateManager.subscribe('playState', (state) => {
       this.uiManager.updatePlayStopUI(state.isPlaying);
       this.updateUserStatusBar(state);
+      // Trava/destrava os botões de prévia sem re-renderizar a lista toda:
+      // dar play tem que refletir NA HORA nos botões já pintados na tela.
+      this.refreshPreviewLocks(state.isPlaying);
     });
 
     this.stateManager.subscribe('tempo', (state) => {
@@ -746,7 +755,14 @@ class RhythmSequencer {
     }
 
     this.checkAccess().then(async (allowed) => {
+      // Acesso NEGADO: segue escondido. O checkAccess já mandou pro login,
+      // pra demo ou abriu o modal de offline (que fica fora do
+      // .app-container, então continua visível). Sem isso o app piscava
+      // inteiro antes de redirecionar — vazava a interface e parecia amador.
       if (!allowed) return;
+
+      // Liberado: revela a tela.
+      revealApp();
 
       // Inicializar favoritos — online: Supabase, offline: cache local
       try {
@@ -825,7 +841,7 @@ class RhythmSequencer {
   // ─── What's New ───────────────────────────────────────────────────
 
   private static readonly WHATS_NEW = {
-    version: '3.3',
+    version: '3.4',
     overline: t('main.whatsNew.overline'),
     title: t('main.whatsNew.title'),
     subtitle: t('main.whatsNew.subtitle'),
@@ -3001,7 +3017,29 @@ class RhythmSequencer {
         // - .sle-overlay: editor de repertório (SetlistEditorUI)
         // - .install-tut-overlay: tutorial de instalação
         // - .wn-modal-overlay: What's New
+        // - .eq-overlay, .count-vol-overlay, .fs-overlay: painéis com SLIDER.
+        //   Faltavam aqui e o sintoma era claro no iOS: arrastar o slider do
+        //   equalizador só pegava na 3ª ou 4ª tentativa. Sem o guard, o
+        //   setInterval(1500) e o touchend chamavam pedalInput.focus() no meio
+        //   do arrasto; iOS cancela a sequência de toque quando outro elemento
+        //   recebe foco, e o drag morria. Não dá pra confiar no guard de
+        //   "activeElement é INPUT" pra esses: o Safari não foca
+        //   <input type="range"> no toque, então o pedal não via ninguém
+        //   focado e roubava o foco assim mesmo.
+        // - .manual-overlay: texto longo rolável — mesmo problema no scroll
         // - z-index:99999 inline: fallback pra outros dinâmicos antigos
+        //
+        // Os quatro acima já chamavam __refocusPedal() no close(), ou seja,
+        // sempre foram feitos pra estar nesta lista — faltava só entrar nela.
+        //
+        // ⚠️ FICARAM DE FORA de propósito:
+        // - .countdown-overlay: criado UMA vez e reusado com display
+        //   none/flex (this.countdownOverlay), igual ao .gm-overlay. Incluir
+        //   mataria o pedal.
+        // - .offline-modal-overlay e .renew-modal-overlay: são removidos no
+        //   close, mas não chamam __refocusPedal(). Incluir sem isso deixaria
+        //   o pedal mudo por até 1,5s (o setInterval) depois de fechar. Se um
+        //   dia precisarem entrar, adicione a chamada no close() junto.
         // Overlays em animação de saída (.x-exit, .sle-exit, etc) NÃO contam:
         // o close() já foi disparado, o user clicou pra fechar. O refocus
         // do pedal precisa rolar AGORA dentro do mesmo user gesture do iOS,
@@ -3010,6 +3048,8 @@ class RhythmSequencer {
           '.account-modal-overlay:not(.x-exit), .bpm-modal-overlay:not(.x-exit), ' +
           '.x-overlay:not(.x-exit), .sle-overlay:not(.sle-exit), ' +
           '.install-tut-overlay:not(.x-exit), .wn-modal-overlay:not(.x-exit), ' +
+          '.eq-overlay:not(.x-exit), .count-vol-overlay:not(.x-exit), ' +
+          '.fs-overlay:not(.x-exit), .manual-overlay:not(.x-exit), ' +
           '[style*="z-index: 99999"]:not(.x-exit), [style*="z-index:99999"]:not(.x-exit)'
         );
       };
@@ -6281,6 +6321,10 @@ class RhythmSequencer {
     // No iOS, qualquer await antes do resume() quebra a cadeia de gesto
     // e o AudioContext fica permanentemente suspenso (mudo).
     this.audioManager.resume();
+    // Prévia e sequenciador são EXCLUSIVOS: um ou outro, nunca os dois juntos.
+    // Compartilham o mesmo AudioContext, então tocavam sobrepostos e viravam
+    // uma salada. stop() é síncrono, não quebra a cadeia de gesto do iOS.
+    this.previewPlayer?.stop();
     // Qualquer play encerra a contagem em loop da pausa.
     this.stopCountLoop();
     this.resuming = false;
@@ -9455,6 +9499,21 @@ class RhythmSequencer {
    * painel inteiro), e cada uma cuidar do proprio inscrito daria vazamento
    * na certa.
    */
+  /** Pinta/despinta o cadeado nos botões de prévia já renderizados.
+   *  Ao dar play, também encerra uma prévia que esteja tocando — o ritmo
+   *  completo sempre ganha da prévia. */
+  private refreshPreviewLocks(tocando: boolean): void {
+    if (tocando) this.previewPlayer?.stop();
+    const rotulo = tocando
+      ? t('main.preview.blockedWhilePlaying')
+      : t('ui.setlist.previewAriaLabel');
+    document.querySelectorAll<HTMLElement>('[data-prev-path]').forEach(btn => {
+      btn.classList.toggle('prev-locked', tocando);
+      btn.setAttribute('title', rotulo);
+      btn.setAttribute('aria-label', rotulo);
+    });
+  }
+
   private bindPreviewSync(): void {
     if (this.previewSyncBound || !this.previewPlayer) return;
     this.previewSyncBound = true;
@@ -9480,6 +9539,16 @@ class RhythmSequencer {
       return;
     }
 
+    // Prévia e ritmo tocando são EXCLUSIVOS: os dois usam o mesmo
+    // AudioContext e sobrepostos viram salada. Com o ritmo rodando a prévia
+    // fica TRAVADA (botão vermelho com cadeado) em vez de interromper o que
+    // a pessoa está tocando — no palco, cortar o ritmo por um toque errado
+    // seria bem pior do que não ouvir a prévia.
+    if (this.stateManager.isPlaying()) {
+      Toast.show(t('main.preview.blockedWhilePlaying'), { type: 'warn' });
+      return;
+    }
+
     try {
       let data = this.previewDataCache.get(path);
       if (!data) {
@@ -9497,16 +9566,26 @@ class RhythmSequencer {
   /** Os dois icones do botao; o CSS mostra um ou outro. */
   private previewIcon(): string {
     return `<svg class="prev-ico-play" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`
-         + `<svg class="prev-ico-stop" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+         + `<svg class="prev-ico-stop" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`
+         + this.previewLockIcon();
   }
 
   /** Marcacao do botao de previa, igual nas duas listas. */
   private previewBtnHtml(path: string, esc: (s: string) => string): string {
     if (!this.previewPlayer || !path) return '';
     const tocando = this.previewPlayer.isActive(path) ? ' prev-playing' : '';
-    return `<button class="prev-btn${tocando}" data-prev-path="${esc(path)}"
-                    aria-label="${t('ui.setlist.previewAriaLabel')}"
-                    title="${t('ui.setlist.previewAriaLabel')}">${this.previewIcon()}<span class="prev-txt">${t('main.allRhythms.previewLabel')}</span></button>`;
+    // Com o ritmo rodando o botão continua VISÍVEL, só travado — some o
+    // botão seria pior, a pessoa acharia que a prévia sumiu.
+    const travado = this.stateManager.isPlaying() ? ' prev-locked' : '';
+    const rotulo = travado ? t('main.preview.blockedWhilePlaying') : t('ui.setlist.previewAriaLabel');
+    return `<button class="prev-btn${tocando}${travado}" data-prev-path="${esc(path)}"
+                    aria-label="${esc(rotulo)}"
+                    title="${esc(rotulo)}">${this.previewIcon()}<span class="prev-txt">${t('main.allRhythms.previewLabel')}</span></button>`;
+  }
+
+  /** Ícone de cadeado do estado travado (CSS mostra só quando .prev-locked). */
+  private previewLockIcon(): string {
+    return `<svg class="prev-ico-lock" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-7-2a2 2 0 0 1 4 0v2h-4V7z"/></svg>`;
   }
 
   /**

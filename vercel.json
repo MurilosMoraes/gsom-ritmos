@@ -6,6 +6,18 @@
   "framework": "vite",
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/comunidade",
+      "destination": "https://comunidade.gdrums.com.br",
+      "permanent": true
+    },
+    {
+      "source": "/comunidade/:path*",
+      "destination": "https://comunidade.gdrums.com.br/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/",
