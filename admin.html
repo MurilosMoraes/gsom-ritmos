@@ -37,6 +37,7 @@
       <a href="#applesales" class="adm-nav-item" data-section="applesales"><span>🍎 Vendas Apple</span></a>
       <a href="#coupons" class="adm-nav-item" data-section="coupons"><span>Cupons</span></a>
       <a href="#leads" class="adm-nav-item" data-section="leads"><span>Leads</span></a>
+      <a href="#messages" class="adm-nav-item" data-section="messages"><span>Mensagens</span></a>
       <a href="#renewal" class="adm-nav-item" data-section="renewal"><span>Renovação</span></a>
       <a href="#intelligence" class="adm-nav-item" data-section="intelligence"><span>Inteligência</span></a>
       <a href="#affiliates" class="adm-nav-item" data-section="affiliates"><span>Afiliados</span></a>
@@ -77,6 +78,10 @@
           <a href="#leads" class="adm-nav-item" data-section="leads">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
             <span>Leads</span>
+          </a>
+          <a href="#messages" class="adm-nav-item" data-section="messages">
+            <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span>Mensagens</span>
           </a>
           <a href="#renewal" class="adm-nav-item" data-section="renewal">
             <svg class="adm-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
@@ -350,6 +355,18 @@
         </section>
 
         <!-- ═══ Leads (expirados) ═══ -->
+        <!-- Mensagens: textos de contato editaveis (WhatsApp de Leads,
+             Transacoes e Renovacoes). Antes ficavam fixos no codigo. -->
+        <section id="messagesSection" class="adm-section">
+          <div class="adm-section-top">
+            <div>
+              <h1 class="adm-title">Mensagens</h1>
+              <p class="adm-subtitle">Textos que o time envia pelo WhatsApp. Editou aqui, vale na hora.</p>
+            </div>
+          </div>
+          <div id="messagesList"></div>
+        </section>
+
         <section id="leadsSection" class="adm-section">
           <div class="adm-section-top">
             <h2 class="adm-title">Leads</h2>
@@ -405,7 +422,7 @@
             <div style="flex:1;min-width:160px;">
               <label style="display:block;font-size:0.65rem;font-weight:600;color:var(--a-text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.25rem;">Cupom da campanha</label>
               <select class="adm-select" id="renewalCoupon">
-                <option value="">— sem cupom —</option>
+                <option value="">, sem cupom, </option>
               </select>
             </div>
             <div style="flex:2;min-width:200px;">
@@ -447,7 +464,7 @@
           <div class="adm-section-top">
             <div>
               <h2 class="adm-title">Inteligência</h2>
-              <div class="adm-subtitle">Leads com alta probabilidade de comprar — ordenados por score</div>
+              <div class="adm-subtitle">Leads com alta probabilidade de comprar, ordenados por score</div>
             </div>
             <button class="adm-btn adm-btn-outline" id="intelRefreshBtn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
@@ -534,8 +551,7 @@
               <h2 class="adm-title">Links</h2>
               <div class="adm-subtitle">
                 Configure os links que aparecem em
-                <a href="/links" target="_blank" style="color:var(--a-cyan);">gdrums.com.br/links</a>
-                — arraste pra reordenar.
+                <a href="/links" target="_blank" style="color:var(--a-cyan);">gdrums.com.br/links</a>, arraste pra reordenar.
               </div>
             </div>
             <div style="display:flex;gap:0.5rem;align-items:center;">
@@ -558,7 +574,7 @@
               <h2 class="adm-title">Smart Links</h2>
               <div class="adm-subtitle">
                 Links únicos que redirecionam Android, iOS e Desktop pra destinos diferentes.<br/>
-                URL: <code style="color:var(--a-cyan);">gdrums.com.br/download/&lt;slug&gt;</code> — o slug <code>download</code> é o link principal sem path extra.
+                URL: <code style="color:var(--a-cyan);">gdrums.com.br/download/&lt;slug&gt;</code>, o slug <code>download</code> é o link principal sem path extra.
               </div>
             </div>
             <div style="display:flex;gap:0.5rem;align-items:center;">
@@ -606,17 +622,17 @@
                 <div class="adm-field">
                   <label>Cupom a aplicar (opcional)</label>
                   <select id="pushCoupon" class="adm-input">
-                    <option value="">— Sem cupom —</option>
+                    <option value="">, Sem cupom, </option>
                   </select>
                   <div style="font-size:0.7rem;color:var(--a-text2);margin-top:0.25rem;">
-                    Anexa <code style="color:var(--a-cyan);">?coupon=CÓDIGO</code> na URL — cupom é aplicado automaticamente no checkout.
+                    Anexa <code style="color:var(--a-cyan);">?coupon=CÓDIGO</code> na URL, cupom é aplicado automaticamente no checkout.
                   </div>
                 </div>
                 <div class="adm-field">
                   <label>Tag de campanha (opcional)</label>
                   <input type="text" id="pushCampaign" class="adm-input" placeholder="ex: black_friday_2026, volta50_winback" maxlength="40" />
                   <div style="font-size:0.7rem;color:var(--a-text2);margin-top:0.25rem;">
-                    Pra rastrear conversões — vira <code style="color:var(--a-cyan);">?utm_source=push&utm_campaign=...</code>
+                    Pra rastrear conversões, vira <code style="color:var(--a-cyan);">?utm_source=push&utm_campaign=...</code>
                   </div>
                 </div>
                 <div class="adm-field">
@@ -761,19 +777,19 @@
               <div class="adm-field">
                 <label>Plano a ativar</label>
                 <select id="manualPlan" class="adm-select">
-                  <option value="">— selecione —</option>
-                  <option value="passe-3-dias">Modo Show 3 Dias — R$ 9,90 (3 dias)</option>
-                  <option value="mensal">Mensal — R$ 29</option>
-                  <option value="trimestral">Trimestral — R$ 81</option>
-                  <option value="semestral">Semestral — R$ 144</option>
-                  <option value="anual">Anual — R$ 228</option>
-                  <option value="rei-dos-palcos">Rei dos Palcos — R$ 522</option>
+                  <option value="">, selecione, </option>
+                  <option value="passe-3-dias">Modo Show 3 Dias: R$ 9,90 (3 dias)</option>
+                  <option value="mensal">Mensal, R$ 29</option>
+                  <option value="trimestral">Trimestral, R$ 81</option>
+                  <option value="semestral">Semestral, R$ 144</option>
+                  <option value="anual">Anual, R$ 228</option>
+                  <option value="rei-dos-palcos">Rei dos Palcos, R$ 522</option>
                 </select>
               </div>
               <div class="adm-field">
                 <label>Cupom (opcional)</label>
                 <select id="manualCoupon" class="adm-select">
-                  <option value="">— sem cupom —</option>
+                  <option value="">, sem cupom, </option>
                 </select>
               </div>
               <div id="manualPreview" style="font-size:0.78rem;color:var(--a-text2,#9aa);background:rgba(0,0,0,0.2);border-radius:6px;padding:0.5rem 0.7rem;margin-bottom:0.5rem;display:none;"></div>
@@ -856,6 +872,27 @@
                 <label>Válido até</label>
                 <input type="date" id="couponValidUntil" class="adm-input" required />
               </div>
+            </div>
+
+            <!-- Regras do cupom: em quais planos vale e se e uso unico -->
+            <div class="adm-field">
+              <label>Vale para quais planos?</label>
+              <div class="adm-plan-picker" id="couponPlanos">
+                <label><input type="checkbox" value="passe-3-dias"> Modo Show 3 Dias</label>
+                <label><input type="checkbox" value="mensal"> Mensal</label>
+                <label><input type="checkbox" value="trimestral"> Trimestral</label>
+                <label><input type="checkbox" value="semestral"> Semestral</label>
+                <label><input type="checkbox" value="anual"> Anual</label>
+                <label><input type="checkbox" value="rei-dos-palcos"> Rei dos Palcos</label>
+              </div>
+              <div class="adm-field-hint">Nenhum marcado = vale em todos os planos.</div>
+            </div>
+            <div class="adm-field">
+              <label class="adm-check-line">
+                <input type="checkbox" id="couponUmaPorConta">
+                <span>Só pode ser usado <strong>1 vez por conta</strong></span>
+              </label>
+              <div class="adm-field-hint">Ideal para cupom de boas-vindas. Sem isso, a mesma pessoa pode usar quantas vezes quiser até estourar o limite total.</div>
             </div>
           </div>
           <div class="adm-modal-foot">

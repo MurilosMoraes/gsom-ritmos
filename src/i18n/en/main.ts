@@ -295,6 +295,8 @@ export const main: Record<string, string> = {
   'main.eq.closeAriaLabel': 'Close',
   'main.eq.reverbLabel': 'Reverb',
   'main.eq.reverbHint': 'smooths out the sound',
+  'main.eq.monoLabel': 'Mono output',
+  'main.eq.monoHint': 'sums both sides',
   'main.eq.resetButton': 'Reset',
   'main.eq.doneButton': 'Done',
 
@@ -396,7 +398,7 @@ export const main: Record<string, string> = {
   'main.saveRhythm.addToSetlistLabel': 'Add to setlist',
   'main.saveRhythm.noAddButton': "Don't add",
   'main.saveRhythm.saveAsNewButton': 'Save as new',
-  'main.saveRhythm.updateButton': 'Update "{name}"',
+  'main.saveRhythm.updateButton': 'Update rhythm',
   'main.saveRhythm.cancelButton': 'Cancel',
   'main.saveRhythm.saveButton': 'Save rhythm',
   'main.saveRhythm.nameRequiredToast': 'Give the rhythm a name',
@@ -570,9 +572,15 @@ export const main: Record<string, string> = {
   'main.rhythmSearch.placeholder': 'Search rhythms...',
   'main.rhythmCategory.all': 'All',
   'main.rhythmCategory.others': 'Other',
+  'main.allRhythms.previewLabel': 'listen',
   'main.allRhythms.emptyResults': 'Nothing found',
   'main.allRhythms.emptyResultsQuery': 'Nothing found for "{query}"',
   'main.desktopPanel.setlistEmptyHint': "Setlist's empty.<br>Build one with the SETLIST button.",
+  'main.desktopPanel.setlistSearchPlaceholder': 'Search setlist',
+  'main.desktopPanel.sortRecent': 'Recent',
+  'main.desktopPanel.sortAz': 'A-Z',
+  'main.desktopPanel.sortAriaLabel': 'Sort setlists',
+  'main.desktopPanel.setlistNoMatch': 'No setlist with that name.',
 
   // ── Duplicate / clone rhythm (admin editor) ──
   'main.alert.rhythmLoadFailedNamed': 'Error loading rhythm "{name}"',

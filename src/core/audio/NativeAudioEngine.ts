@@ -327,6 +327,7 @@ export class NativeAudioEngine implements IAudioEngine {
 
   // EQ/Reverb ainda não suportados no engine nativo — no-op.
   setEqGain(_index: number, _db: number): void { /* no-op */ }
+  setMonoOutput(_on: boolean): void { /* no-op: o mixer nativo cuida da saida */ }
   setReverbAmount(_amount: number): void { /* no-op */ }
   setReverbFrequency(_hz: number): void { /* no-op */ }
 }

@@ -46,7 +46,7 @@ export const htmlAuth: Record<string, string> = {
   // ─── register.html ───────────────────────────────────────────────────
   'htmlAuth.docTitleRegister': 'Criar conta no GDrums | 48h Grátis',
   'htmlAuth.register.pitchTitle': 'Sua banda no celular.',
-  'htmlAuth.register.pitchSub': 'Mais de 120 ritmos brasileiros pra tocar ao vivo com qualidade de banda completa. 48h grátis pra testar, sem cartão.',
+  'htmlAuth.register.pitchSub': 'Mais de 180 ritmos brasileiros pra tocar ao vivo com qualidade de banda completa. 48h grátis pra testar, sem cartão.',
   'htmlAuth.register.title': 'Crie sua conta.',
   'htmlAuth.register.subtitle': '48h grátis pra testar tudo. Sem cartão.',
   'htmlAuth.register.nameLabel': 'Nome',

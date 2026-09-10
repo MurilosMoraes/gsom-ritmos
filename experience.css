@@ -1738,7 +1738,9 @@ body.stage-mode .hdr-btn-show .hdr-btn-exit-label { display: inline; }
 }
 .catg-search-input {
   width: 100%;
-  padding: 0.8rem 1rem 0.8rem 2.5rem;
+  /* folga na direita pro X de limpar, senao o nome digitado passa por
+     baixo dele */
+  padding: 0.8rem 2.6rem 0.8rem 2.5rem;
   border-radius: 14px;
   border: 1.5px solid rgba(0, 212, 255, 0.35);
   background: rgba(255, 255, 255, 0.04);
@@ -2097,7 +2099,85 @@ body:has(#pedalBtInput) .user-layout {
   box-shadow: 0 0 14px rgba(0, 212, 255, 0.3);
 }
 
-/* ── Painel desktop DIREITO: chips de seleção de repertório ─────── */
+/* ── Painel desktop DIREITO: lista de repertórios ──────────────── */
+/* Barra de cima: busca por nome + botão de ordem (A-Z / Recentes). */
+.desk-setlists-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-bottom: 0.4rem;
+}
+/* A busca toma a sobra; o botão de ordem tem a largura do texto dele. */
+.desk-setlists-search { flex: 1; min-width: 0; }
+.desk-setlist-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(0, 212, 255, 0.85);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.desk-setlist-sort:hover {
+  border-color: rgba(0, 212, 255, 0.8);
+  background: rgba(0, 212, 255, 0.08);
+  color: #fff;
+}
+/* Um repertório por linha. Em fileira de chips, muitos deles embrulhavam em
+   varias linhas e o nome longo virava reticencia. */
+.desk-setlists-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  /* Lista grande nao pode empurrar as musicas do repertorio ativo pra fora
+     da tela: acima de ~6 linhas ela rola dentro do proprio bloco. */
+  max-height: 30vh;
+  overflow-y: auto;
+  margin-bottom: 0.5rem;
+}
+.desk-setlist-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.42rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.desk-setlist-row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.desk-setlist-row:hover { border-color: rgba(0, 212, 255, 0.4); color: #fff; }
+.desk-setlist-row.active {
+  border-color: #00D4FF;
+  color: #00D4FF;
+  background: rgba(0, 212, 255, 0.08);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
+}
+
 .desk-setlists-chips {
   display: flex;
   flex-wrap: wrap;
@@ -2164,4 +2244,159 @@ body:has(#pedalBtInput) .user-layout {
   flex-direction: column;
   gap: 1rem;
   padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+/* ─── Prévia nas listas de ritmo (TODOS no celular, painel no PC) ──────
+ *
+ * O ladrilho tem duas faixas: o nome em cima, que carrega o ritmo, e o
+ * rodapé, que só deixa ouvir. Antes só existia a primeira, e pra saber
+ * como era uma música o cara tinha que carregar ela e perder o que estava
+ * montado.
+ *
+ * O rodapé ocupa a largura inteira de propósito: alvo grande, e tocando
+ * ele acende verde, o que faz a música em prévia saltar aos olhos numa
+ * grade de 166 ritmos.
+ */
+.catg-cell,
+.desk-r-cell {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.catg-cell > .catg-card,
+.desk-r-cell > .desk-r-card {
+  width: 100%;
+  aspect-ratio: 1.42 / 1;
+  /* Parado, o nome fica centralizado no ladrilho INTEIRO, como se o rodapé
+   * não existisse. O espaço dele só é aberto quando ele entra — box-sizing
+   * é border-box, então isto não muda o tamanho do ladrilho, só empurra o
+   * nome pra cima. */
+  padding-bottom: 0.35rem !important;
+  transition: padding-bottom 0.16s ease;
+}
+
+/* Trava: flex centralizado transborda pros dois lados quando o texto não
+ * cabe, e a sobra de baixo cairia justo em cima do rodapé. */
+.catg-cell > .catg-card > .rt-name,
+.desk-r-cell > .desk-r-card > .rt-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.prev-btn {
+  position: absolute;
+  /* recuado pela espessura da borda do ladrilho, pra ela seguir inteira */
+  left: 1.5px;
+  right: 1.5px;
+  bottom: 1.5px;
+  height: 25px;
+  padding: 0;
+  gap: 5px;
+  border: 0;
+  border-top: 1px solid rgba(62, 232, 167, 0.18);
+  border-radius: 0 0 10px 10px;
+  background: rgba(62, 232, 167, 0.07);
+  color: #3ee8a7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.16s ease, opacity 0.16s ease,
+              background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.prev-btn:hover {
+  background: rgba(62, 232, 167, 0.15);
+  border-top-color: rgba(62, 232, 167, 0.35);
+}
+
+.prev-btn .prev-ico-stop { display: none; }
+
+.prev-btn.prev-playing {
+  background: #3ee8a7;
+  border-top-color: #3ee8a7;
+  color: #04150f;
+}
+.prev-btn.prev-playing .prev-ico-play { display: none; }
+.prev-btn.prev-playing .prev-ico-stop { display: block; }
+
+/* O rodapé nasce DENTRO do ladrilho: a célula recorta, então ele sobe de
+ * trás da borda de baixo em vez de entrar voando de fora da grade. */
+.catg-cell,
+.desk-r-cell {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+/* Escondido é o estado PADRÃO, nos dois mundos. Quem revela é o mouse (PC)
+ * ou o primeiro toque (celular, via .prev-open no JS). */
+.prev-btn {
+  transform: translateY(100%);
+  opacity: 0;
+  /* atrás da borda de baixo ele ainda roubaria o toque de quem passasse
+   * por ali; sem isto o ladrilho de baixo perde o clique */
+  pointer-events: none;
+}
+
+/* Aberto: o rodapé sobe e o nome abre espaço pra ele, subindo junto.
+ *
+ * .prev-playing entra aqui de propósito — tocando, o rodapé FICA à vista
+ * mesmo sem hover e sem toque: é o aviso de qual ritmo está soando, e sem
+ * ele não dá pra parar sem caçar o ladrilho de volta. */
+.catg-cell.prev-open .prev-btn,
+.desk-r-cell.prev-open .prev-btn,
+.prev-btn:focus-visible,
+.prev-btn.prev-playing {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.catg-cell.prev-open > .catg-card,
+.desk-r-cell.prev-open > .desk-r-card,
+.catg-cell:has(.prev-btn.prev-playing) > .catg-card,
+.desk-r-cell:has(.prev-btn.prev-playing) > .desk-r-card {
+  padding-bottom: 27px !important;
+}
+
+/* PC: quem revela é o mouse, sem precisar de toque nenhum. Só onde existe
+ * mouse de verdade — no celular "passar o mouse" não existe, e lá o
+ * primeiro toque é que abre.
+ *
+ * O gatilho é o LADRILHO INTEIRO, não o rodapé: mirar numa tira de 25px
+ * invisível seria impossível. */
+@media (hover: hover) and (pointer: fine) {
+  .catg-cell:hover .prev-btn,
+  .desk-r-cell:hover .prev-btn {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .catg-cell:hover > .catg-card,
+  .desk-r-cell:hover > .desk-r-card,
+  .catg-cell:focus-within > .catg-card,
+  .desk-r-cell:focus-within > .desk-r-card {
+    padding-bottom: 27px !important;
+  }
+}
+
+/* Nome muito comprido em tela estreita: o rótulo sai e fica só o ícone,
+ * que continua entendível, em vez de quebrar linha dentro do rodapé. */
+@media (max-width: 360px) {
+  .prev-btn .prev-txt { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prev-btn { transition: none; }
 }

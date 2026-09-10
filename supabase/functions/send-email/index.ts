@@ -182,7 +182,7 @@ serve(async (req) => {
 </div>
 <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:2rem 1.5rem;margin-bottom:1.5rem;">
 <h2 style="color:#fff;font-size:1.3rem;margin:0 0 1rem;">Fala ${firstName}!</h2>
-<p style="color:rgba(255,255,255,0.6);font-size:0.95rem;line-height:1.7;margin:0 0 1rem;">Vi que você testou o GDrums e queria saber como foi a experiência! Desde que você usou, a biblioteca cresceu pra <strong style="color:#fff;">165 ritmos</strong> — Frevo, Hard Rock, Heavy Metal, MPB, Samba Rock, Partido Alto, Roda de Samba, Worship e muito mais.</p>
+<p style="color:rgba(255,255,255,0.6);font-size:0.95rem;line-height:1.7;margin:0 0 1rem;">Vi que você testou o GDrums e queria saber como foi a experiência! Desde que você usou, a biblioteca cresceu pra <strong style="color:#fff;">180 ritmos</strong> — Frevo, Hard Rock, Heavy Metal, MPB, Samba Rock, Partido Alto, Roda de Samba, Worship e muito mais.</p>
 <p style="color:rgba(255,255,255,0.6);font-size:0.95rem;line-height:1.7;margin:0 0 1.5rem;">E pra você que já conhece o sistema, tenho um <strong style="color:#00E68C;">cupom exclusivo</strong>:</p>
 <div style="text-align:center;background:rgba(0,230,140,0.06);border:1px solid rgba(0,230,140,0.2);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
 <div style="font-size:0.7rem;color:rgba(0,230,140,0.6);text-transform:uppercase;letter-spacing:2px;margin-bottom:0.5rem;">Cupom exclusivo</div>

@@ -52,6 +52,10 @@ export class AudioManager {
   // Boost de saída (loudness): ganho ANTES do compressor — o compressor
   // segura os picos, então dá pra subir o volume percebido sem clipar.
   private masterBoost: GainNode;
+  // Saida mono: um no so, sempre na cadeia. channelCount 1 faz o
+  // WebAudio somar os lados como 0,5*(L+R) — sem pulo de volume. Em 2 ele
+  // e passagem pura, entao ligar e desligar nao recria nada.
+  private monoOut: GainNode;
 
   // ─── EQ 5 bandas + Reverb (cadeia master) ─────────────────────────────
   // Entrada onde TODOS os samples conectam → EQ em série → (dry + reverb) →
@@ -87,7 +91,7 @@ export class AudioManager {
     // o app baixo. Ganho extra ANTES do compressor = loudness sem clipar.
     // Override manual via localStorage 'gdrums_volume_boost' (1.0–2.5)
     // pra calibrar em campo sem novo deploy.
-    let boost = isMobile ? 1.8 : 1.5;
+    let boost = isMobile ? 2.3 : 2.3;
     try {
       const saved = parseFloat(localStorage.getItem('gdrums_volume_boost') || '');
       if (!isNaN(saved)) boost = Math.max(1.0, Math.min(2.5, saved));
@@ -118,11 +122,17 @@ export class AudioManager {
     // o bypass, o vilão é compressão; se continuar, é scheduling/sample.
     let bypassComp = false;
     try { bypassComp = localStorage.getItem('gdrums_no_comp') === '1'; } catch {}
+    this.monoOut = audioContext.createGain();
+    this.monoOut.channelCountMode = 'explicit';
+    this.monoOut.channelInterpretation = 'speakers';
+    this.monoOut.channelCount = 2;              // estereo ate alguem pedir mono
+    this.masterBoost.connect(this.monoOut);
+
     if (bypassComp) {
       console.warn('[AudioManager] compressor BYPASSED (gdrums_no_comp=1)');
-      this.masterBoost.connect(audioContext.destination);
+      this.monoOut.connect(audioContext.destination);
     } else {
-      this.masterBoost.connect(this.masterCompressor);
+      this.monoOut.connect(this.masterCompressor);
     }
 
     // Cadeia de efeitos master: EQ 5 bandas + reverb (feeding o masterBoost).
@@ -186,6 +196,12 @@ export class AudioManager {
   }
 
   /** Quantidade de reverb (0 a 1). Em 0, o convolver é desconectado (0 CPU). */
+  /** Junta os dois lados numa saida so. Util em PA mono ou fone de um
+   *  ouvido, onde o que estiver so num lado sumiria. */
+  setMonoOutput(on: boolean): void {
+    try { this.monoOut.channelCount = on ? 1 : 2; } catch { /* navegador antigo */ }
+  }
+
   setReverbAmount(amount: number): void {
     if (!this.reverbWet || !this.reverbConvolver) return;
     const a = Math.max(0, Math.min(1, amount));
@@ -439,7 +455,8 @@ export class AudioManager {
       pattern: state.patterns[activePatternType],
       channels: state.channels[activePatternType],
       volumes: state.volumes[activePatternType],
-      masterVolume: state.masterVolume,
+      // nivelamento de loudness do ritmo (1 = sem ajuste)
+      masterVolume: state.masterVolume * (state.rhythmGain ?? 1),
       shouldPlayStartSound: step === 0 && state.shouldPlayStartSound,
       shouldPlayReturnSound: step === 0 && state.shouldPlayReturnSound,
       fillStartBuffer: state.fillStartSound.buffer,

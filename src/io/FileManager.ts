@@ -51,6 +51,7 @@ export class FileManager {
     return {
       version: '1.6',
       tempo: state.tempo,
+      ...(state.rhythmGain && state.rhythmGain !== 1 ? { gain: state.rhythmGain } : {}),
       beatsPerBar: state.beatsPerBar,
       patternSteps: state.patternSteps,
       variations: {
@@ -81,6 +82,7 @@ export class FileManager {
     const state = this.stateManager.getState();
 
     this.stateManager.setTempo(data.tempo || 80);
+    this.stateManager.setRhythmGain(data.gain ?? 1);
 
     // Carregar beatsPerBar (compasso)
     state.beatsPerBar = data.beatsPerBar || 4;

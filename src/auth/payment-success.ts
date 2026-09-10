@@ -175,8 +175,8 @@ class PaymentSuccessPage {
     msg.textContent = t('plans.success.activated', { plan: planName });
     btn.classList.add('visible');
 
-    // Incrementar uso do cupom (se teve)
-    await this.incrementCouponUse();
+    // O uso do cupom NAO e mais incrementado aqui — ver nota em
+    // incrementCouponUse(). Quem conta e o payment-webhook (servidor).
 
     // Meta Pixel Purchase (browser) — server (payment-webhook ou
     // apple-iap-verify) já disparou CAPI; aqui mandamos o Pixel com o
@@ -269,20 +269,21 @@ class PaymentSuccessPage {
     } catch { /* tracking nunca quebra a UI */ }
   }
 
-  private async incrementCouponUse(): Promise<void> {
-    try {
-      const pending = localStorage.getItem('gdrums-pending-order');
-      if (!pending) return;
-      const order = JSON.parse(pending);
-      const couponCode = order.coupon?.code;
-      if (!couponCode) return;
-
-      // Incremento atômico no banco — evita race condition com pagamentos simultâneos
-      await supabase.rpc('increment_coupon_uses', { coupon_code: couponCode });
-    } catch {
-      // Não bloquear o fluxo de sucesso se falhar
-    }
-  }
+  // REMOVIDO (22/08/2026): esta funcao incrementava o contador do cupom
+  // aqui no navegador — mas o payment-webhook JA incrementava no servidor.
+  // Resultado: DOIS incrementos por compra. O contador ficou em ~2x o uso
+  // real em praticamente todos os cupons (30ESPECIAL 275 vs 119 usos reais,
+  // GDRUMS10 161 vs 86, AMANHECE 100 vs 38...).
+  //
+  // O efeito pratico nao foi cupom usado demais: foi campanha morrendo na
+  // METADE do previsto, porque o max_uses era atingido com metade das vendas.
+  //
+  // Contar no servidor tambem conserta dois furos que o front tinha:
+  //   - dependia do localStorage 'gdrums-pending-order' (limpou = nao contava)
+  //   - dependia do cliente CHEGAR na tela de sucesso (fechou o navegador
+  //     depois de pagar = venda acontecia sem contar)
+  //
+  // O webhook conta uma vez so, na transicao pending -> confirmed.
 
   private showPending(): void {
     const icon = document.getElementById('statusIcon')!;

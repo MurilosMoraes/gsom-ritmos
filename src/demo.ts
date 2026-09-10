@@ -436,7 +436,7 @@ class DemoPlayer {
 
     // BPM
     document.getElementById('tempoUpUser')?.addEventListener('click', () => {
-      this.stateManager.setTempo(Math.min(280, this.stateManager.getTempo() + 1));
+      this.stateManager.setTempo(Math.min(360, this.stateManager.getTempo() + 1));
       this.uiManager.updateTempoUI(this.stateManager.getTempo());
     });
     document.getElementById('tempoDownUser')?.addEventListener('click', () => {

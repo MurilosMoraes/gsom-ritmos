@@ -2,10 +2,10 @@
 export const htmlPlans: Record<string, string> = {
   // ─── plans.html ───────────────────────────────────────────────────
   'htmlPlans.plansDocTitle': 'GDrums Plans | Starting at R$ 9,90',
-  'htmlPlans.plansMetaDescription': 'GDrums plans with access to 155 rhythms, Bluetooth pedal support (sold separately), and iOS/Android apps. Monthly R$ 29, Annual R$ 228, King of the Stage (3 years) R$ 522.',
+  'htmlPlans.plansMetaDescription': 'GDrums plans with access to 180 rhythms, Bluetooth pedal support (sold separately), and iOS/Android apps. Monthly R$ 29, Annual R$ 228, King of the Stage (3 years) R$ 522.',
   'htmlPlans.plansOgTitle': 'GDrums Plans - Starting at R$ 9,90',
-  'htmlPlans.plansOgDescription': 'Full access: 155 rhythms, Bluetooth pedal support, iOS/Android apps. 48h free trial, no card required.',
-  'htmlPlans.plansTwitterDescription': 'Full access: 155 rhythms, Bluetooth pedal support, iOS/Android apps.',
+  'htmlPlans.plansOgDescription': 'Full access: 180 rhythms, Bluetooth pedal support, iOS/Android apps. 48h free trial, no card required.',
+  'htmlPlans.plansTwitterDescription': 'Full access: 180 rhythms, Bluetooth pedal support, iOS/Android apps.',
   'htmlPlans.plansSupportLink': 'Support',
   'htmlPlans.plansOverline': 'Plans',
   'htmlPlans.plansTitle': 'Choose how you want to continue.',

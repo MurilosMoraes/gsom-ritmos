@@ -52,7 +52,7 @@
      - Description: copiar dos cards no [plans.html](plans.html)
    - **Review Information**:
      - Screenshot: tira print da tela `/plans` no simulator iOS mostrando o plano
-     - Review Notes: "Subscription unlocks all 100+ rhythms and live performance features."
+     - Review Notes: "Subscription unlocks all 180+ rhythms and live performance features."
 
 4. **Status** dos produtos: vai ficar "Missing Metadata" → preenche → "Ready to Submit". Eles ficam em "Waiting for Review" junto com o build.
 

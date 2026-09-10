@@ -16,6 +16,8 @@ hydrate();
 interface AppliedCoupon {
   code: string;
   discount_percent: number;
+  /** Planos em que o cupom vale. Vazio/ausente = todos. */
+  planos?: string[];
 }
 
 class PlansPage {
@@ -393,6 +395,7 @@ class PlansPage {
     this.appliedCoupon = {
       code: coupon.code,
       discount_percent: coupon.discount_percent,
+      planos: Array.isArray(coupon.planos) ? coupon.planos : [],
     };
 
     status.innerHTML = '';
@@ -435,7 +438,14 @@ class PlansPage {
       const card = document.createElement('div');
       card.className = 'plan-card' + (isHighlighted ? ' popular' : '');
 
-      const discount = this.appliedCoupon?.discount_percent || 0;
+      // Cupom restrito a plano: o desconto so aparece nos planos em que ele
+      // vale. Lista vazia = vale em todos (comportamento historico). O
+      // create-checkout barra de novo no servidor, isso aqui e so a vitrine
+      // — mostrar preco com desconto num plano que o backend vai recusar
+      // seria enganar o cliente na hora de pagar.
+      const planosDoCupom = this.appliedCoupon?.planos || [];
+      const cupomValeNestePlano = planosDoCupom.length === 0 || planosDoCupom.includes(plan.id);
+      const discount = cupomValeNestePlano ? (this.appliedCoupon?.discount_percent || 0) : 0;
       const hasDiscount = discount > 0;
       const originalPrice = plan.priceCents;
       const hasCredit = this.upgradeCredit > 0;

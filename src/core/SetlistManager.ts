@@ -354,13 +354,16 @@ export class SetlistManager {
 
   // ─── API de MÚLTIPLOS repertórios ───────────────────────────────────
 
-  getSetlists(): Array<{ id: string; name: string; count: number; active: boolean; shared: boolean }> {
+  getSetlists(): Array<{ id: string; name: string; count: number; active: boolean; shared: boolean; lastModified: number }> {
     return this.state.setlists.map(s => ({
       id: s.id,
       name: s.name,
       count: s.items.length,
       active: s.id === this.state.activeId,
       shared: s.sharedImport === true,
+      // Repertorio de antes do campo existir vale 0 — vai pro fim da
+      // ordem por recentes em vez de fingir que acabou de ser mexido.
+      lastModified: s.lastModified || 0,
     }));
   }
 
@@ -542,6 +545,17 @@ export class SetlistManager {
     if (a.currentIndex >= a.items.length) {
       a.currentIndex = Math.max(0, a.items.length - 1);
     }
+    this.touch(a);
+    this.notify();
+  }
+
+  /** Muda nome/BPM/vinculo de um item no lugar. Usado pelo editar da lista:
+   *  a edicao vira um ritmo pessoal e o item passa a apontar pra ele. */
+  updateItem(index: number, patch: Partial<SetlistItem>): void {
+    const a = this.active();
+    const item = a.items[index];
+    if (!item) return;
+    Object.assign(item, patch);
     this.touch(a);
     this.notify();
   }
@@ -794,9 +808,18 @@ export class SetlistManager {
    *  no boot, clicou cedo), busca a sessão atual na hora — evita o "sessão
    *  não iniciada" que só saía fechando/reabrindo o app. */
   private async ensureSession(): Promise<boolean> {
-    if (this.userId && this.supabaseClient) return true;
     try {
       const { supabase } = await import('../auth/supabase');
+      // getSession() do supabase-js RENOVA sozinho quando o token esta
+      // vencido ou perto disso. Sem rede so quando ha renovacao de verdade —
+      // no caso normal e leitura local, entao da pra chamar sempre.
+      //
+      // BUG ANTIGO: a gente devolvia true direto quando ja tinha o userId
+      // guardado, e ai nunca mais conferia nada. O token vencia (app aberto
+      // ha horas, ou celular que dormiu e o timer de refresh nao rodou), o
+      // ensureSession seguia dizendo que estava tudo bem, e a sincronizacao
+      // batia no servidor com token morto. Por isso "sair e entrar" resolvia:
+      // era a unica forma de pegar token novo.
       const { data } = await supabase.auth.getSession();
       const uid = data.session?.user?.id;
       if (uid) {
@@ -804,8 +827,10 @@ export class SetlistManager {
         this.userId = uid;
         return true;
       }
-    } catch { /* offline/sem sessão */ }
-    return false;
+    } catch { /* offline/sem sessao */ }
+    // Sem sessao boa agora: se ja houve uma antes, seguimos com ela — offline
+    // a fila local continua funcionando e sobe quando a rede voltar.
+    return !!(this.userId && this.supabaseClient);
   }
 
   // ─── LIXEIRA DE SUPORTE ────────────────────────────────────────────────

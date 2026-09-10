@@ -176,7 +176,7 @@ serve(async (req) => {
     if (couponCode) {
       const { data: coupon } = await supabase
         .from("gdrums_coupons")
-        .select("discount_percent, active, max_uses, current_uses, valid_from, valid_until")
+        .select("discount_percent, active, max_uses, current_uses, valid_from, valid_until, planos, uma_por_conta")
         .eq("code", couponCode)
         .eq("active", true)
         .single();
@@ -187,6 +187,35 @@ serve(async (req) => {
         const validUntil = new Date(coupon.valid_until);
         const notExpired = now >= validFrom && now <= validUntil;
         const hasUses = coupon.current_uses < coupon.max_uses;
+
+        // --- Regras por cupom (v18) -------------------------------
+        // Restricao de plano: lista vazia = vale em todos (como sempre foi).
+        const planos: string[] = Array.isArray(coupon.planos) ? coupon.planos : [];
+        const planoOk = planos.length === 0 || planos.includes(planId);
+        if (!planoOk) {
+          return new Response(JSON.stringify({
+            error: "coupon_wrong_plan",
+            message: `O cupom ${couponCode} não vale para este plano. Escolha outro plano ou remova o cupom.`,
+          }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // Uso unico por conta: checado pela transacao CONFIRMADA, nao pelo
+        // contador global (que e por cupom, nao por pessoa).
+        if (coupon.uma_por_conta && userId) {
+          const { data: jaUsou } = await supabase
+            .from("gdrums_transactions")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("coupon_code", couponCode)
+            .eq("status", "confirmed")
+            .limit(1);
+          if (jaUsou && jaUsou.length > 0) {
+            return new Response(JSON.stringify({
+              error: "coupon_already_used",
+              message: `Você já usou o cupom ${couponCode}. Ele vale uma vez por conta.`,
+            }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
 
         if (notExpired && hasUses) {
           finalPrice = Math.round(officialPrice * (1 - coupon.discount_percent / 100));

@@ -366,7 +366,8 @@ export class Scheduler {
       volumes: state.volumes[activePattern],
       offsets: state.offsets?.[activePattern],
       stepDuration,
-      masterVolume: state.masterVolume,
+      // nivelamento de loudness do ritmo (1 = sem ajuste)
+      masterVolume: state.masterVolume * (state.rhythmGain ?? 1),
       shouldPlayStartSound: step === 0 && state.shouldPlayStartSound,
       shouldPlayReturnSound: step === 0 && state.shouldPlayReturnSound,
       fillStartBuffer: state.fillStartSound.buffer,

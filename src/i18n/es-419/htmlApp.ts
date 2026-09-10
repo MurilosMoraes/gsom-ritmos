@@ -1,7 +1,7 @@
 // Strings do HTML estático (hidratação data-i18n) — preenchido por agente
 export const htmlApp: Record<string, string> = {
   // ── <title> da aba ──
-  'htmlApp.docTitle': 'GDrums | Baterista Virtual con 155 Ritmos',
+  'htmlApp.docTitle': 'GDrums | Baterista Virtual con 180 Ritmos',
 
   // ── Topbar global ──
   'htmlApp.topbar.downloadPlayStore': 'Descargar en Play Store',
@@ -15,6 +15,7 @@ export const htmlApp: Record<string, string> = {
   'htmlApp.topbar.installBtn': 'Instalar app',
   'htmlApp.topbar.myAccountBtn': 'Mi Cuenta',
   'htmlApp.topbar.supportLink': 'Soporte / Comunidad',
+  'htmlApp.topbar.freeRhythmsLink': 'Ritmos y repertorios listos',
   'htmlApp.topbar.footerCredit': 'Para la honra y gloria de Dios',
 
   // ── Modo Usuário ──

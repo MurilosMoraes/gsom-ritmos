@@ -295,6 +295,8 @@ export const main: Record<string, string> = {
   'main.eq.closeAriaLabel': 'Fechar',
   'main.eq.reverbLabel': 'Reverb',
   'main.eq.reverbHint': 'suaviza o som',
+  'main.eq.monoLabel': 'Saída mono',
+  'main.eq.monoHint': 'junta os dois lados',
   'main.eq.resetButton': 'Resetar',
   'main.eq.doneButton': 'Pronto',
 
@@ -396,7 +398,7 @@ export const main: Record<string, string> = {
   'main.saveRhythm.addToSetlistLabel': 'Adicionar ao repertório',
   'main.saveRhythm.noAddButton': 'Não adicionar',
   'main.saveRhythm.saveAsNewButton': 'Salvar como novo',
-  'main.saveRhythm.updateButton': 'Atualizar "{name}"',
+  'main.saveRhythm.updateButton': 'Atualizar ritmo',
   'main.saveRhythm.cancelButton': 'Cancelar',
   'main.saveRhythm.saveButton': 'Salvar ritmo',
   'main.saveRhythm.nameRequiredToast': 'Dê um nome ao ritmo',
@@ -570,9 +572,15 @@ export const main: Record<string, string> = {
   'main.rhythmSearch.placeholder': 'Buscar ritmo...',
   'main.rhythmCategory.all': 'Todos',
   'main.rhythmCategory.others': 'Outros',
+  'main.allRhythms.previewLabel': 'ouvir',
   'main.allRhythms.emptyResults': 'Nada achado',
   'main.allRhythms.emptyResultsQuery': 'Nada achado pra "{query}"',
   'main.desktopPanel.setlistEmptyHint': 'Repertório vazio.<br>Monte no botão REPERTÓRIO.',
+  'main.desktopPanel.setlistSearchPlaceholder': 'Buscar repertório',
+  'main.desktopPanel.sortRecent': 'Recentes',
+  'main.desktopPanel.sortAz': 'A-Z',
+  'main.desktopPanel.sortAriaLabel': 'Ordenar repertórios',
+  'main.desktopPanel.setlistNoMatch': 'Nenhum repertório com esse nome.',
 
   // ── Duplicate / clone rhythm (admin editor) ──
   'main.alert.rhythmLoadFailedNamed': 'Erro ao carregar ritmo "{name}"',

@@ -2642,7 +2642,7 @@ class RhythmSequencer {
 
     if (tempoUpUser) {
       this.attachHoldRepeat(tempoUpUser,
-        () => this.stateManager.setTempo(Math.min(280, this.stateManager.getTempo() + 1)),
+        () => this.stateManager.setTempo(Math.min(360, this.stateManager.getTempo() + 1)),
         () => this.saveCustomBpm());
     }
 
@@ -2667,7 +2667,7 @@ class RhythmSequencer {
     const tempoDown = document.getElementById('tempoDown');
 
     const updateTempo = (value: number) => {
-      const newTempo = Math.max(40, Math.min(280, value));
+      const newTempo = Math.max(40, Math.min(360, value));
       this.stateManager.setTempo(newTempo);
     };
 
@@ -4922,6 +4922,7 @@ class RhythmSequencer {
     try {
       const rv = parseFloat(localStorage.getItem('gdrums-reverb') || '');
       if (!isNaN(rv)) this.audioManager.setReverbAmount(rv);
+      this.audioManager.setMonoOutput(localStorage.getItem('gdrums-mono') === '1');
     } catch { /* noop */ }
   }
 
@@ -4989,6 +4990,8 @@ class RhythmSequencer {
     try { const s = JSON.parse(localStorage.getItem('gdrums-eq') || 'null'); if (Array.isArray(s)) eq = s.map((x: any) => Number(x) || 0); } catch { /* noop */ }
     let reverb = 0;
     try { const r = parseFloat(localStorage.getItem('gdrums-reverb') || ''); if (!isNaN(r)) reverb = r; } catch { /* noop */ }
+    let mono = false;
+    try { mono = localStorage.getItem('gdrums-mono') === '1'; } catch { /* noop */ }
 
     const overlay = document.createElement('div');
     overlay.className = 'eq-overlay';
@@ -5004,6 +5007,10 @@ class RhythmSequencer {
       <div class="eq-card">
         <div class="eq-head">
           <div class="eq-title">${t('main.eq.title')}</div>
+          <div class="eq-head-mono">
+            <button class="eq-switch${mono ? ' on' : ''}" id="eqMono" role="switch" aria-checked="${mono}" aria-label="${t('main.eq.monoLabel')}" title="${t('main.eq.monoLabel')} — ${t('main.eq.monoHint')}"><span class="eq-switch-dot"></span></button>
+            <span class="eq-mono-txt" id="eqMonoVal">${mono ? 'mono' : 'stereo'}</span>
+          </div>
           <button class="eq-close" id="eqClose" aria-label="${t('main.eq.closeAriaLabel')}">&#10005;</button>
         </div>
         <div class="eq-body">
@@ -5033,6 +5040,18 @@ class RhythmSequencer {
         if (v) v.textContent = `${db > 0 ? '+' : ''}${db} dB`;
         localStorage.setItem('gdrums-eq', JSON.stringify(eq));
       });
+    });
+
+    const monoBtn = overlay.querySelector('#eqMono') as HTMLButtonElement | null;
+    const monoVal = overlay.querySelector('#eqMonoVal') as HTMLElement | null;
+    monoBtn?.addEventListener('click', () => {
+      mono = !mono;
+      monoBtn.classList.toggle('on', mono);
+      monoBtn.setAttribute('aria-checked', String(mono));
+      if (monoVal) monoVal.textContent = mono ? 'mono' : 'stereo';
+      this.audioManager.setMonoOutput(mono);
+      try { localStorage.setItem('gdrums-mono', mono ? '1' : '0'); } catch { /* noop */ }
+      HapticsService.light();
     });
 
     const rvSlider = overlay.querySelector('#eqReverb') as HTMLInputElement;
@@ -6602,7 +6621,15 @@ class RhythmSequencer {
       snap.tempo = bpm;
       return snap;
     }
-    return this.fileManager.exportProjectAsJSON();
+    // BUG ate aqui: este caminho recebia o bpm e jogava fora, entao o ritmo
+    // salvava com o tempo que estava no editor e nao com o digitado no
+    // disquete. So aparecia pra quem cai neste ramo — admin, ou sem foto.
+    //
+    // O buildProjectSnapshot monta um objeto novo a cada chamada, entao
+    // escrever o tempo aqui nao encosta no estado vivo.
+    const data = this.fileManager.exportProjectAsJSON();
+    data.tempo = bpm;
+    return data;
   }
 
   private showSaveRhythmModal(): void {
@@ -6684,8 +6711,8 @@ class RhythmSequencer {
           </div>
           <div class="x-save-actions">
             ${editing
-              ? `<button class="x-btn x-btn-ghost" id="xSaveAsNew" type="button">${t('main.saveRhythm.saveAsNewButton')}</button>
-                 <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">${t('main.saveRhythm.updateButton', { name: esc(editing.name.length > 18 ? editing.name.slice(0, 18) + '…' : editing.name) })}</button>`
+              ? `<button class="x-btn x-btn-ghost" id="xSaveConfirm" type="button">${t('main.saveRhythm.updateButton')}</button>
+                 <button class="x-btn x-btn-primary" id="xSaveAsNew" type="button">${t('main.saveRhythm.saveAsNewButton')}</button>`
               : `<button class="x-btn x-btn-ghost" id="xSaveCancel" type="button">${t('main.saveRhythm.cancelButton')}</button>
                  <button class="x-btn x-btn-primary" id="xSaveConfirm" type="button">${t('main.saveRhythm.saveButton')}</button>`}
           </div>
@@ -6696,7 +6723,10 @@ class RhythmSequencer {
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('active'));
 
+    this.bindPreviewSync();
+
     const close = (): void => {
+      this.previewPlayer?.stop();
       overlay.classList.remove('active');
       overlay.classList.add('x-exit');
       (window as any).__refocusPedal?.(); // refocus síncrono p/ pedal iOS
@@ -6710,12 +6740,26 @@ class RhythmSequencer {
     const nameInput = overlay.querySelector('#xSaveName') as HTMLInputElement;
     setTimeout(() => { nameInput.focus(); nameInput.select(); }, 50);
 
+    // Nome trocado: "Atualizar 'Ritmo 1'" nao pode mais fazer o que diz, e
+    // apaga. Quem fica de pe e o "Salvar como novo", que e o que a troca de
+    // nome pede. Antes o botao seguia aceso e regravava o ritmo por cima.
+    if (editing) {
+      const btnAtualizar = overlay.querySelector('#xSaveConfirm') as HTMLButtonElement | null;
+      nameInput.addEventListener('input', () => {
+        if (!btnAtualizar) return;
+        const mesmoNome = nameInput.value.trim() === editing.name;
+        btnAtualizar.disabled = !mesmoNome;
+        btnAtualizar.style.opacity = mesmoNome ? '' : '0.35';
+        btnAtualizar.style.cursor = mesmoNome ? '' : 'not-allowed';
+      });
+    }
+
     // ── BPM: stepper pill (mesmo do Meus Ritmos) ──
-    let bpmValue = Math.max(40, Math.min(280, Math.round(currentBpm)));
+    let bpmValue = Math.max(40, Math.min(360, Math.round(currentBpm)));
     const bpmCtrl = overlay.querySelector('#xSaveBpmCtrl') as HTMLElement;
     const bpmVal = overlay.querySelector('#xSaveBpmVal') as HTMLElement;
     const setBpmValue = (v: number): void => {
-      bpmValue = Math.max(40, Math.min(280, Math.round(v)));
+      bpmValue = Math.max(40, Math.min(360, Math.round(v)));
       bpmVal.textContent = String(bpmValue);
     };
     bpmCtrl.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(btn => {
@@ -6727,7 +6771,7 @@ class RhythmSequencer {
     // Tap no número → digita direto
     bpmVal.addEventListener('click', () => {
       if (bpmCtrl.querySelector('.x-bpm-input')) return;
-      bpmVal.innerHTML = `<input type="number" class="x-bpm-input" value="${bpmValue}" min="40" max="280" inputmode="numeric" />`;
+      bpmVal.innerHTML = `<input type="number" class="x-bpm-input" value="${bpmValue}" min="40" max="360" inputmode="numeric" />`;
       const input = bpmVal.querySelector('input') as HTMLInputElement;
       input.focus();
       input.select();
@@ -6760,7 +6804,7 @@ class RhythmSequencer {
         Toast.show(t('main.saveRhythm.nameRequiredToast'), { type: 'warn' });
         return null;
       }
-      // bpmValue é sempre válido por construção (clamp 40-280 no stepper)
+      // bpmValue é sempre válido por construção (clamp 40-360 no stepper)
       return { name, bpm: bpmValue };
     };
 
@@ -6810,6 +6854,14 @@ class RhythmSequencer {
       if (!editing) return doSaveAsNew();
       const v = validate();
       if (!v) return;
+
+      // Trocou o nome = quer OUTRO ritmo, nao regravar este.
+      //
+      // Depois do primeiro save o app passa a considerar que o ritmo
+      // carregado E o que acabou de ser salvo, entao o save seguinte abria
+      // em modo Atualizar. Quem salvava "Ritmo 1" e depois "Ritmo 2" via o
+      // 1 virar 2: um ritmo so em Meus Ritmos, e o primeiro perdido.
+      if (v.name !== editing.name) return doSaveAsNew();
 
       const rhythmData = this.rhythmDataForSave(v.bpm);
       await this.userRhythmService.update(editing.id, v.name, v.bpm, rhythmData);
@@ -7013,9 +7065,21 @@ class RhythmSequencer {
           // 2) cria o repertório (marcado como compartilhado) e monta os itens
           const newId = this.setlistManager.createSetlist(payload.title || 'Repertório', true);
           if (newId) {
+            // Cada import cria ritmos com ids NOVOS, entao eles ja nascem
+            // exclusivos deste repertorio: marcar ownRhythm evita que a
+            // primeira edicao largue uma copia orfa em Meus Ritmos. So vale
+            // pra chave usada por um item so — repetida, o ritmo e dividido
+            // entre eles e editar um nao pode mexer no outro.
+            const usos: Record<string, number> = {};
+            for (const it of (payload.items || [])) {
+              if (it.k) usos[it.k] = (usos[it.k] || 0) + 1;
+            }
             for (const it of (payload.items || [])) {
               const item: any = { name: it.name, path: it.path || '', bpm: it.bpm, baseRhythmName: it.base };
-              if (it.k && map[it.k]) item.userRhythmId = map[it.k];
+              if (it.k && map[it.k]) {
+                item.userRhythmId = map[it.k];
+                if (usos[it.k] === 1) item.ownRhythm = true;
+              }
               this.setlistManager.addItemTo(newId, item);
             }
           }
@@ -7233,7 +7297,7 @@ class RhythmSequencer {
       const commitBpm = (id: string, bpm: number): void => {
         const rhythm = this.userRhythmService.getById(id);
         if (!rhythm) return;
-        const clamped = Math.max(40, Math.min(280, bpm));
+        const clamped = Math.max(40, Math.min(360, bpm));
         const valEl = overlay.querySelector(`[data-bpm-val="${id}"]`);
         if (valEl) valEl.textContent = String(clamped);
         if (bpmTimers[id]) clearTimeout(bpmTimers[id]);
@@ -7262,7 +7326,7 @@ class RhythmSequencer {
         valEl?.addEventListener('click', () => {
           if (ctrl.querySelector('.x-bpm-input')) return;
           const cur = valEl.textContent || '';
-          valEl.innerHTML = `<input type="number" class="x-bpm-input" value="${cur}" min="40" max="280" inputmode="numeric" />`;
+          valEl.innerHTML = `<input type="number" class="x-bpm-input" value="${cur}" min="40" max="360" inputmode="numeric" />`;
           const input = valEl.querySelector('input') as HTMLInputElement;
           input.focus();
           input.select();
@@ -7567,12 +7631,12 @@ class RhythmSequencer {
             <div class="x-tap-nudge">
               <button class="x-tap-nudge-btn" data-nudge="-5" aria-label="${t('main.bpmModal.nudgeMinus5AriaLabel')}">−5</button>
               <button class="x-tap-nudge-btn" data-nudge="-1" aria-label="${t('main.bpmModal.nudgeMinus1AriaLabel')}">−1</button>
-              <input type="number" class="x-tap-nudge-input" id="xBpmInput" min="40" max="280" inputmode="numeric" value="${currentBpm}" aria-label="BPM" />
+              <input type="number" class="x-tap-nudge-input" id="xBpmInput" min="40" max="360" inputmode="numeric" value="${currentBpm}" aria-label="BPM" />
               <button class="x-tap-nudge-btn" data-nudge="1" aria-label="${t('main.bpmModal.nudgePlus1AriaLabel')}">+1</button>
               <button class="x-tap-nudge-btn" data-nudge="5" aria-label="${t('main.bpmModal.nudgePlus5AriaLabel')}">+5</button>
             </div>
 
-            <input type="range" class="x-tap-slider" id="xBpmSlider" min="40" max="280" value="${currentBpm}" aria-label="${t('main.bpmModal.sliderAriaLabel')}" />
+            <input type="range" class="x-tap-slider" id="xBpmSlider" min="40" max="360" value="${currentBpm}" aria-label="${t('main.bpmModal.sliderAriaLabel')}" />
 
             ${this.currentRhythmOriginalBpm > 0 && currentBpm !== this.currentRhythmOriginalBpm
               ? `<button class="x-tap-restore" id="xBpmRestore">${t('main.bpmModal.restoreButton', { bpm: this.currentRhythmOriginalBpm })}</button>`
@@ -7592,7 +7656,7 @@ class RhythmSequencer {
     const hintEl = overlay.querySelector('#xTapHint') as HTMLElement;
 
     const applyBpm = (bpm: number, source?: 'input' | 'slider' | 'tap'): void => {
-      currentBpm = Math.max(40, Math.min(280, Math.round(bpm)));
+      currentBpm = Math.max(40, Math.min(360, Math.round(bpm)));
       valueEl.textContent = String(currentBpm);
       if (source !== 'input') inputEl.value = String(currentBpm);
       if (source !== 'slider') sliderEl.value = String(currentBpm);
@@ -7612,7 +7676,7 @@ class RhythmSequencer {
     // Input direto
     inputEl.addEventListener('input', () => {
       const v = parseInt(inputEl.value);
-      if (!isNaN(v) && v >= 40 && v <= 280) applyBpm(v, 'input');
+      if (!isNaN(v) && v >= 40 && v <= 360) applyBpm(v, 'input');
     });
     inputEl.addEventListener('focus', () => inputEl.select());
 
@@ -7667,7 +7731,7 @@ class RhythmSequencer {
       const avg = sum / (tapTimes.length - 1);
       const bpm = Math.round(60000 / avg);
 
-      if (bpm >= 40 && bpm <= 280) {
+      if (bpm >= 40 && bpm <= 360) {
         applyBpm(bpm, 'tap');
         const taps = tapTimes.length;
         hintEl.innerHTML = taps >= 4
@@ -8670,6 +8734,97 @@ class RhythmSequencer {
         }));
         const fullCatalog = [...personalRhythms, ...libraryWithCategory];
 
+        // Editar musica do repertorio NUNCA altera o ritmo de origem — nem o
+        // da biblioteca, nem o pessoal (que e o mesmo caso do baixado da
+        // comunidade). A edicao vira uma COPIA e so este item passa a apontar
+        // pra ela, entao o mesmo ritmo em outros repertorios fica intacto.
+        //
+        // O ritmo pessoal era o furo: ele era atualizado no lugar, e quem
+        // tinha o mesmo ritmo em dez repertorios via os dez mudarem juntos.
+        // Pior, os outros seguiam MOSTRANDO o BPM velho (que fica no item) e
+        // tocando o novo (que vem do ritmo).
+        //
+        // Quem manda agora e o item.ownRhythm: ele marca que o userRhythmId
+        // e uma copia nascida da edicao DESTE item, que so ele usa. Com a
+        // marca, editar de novo mexe nela no lugar — senao mexer no BPM tres
+        // vezes deixaria tres ritmos iguais em Meus Ritmos.
+        //
+        // O nome da copia leva o repertorio entre parenteses ("Arrocha (Show
+        // de sabado)") pra dar pra distinguir dentro de Meus Ritmos, onde
+        // varias edicoes do mesmo ritmo base iriam parar juntas.
+        const onEditItem = async (index: number, nome: string, bpm: number): Promise<void> => {
+          const item = this.setlistManager.getItems()[index];
+          if (!item) return;
+
+          // O player esta com ESTA musica carregada? Tem que ser medido AGORA:
+          // o caminho da biblioteca troca o nome e o id do item logo abaixo, e
+          // depois disso nao da mais pra reconhecer o que estava na tela.
+          const noPlayer = item.userRhythmId
+            ? item.userRhythmId === this.currentUserRhythmId
+            : (!this.currentUserRhythmId && item.name === this.currentRhythmName);
+
+          // Salvou o BPM da musica que esta no player: entra na hora, tocando
+          // ou parada. Antes o valor novo so valia no proximo carregamento —
+          // quem estava com ela na tela continuava no andamento velho, e no
+          // meio do show isso e o BPM errado tocando.
+          const aplicarNoPlayer = (): void => {
+            if (!noPlayer) return;
+            // setTempo ja avisa quem escuta 'tempo' — o campo, o slider e o
+            // subtitulo "· BPM" se atualizam sozinhos.
+            this.stateManager.setTempo(bpm);
+            // O "restaurar BPM original" passa a apontar pro valor recem-salvo:
+            // depois da edicao e ELE o BPM da musica, nao o de antes.
+            this.currentRhythmOriginalBpm = bpm;
+          };
+
+          const repertorio = this.setlistManager.getSetlists().find(l => l.active)?.name || '';
+          const nomeCopia = repertorio ? `${nome} (${repertorio})` : nome;
+
+          // Copia que ja pertence a este item: atualiza no lugar.
+          //
+          // A segunda condicao e ponte pros itens editados ANTES do ownRhythm
+          // existir: eles nao tem a marca, mas a copia daquela epoca ficou
+          // com o nome do repertorio no fim. Sem isso, a primeira edicao de
+          // cada um deles largaria uma copia orfa em Meus Ritmos.
+          const meuAtual = item.userRhythmId
+            ? this.userRhythmService.getById(item.userRhythmId)
+            : null;
+          const soDesteItem = !!item.userRhythmId && (
+            item.ownRhythm === true ||
+            (item.ownRhythm === undefined && !!repertorio && meuAtual?.name === `${item.name} (${repertorio})`)
+          );
+
+          if (soDesteItem) {
+            const meu = meuAtual;
+            if (meu) {
+              const dados = JSON.parse(JSON.stringify(meu.rhythm_data || {}));
+              dados.tempo = bpm;
+              await this.userRhythmService.update(meu.id, nomeCopia, bpm, dados);
+              this.setlistManager.updateItem(index, { name: nome, bpm, ownRhythm: true });
+              aplicarNoPlayer();
+              this.updateSetlistUI();
+              return;
+            }
+          }
+
+          // Primeira edicao deste item: copia o JSON com o BPM novo e salva
+          // como ritmo meu. O resolveRhythmData ja atende os dois lados — le
+          // do servico local quando ha userRhythmId e busca o path quando nao.
+          const base = await resolveRhythmData({ userRhythmId: item.userRhythmId, path: item.path });
+          if (!base) throw new Error('ritmo base nao encontrado');
+          const copia = JSON.parse(JSON.stringify(base));
+          copia.tempo = bpm;
+          const salvo = await this.userRhythmService.save(
+            nomeCopia, bpm, copia, item.baseRhythmName || item.name);
+          this.setlistManager.updateItem(index, {
+            name: nome, bpm, userRhythmId: salvo.id, path: '',
+            baseRhythmName: item.baseRhythmName || item.name,
+            ownRhythm: true,
+          });
+          aplicarNoPlayer();
+          this.updateSetlistUI();
+        };
+
         this.setlistEditor.open(
           fullCatalog,
           this.setlistManager,
@@ -8677,6 +8832,7 @@ class RhythmSequencer {
           {
             previewPlayer: this.previewPlayer,
             resolveRhythmData,
+            onEditItem,
           }
         );
       } catch (err) {
@@ -9299,6 +9455,133 @@ class RhythmSequencer {
     }));
   }
 
+  /**
+   * Categoria e busca do modal TODOS, guardadas entre aberturas.
+   *
+   * Antes eram variaveis locais, entao toda vez que o musico voltava pro
+   * modal ele reabria em "Todos", sem busca e rolado no topo: quem tinha
+   * acabado de escolher uma musica no meio da lista pra testar nos pads
+   * caia de volta na primeira e tinha que procurar tudo de novo. O painel
+   * do desktop ja guardava (deskCategory/deskSearch); o celular nao.
+   */
+  private allSheetCategory = 'Todos';
+  private allSheetSearch = '';
+
+  /** JSON dos ritmos ja ouvidos, pra segunda previa sair na hora. */
+  private previewDataCache = new Map<string, any>();
+  private previewSyncBound = false;
+
+  /**
+   * Deixa todo botao de previa da tela em sincronia com o que esta tocando.
+   *
+   * Um listener so, pendurado na primeira vez que alguma lista precisa
+   * dele. As listas se redesenham bastante (escolher um ritmo reconstroi o
+   * painel inteiro), e cada uma cuidar do proprio inscrito daria vazamento
+   * na certa.
+   */
+  private bindPreviewSync(): void {
+    if (this.previewSyncBound || !this.previewPlayer) return;
+    this.previewSyncBound = true;
+    this.previewPlayer.onChange((tocando) => {
+      document.querySelectorAll<HTMLElement>('[data-prev-path]').forEach(btn => {
+        btn.classList.toggle('prev-playing', btn.dataset.prevPath === tocando);
+      });
+    });
+  }
+
+  /**
+   * Liga e desliga a previa de um ritmo da biblioteca.
+   *
+   * O PreviewPlayer toca um ciclo curto sem mexer no sequenciador, entao a
+   * pessoa ouve antes de decidir, sem perder o que ja estava montado.
+   */
+  private async togglePreview(path: string): Promise<void> {
+    const player = this.previewPlayer;
+    if (!player || !path) return;
+
+    if (player.isActive(path)) {
+      player.stop();
+      return;
+    }
+
+    try {
+      let data = this.previewDataCache.get(path);
+      if (!data) {
+        const res = await fetch(path);
+        if (!res.ok) return;
+        data = await res.json();
+        this.previewDataCache.set(path, data);
+      }
+      await player.play(path, data);
+    } catch (err) {
+      console.warn('[preview] nao rolou:', err);
+    }
+  }
+
+  /** Os dois icones do botao; o CSS mostra um ou outro. */
+  private previewIcon(): string {
+    return `<svg class="prev-ico-play" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`
+         + `<svg class="prev-ico-stop" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+  }
+
+  /** Marcacao do botao de previa, igual nas duas listas. */
+  private previewBtnHtml(path: string, esc: (s: string) => string): string {
+    if (!this.previewPlayer || !path) return '';
+    const tocando = this.previewPlayer.isActive(path) ? ' prev-playing' : '';
+    return `<button class="prev-btn${tocando}" data-prev-path="${esc(path)}"
+                    aria-label="${t('ui.setlist.previewAriaLabel')}"
+                    title="${t('ui.setlist.previewAriaLabel')}">${this.previewIcon()}<span class="prev-txt">${t('main.allRhythms.previewLabel')}</span></button>`;
+  }
+
+  /**
+   * Aparelho com mouse de verdade. No PC o rodape da previa aparece sozinho
+   * no hover, entao o clique no ladrilho ja carrega o ritmo de primeira.
+   * No toque nao existe hover: la o primeiro toque e que abre o rodape.
+   */
+  private temMouse(): boolean {
+    return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  }
+
+  /**
+   * Primeiro toque no ladrilho, em aparelho sem mouse: em vez de carregar,
+   * abre o rodape. Dai o ladrilho fica com duas zonas — em cima o nome, que
+   * carrega o ritmo, e embaixo o rodape, que so deixa ouvir.
+   *
+   * Devolve true quando ENGOLIU o toque (so abriu), pra quem chamou parar
+   * ali e nao carregar nada.
+   */
+  private abriuPreviaNoToque(btn: HTMLElement): boolean {
+    if (this.temMouse()) return false;
+    const cell = btn.closest('.catg-cell, .desk-r-cell');
+    if (!cell || cell.classList.contains('prev-open')) return false;
+
+    // So um aberto por vez: dois rodapes abertos viram ruido numa grade de
+    // 180, e o de baixo some da vista quando a lista rola.
+    document.querySelectorAll('.prev-open').forEach(c => c.classList.remove('prev-open'));
+    cell.classList.add('prev-open');
+    return true;
+  }
+
+  /** Liga os botoes de previa que existirem dentro de um trecho da tela. */
+  private bindPreviewButtons(scope: HTMLElement): void {
+    scope.querySelectorAll<HTMLButtonElement>('.prev-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        // Sem isto o clique tambem carregaria o ritmo, que e o oposto do
+        // que a pessoa pediu ao apertar "ouvir".
+        e.stopPropagation();
+        e.preventDefault();
+
+        // Resume SINCRONO, ainda dentro do gesto. No iOS qualquer await
+        // antes disto quebra a cadeia do toque e a previa sai muda (a
+        // regra do audioContext no CLAUDE.md). O toggle busca o JSON
+        // depois, e ai ja nao importa.
+        if (this.audioContext?.state === 'suspended') void this.audioContext.resume();
+
+        void this.togglePreview(btn.dataset.prevPath!);
+      });
+    });
+  }
+
   private showAllRhythmsSheet(): void {
     const overlay = document.createElement('div');
     // x-overlay: hasModalOpen() do pedal detecta → foco liberado dentro
@@ -9318,9 +9601,16 @@ class RhythmSequencer {
     const countOf = (c: string): number =>
       c === 'Todos' ? all.length : all.filter(r => r.cat === c).length;
 
-    let activeCat = 'Todos';
+    // Se o catalogo mudou e a categoria guardada sumiu, volta pra Todos.
+    if (!pills.includes(this.allSheetCategory)) this.allSheetCategory = 'Todos';
+    let activeCat = this.allSheetCategory;
 
     const close = (): void => {
+      // A previa morre COM o sheet. Fechando aqui vale pras tres saidas — o
+      // X, o toque no fundo e a escolha do ritmo — senao a pessoa volta pra
+      // tela principal e o som continua tocando sozinho, sem nenhum botao
+      // na tela pra parar.
+      this.previewPlayer?.stop();
       overlay.classList.remove('active');
       overlay.classList.add('x-exit');
       (window as any).__refocusPedal?.();
@@ -9342,7 +9632,10 @@ class RhythmSequencer {
         <div class="x-body catg-body-wrap">
           <div class="catg-search-wrap">
             <svg class="catg-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" class="catg-search-input" id="catgSearch" placeholder="${t('main.rhythmSearch.placeholder')}" autocomplete="off" />
+            <input type="text" class="catg-search-input" id="catgSearch" placeholder="${t('main.rhythmSearch.placeholder')}" autocomplete="off" value="${esc(this.allSheetSearch)}" />
+            <button class="x-search-clear ${this.allSheetSearch ? 'visible' : ''}" id="catgClear" aria-label="${t('main.myRhythms.clearSearchAriaLabel')}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
           <div class="catg-pills">
             ${pills.map(c => `
@@ -9379,15 +9672,26 @@ class RhythmSequencer {
         : `${titleHtml}
            <div class="catg-row">
              ${list.map(r => `
-               <button class="catg-card ${r.name === this.currentRhythmName ? 'active' : ''}"
-                       data-name="${esc(r.name)}" data-path="${esc(r.path)}">${esc(r.name)}</button>
+               <div class="catg-cell">
+                 <button class="catg-card ${r.name === this.currentRhythmName ? 'active' : ''}"
+                         data-name="${esc(r.name)}" data-path="${esc(r.path)}"><span class="rt-name">${esc(r.name)}</span></button>
+                 ${this.previewBtnHtml(r.path, esc)}
+               </div>
              `).join('')}
            </div>`;
 
+      this.bindPreviewButtons(body);
+
       body.querySelectorAll<HTMLButtonElement>('.catg-card').forEach(btn => {
         btn.addEventListener('click', async () => {
+          // Sem mouse, o primeiro toque so abre o rodape da previa. O
+          // segundo — ja no nome, em cima — e que carrega.
+          if (this.abriuPreviaNoToque(btn)) return;
+
           const name = btn.dataset.name!;
           const path = btn.dataset.path!;
+          // Escolher e pra tocar de verdade: a previa sai da frente.
+          this.previewPlayer?.stop();
           close();
           await this.loadRhythm(name, path);
           this.renderRhythmStrip();
@@ -9398,6 +9702,7 @@ class RhythmSequencer {
     overlay.querySelectorAll<HTMLButtonElement>('.catg-pill').forEach(pill => {
       pill.addEventListener('click', () => {
         activeCat = pill.dataset.cat!;
+        this.allSheetCategory = activeCat;
         overlay.querySelectorAll('.catg-pill').forEach(p =>
           p.classList.toggle('active', p === pill));
         renderBody();
@@ -9406,9 +9711,34 @@ class RhythmSequencer {
 
     // Busca em tempo real (input funciona no iPhone: x-overlay tá no
     // hasModalOpen() do pedal)
-    searchInput?.addEventListener('input', renderBody);
+    const searchClear = overlay.querySelector('#catgClear') as HTMLElement | null;
+
+    searchInput?.addEventListener('input', () => {
+      this.allSheetSearch = searchInput.value;
+      searchClear?.classList.toggle('visible', !!searchInput.value);
+      renderBody();
+    });
+
+    searchClear?.addEventListener('click', () => {
+      if (!searchInput) return;
+      searchInput.value = '';
+      this.allSheetSearch = '';
+      searchClear.classList.remove('visible');
+      renderBody();
+      // Devolve o foco: quem limpou quase sempre vai digitar outra coisa, e
+      // sem isto o teclado do celular fecha e a pessoa toca de novo.
+      searchInput.focus();
+    });
 
     renderBody();
+
+    // Abre mostrando a musica que esta tocando, nao o topo da lista. Rola
+    // sem animacao e num tick depois, senao briga com a entrada do sheet.
+    // So na abertura: rolar a cada tecla digitada na busca seria pior.
+    setTimeout(() => {
+      const atual = body.querySelector('.catg-card.active') as HTMLElement | null;
+      atual?.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }, 0);
   }
 
   // ─── Painéis laterais DESKTOP (≥1024px) ─────────────────────────────
@@ -9422,6 +9752,21 @@ class RhythmSequencer {
   private deskCategory = '';
   /** Busca ativa no painel esquerdo do desktop (filtra TODAS as categorias). */
   private deskSearch = '';
+  // Painel direito (so PC): busca por nome do repertorio e ordem da lista.
+  private deskSetlistQuery = '';
+  private deskSetlistSort: 'recent' | 'az' = 'recent';
+  /**
+   * Qual lista o painel esquerdo desenhou por ultimo.
+   *
+   * Serve pra saber se vale devolver o scroll: escolher um ritmo redesenha
+   * o painel inteiro por innerHTML, e o innerHTML zera o scroll do proprio
+   * elemento que rola. Resultado: quem clicava numa musica no meio da lista
+   * era jogado de volta pro comeco e tinha que procurar tudo de novo.
+   * Trocar de categoria ou buscar muda a lista, e ai comecar do topo e o
+   * certo, por isso a comparacao.
+   */
+  private deskLastCat = '';
+  private deskLastSearch = '';
 
   private renderDesktopPanels(): void {
     const esc = (s: string): string =>
@@ -9457,18 +9802,29 @@ class RhythmSequencer {
         list.length === 0
           ? `<div class="desk-empty">${t('main.allRhythms.emptyResults')}</div>`
           : list.map(r => `
-              <button class="desk-r-card ${r.name === this.currentRhythmName ? 'active' : ''}"
-                      data-name="${esc(r.name)}" data-path="${esc(r.path)}">${esc(r.name)}</button>
+              <div class="desk-r-cell">
+                <button class="desk-r-card ${r.name === this.currentRhythmName ? 'active' : ''}"
+                        data-name="${esc(r.name)}" data-path="${esc(r.path)}"><span class="rt-name">${esc(r.name)}</span></button>
+                ${this.previewBtnHtml(r.path, esc)}
+              </div>
             `).join('');
 
       const bindCards = (scope: HTMLElement): void => {
+        this.bindPreviewButtons(scope);
         scope.querySelectorAll<HTMLButtonElement>('.desk-r-card').forEach(btn => {
           btn.addEventListener('click', async () => {
+            // iPad cai aqui e e toque: primeiro abre o rodape, depois carrega.
+            if (this.abriuPreviaNoToque(btn)) return;
+
+            // Escolher e pra tocar de verdade: a previa sai da frente.
+            this.previewPlayer?.stop();
             await this.loadRhythm(btn.dataset.name!, btn.dataset.path!);
             this.renderDesktopPanels();
           });
         });
       };
+
+      this.bindPreviewSync();
 
       // ⚠️ PEDAL: input inline FORA de modal não funciona em iOS (o
       // pedalInput sagrado disputa o foco — ver história do strip).
@@ -9476,6 +9832,13 @@ class RhythmSequencer {
       // (iPad usa o TODOS, que é x-overlay e o pedal respeita).
       const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
         (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+      // Mesma lista de antes? Entao a posicao dela ainda faz sentido.
+      const mesmaLista = this.deskCategory === this.deskLastCat &&
+                         this.deskSearch === this.deskLastSearch;
+      const scrollAntes = mesmaLista ? left.scrollTop : 0;
+      this.deskLastCat = this.deskCategory;
+      this.deskLastSearch = this.deskSearch;
 
       left.innerHTML = `
         ${!isIOSDevice ? `
@@ -9494,6 +9857,13 @@ class RhythmSequencer {
       `;
 
       bindCards(left);
+
+      // Devolve a lista pra onde estava e, se mesmo assim o ritmo atual
+      // ficou fora da vista (veio de outro lugar, tipo o repertorio),
+      // traz ele pro campo de visao sem sacudir o resto.
+      left.scrollTop = scrollAntes;
+      const atual = left.querySelector<HTMLElement>('.desk-r-card.active');
+      atual?.scrollIntoView({ block: 'nearest', behavior: 'auto' });
 
       left.querySelectorAll<HTMLButtonElement>('.desk-cat-pill').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -9525,16 +9895,63 @@ class RhythmSequencer {
       const items = this.setlistManager.getItems();
       const cur = this.setlistManager.getCurrentIndex();
 
-      const chipsHtml = lists.length > 1 ? `
-        <div class="desk-setlists-chips">
-          ${lists.map(l => `
-            <button class="desk-setlist-chip ${l.active ? 'active' : ''}" data-setlist-id="${esc(l.id)}">
-              <span class="desk-setlist-chip-name">${esc(l.name)}</span>
-              <span class="desk-setlist-chip-count">${l.count}</span>
-            </button>
-          `).join('')}
+      // Os repertorios saem da fileira de chips e viram LISTA, um por linha:
+      // com muitos deles a fileira embrulhava em varias linhas e o nome
+      // longo virava reticencia. Junto vem busca por nome e a ordem (A-Z ou
+      // mais recentes), que e o que resolve lista grande.
+      //
+      // ⚠️ PEDAL: input inline fora de modal nao funciona no iOS (mesma
+      // historia da busca do painel esquerdo). O painel aparece no iPad, e
+      // la a busca fica de fora — a ordem continua valendo.
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (/Mac/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+      const semAcento = (v: string): string =>
+        v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+      const listaVisivel = (): typeof lists => {
+        const q = semAcento(this.deskSetlistQuery.trim());
+        const filtrada = q ? lists.filter(l => semAcento(l.name).includes(q)) : lists.slice();
+        return this.deskSetlistSort === 'az'
+          ? filtrada.sort((a, b) => a.name.localeCompare(b.name))
+          // Repertorio de antes do lastModified existir vale 0 e cai pro fim.
+          : filtrada.sort((a, b) => b.lastModified - a.lastModified);
+      };
+
+      const linhasHtml = (): string => {
+        const visiveis = listaVisivel();
+        if (visiveis.length === 0) {
+          return `<div class="desk-empty">${t('main.desktopPanel.setlistNoMatch')}</div>`;
+        }
+        return visiveis.map(l => `
+          <button class="desk-setlist-row ${l.active ? 'active' : ''}" data-setlist-id="${esc(l.id)}">
+            <span class="desk-setlist-row-name">${esc(l.name)}</span>
+            <span class="desk-setlist-chip-count">${l.count}</span>
+          </button>
+        `).join('');
+      };
+
+      const rotuloOrdem = this.deskSetlistSort === 'az'
+        ? t('main.desktopPanel.sortAz')
+        : t('main.desktopPanel.sortRecent');
+
+      // A lista aparece SEMPRE, mesmo com um repertorio so: e por ela que se
+      // ve quais existem e se troca de um pro outro. Escondida ate ter dois,
+      // quem tinha um so nao descobria que dava pra ter mais.
+      const chipsHtml = `
+        <div class="desk-setlists-bar">
+          ${!isIOS ? `
+            <div class="desk-search-wrap desk-setlists-search">
+              <svg class="desk-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" class="desk-search-input" id="deskSetlistSearch" placeholder="${t('main.desktopPanel.setlistSearchPlaceholder')}" autocomplete="off" value="${esc(this.deskSetlistQuery)}" />
+            </div>` : ''}
+          <button class="desk-setlist-sort" id="deskSetlistSort" title="${t('main.desktopPanel.sortAriaLabel')}" aria-label="${t('main.desktopPanel.sortAriaLabel')}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="9" y2="18"/></svg>
+            <span id="deskSetlistSortLabel">${rotuloOrdem}</span>
+          </button>
         </div>
-      ` : '';
+        <div class="desk-setlists-rows" id="deskSetlistRows">${linhasHtml()}</div>
+      `;
 
       const itemsHtml = items.length === 0
         ? `<div class="desk-empty">${t('main.desktopPanel.setlistEmptyHint')}</div>`
@@ -9548,13 +9965,41 @@ class RhythmSequencer {
       right.innerHTML = chipsHtml + itemsHtml;
 
       // Trocar de repertório (não corta o som — item só carrega no clique)
-      right.querySelectorAll<HTMLButtonElement>('.desk-setlist-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const id = chip.dataset.setlistId!;
-          if (this.setlistManager.switchSetlist(id)) {
-            this.updateSetlistUI(); // re-renderiza painéis + fav-bar
-          }
+      const ligarLinhas = (): void => {
+        right.querySelectorAll<HTMLButtonElement>('.desk-setlist-row').forEach(linha => {
+          linha.addEventListener('click', () => {
+            const id = linha.dataset.setlistId!;
+            if (this.setlistManager.switchSetlist(id)) {
+              this.updateSetlistUI(); // re-renderiza painéis + fav-bar
+            }
+          });
         });
+      };
+      ligarLinhas();
+
+      // Busca redesenha SO as linhas: re-render do painel inteiro mataria o
+      // foco do input a cada tecla (mesma armadilha do painel esquerdo).
+      const buscaSet = right.querySelector<HTMLInputElement>('#deskSetlistSearch');
+      const redesenharLinhas = (): void => {
+        const caixa = right.querySelector<HTMLElement>('#deskSetlistRows');
+        if (!caixa) return;
+        caixa.innerHTML = linhasHtml();
+        ligarLinhas();
+      };
+      buscaSet?.addEventListener('input', () => {
+        this.deskSetlistQuery = buscaSet.value;
+        redesenharLinhas();
+      });
+
+      right.querySelector<HTMLButtonElement>('#deskSetlistSort')?.addEventListener('click', () => {
+        this.deskSetlistSort = this.deskSetlistSort === 'az' ? 'recent' : 'az';
+        const rot = right.querySelector<HTMLElement>('#deskSetlistSortLabel');
+        if (rot) {
+          rot.textContent = this.deskSetlistSort === 'az'
+            ? t('main.desktopPanel.sortAz')
+            : t('main.desktopPanel.sortRecent');
+        }
+        redesenharLinhas();
       });
 
       right.querySelectorAll<HTMLButtonElement>('.desk-setlist-item').forEach(btn => {
