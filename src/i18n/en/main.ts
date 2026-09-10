@@ -89,6 +89,8 @@ export const main: Record<string, string> = {
   'main.compatPedals.close': 'Close',
 
   // ── What's New modal ──
+  'main.preview.blockedWhilePlaying': 'Stop the rhythm to hear the preview.',
+
   'main.whatsNew.overline': 'Update',
   'main.whatsNew.title': '180 rhythms, three languages, and fingerprint login.',
   'main.whatsNew.subtitle': 'A bigger library, the app in your language, and a faster way to sign in. Plus everything synced across your devices.',

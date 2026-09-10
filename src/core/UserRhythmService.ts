@@ -28,6 +28,11 @@ const PENDING_DELETES_KEY = 'gdrums-user-rhythms-pending-deletes';
 // browser (Safari iOS principalmente) limpar o localStorage sob pressão
 // de disco, os ritmos do usuário não somem — IndexedDB sobrevive.
 const IDB_KEY = 'user-rhythms-v1';
+// Carimbo do último retrato gravado no localStorage. Fica numa chave própria
+// (poucos bytes) pra sobreviver mesmo quando o payload grande não couber —
+// se ele não couber, o carimbo fica velho e o IndexedDB vence no boot, que é
+// exatamente o comportamento desejado.
+const SAVED_AT_KEY = 'gdrums-user-rhythms-at';
 // Dono do conteúdo que está HOJE em LOCAL_KEY/PENDING_DELETES_KEY.
 // localStorage/IndexedDB não são namespaced por usuário — num device que
 // já logou com MAIS DE UMA conta (device compartilhado da banda, celular
@@ -39,6 +44,10 @@ const namespacedKey = (userId: string) => `gdrums-user-rhythms:${userId}`;
 interface PersistedState {
   rhythms: UserRhythm[];
   pendingDeletes: string[];
+  /** Quando este retrato foi gravado. É o que permite o boot decidir entre
+   *  localStorage e IndexedDB por RECÊNCIA em vez de "só se estiver vazio".
+   *  Ausente nos retratos gravados antes desta correção (tratado como 0). */
+  savedAt?: number;
 }
 
 export class UserRhythmService {
@@ -85,12 +94,16 @@ export class UserRhythmService {
     return !!(this.userId && this.supabase);
   }
 
+  /** Resolve depois que o boot decidiu localStorage vs IndexedDB. Nenhuma
+   *  escrita no IDB acontece antes disso (ver saveLocal). */
+  private idbReady: Promise<void>;
+
   constructor() {
     this.loadLocal();
     requestPersistentStorage().catch(() => { /* noop */ });
-    if (this.rhythms.length === 0) {
-      this.tryRestoreFromIndexedDB();
-    }
+    // SEMPRE consulta o IndexedDB — com a cota do localStorage estourada ele
+    // fica antigo porém não-vazio, e o backup precisa vencer por timestamp.
+    this.idbReady = this.tryRestoreFromIndexedDB();
     // Voltou a rede → empurra pendentes E puxa do servidor (traz o que foi
     // criado em outro aparelho). Wifi ou dados — navigator.onLine cobre os dois.
     window.addEventListener('online', () => { void this.pushAndPull(); });
@@ -190,17 +203,40 @@ export class UserRhythmService {
     return !!owner && owner !== this.userId;
   }
 
-  /** Recupera do IndexedDB se o localStorage veio vazio (limpo pelo browser). */
+  /** Decide entre localStorage e IndexedDB pelo retrato MAIS RECENTE.
+   *
+   *  Antes só restaurava com o localStorage vazio, o que deixava o backup
+   *  inútil no caso real de perda: cota estourada congela o localStorage numa
+   *  versão antiga (não-vazia) e o boot ficava com ela. Agora compara
+   *  `savedAt` dos dois lados. */
   private async tryRestoreFromIndexedDB(): Promise<void> {
     try {
       const recovered = await persistGet<PersistedState>(IDB_KEY);
-      if (recovered && Array.isArray(recovered.rhythms) && recovered.rhythms.length > 0 && this.rhythms.length === 0 && !this.ownedByOther()) {
-        console.warn('[UserRhythms] localStorage vazio — recuperando do IndexedDB:', recovered.rhythms.length, 'ritmos');
-        this.rhythms = recovered.rhythms;
-        this.pendingDeletes = Array.isArray(recovered.pendingDeletes) ? recovered.pendingDeletes : [];
-        this.writeToLocalStorage();
-      }
+      if (!recovered || !Array.isArray(recovered.rhythms)) return;
+      if (this.ownedByOther()) return;
+
+      const idbAt = recovered.savedAt || 0;
+      const localAt = this.readLocalSavedAt();
+
+      // Sem carimbo dos dois lados (dado anterior a esta correção): cai na
+      // regra antiga, que só restaura pra preencher vazio. Assim nenhum
+      // usuário existente perde nada na migração.
+      const idbIsNewer = (idbAt > localAt) ||
+        (idbAt === 0 && localAt === 0 && this.rhythms.length === 0 && recovered.rhythms.length > 0);
+      if (!idbIsNewer) return;
+
+      console.warn(
+        `[UserRhythms] IndexedDB mais recente (${recovered.rhythms.length} ritmos @ ${idbAt}) ` +
+        `que o localStorage (${this.rhythms.length} @ ${localAt}) — restaurando`,
+      );
+      this.rhythms = recovered.rhythms;
+      this.pendingDeletes = Array.isArray(recovered.pendingDeletes) ? recovered.pendingDeletes : [];
+      this.writeToLocalStorage();
     } catch { /* IDB pode não estar disponível */ }
+  }
+
+  private readLocalSavedAt(): number {
+    try { return parseInt(localStorage.getItem(SAVED_AT_KEY) || '0', 10) || 0; } catch { return 0; }
   }
 
   /**
@@ -601,33 +637,70 @@ export class UserRhythmService {
   }
 
   private saveLocal(): void {
-    this.writeToLocalStorage();
-    // IndexedDB em paralelo (fire-and-forget) — última linha de defesa,
-    // igual ao SetlistManager. Só grava estados com ritmos (não sobrescreve
-    // um IDB bom com um estado vazio por engano).
-    if (this.rhythms.length > 0) {
-      persistSet(IDB_KEY, { rhythms: this.rhythms, pendingDeletes: this.pendingDeletes } as PersistedState)
-        .catch(() => { /* noop */ });
-    }
+    const savedAt = Date.now();
+    this.writeToLocalStorage(savedAt);
+    // IndexedDB SEMPRE, inclusive com a lista vazia.
+    //
+    // Havia um `if (this.rhythms.length > 0)` aqui pra "não sobrescrever um
+    // IDB bom com vazio". Na prática ele ressuscitava ritmo apagado: ao
+    // excluir o ÚLTIMO ritmo, o IDB continuava com a versão anterior e o
+    // próximo boot trazia o ritmo de volta. A corrida que aquele guard
+    // tentava cobrir (save antes do restore assíncrono terminar) agora é
+    // tratada esperando `idbReady`.
+    void this.idbReady.then(() =>
+      persistSet(IDB_KEY, {
+        rhythms: this.rhythms,
+        pendingDeletes: this.pendingDeletes,
+        savedAt,
+      } as PersistedState).catch(() => { /* noop */ }),
+    );
     // saveLocal roda em toda mutação e em todo sync bem-sucedido — é o ponto
     // certo pra notificar a UI que o nº de pendentes pode ter mudado.
     try { this.onPendingChange?.(); } catch { /* noop */ }
   }
 
-  private writeToLocalStorage(): void {
+  /** true quando o localStorage recusou a última escrita (cota estourada).
+   *  Nesse aparelho o IndexedDB passa a ser a fonte confiável. */
+  private lsUnreliable = false;
+
+  isLocalStorageUnreliable(): boolean { return this.lsUnreliable; }
+
+  private writeToLocalStorage(savedAt = Date.now()): void {
+    const rhythmsJson = JSON.stringify(this.rhythms);
+
+    // Cada ritmo pesa ~20KB. Guardar a lista DUAS vezes (principal +
+    // espelho por conta) cortava pela metade quantos cabem nos ~5MB do
+    // Safari iOS. A principal é a que não pode faltar: se a cota estourar,
+    // joga fora o espelho (mesmo conteúdo) e tenta de novo.
     try {
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(this.rhythms));
-    } catch { /* storage full */ }
-    try {
-      localStorage.setItem(PENDING_DELETES_KEY, JSON.stringify(this.pendingDeletes));
-    } catch { /* storage full */ }
-    // Espelho namespaced por conta — permite restaurar certo se ESTE
-    // usuário voltar a usar este mesmo device depois de outra conta ter
-    // usado no meio (ver isolateFromOtherAccounts).
+      localStorage.setItem(LOCAL_KEY, rhythmsJson);
+      this.lsUnreliable = false;
+    } catch {
+      if (this.userId) {
+        try { localStorage.removeItem(namespacedKey(this.userId)); } catch { /* noop */ }
+      }
+      try {
+        localStorage.setItem(LOCAL_KEY, rhythmsJson);
+        this.lsUnreliable = false;
+      } catch {
+        // Não coube. O dado NÃO se perde: o IndexedDB recebe tudo em
+        // saveLocal() e o boot restaura de lá pelo carimbo savedAt — que,
+        // justamente por não ter sido atualizado aqui, fica para trás.
+        this.lsUnreliable = true;
+        console.warn('[UserRhythms] localStorage sem espaço — IndexedDB assume');
+        return;
+      }
+    }
+
+    try { localStorage.setItem(PENDING_DELETES_KEY, JSON.stringify(this.pendingDeletes)); } catch { /* ok */ }
+    // Só carimba depois que o payload principal REALMENTE entrou.
+    try { localStorage.setItem(SAVED_AT_KEY, String(savedAt)); } catch { /* ok */ }
+    // Espelho namespaced por conta — conveniência pra device compartilhado
+    // (ver isolateFromOtherAccounts). Nunca pode derrubar a cópia principal.
     if (this.userId) {
       try {
-        localStorage.setItem(namespacedKey(this.userId), JSON.stringify({ rhythms: this.rhythms, pendingDeletes: this.pendingDeletes } as PersistedState));
-      } catch { /* storage full */ }
+        localStorage.setItem(namespacedKey(this.userId), JSON.stringify({ rhythms: this.rhythms, pendingDeletes: this.pendingDeletes, savedAt } as PersistedState));
+      } catch { /* sem espaço, ok */ }
     }
   }
 }

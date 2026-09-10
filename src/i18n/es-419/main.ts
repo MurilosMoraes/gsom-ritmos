@@ -89,6 +89,8 @@ export const main: Record<string, string> = {
   'main.compatPedals.close': 'Cerrar',
 
   // ── What's New modal ──
+  'main.preview.blockedWhilePlaying': 'Detén el ritmo para escuchar la vista previa.',
+
   'main.whatsNew.overline': 'Actualización',
   'main.whatsNew.title': '180 ritmos, tres idiomas y acceso con huella.',
   'main.whatsNew.subtitle': 'Biblioteca más grande, la app en tu idioma y una forma más rápida de entrar. Además, todo sincronizado entre tus dispositivos.',

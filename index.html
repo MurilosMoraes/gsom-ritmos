@@ -251,6 +251,43 @@
 
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="experience.css">
+  <!-- ─── Gate visual de boot ───────────────────────────────────────
+       Sem isso o app pintava a tela INTEIRA por uma fração de segundo e só
+       depois pulava pro login/demo (o checkAccess é async). Ficava com cara
+       de amador e ainda vazava a interface pra quem não tem acesso.
+
+       É só apresentação: NÃO decide nada. A regra de quem entra continua
+       inteira no main.ts (demo forçada, offline, sessão única). Aqui só
+       seguramos a pintura até o app dizer "pode mostrar", removendo a
+       classe gd-booting do <html>.
+
+       Failsafe: se o JS morrer antes de decidir, o @keyframes revela em 8s.
+       Melhor um flash tardio do que um app preto pra sempre. -->
+  <style>
+    /* Mira SÓ o container do app. Um `body > *` esconderia também os modais
+       que o main.ts cria no body (aviso de offline, assinatura vencida), e
+       aí a pessoa ficaria olhando pra tela preta sem entender o motivo. */
+    html.gd-booting .app-container { visibility: hidden !important; }
+    html.gd-booting { background: #030014; }
+    html.gd-booting::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 2147483647;
+      background: #030014 url('/img/new-icon-bg.png') center center no-repeat;
+      background-size: 96px 96px;
+      animation: gd-boot-failsafe 0s linear 8s forwards;
+    }
+    @keyframes gd-boot-failsafe { to { opacity: 0; visibility: hidden; } }
+
+  </style>
+  <script>
+    // Liga o gate o mais cedo possível (antes do body existir).
+    document.documentElement.classList.add('gd-booting');
+    // Failsafe em JS também: se o main.ts nunca rodar (erro de bundle, rede),
+    // libera a tela em vez de deixar o usuário olhando pro nada.
+    setTimeout(function () {
+      document.documentElement.classList.remove('gd-booting');
+    }, 8000);
+  </script>
 </head>
 <body>
   <div class="app-container">
