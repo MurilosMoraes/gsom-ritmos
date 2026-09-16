@@ -27,6 +27,7 @@ export const plans: Record<string, string> = {
   'plans.renew.expiresInDays': 'tu suscripción vence en {days} días',
   'plans.renew.message': 'Renueva tu plan {plan}, {msg}.',
   'plans.alert.expired': 'Tu suscripción venció. Elige un plan para continuar.',
+  'plans.backToApp': 'Volver a la app',
   'plans.iap.restoreLink': 'Restaurar compras',
   'plans.iap.subscriptionTerms': 'La suscripción se cobra en tu cuenta Apple ID al confirmar la compra y se renueva automáticamente, salvo cancelación con al menos 24h de anticipación. Adminístrala en Ajustes de la App Store.',
   'plans.iap.eulaLink': 'Términos de Uso (EULA)',

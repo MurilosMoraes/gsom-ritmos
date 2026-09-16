@@ -5,7 +5,8 @@
 
 import { supabase } from './supabase';
 import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
-import { internalNav, appHome } from '../native/Platform';
+import { internalNav, appHome, isNativeApp } from '../native/Platform';
+import { peekPendingNext, nextForPlatform, deviceStore } from './plansRouting';
 import { t, hydrate } from '../i18n';
 
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
@@ -120,7 +121,11 @@ class CompletarCadastroPage {
       }
 
       this.showAlert(t('auth.completarCadastro.success'), 'success');
-      setTimeout(() => { window.location.href = appHome(); }, 800);
+      // Veio de um link de compra (login guardou a intenção): segue pra lá
+      // em vez de cair na home. A página de destino consome a intenção.
+      const pending = peekPendingNext(deviceStore());
+      const dest = pending ? nextForPlatform(pending, isNativeApp()) : appHome();
+      setTimeout(() => { internalNav(dest); }, 800);
     } catch {
       this.setLoading(false);
       this.showAlert(t('auth.completarCadastro.connectionError'), 'error');

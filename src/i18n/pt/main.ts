@@ -131,6 +131,7 @@ export const main: Record<string, string> = {
   'main.renewal.title': 'Sua assinatura tá perto de acabar',
   'main.renewal.messageSuffix': ' Renove sem pressa pra não perder acesso aos ritmos.',
   'main.renewal.cta': 'Renovar agora',
+  'main.payment.recognized': 'Pagamento confirmado! Plano {plan} ativo até {date}.',
   'main.renewal.trialExpiresIn': 'Seu teste expira em <strong>{time}</strong>.',
   'main.renewal.trialRemaining': 'Restam <strong>{time}</strong> do período de teste.',
   'main.renewal.trialTitleUrgent': 'Teste expirando',

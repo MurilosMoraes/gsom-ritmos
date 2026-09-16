@@ -5,6 +5,8 @@ import { supabase } from './supabase';
 import { parseOrderNsu, getPlan } from './PaymentService';
 import { internalNav, appHome } from '../native/Platform';
 import { redirectIfRecoveryHash } from './recoveryGuard';
+import { loginPathWithNext, clearPendingNext, deviceStore } from './plansRouting';
+import { clearAwaitingPayment } from './paymentSync';
 import { trackPurchase } from '../utils/metaTracking';
 import { t, hydrate } from '../i18n';
 
@@ -20,13 +22,19 @@ class PaymentSuccessPage {
   }
 
   private async init(): Promise<void> {
+    // Sem sessão: login e VOLTA pra cá com order_nsu/transaction_nsu, pra
+    // confirmação do pagamento rodar e o cliente ver que pagou.
+    const loginPath = loginPathWithNext(window.location.pathname + window.location.search);
     if (!(await authService.isAuthenticated())) {
-      internalNav('/login');
+      internalNav(loginPath);
       return;
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { internalNav('/login'); return; }
+    if (!user) { internalNav(loginPath); return; }
+
+    // Chegou logado no destino: intenção guardada pelo login cumprida.
+    clearPendingNext(deviceStore());
 
     // Pegar dados do redirect da InfinitePay
     const params = new URLSearchParams(window.location.search);
@@ -168,6 +176,9 @@ class PaymentSuccessPage {
     const btn = document.getElementById('accessBtn')!;
     // Na web o app mora em /app (a raiz serve a vitrine); no nativo, em '/'.
     btn.setAttribute('href', appHome());
+
+    // Pagamento confirmado aqui: nada mais a vigiar no app.
+    clearAwaitingPayment(deviceStore());
 
     icon.className = 'success-icon ok';
     icon.innerHTML = '&#10003;';

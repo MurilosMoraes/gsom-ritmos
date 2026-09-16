@@ -5,6 +5,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { OfflineCache } from '../native/OfflineCache';
 import { internalNav } from '../native/Platform';
 import { t } from '../i18n';
+import { clearPendingNext } from './plansRouting';
 
 export interface GDrumsProfile {
   id: string;
@@ -151,6 +152,9 @@ class AuthService {
     localStorage.removeItem('gdrums-session-id');
     localStorage.removeItem('gdrums-pending-order');
     localStorage.removeItem('gdrums-mode');
+    // Intenção de compra guardada pelo login (ver plansRouting.ts): logout
+    // é saída intencional, o próximo login não pode cair nos planos.
+    clearPendingNext(localStorage);
     // Limpa flag de "device registrado pra push" — quando próximo user
     // logar nesse device, o NativePushService refaz o registro com o
     // external_id correto. Sem isso, o user novo herdaria push do anterior.

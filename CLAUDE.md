@@ -388,6 +388,26 @@ Logs de eventos de segurança (ex: `blocked_no_cpf`, trial farming). Escrita via
    d. Em sucesso, incrementa `current_uses` do cupom (fire-and-forget).
 7. Fallback: se user fechou a página, `main.ts:checkAccess` encontra a transação `pending` e chama `payment-webhook` uma vez por sessão (`sessionStorage['gdrums-pending-checked']`).
 
+### 🚨 Regras de rota da compra (planos, renovação, upgrade)
+Todas moram em `src/auth/plansRouting.ts` (funções puras) e são cobertas por `npx tsx test/plans-routing-test.ts`. **Não reintroduza redirect pra home na tela de planos.**
+1. **Assinante pago ativo nunca é expulso de `/plans`.** Sem `?upgrade=true` a tela abre em modo renovação. (Bug de set/2026: push de renovação e botão de upgrade nativo chegavam sem flag e caíam na home.)
+2. **Ir pros planos = `gotoPlans(path)`** (`src/native/Platform.ts`): iOS interno (StoreKit), Android no Chrome em `/assinar` (fora dos App Links de `/plans`), web interno. Sempre com a intenção na query (`renew`, `upgrade`, `coupon`).
+3. **Login nunca perde o destino:** plans e payment-success mandam pra `/login?next=...`; `login.ts` respeita `next` (só `/plans`, `/assinar`, `/payment-success`, validado contra open redirect). Navegação sempre via `internalNav` (no nativo, path sem `.html` cai no index).
+   - **Intenção guardada** (`gdrums-pending-next` no localStorage): o login guarda o `next` pra sobreviver a "esqueci a senha" e "completar cadastro". Vale 15 min, é de uso único (planos/payment-success apagam ao abrir logados) e é limpa em "Voltar pro app", "Sair", logout e ao entrar no app normalmente. Sempre revalidada por `sanitizeNext`.
+   - **Trava anti-loop:** o login só pula sozinho pro destino 1x a cada 30s (`gdrums-next-bounce` no sessionStorage).
+4. **Link universal e clique em push passam pela mesma função** `openAppUrl()` (`src/native/DeepLinks.ts`). `initDeepLinks()` roda em main, login e plans (cada `.html` é um contexto JS separado). O deep link trava as navegações internas da página por 5s (`lockInternalNav`), senão o redirect do boot deslogado pro `/login` apagava o destino.
+4.1. **Saída da tela de planos:** quem tem acesso válido vê "Voltar pro app". Sem acesso o botão não aparece (o app devolveria pros planos).
+5. **Cupom:** a tela lê `?coupon=` e `?cupom=`. `utm_campaign=renovacao` também conta como renovação (pushes antigos).
+6. **Preço:** crédito de upgrade primeiro, cupom depois, no front (`computeFinalPrice`) e no `create-checkout`. Crédito só em upgrade real (hierarquia `UPGRADE_ORDER`), nunca exibido no iOS (Apple cobra preço da loja).
+
+### Vigia de pagamento (reconhecer pagamento sem reabrir o app)
+`src/auth/paymentSync.ts` (`PaymentWatcher`, coberto por `test/payment-sync-test.ts`), ligado no `main.ts` (`setupPaymentWatcher`).
+- **Gatilhos:** boot e app voltando pro primeiro plano (`visibilitychange` próprio + `resume` do Capacitor). Não toca no listener de áudio.
+- **Só roda com sinal de pagamento:** marca `gdrums-awaiting-payment` (gravada por `gotoPlans` e ao abrir o checkout, vale 2h) ou pedido `pending` das últimas 24h. Sem sinal: 2 selects e para.
+- **Rajada curta:** 0s/3s/8s/15s/30s/60s. `payment-webhook` só em 3 tentativas, no máx. 9 por sessão, com 5s entre chamadas. Checkout abandonado (pendente sem `transaction_nsu`) = 1 conferência, sem rajada. App em segundo plano não consulta.
+- **Reconheceu** (validade andou ≥1h ou virou pago): atualiza cache offline, some com aviso de renovação e upsell, toast de confirmação. Se estava no aviso "assine no site" (Android), recarrega.
+- **Aviso de renovação/trial fica calado** se foi pagar há <30 min ou se o pedido pendente já tem `transaction_nsu` (`shouldSilenceRenewalNag`).
+
 ### Cupons
 - Validação: `active=true`, `valid_from <= now < valid_until`, `current_uses < max_uses`.
 - Código digitado é `.toUpperCase()`.

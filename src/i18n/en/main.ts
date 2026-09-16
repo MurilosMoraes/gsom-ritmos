@@ -131,6 +131,7 @@ export const main: Record<string, string> = {
   'main.renewal.title': "Your subscription's almost up",
   'main.renewal.messageSuffix': ' No rush, just renew before you lose access to your rhythms.',
   'main.renewal.cta': 'Renew now',
+  'main.payment.recognized': 'Payment confirmed! {plan} plan active until {date}.',
   'main.renewal.trialExpiresIn': 'Your trial expires in <strong>{time}</strong>.',
   'main.renewal.trialRemaining': '<strong>{time}</strong> left in your trial.',
   'main.renewal.trialTitleUrgent': 'Trial ending',

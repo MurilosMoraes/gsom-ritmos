@@ -27,6 +27,7 @@ export const plans: Record<string, string> = {
   'plans.renew.expiresInDays': 'your subscription expires in {days} days',
   'plans.renew.message': 'Renew your {plan} plan, {msg}.',
   'plans.alert.expired': 'Your subscription has expired. Choose a plan to continue.',
+  'plans.backToApp': 'Back to app',
   'plans.iap.restoreLink': 'Restore purchases',
   'plans.iap.subscriptionTerms': 'Your subscription is charged to your Apple ID account when the purchase is confirmed and renews automatically unless canceled at least 24 hours in advance. Manage it in App Store Settings.',
   'plans.iap.eulaLink': 'Terms of Use (EULA)',

@@ -17,6 +17,8 @@
 
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '../auth/supabase';
+import { openAppUrl } from './DeepLinks';
+import { internalNav, appHome } from './Platform';
 
 const REGISTER_ENDPOINT = 'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/register-device-token';
 const REGISTERED_KEY = 'gdrums-native-push-registered';
@@ -124,14 +126,7 @@ async function initAndroid(userId: string): Promise<void> {
   // 6. User tocou na notificação — navega pra URL se vier
   FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
     const data = event.notification?.data as { url?: string } | undefined;
-    if (data?.url && typeof data.url === 'string') {
-      try {
-        const u = new URL(data.url);
-        if (u.hostname === 'gdrums.com.br') {
-          window.location.href = u.pathname + u.search;
-        }
-      } catch { /* ignore */ }
-    }
+    if (data?.url && typeof data.url === 'string') openPushUrl(data.url);
   });
 }
 
@@ -235,16 +230,25 @@ async function setupListeners(userId: string): Promise<void> {
   // User clicou na notificação — pode navegar pra URL embutida
   PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
     const data = action.notification.data as { url?: string } | undefined;
-    if (data?.url && typeof data.url === 'string') {
-      // OneSignal manda URL pra abrir — se for nosso domínio, navega interno
-      try {
-        const u = new URL(data.url);
-        if (u.hostname === 'gdrums.com.br') {
-          window.location.href = u.pathname + u.search;
-        }
-      } catch { /* ignore */ }
-    }
+    // OneSignal manda URL pra abrir — se for nosso domínio, navega interno
+    if (data?.url && typeof data.url === 'string') openPushUrl(data.url);
   });
+}
+
+/**
+ * Toque em push com URL nossa. Mesma regra dos links universais
+ * (openAppUrl): /plans vira /plans.html no app (sem .html o WebView
+ * carregava o index e o push de renovação caía na HOME) e, no Android,
+ * vai pro Chrome com a query intacta.
+ */
+function openPushUrl(url: string): void {
+  try {
+    const u = new URL(url);
+    if (u.hostname !== 'gdrums.com.br') return;
+    if (openAppUrl(url)) return;
+    // Caminho sem rota dedicada (ex: a raiz): abre o app normal.
+    internalNav(appHome());
+  } catch { /* ignore */ }
 }
 
 /**

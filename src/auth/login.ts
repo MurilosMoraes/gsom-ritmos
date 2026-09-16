@@ -9,6 +9,21 @@ import { setupPasswordToggle } from '../utils/passwordToggle';
 import { OfflineCache } from '../native/OfflineCache';
 import { t, hydrate } from '../i18n';
 import { injectLanguagePill } from '../i18n/selector';
+import { initDeepLinks } from '../native/DeepLinks';
+import {
+  sanitizeNext, nextForPlatform, savePendingNext, peekPendingNext, clearPendingNext,
+  deviceStore, tabStore, canAutoBounce, markAutoBounce,
+} from './plansRouting';
+
+/** ?next= da URL (e guarda pro recovery/cadastro) ou a intenção guardada. */
+function resolveLoginNext(): string | null {
+  const fromUrl = sanitizeNext(new URLSearchParams(window.location.search).get('next'));
+  if (fromUrl) {
+    savePendingNext(deviceStore(), fromUrl);
+    return fromUrl;
+  }
+  return peekPendingNext(deviceStore());
+}
 
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
 // pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
@@ -21,6 +36,11 @@ class LoginPage {
   private passwordInput: HTMLInputElement;
   private loginBtn: HTMLButtonElement;
   private alertMessage: HTMLElement;
+  // Pra onde voltar depois de entrar (só páginas de compra). Vem do ?next=
+  // da URL ou, se o login abriu sem ele (e-mail de recovery), da intenção
+  // guardada. Lido no início: o recovery reescreve a URL com replaceState.
+  // Regras de guarda/expiração/limpeza: plansRouting.ts.
+  private next = resolveLoginNext();
 
   constructor() {
     this.form = document.getElementById('loginForm') as HTMLFormElement;
@@ -122,7 +142,18 @@ class LoginPage {
     // (sem os listeners) por causa de uma falha de rede transitória.
     try {
       if (await authService.isAuthenticated()) {
-        window.location.href = await this.getDestination();
+        if (this.next) {
+          // Trava anti-loop: se já pulamos pro destino há menos de 30s e
+          // voltamos pra cá, o destino não reconhece a sessão. Descarta a
+          // intenção e segue o fluxo normal em vez de ficar quicando.
+          if (!canAutoBounce(tabStore())) {
+            clearPendingNext(deviceStore());
+            this.next = null;
+          } else {
+            markAutoBounce(tabStore());
+          }
+        }
+        internalNav(await this.getDestination());
         return;
       }
     } catch {
@@ -267,7 +298,7 @@ class LoginPage {
         // Limpar hash da URL
         history.replaceState(null, '', '/login');
         setTimeout(async () => {
-          window.location.href = await this.getDestination();
+          internalNav(await this.getDestination());
         }, 1000);
       }
     });
@@ -726,7 +757,7 @@ class LoginPage {
 
     this.showAlert(t('auth.login.loginSuccess'), 'success');
     const dest = await this.getDestination();
-    setTimeout(() => { window.location.href = dest; }, 600);
+    setTimeout(() => { internalNav(dest); }, 600);
   }
 
   // ─── Biometria (digital / Face ID) — só app nativo ─────────────────
@@ -851,6 +882,11 @@ class LoginPage {
   }
 
   private async getDestination(): Promise<string> {
+    // Veio de uma página de compra (renovar, upgrade, retorno do
+    // pagamento): volta pra ela, seja qual for o status. A tela de planos
+    // resolve sozinha o modo certo. Antes, assinante ativo ia pra home e a
+    // renovação se perdia.
+    if (this.next) return nextForPlatform(this.next, isNativeApp());
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return '/plans';
@@ -941,6 +977,9 @@ class LoginPage {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  // Link/push aberto com o app parado no login (ex: link de renovação ou
+  // de recovery): sem listener aqui o toque não fazia nada.
+  initDeepLinks();
   AttributionService.init();
   setupPasswordToggle(); // olhinho em todos os input[type=password] da página
   new LoginPage();

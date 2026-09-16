@@ -171,8 +171,8 @@ serve(async (req) => {
       }
     }
 
-    // Calcular preço com desconto do cupom
-    let finalPrice = officialPrice;
+    // Desconto do cupom (aplicado DEPOIS do crédito de upgrade, lá embaixo)
+    let discountPercent = 0;
     if (couponCode) {
       const { data: coupon } = await supabase
         .from("gdrums_coupons")
@@ -218,7 +218,7 @@ serve(async (req) => {
         }
 
         if (notExpired && hasUses) {
-          finalPrice = Math.round(officialPrice * (1 - coupon.discount_percent / 100));
+          discountPercent = coupon.discount_percent;
         }
       }
     }
@@ -262,8 +262,15 @@ serve(async (req) => {
       }
     }
 
-    // Aplicar crédito (só será > 0 em upgrade real)
-    finalPrice = Math.max(0, finalPrice - upgradeCredit);
+    // ORDEM IMPORTA: primeiro o crédito (só > 0 em upgrade real), depois o
+    // cupom sobre o que sobrou. Era o contrário: cupom sobre o preço cheio e
+    // crédito por cima, e upgrade com cupom forte saía de graça
+    // (trimestral → semestral com 50%: R$ 72 - R$ 74,70 = R$ 0).
+    // Mesma ordem do front (src/auth/plansRouting.ts → computeFinalPrice).
+    let finalPrice = Math.max(0, officialPrice - upgradeCredit);
+    if (discountPercent > 0) {
+      finalPrice = Math.round(finalPrice * (1 - discountPercent / 100));
+    }
 
     // Validar preço (com margem de 1 real pra arredondamento)
     const requestedPrice = items[0]?.price || 0;

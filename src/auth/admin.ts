@@ -3315,9 +3315,12 @@ class AdminDashboard {
     }
 
     const coupon = (document.getElementById('renewalCoupon') as HTMLSelectElement)?.value || '';
+    // renew=true: é o que abre a tela de planos em modo renovação. Sem ele
+    // o assinante ativo era devolvido pra home (venda perdida). O param do
+    // cupom é "coupon" (a tela de planos lê esse; "cupom" era ignorado).
     const url = coupon
-      ? `https://gdrums.com.br/plans?cupom=${encodeURIComponent(coupon)}&utm_source=push&utm_campaign=renovacao`
-      : 'https://gdrums.com.br/plans?utm_source=push&utm_campaign=renovacao';
+      ? `https://gdrums.com.br/plans?renew=true&coupon=${encodeURIComponent(coupon)}&utm_source=push&utm_campaign=renovacao`
+      : 'https://gdrums.com.br/plans?renew=true&utm_source=push&utm_campaign=renovacao';
     const title = '🥁 Teu plano tá vencendo';
     const body = coupon
       ? `Renova agora com o cupom ${coupon} e não perde tua banda no palco!`

@@ -34,7 +34,7 @@ import { StatusBarService } from './native/StatusBarService';
 import { AttributionService } from './native/AttributionService';
 // PushService removido — push agora é gerenciado pelo OneSignalService
 // (tanto web quanto Capacitor nativo via onesignal-cordova-plugin).
-import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore, isIOSNative, APP_STORE_URL, appHome } from './native/Platform';
+import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore, isIOSNative, APP_STORE_URL, appHome, gotoPlans } from './native/Platform';
 import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
@@ -43,41 +43,19 @@ import { startMarquee, stopMarquee } from './utils/marquee';
 import { buildRhythmPayload, buildSetlistPayload, makeShareUrl, showShareResultModal, readImportFromUrl, clearImportFromUrl, type SharePayload } from './core/ShareLink';
 import { publishShare, fetchShare, shortUrl, readShareCodeFromPath, clearShareCodeFromPath, saveLocalShare, getLocalShare, readCommunityCodeFromPath, fetchCommunity, type CommunityRecipe } from './core/ShareService';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
+import { clearPendingNext, deviceStore, type ProfileLike } from './auth/plansRouting';
+import { PaymentWatcher, shouldSilenceRenewalNag, markAwaitingPayment, type PendingTx } from './auth/paymentSync';
 
 /** Teclas de um modelo de pedal (ver PEDAL_STORE_KEY). */
 interface PedalMap { left?: string; right?: string; playPause?: string; end?: string }
 
-// Pra App Store: iOS tem IAP via StoreKit (Apple 3.1.1 obriga). Pra
-// Play Store: Android continua usando checkout externo no Chrome
-// (Google Play permite link pra site fora do app pra assinaturas).
-// IMPORTANTE: NÃO usar /plans aqui. O AndroidManifest registra App Links
-// com pathPrefix="/plans" — abrir gdrums.com.br/plans "no navegador" faz o
-// Android devolver o link PRO PRÓPRIO APP (handler verificado do domínio),
-// e o upgrade "tenta ir pra web e volta pro app". /assinar é um rewrite do
-// vercel.json pro mesmo plans.html, fora da lista de interceptação — abre
-// no Chrome de verdade, sem precisar de release nas lojas.
-const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/assinar';
+// Ida pros planos (iOS: StoreKit interno; Android: Chrome em /assinar;
+// web: /plans): ver gotoPlans() em ./native/Platform.
 
 // withNetTimeout: corta promises de rede penduradas (navigator.onLine
 // mente offline). Movido pra ./utils/netTimeout pra ser compartilhado com
 // SetlistManager/UserRhythmService — os initWithUser deles também penduravam
 // o boot. Ver o doc completo lá.
-
-/** Roteia ação de "ir pros planos" respeitando compliance:
- *  - iOS nativo → /plans interno (StoreKit/IAP)
- *  - Android nativo → site externo no Chrome (InfinitePay)
- *  - Web → /plans interno */
-function gotoPlans(path: string = '/plans'): void {
-  if (isIOSNative()) {
-    internalNav(path);
-  } else if (isNativeApp()) {
-    // Android: query string vira parte da URL externa
-    const q = path.includes('?') ? path.substring(path.indexOf('?')) : '';
-    openExternal(PLANS_URL_EXTERNAL + q);
-  } else {
-    internalNav(path);
-  }
-}
 
 class RhythmSequencer {
   private audioContext: AudioContext;
@@ -92,6 +70,12 @@ class RhythmSequencer {
   private setlistEditor: SetlistEditorUI;
   private userRhythmService: UserRhythmService;
   private conversionManager: ConversionManager;
+  // Vigia de pagamento (auth/paymentSync): reconhece pagamento feito fora
+  // (Chrome/aba do checkout) sem o cliente reabrir o app.
+  private paymentWatcher: PaymentWatcher | null = null;
+  // Acesso negado nesta página (ex: aviso "assine no site" do Android).
+  // Pagamento reconhecido aí = recarrega pra entrar no app.
+  private accessBlocked = false;
   private previewPlayer!: PreviewPlayer;
   private isAdminMode = false;
   private userRole: 'user' | 'admin' = 'user';
@@ -763,6 +747,10 @@ class RhythmSequencer {
 
       // Liberado: revela a tela.
       revealApp();
+
+      // Pagamento em andamento (foi pagar e voltou, pedido pendente)?
+      // Confere agora; sem nada em andamento custa 2 selects e para.
+      void this.paymentWatcher?.kick();
 
       // Inicializar favoritos — online: Supabase, offline: cache local
       try {
@@ -1871,6 +1859,10 @@ class RhythmSequencer {
     // Guardar role do usuário (vindo do banco, não do client)
     this.userRole = (profile?.role === 'admin') ? 'admin' : 'user';
 
+    // Vigia de pagamento com a foto do perfil AGORA (base pra saber se a
+    // validade andou). Só arma; quem dispara é o boot/voltar pro app.
+    this.setupPaymentWatcher(session.user, profile);
+
     // Conta incompleta (sem CPF OU sem phone) — sempre redireciona pra
     // /completar-cadastro em vez de signOut + register. Mais amigável:
     // user pagante (ex: Romilson) não perde acesso, só preenche os campos.
@@ -1941,6 +1933,9 @@ class RhythmSequencer {
     if ((status === 'active' || status === 'trial') && expires) {
       const expiresDate = new Date(expires);
       if (expiresDate > new Date()) {
+        // Entrou no app normalmente: qualquer intenção de compra guardada
+        // pelo login ficou pra trás e não pode sequestrar um login futuro.
+        clearPendingNext(deviceStore());
 
         // Salvar perfil no cache offline para próximo acesso sem rede
         OfflineCache.saveProfile({
@@ -1974,6 +1969,7 @@ class RhythmSequencer {
     const pendingChecked = sessionStorage.getItem('gdrums-pending-checked');
     if (pendingTx?.order_nsu && !pendingChecked) {
       sessionStorage.setItem('gdrums-pending-checked', '1');
+      this.paymentWatcher?.noteExternalConfirm();
       try {
         const webhookBody: Record<string, string> = { order_nsu: pendingTx.order_nsu };
         if (pendingTx.transaction_nsu) webhookBody.transaction_nsu = pendingTx.transaction_nsu;
@@ -2006,6 +2002,10 @@ class RhythmSequencer {
     }
     if (isNativeApp()) {
       this.showSubscribeOnWebsiteNotice();
+      // Cliente vai pagar no Chrome e voltar pra esta tela: o vigia
+      // reconhece e recarrega sozinho, sem ele matar o app.
+      this.accessBlocked = true;
+      void this.paymentWatcher?.kick();
       return false;
     }
     internalNav('/plans');
@@ -2050,6 +2050,108 @@ class RhythmSequencer {
       const { authService } = await import('./auth/AuthService');
       await authService.logout();
     });
+  }
+
+  // ─── Vigia de pagamento ───────────────────────────────────────────
+  //
+  // Regras (custo, rajada, teto) em auth/paymentSync.ts. Aqui só a fiação:
+  // consultas ao Supabase, o que fazer ao reconhecer, e os gatilhos (boot e
+  // app voltando pro primeiro plano). Listener PRÓPRIO de visibilitychange:
+  // o do áudio (setupCallbacks) não é tocado.
+
+  private async fetchLatestPendingTx(userId: string): Promise<PendingTx | null> {
+    const { supabase } = await import('./auth/supabase');
+    const res = await withNetTimeout(Promise.resolve(
+      supabase
+        .from('gdrums_transactions')
+        .select('order_nsu, transaction_nsu, created_at')
+        .eq('user_id', userId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    ));
+    return ((res as { data: PendingTx | null }).data) || null;
+  }
+
+  private setupPaymentWatcher(user: { id: string; email?: string; user_metadata?: { name?: string } }, baseline: ProfileLike | null): void {
+    if (this.paymentWatcher) return;
+
+    this.paymentWatcher = new PaymentWatcher(baseline, {
+      store: deviceStore(),
+      isVisible: () => !document.hidden,
+      fetchProfile: async () => {
+        const { supabase } = await import('./auth/supabase');
+        const res = await withNetTimeout(Promise.resolve(
+          supabase
+            .from('gdrums_profiles')
+            .select('subscription_status, subscription_expires_at, subscription_plan')
+            .eq('id', user.id)
+            .single()
+        ));
+        return ((res as { data: ProfileLike | null }).data) || null;
+      },
+      fetchLatestPending: () => this.fetchLatestPendingTx(user.id),
+      confirmPending: async (tx) => {
+        const body: Record<string, string> = { order_nsu: tx.order_nsu };
+        if (tx.transaction_nsu) body.transaction_nsu = tx.transaction_nsu;
+        const res = await withNetTimeout(fetch(
+          'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/payment-webhook',
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+        ));
+        const json = await res.json().catch(() => null);
+        return json?.success === true;
+      },
+      onRecognized: (fresh) => this.onPaymentRecognized(user, fresh),
+    });
+
+    // Gatilhos: voltar pro app (web/PWA/nativo) e resume do Capacitor
+    // (no Android o retorno do Chrome nem sempre dispara visibilitychange).
+    // Chamadas repetidas são baratas: o vigia ignora se já está rodando ou
+    // se acabou de rodar.
+    const kick = () => { void this.paymentWatcher?.kick(); };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) kick(); });
+    if (isNativeApp()) {
+      import('@capacitor/app')
+        .then(({ App }) => App.addListener('resume', kick))
+        .catch(() => {});
+    }
+  }
+
+  private onPaymentRecognized(user: { id: string; email?: string; user_metadata?: { name?: string } }, fresh: ProfileLike): void {
+    const expires = fresh.subscription_expires_at!;
+    const plan = fresh.subscription_plan || '';
+
+    OfflineCache.saveProfile({
+      userId: user.id,
+      name: user.user_metadata?.name || '',
+      email: user.email || '',
+      role: this.userRole,
+      // paymentRecognized só passa com status 'active' (isPaidActive).
+      subscriptionStatus: 'active',
+      subscriptionPlan: plan,
+      subscriptionExpiresAt: expires,
+      cachedAt: Date.now(),
+    });
+
+    // Estava barrado (aviso "assine no site"): recarrega e entra no app.
+    // Não tem música tocando nesse estado, recarregar é seguro.
+    if (this.accessBlocked) {
+      window.location.reload();
+      return;
+    }
+
+    // Dentro do app: some com a cobrança e avisa, sem interromper o som.
+    this.conversionManager.setTrialActive(false);
+    document.getElementById('renewSuggestionModal')?.remove();
+    document.querySelector('.cv-modal-overlay')?.remove();
+    try { sessionStorage.setItem('gdrums-renew-modal-shown', '1'); } catch { /* noop */ }
+
+    void import('./auth/PaymentService').then(({ PLANS }) => {
+      const planName = PLANS.find(p => p.id === plan)?.displayName || plan;
+      const date = new Date(expires).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+      Toast.show(t('main.payment.recognized', { plan: planName, date }), { type: 'success' });
+    }).catch(() => {});
   }
 
   /** true se o cliente tem um pagamento CONFIRMADO que cobre além de 7 dias
@@ -2113,6 +2215,13 @@ class RhythmSequencer {
       // Resolve o "renovou e continua avisando" pra todos que pagaram.
       void (async () => {
         if (await this.isCoveredByConfirmedPayment(now)) return;
+        // Acabou de ir pagar ou já pagou e falta confirmar: não cobra. O
+        // vigia confere e, confirmando, avisa com toast. Sem marcar o
+        // "shown": se o pagamento não vier, o aviso volta na próxima sessão.
+        if (await this.paymentInProgress()) {
+          void this.paymentWatcher?.kick();
+          return;
+        }
 
         sessionStorage.setItem('gdrums-renew-modal-shown', '1');
 
@@ -2142,20 +2251,41 @@ class RhythmSequencer {
 
     // Trial também vira modal não-bloqueante 1x por sessão
     if (sessionStorage.getItem('gdrums-trial-modal-shown')) return;
-    sessionStorage.setItem('gdrums-trial-modal-shown', '1');
 
     const timeText = hoursLeft > 0 ? `${hoursLeft}h` : `${minutesLeft}min`;
     const trialMsg = hoursLeft <= 6
       ? t('main.renewal.trialExpiresIn', { time: timeText })
       : t('main.renewal.trialRemaining', { time: timeText });
 
-    this.showRenewalSuggestionModal({
-      title: hoursLeft <= 6 ? t('main.renewal.trialTitleUrgent') : t('main.renewal.trialTitleNormal'),
-      message: trialMsg + t('main.renewal.trialMessageSuffix'),
-      ctaLabel: t('main.renewal.trialCta'),
-      // IAP compliance: nativo usa /plans interno (StoreKit).
-      ctaUrl: '/plans',
-    });
+    void (async () => {
+      // Mesma regra do pago: quem acabou de assinar não leva "assine já".
+      if (await this.paymentInProgress()) {
+        void this.paymentWatcher?.kick();
+        return;
+      }
+      sessionStorage.setItem('gdrums-trial-modal-shown', '1');
+      this.showRenewalSuggestionModal({
+        title: hoursLeft <= 6 ? t('main.renewal.trialTitleUrgent') : t('main.renewal.trialTitleNormal'),
+        message: trialMsg + t('main.renewal.trialMessageSuffix'),
+        ctaLabel: t('main.renewal.trialCta'),
+        // IAP compliance: nativo usa /plans interno (StoreKit).
+        ctaUrl: '/plans',
+      });
+    })();
+  }
+
+  /** Pagamento em andamento? (ver shouldSilenceRenewalNag). Erro/offline = não. */
+  private async paymentInProgress(): Promise<boolean> {
+    try {
+      if (this.paymentWatcher?.recognized) return true;
+      const { supabase } = await import('./auth/supabase');
+      const { data } = await withNetTimeout(supabase.auth.getSession());
+      const uid = data.session?.user?.id;
+      const pending = uid ? await this.fetchLatestPendingTx(uid) : null;
+      return shouldSilenceRenewalNag(deviceStore(), pending, Date.now());
+    } catch {
+      return shouldSilenceRenewalNag(deviceStore(), null, Date.now());
+    }
   }
 
   /**
@@ -8158,7 +8288,10 @@ class RhythmSequencer {
       actionBtnEl.addEventListener('click', () => {
         if (isNativeApp()) {
           // iOS: interno (IAP). Android: site externo (Chrome).
-          gotoPlans();
+          // A intenção TEM que ir na URL: é o upgrade=true que faz a tela
+          // de planos abrir em modo upgrade (antes ia sem nada e o
+          // assinante ativo era devolvido pra home).
+          gotoPlans(status === 'active' && upgradeAvailable ? '/plans?upgrade=true' : '/plans');
           close();
         } else if (status === 'active' && upgradeAvailable) {
           close();
@@ -8300,6 +8433,7 @@ class RhythmSequencer {
           });
 
           if (result.success && result.url) {
+            markAwaitingPayment(deviceStore());
             window.location.href = result.url;
           } else {
             statusEl.textContent = result.error || t('main.upgradeModal.paymentError');

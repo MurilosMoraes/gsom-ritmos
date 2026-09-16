@@ -27,13 +27,10 @@
 // REGRA DE OURO: nunca aparece enquanto a música está tocando.
 // Sempre espera o user parar OU trocar de ritmo OU ficar idle.
 
-import { isNativeApp, openExternal, internalNav, isIOSNative } from '../native/Platform';
+import { gotoPlans } from '../native/Platform';
+import { awaitingAge, AWAITING_QUIET_MS } from '../auth/paymentSync';
+import { deviceStore } from '../auth/plansRouting';
 import { t } from '../i18n';
-
-// /assinar (não /plans): os App Links do Android interceptam /plans e
-// devolvem o link PRO PRÓPRIO APP — ver comentário em main.ts.
-const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/assinar';
-const PLANS_URL_WEB = '/plans';
 
 // Mínimo entre dois modais quaisquer (20min). Suficiente pra não
 // sobrepor com a experiência, mas permite múltiplas ofertas no trial.
@@ -343,6 +340,9 @@ export class ConversionManager {
 
   private canFire(key: TriggerKey): boolean {
     const now = Date.now();
+    // Acabou de ir pagar (marca do gotoPlans/checkout): não oferece de novo.
+    const payingAge = awaitingAge(deviceStore(), now);
+    if (payingAge !== null && payingAge <= AWAITING_QUIET_MS) return false;
     const lastAny = parseInt(localStorage.getItem(ConversionManager.LAST_ANY_KEY) || '0');
     if (now - lastAny < ANY_TRIGGER_COOLDOWN_MS) return false;
     const lastSame = parseInt(localStorage.getItem(ConversionManager.STORAGE_PREFIX + key) || '0');
@@ -438,16 +438,8 @@ export class ConversionManager {
 
     overlay.querySelector('.cv-primary')?.addEventListener('click', () => {
       const q = coupon ? `?coupon=${encodeURIComponent(coupon)}` : '';
-      // iOS: interno (StoreKit/IAP, Apple 3.1.1).
-      // Android: site externo no Chrome (Play permite; cupom funciona).
-      // Web: interno.
-      if (isIOSNative()) {
-        internalNav('/plans' + q);
-      } else if (isNativeApp()) {
-        openExternal(PLANS_URL_EXTERNAL + q);
-      } else {
-        window.location.href = PLANS_URL_WEB + q;
-      }
+      // iOS interno (StoreKit), Android no Chrome (cupom funciona), web interno.
+      gotoPlans('/plans' + q);
     });
 
     // ESC fecha

@@ -11,6 +11,7 @@
 // - https://developer.apple.com/app-store/review/guidelines/#payments
 
 import { Capacitor } from '@capacitor/core';
+import { AWAITING_PAYMENT_KEY } from '../auth/paymentSync';
 
 /** True se rodando dentro do app nativo (iOS/Android via Capacitor). */
 export function isNativeApp(): boolean {
@@ -122,6 +123,53 @@ export function openExternal(url: string): void {
 }
 
 /**
+ * Planos no site, pro checkout do Android (fora do app).
+ *
+ * /assinar e não /plans: o AndroidManifest registra App Links com
+ * pathPrefix="/plans", então abrir gdrums.com.br/plans "no navegador" faz o
+ * Android devolver o link PRO PRÓPRIO APP, e o upgrade "tenta ir pra web e
+ * volta pro app". /assinar é um rewrite do vercel.json pro mesmo plans.html,
+ * fora da lista de interceptação.
+ */
+export const PLANS_URL_EXTERNAL = 'https://gdrums.com.br/assinar';
+
+/**
+ * ÚNICO jeito de mandar o cliente pros planos. Respeita as lojas:
+ *  - iOS nativo → /plans interno (StoreKit/IAP, Apple 3.1.1)
+ *  - Android nativo → site externo no Chrome (InfinitePay)
+ *  - Web → /plans interno
+ *
+ * A query (renew, upgrade, coupon, ref, plan) vai junto em todos os casos:
+ * é ela que diz pra tela de planos o que o cliente veio fazer.
+ *
+ * @param path '/plans' com query opcional (ex: '/plans?renew=true')
+ */
+export function gotoPlans(path: string = '/plans'): void {
+  // Marca "foi pagar": quando voltar pro app, o vigia de pagamento
+  // (auth/paymentSync) confere e reconhece sem precisar reabrir nada.
+  try { localStorage.setItem(AWAITING_PAYMENT_KEY, String(Date.now())); } catch { /* noop */ }
+  if (isNativeApp() && !isIOSNative()) {
+    const q = path.includes('?') ? path.substring(path.indexOf('?')) : '';
+    openExternal(PLANS_URL_EXTERNAL + q);
+    return;
+  }
+  internalNav(path);
+}
+
+let navLockedUntil = 0;
+
+/**
+ * Trava as navegações internas desta página por alguns segundos. Usado pelo
+ * deep link: no boot deslogado o main.ts manda pro /login (sem destino)
+ * DEPOIS que o link já mandou pros planos, e a última navegação vence. Com
+ * a trava, quem o cliente tocou prevalece. Expira sozinha (se a navegação
+ * não descarregar a página, nada fica preso).
+ */
+export function lockInternalNav(ms: number = 5000): void {
+  navLockedUntil = Date.now() + ms;
+}
+
+/**
  * Navega internamente pra outra página do app (login, plans, register, etc).
  *
  * No web (Vercel) usa URLs limpas via rewrites do vercel.json (`/login` →
@@ -132,8 +180,13 @@ export function openExternal(url: string): void {
  * Sempre usa esse helper em vez de `window.location.href = '/login'`.
  *
  * @param path Caminho sem `.html` (ex: '/login', '/plans?renew=true')
+ * @param opts.force Ignora a trava do deep link (só o próprio deep link usa).
  */
-export function internalNav(path: string): void {
+export function internalNav(path: string, opts: { force?: boolean } = {}): void {
+  if (!opts.force && Date.now() < navLockedUntil) {
+    console.warn('[Nav] ignorada, deep link em andamento:', path);
+    return;
+  }
   if (isNativeApp() && !path.includes('.html')) {
     // Separa querystring/hash pra adicionar .html no lugar certo
     const match = path.match(/^([^?#]*)(.*)$/);

@@ -7,7 +7,18 @@ import type { Plan } from './PaymentService';
 import { internalNav, isIOSNative, appHome } from '../native/Platform';
 import { purchasePlan as iapPurchase, restorePurchases as iapRestore, loadProducts as iapLoadProducts } from '../native/IAPService';
 import { redirectIfRecoveryHash } from './recoveryGuard';
+import { initDeepLinks } from '../native/DeepLinks';
+import { markAwaitingPayment } from './paymentSync';
 import { t, hydrate } from '../i18n';
+import {
+  readPlansIntent, resolvePlansMode, isPaidActive, hasAppAccess, computeUpgradeCredit, computeFinalPrice, loginPathWithNext,
+  clearPendingNext, deviceStore,
+  type PlansMode, type ProfileLike, type PlanPrice,
+} from './plansRouting';
+
+const PLAN_CATALOG: Record<string, PlanPrice> = Object.fromEntries(
+  PLANS.map(p => [p.id, { priceCents: p.priceCents, durationMonths: p.durationMonths }]),
+);
 
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
 // pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
@@ -22,7 +33,10 @@ interface AppliedCoupon {
 
 class PlansPage {
   private appliedCoupon: AppliedCoupon | null = null;
-  private upgradeCredit = 0; // Crédito em centavos do plano atual (upgrade proporcional)
+  // Perfil lido no init. Base do crédito de upgrade (calculado por plano,
+  // igual ao create-checkout; ver plansRouting.computeUpgradeCredit).
+  private profile: ProfileLike | null = null;
+  private mode: PlansMode = 'subscribe';
   // Passe 3 Dias é COMPRA ÚNICA por pessoa (1x por CPF). Quem já usou não
   // vê mais o plano. Motivo: virou assinatura barata infinita — 18 contas
   // recompraram (uma delas 5x), trocando o mensal de R$29 por R$9,90
@@ -37,6 +51,8 @@ class PlansPage {
   private async init(): Promise<void> {
     // Logout
     document.getElementById('plansLogoutBtn')?.addEventListener('click', async () => {
+      // Saída intencional: nada de voltar pros planos no próximo login.
+      clearPendingNext(deviceStore());
       await supabase.auth.signOut();
       internalNav('/login');
     });
@@ -54,28 +70,39 @@ class PlansPage {
       if (loading) loading.classList.remove('active');
     });
 
+    // Sem sessão: vai pro login e VOLTA pra cá com a mesma query (renew,
+    // upgrade, cupom, ref). Sem isso o login mandava assinante ativo pra
+    // home e a renovação morria (caso típico: Android paga no Chrome, onde
+    // o cliente quase nunca está logado).
+    const loginPath = loginPathWithNext(window.location.pathname + window.location.search);
     if (!(await authService.isAuthenticated())) {
       // Tentar refresh antes de desistir
       try {
         const { error } = await supabase.auth.refreshSession();
         if (error) {
-          internalNav('/login');
+          internalNav(loginPath);
           return;
         }
       } catch {
-        internalNav('/login');
+        internalNav(loginPath);
         return;
       }
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { internalNav('/login'); return; }
+    if (!user) { internalNav(loginPath); return; }
+
+    // Chegou logado no destino: a intenção guardada pelo login está
+    // cumprida. Uso único, não pode puxar o próximo login pra cá.
+    clearPendingNext(deviceStore());
 
     const { data: profile } = await supabase
       .from('gdrums_profiles')
       .select('subscription_status, subscription_expires_at, subscription_plan')
       .eq('id', user.id)
       .single();
+    this.profile = profile;
+    this.setupBackToApp(profile);
 
     // Passe 3 Dias já usado? Se sim, some da lista (compra única por pessoa).
     // Falha de rede aqui NÃO libera o plano indevidamente: o create-checkout
@@ -122,28 +149,33 @@ class PlansPage {
           const result = await res.json();
           if (result.success) {
             localStorage.removeItem('gdrums-pending-order');
-            window.location.href = appHome();
-            return;
+            // Só sai daqui se o perfil REALMENTE ficou pago e válido. Um
+            // "success" que não estendeu a validade mandava pra home, a home
+            // devolvia pros planos, e o cliente ficava em loop sem conseguir
+            // pagar.
+            const { data: fresh } = await supabase
+              .from('gdrums_profiles')
+              .select('subscription_status, subscription_expires_at, subscription_plan')
+              .eq('id', user.id)
+              .single();
+            if (isPaidActive(fresh, new Date())) {
+              internalNav(appHome());
+              return;
+            }
           }
         } catch { /* continuar normalmente */ }
       }
     }
 
-    // Só redirecionar se tem plano PAGO ativo e NÃO veio fazer upgrade/renovação
-    const params = new URLSearchParams(window.location.search);
-    const isUpgrade = params.get('upgrade') === 'true';
-    const isRenew = params.get('renew') === 'true';
+    // Assinante pago ativo NUNCA é mandado pra home daqui: se ele chegou nos
+    // planos (push de renovação, botão do app, link com cupom), é pra
+    // pagar. Sem ?upgrade=true a tela abre em modo renovação.
+    const intent = readPlansIntent(window.location.search);
+    this.mode = resolvePlansMode(profile, intent, new Date());
 
-    if (!isUpgrade && !isRenew && status === 'active' && plan && plan !== 'trial' && profile?.subscription_expires_at) {
-      if (new Date(profile.subscription_expires_at) > new Date()) {
-        window.location.href = appHome();
-        return;
-      }
-    }
-
-    if (isUpgrade) {
+    if (this.mode === 'upgrade') {
       this.showAlert(t('plans.upgrade.title'));
-    } else if (isRenew && plan && plan !== 'trial') {
+    } else if (this.mode === 'renew' && plan) {
       // Renovação proativa (assinante pago veio antes de vencer)
       const planLabel = (PLANS.find(p => p.id === plan)?.name) || plan;
       const daysToExp = profile?.subscription_expires_at
@@ -159,18 +191,10 @@ class PlansPage {
       this.showAlert(t('plans.alert.expired'));
     }
 
-    // Crédito de upgrade (proporcional ao tempo não usado do plano atual)
-    const creditParam = parseInt(params.get('credit') || '0');
-    if (isUpgrade && creditParam > 0) {
-      this.upgradeCredit = creditParam;
-    }
-
-    this.setupCoupon();
+    this.setupCoupon(intent.coupon, intent.ref);
     this.setupIAPRestore();
-    // Renovação destaca o plano atual; upgrade respeita ?plan=X; default usa o "popular"
-    const highlightPlan = isRenew && plan && plan !== 'trial'
-      ? plan
-      : params.get('plan');
+    // Renovação destaca o plano atual; ?plan=X manda nos outros casos; default usa o "popular"
+    const highlightPlan = this.mode === 'renew' && !intent.plan ? plan : intent.plan;
     this.renderPlans(highlightPlan);
 
     // Pré-carrega produtos da App Store em background pra acelerar o
@@ -178,6 +202,31 @@ class PlansPage {
     if (isIOSNative()) {
       iapLoadProducts().catch(() => {});
     }
+  }
+
+  // ─── Voltar pro app ─────────────────────────────────────────────────
+  //
+  // Quem ainda tem acesso (pago ou trial válido) e abriu os planos por um
+  // link/push precisa de uma saída que não seja "Sair" (logout). No app
+  // nativo não existe barra de voltar. Sem acesso o botão não aparece: o
+  // app devolveria o cliente pra cá e viraria loop.
+
+  private setupBackToApp(profile: ProfileLike | null): void {
+    if (!hasAppAccess(profile, new Date())) return;
+    if (document.getElementById('plansBackBtn')) return;
+    const actions = document.querySelector('.plans-top-actions');
+    if (!actions) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'plansBackBtn';
+    btn.type = 'button';
+    btn.className = 'plans-logout-btn';
+    btn.textContent = t('plans.backToApp');
+    btn.addEventListener('click', () => {
+      clearPendingNext(deviceStore());
+      internalNav(appHome());
+    });
+    actions.insertBefore(btn, actions.firstChild);
   }
 
   // ─── Restore Purchases (Apple obriga visível) ───────────────────────
@@ -249,7 +298,7 @@ class PlansPage {
 
   // ─── Cupom ──────────────────────────────────────────────────────────
 
-  private setupCoupon(): void {
+  private setupCoupon(fromCouponParam: string | null, fromRefParam: string | null): void {
     const input = document.getElementById('couponInput') as HTMLInputElement;
     const btn = document.getElementById('couponBtn') as HTMLButtonElement;
 
@@ -283,20 +332,16 @@ class PlansPage {
     btn.addEventListener('click', () => this.applyCoupon());
 
     // Pré-aplicar cupom automaticamente — ordem de prioridade:
-    // 1. ?coupon=X  (vem do ConversionManager — modal trialEndingSoon)
+    // 1. ?coupon=X ou ?cupom=X (ConversionManager, pushes do admin)
     // 2. ?ref=X     (link de afiliado direto — gdrums.com.br/plans?ref=LUCAS10)
     // 3. localStorage 'gdrums-attr-v1' — se user veio de afiliado há N dias,
     //    o cupom do afiliado é aplicado no checkout AUTOMATICAMENTE.
     //    Double-sided discount: user ganha desconto, afiliado ganha comissão.
     //    Padrão da indústria (UpPromote, Thinkific, Partnero, Rewardful).
     (async () => {
-      const qs = new URLSearchParams(window.location.search);
-      const fromCouponParam = qs.get('coupon');
-      const fromRefParam = qs.get('ref');
-
-      // 1. Cupom explícito na URL
+      // 1. Cupom explícito na URL (já normalizado por readPlansIntent)
       if (fromCouponParam) {
-        input.value = fromCouponParam.toUpperCase();
+        input.value = fromCouponParam;
         setTimeout(() => this.applyCoupon(), 200);
         return;
       }
@@ -448,7 +493,16 @@ class PlansPage {
       const discount = cupomValeNestePlano ? (this.appliedCoupon?.discount_percent || 0) : 0;
       const hasDiscount = discount > 0;
       const originalPrice = plan.priceCents;
-      const hasCredit = this.upgradeCredit > 0;
+
+      // Crédito proporcional: só em upgrade real (plano acima do atual),
+      // calculado igual ao create-checkout, que é quem cobra de verdade.
+      // O servidor aplica o crédito sempre que for upgrade real, então aqui
+      // também (independe do modo da tela). iOS: a Apple cobra o preço da
+      // loja, sem crédito nosso, então não exibe.
+      const upgradeCredit = isIOSNative()
+        ? 0
+        : computeUpgradeCredit(this.profile, plan.id, PLAN_CATALOG, new Date());
+      const hasCredit = upgradeCredit > 0;
 
       // ORDEM IMPORTA: em upgrade, primeiro desconta o crédito (dinheiro
       // que o user "já tinha"), depois aplica cupom sobre o valor a pagar.
@@ -462,12 +516,8 @@ class PlansPage {
       //   - crédito R$ 74,70 sobre R$ 144 → diferença R$ 69,30
       //   - cupom 50% sobre R$ 69,30 = R$ 34,65 desconto
       //   - paga R$ 34,65 (justo: ele tinha crédito, ganhou + 50% no resto)
-      let finalPrice = originalPrice;
-      const creditApplied = hasCredit ? Math.min(this.upgradeCredit, finalPrice) : 0;
-      finalPrice = Math.max(0, finalPrice - creditApplied);
-      if (hasDiscount) {
-        finalPrice = Math.round(finalPrice * (1 - discount / 100));
-      }
+      const creditApplied = Math.min(upgradeCredit, originalPrice);
+      const finalPrice = computeFinalPrice(originalPrice, upgradeCredit, discount);
 
       const finalPerMonth = plan.durationMonths > 0
         ? Math.round(finalPrice / plan.durationMonths / 100)
@@ -620,7 +670,7 @@ class PlansPage {
         coupon: this.appliedCoupon,
         originalPriceCents: plan.priceCents,
         finalPriceCents,
-        upgradeCredit: this.upgradeCredit || 0,
+        upgradeCredit: computeUpgradeCredit(this.profile, plan.id, PLAN_CATALOG, new Date()),
       }));
 
       // Criar checkout com preço final (já com desconto)
@@ -631,6 +681,9 @@ class PlansPage {
       });
 
       if (result.success && result.url) {
+        // Marca "foi pagar": se voltar pro app sem passar pelo retorno do
+        // checkout, o vigia de pagamento reconhece sozinho.
+        markAwaitingPayment(deviceStore());
         window.location.href = result.url;
       } else {
         if (loading) loading.classList.remove('active');
@@ -650,5 +703,8 @@ class PlansPage {
 
 window.addEventListener('DOMContentLoaded', () => {
   if (redirectIfRecoveryHash()) return;
+  // Link/push aberto com o app já NESTA tela: sem listener aqui o toque
+  // não fazia nada (cada .html é um contexto JS separado).
+  initDeepLinks();
   new PlansPage();
 });
