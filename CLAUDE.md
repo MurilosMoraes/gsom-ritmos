@@ -400,6 +400,14 @@ Todas moram em `src/auth/plansRouting.ts` (funções puras) e são cobertas por 
 5. **Cupom:** a tela lê `?coupon=` e `?cupom=`. `utm_campaign=renovacao` também conta como renovação (pushes antigos).
 6. **Preço:** crédito de upgrade primeiro, cupom depois, no front (`computeFinalPrice`) e no `create-checkout`. Crédito só em upgrade real (hierarquia `UPGRADE_ORDER`), nunca exibido no iOS (Apple cobra preço da loja).
 
+### Tela de planos inteligente (o que oferecer pra cada cliente)
+`src/auth/planOffer.ts` (`buildPlanOffer`, coberto por `test/plan-offer-test.ts`); `plans.ts` só renderiza as seções que ele devolve.
+- **Amarrado no `payment-webhook`:** mesmo plano ativo soma a partir do vencimento; plano acima começa hoje com crédito; plano abaixo ou Passe com plano ativo começa hoje SEM crédito (cliente perderia dias) → **nunca oferecido**.
+- Sem assinatura paga: todos os planos (vencido: último plano em destaque, "Voltar pro X"). Passe ativo: mensais em diante.
+- Pago ativo: renovar + upgrades. Renovar vem primeiro se faltam ≤15 dias (`RENEW_WINDOW_DAYS`) ou veio com `?renew`; senão upgrade primeiro (próximo degrau em destaque). `?upgrade` força upgrade. Topo da hierarquia: só renovar.
+- iOS: sem Rei dos Palcos, sem crédito exibido; assinatura da App Store (`order_nsu` `apple_iap_*`) não mostra "renovar".
+- Painel "Seu plano" com vencimento; selos de confiança e rodapé InfinitePay só fora do iOS.
+
 ### Vigia de pagamento (reconhecer pagamento sem reabrir o app)
 `src/auth/paymentSync.ts` (`PaymentWatcher`, coberto por `test/payment-sync-test.ts`), ligado no `main.ts` (`setupPaymentWatcher`).
 - **Gatilhos:** boot e app voltando pro primeiro plano (`visibilitychange` próprio + `resume` do Capacitor). Não toca no listener de áudio.

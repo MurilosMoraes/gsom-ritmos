@@ -9,16 +9,27 @@ import { purchasePlan as iapPurchase, restorePurchases as iapRestore, loadProduc
 import { redirectIfRecoveryHash } from './recoveryGuard';
 import { initDeepLinks } from '../native/DeepLinks';
 import { markAwaitingPayment } from './paymentSync';
-import { t, hydrate } from '../i18n';
+import { t, hydrate, getLocale } from '../i18n';
 import {
-  readPlansIntent, resolvePlansMode, isPaidActive, hasAppAccess, computeUpgradeCredit, computeFinalPrice, loginPathWithNext,
+  readPlansIntent, isPaidActive, hasAppAccess, computeFinalPrice, loginPathWithNext,
   clearPendingNext, deviceStore,
-  type PlansMode, type ProfileLike, type PlanPrice,
+  type ProfileLike,
 } from './plansRouting';
+import { buildPlanOffer, type PlanOffer, type OfferItem, type OfferSectionKey } from './planOffer';
 
-const PLAN_CATALOG: Record<string, PlanPrice> = Object.fromEntries(
-  PLANS.map(p => [p.id, { priceCents: p.priceCents, durationMonths: p.durationMonths }]),
-);
+/** dd/mm/aaaa no idioma do app. */
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(getLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+/** Centavos → '74,70' / '144' (sem ',00'). */
+function money(cents: number): string {
+  return (cents / 100).toFixed(2).replace('.', ',').replace(',00', '');
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
 
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
 // pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
@@ -36,7 +47,8 @@ class PlansPage {
   // Perfil lido no init. Base do crédito de upgrade (calculado por plano,
   // igual ao create-checkout; ver plansRouting.computeUpgradeCredit).
   private profile: ProfileLike | null = null;
-  private mode: PlansMode = 'subscribe';
+  // O que a tela oferece pra ESTE cliente (ver planOffer.ts).
+  private offer: PlanOffer | null = null;
   // Passe 3 Dias é COMPRA ÚNICA por pessoa (1x por CPF). Quem já usou não
   // vê mais o plano. Motivo: virou assinatura barata infinita — 18 contas
   // recompraram (uma delas 5x), trocando o mensal de R$29 por R$9,90
@@ -119,8 +131,24 @@ class PlansPage {
       this.jaUsouPasse = !!(passes && passes.length > 0);
     } catch { /* sem rede: mantém visível, backend barra */ }
 
+    // Assinatura atual veio da App Store? (order_nsu apple_iap_*). Aí a
+    // Apple renova sozinha e a tela não oferece "renovar". Só importa no iOS.
+    let appleManaged = false;
+    if (isIOSNative()) {
+      try {
+        const { data: lastTx } = await supabase
+          .from('gdrums_transactions')
+          .select('order_nsu')
+          .eq('user_id', user.id)
+          .eq('status', 'confirmed')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        appleManaged = !!lastTx?.order_nsu?.startsWith('apple_iap_');
+      } catch { /* sem rede: oferece renovar; StoreKit avisa se já assinado */ }
+    }
+
     const status = profile?.subscription_status;
-    const plan = profile?.subscription_plan;
 
     // Verificar pedido pendente no banco (pagou mas fechou a página do checkout)
     if (status !== 'active') {
@@ -169,33 +197,28 @@ class PlansPage {
 
     // Assinante pago ativo NUNCA é mandado pra home daqui: se ele chegou nos
     // planos (push de renovação, botão do app, link com cupom), é pra
-    // pagar. Sem ?upgrade=true a tela abre em modo renovação.
+    // pagar. O QUE oferecer (renovar, upgrade, assinar) sai de buildPlanOffer.
     const intent = readPlansIntent(window.location.search);
-    this.mode = resolvePlansMode(profile, intent, new Date());
+    this.offer = buildPlanOffer({
+      profile,
+      intent,
+      catalog: PLANS,
+      ios: isIOSNative(),
+      passUsed: this.jaUsouPasse,
+      appleManaged,
+      now: new Date(),
+    });
 
-    if (this.mode === 'upgrade') {
-      this.showAlert(t('plans.upgrade.title'));
-    } else if (this.mode === 'renew' && plan) {
-      // Renovação proativa (assinante pago veio antes de vencer)
-      const planLabel = (PLANS.find(p => p.id === plan)?.name) || plan;
-      const daysToExp = profile?.subscription_expires_at
-        ? Math.ceil((new Date(profile.subscription_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-        : 0;
-      const venceMsg = daysToExp <= 0
-        ? t('plans.renew.expiresToday')
-        : daysToExp === 1
-          ? t('plans.renew.expiresTomorrow')
-          : t('plans.renew.expiresInDays', { days: daysToExp });
-      this.showAlert(t('plans.renew.message', { plan: planLabel, msg: venceMsg }));
-    } else if (status === 'expired' || (status === 'trial' && profile?.subscription_expires_at && new Date(profile.subscription_expires_at) <= new Date())) {
+    this.renderHero();
+    this.renderCurrentPlan();
+    if (status === 'trial' && this.offer.state === 'subscribe' && this.offer.daysLeft !== null && this.offer.daysLeft <= 0) {
       this.showAlert(t('plans.alert.expired'));
     }
 
     this.setupCoupon(intent.coupon, intent.ref);
+    this.setupTrust();
     this.setupIAPRestore();
-    // Renovação destaca o plano atual; ?plan=X manda nos outros casos; default usa o "popular"
-    const highlightPlan = this.mode === 'renew' && !intent.plan ? plan : intent.plan;
-    this.renderPlans(highlightPlan);
+    this.renderPlans();
 
     // Pré-carrega produtos da App Store em background pra acelerar o
     // primeiro tap (a Apple às vezes demora 1-2s na 1ª query).
@@ -432,7 +455,7 @@ class PlansPage {
       status.textContent = t('plans.coupon.invalid');
       status.className = 'coupon-status error';
       this.appliedCoupon = null;
-      this.renderPlans(null);
+      this.renderPlans();
       return;
     }
 
@@ -455,143 +478,259 @@ class PlansPage {
       status.textContent = '';
       status.className = 'coupon-status';
       input.value = '';
-      this.renderPlans(null);
+      this.renderPlans();
     });
 
     input.value = '';
-    this.renderPlans(null);
+    this.renderPlans();
+  }
+
+  // ─── Topo da tela (título conforme a situação) ──────────────────────
+
+  private renderHero(): void {
+    const offer = this.offer;
+    if (!offer) return;
+    const primary = offer.sections[0]?.key;
+    let key: string | null = null;
+    if (offer.state === 'active') key = primary === 'upgrade' ? 'upgrade' : 'renew';
+    else if (offer.state === 'expired') key = 'expired';
+    else if (offer.state === 'active-pass') key = 'pass';
+    if (!key) return; // quem vai assinar: texto padrão do HTML
+
+    const title = document.querySelector('.plans-title');
+    const subtitle = document.querySelector('.plans-subtitle');
+    if (title) title.textContent = t(`plans.hero.${key}Title`);
+    if (subtitle) subtitle.textContent = t(`plans.hero.${key}Subtitle`);
+  }
+
+  // ─── Painel "Seu plano" ─────────────────────────────────────────────
+
+  private renderCurrentPlan(): void {
+    const offer = this.offer;
+    const box = document.getElementById('plansCurrent');
+    if (!offer || !box) return;
+    if (offer.state === 'subscribe' || !offer.currentPlanId || !offer.expiresAt) return;
+
+    const plan = PLANS.find(p => p.id === offer.currentPlanId);
+    const name = plan?.displayName || offer.currentPlanId;
+    const date = formatDate(offer.expiresAt);
+    const days = offer.daysLeft ?? 0;
+    let line: string;
+    let tone = 'ok';
+    if (offer.state === 'expired') { line = t('plans.current.expiredOn', { date }); tone = 'danger'; }
+    else if (days <= 0) { line = t('plans.current.expiresToday', { date }); tone = 'warn'; }
+    else if (days === 1) { line = t('plans.current.expiresTomorrow', { date }); tone = 'warn'; }
+    else {
+      line = t('plans.current.expiresIn', { date, days });
+      if (days <= 7) tone = 'warn';
+    }
+
+    box.innerHTML = `
+      <div class="plans-current-main">
+        <span class="plans-current-label">${t('plans.current.label')}</span>
+        <strong class="plans-current-name">${escapeHtml(name)}</strong>
+      </div>
+      <span class="plans-current-status is-${tone}">${line}</span>
+    `;
+    box.hidden = false;
+  }
+
+  // ─── Selos de confiança (fora do iOS: lá a compra é pela Apple) ─────
+
+  private setupTrust(): void {
+    if (!isIOSNative()) {
+      const trust = document.getElementById('plansTrust');
+      if (trust) trust.hidden = false;
+      return;
+    }
+    // iOS: nada de mencionar InfinitePay/Pix (Apple 3.1.1).
+    document.querySelector('.plans-footer')?.remove();
   }
 
   // ─── Renderizar planos ──────────────────────────────────────────────
 
-  private renderPlans(highlight?: string | null): void {
+  private renderPlans(): void {
     const grid = document.getElementById('plansGrid');
-    if (!grid) return;
+    const offer = this.offer;
+    if (!grid || !offer) return;
     grid.innerHTML = '';
 
-    // No iOS, esconder planos sem IAP correspondente (hideOnIOS): a Apple
-    // exige que TODO plano exibido tenha produto IAP submetido, senão
-    // rejeição 2.1. Hoje: Rei dos Palcos e Modo Show 3 Dias (só web/Android).
-    // Passe 3 Dias sai da lista pra quem já comprou uma vez (compra única).
-    const visiblePlans = (isIOSNative()
-      ? PLANS.filter(p => !p.hideOnIOS)
-      : PLANS
-    ).filter(p => !(p.id === 'passe-3-dias' && this.jaUsouPasse));
+    // Nada a vender (topo da hierarquia, ou assinatura da Apple no topo).
+    if (offer.sections.length === 0) {
+      grid.appendChild(this.noteBox(offer.appleManaged ? t('plans.apple.managed') : t('plans.top.message')));
+      return;
+    }
 
-    visiblePlans.forEach(plan => {
-      const isHighlighted = plan.popular || highlight === plan.id;
-      const card = document.createElement('div');
-      card.className = 'plan-card' + (isHighlighted ? ' popular' : '');
+    offer.sections.forEach((section, index) => {
+      const el = document.createElement('section');
+      el.className = 'plans-section' + (index === 0 ? ' is-primary' : ' is-secondary');
+      const heading = document.createElement('h2');
+      heading.className = 'plans-section-title';
+      heading.textContent = this.sectionTitle(section.key, index === 0);
+      el.appendChild(heading);
 
-      // Cupom restrito a plano: o desconto so aparece nos planos em que ele
-      // vale. Lista vazia = vale em todos (comportamento historico). O
-      // create-checkout barra de novo no servidor, isso aqui e so a vitrine
-      // — mostrar preco com desconto num plano que o backend vai recusar
-      // seria enganar o cliente na hora de pagar.
-      const planosDoCupom = this.appliedCoupon?.planos || [];
-      const cupomValeNestePlano = planosDoCupom.length === 0 || planosDoCupom.includes(plan.id);
-      const discount = cupomValeNestePlano ? (this.appliedCoupon?.discount_percent || 0) : 0;
-      const hasDiscount = discount > 0;
-      const originalPrice = plan.priceCents;
-
-      // Crédito proporcional: só em upgrade real (plano acima do atual),
-      // calculado igual ao create-checkout, que é quem cobra de verdade.
-      // O servidor aplica o crédito sempre que for upgrade real, então aqui
-      // também (independe do modo da tela). iOS: a Apple cobra o preço da
-      // loja, sem crédito nosso, então não exibe.
-      const upgradeCredit = isIOSNative()
-        ? 0
-        : computeUpgradeCredit(this.profile, plan.id, PLAN_CATALOG, new Date());
-      const hasCredit = upgradeCredit > 0;
-
-      // ORDEM IMPORTA: em upgrade, primeiro desconta o crédito (dinheiro
-      // que o user "já tinha"), depois aplica cupom sobre o valor a pagar.
-      //
-      // Caso o cupom fosse aplicado ANTES (regra antiga e bugada):
-      //   trimestral (R$ 81) → semestral (R$ 144) com cupom 50%
-      //   - cupom 50% sobre R$ 144 = R$ 72 desconto → preço fica R$ 72
-      //   - crédito R$ 74,70 → preço fica R$ 0 (saiu de graça, perdemos $)
-      //
-      // Ordem correta:
-      //   - crédito R$ 74,70 sobre R$ 144 → diferença R$ 69,30
-      //   - cupom 50% sobre R$ 69,30 = R$ 34,65 desconto
-      //   - paga R$ 34,65 (justo: ele tinha crédito, ganhou + 50% no resto)
-      const creditApplied = Math.min(upgradeCredit, originalPrice);
-      const finalPrice = computeFinalPrice(originalPrice, upgradeCredit, discount);
-
-      const finalPerMonth = plan.durationMonths > 0
-        ? Math.round(finalPrice / plan.durationMonths / 100)
-        : Math.round(finalPrice / 100);
-
-      // Texto de economia
-      let savingsText = '';
-      if (hasCredit && creditApplied > 0) {
-        const creditDisplay = (creditApplied / 100).toFixed(0);
-        savingsText = t('plans.card.creditApplied', { amount: creditDisplay });
-      } else if (hasDiscount) {
-        savingsText = t('plans.card.discountApplied', { percent: discount });
-      } else if (plan.savings) {
-        savingsText = plan.savings;
-      }
-
-      // Plano de DIAS (Modo Show 3 Dias): valor total em destaque, sem /mês.
-      const isDayPlan = !!(plan.durationDays && plan.durationDays > 0);
-      // Mostrar valor total em destaque pra planos > 1 mes (ou plano de dias)
-      const isMultiMonth = plan.durationMonths > 1;
-      const totalDisplay = (finalPrice / 100).toFixed(2).replace('.', ',').replace(',00', '');
-      const perMonthDisplay = (hasDiscount || hasCredit) ? finalPerMonth : plan.pricePerMonth;
-      const periodLabel = isDayPlan
-        ? `/ ${plan.durationDays} dias`
-        : isMultiMonth
-          ? (plan.durationMonths >= 36 ? 'total' : `/ ${plan.durationMonths} meses`)
-          : '/mes';
-      const amountDisplay = (isMultiMonth || isDayPlan) ? totalDisplay : perMonthDisplay;
-      const perMonthRef = isMultiMonth
-        ? `R$ ${perMonthDisplay}/mes${plan.savings && !hasDiscount && !hasCredit ? ' — ' + plan.savings : ''}`
-        : '';
-
-      card.innerHTML = `
-        ${isHighlighted ? '<div class="plan-badge">' + (hasCredit ? t('plans.card.badgeUpgrade') : t('plans.card.badgeMostPopular')) + '</div>' : ''}
-        <span class="plan-name">${plan.durationMonths >= 36 ? plan.displayName + t('plans.card.years3Suffix') : plan.displayName}</span>
-        ${plan.tagline ? `<div class="plan-tagline">${plan.tagline}</div>` : ''}
-        ${(hasDiscount || hasCredit) && (isMultiMonth || isDayPlan) ? `<div class="plan-original-price">R$ ${(originalPrice / 100).toFixed(2).replace('.', ',').replace(',00', '')}</div>` : ''}
-        ${(hasDiscount || hasCredit) && !isMultiMonth && !isDayPlan ? `<div class="plan-original-price">R$ ${plan.pricePerMonth}/mes</div>` : ''}
-        <div class="plan-price">
-          <span class="plan-currency">R$</span>
-          <span class="plan-amount">${amountDisplay}</span>
-          <span class="plan-period">${periodLabel}</span>
-        </div>
-        ${savingsText ? `<span class="plan-savings">${savingsText}</span>` : ''}
-        ${perMonthRef ? `<span class="plan-total">${perMonthRef}</span>` : '<span class="plan-total">&nbsp;</span>'}
-        <ul class="plan-features">
-          ${isDayPlan ? `
-          <li>${t('plans.features.dayAccess', { days: plan.durationDays! })}</li>
-          <li>${t('plans.features.dayAllRhythms')}</li>
-          <li>${t('plans.features.dayLiveTracking')}</li>
-          <li>${t('plans.features.dayPedalRepertoire')}</li>
-          <li>${t('plans.features.dayWeekendIdeal')}</li>
-          ` : `
-          <li>${t('plans.features.fullAccess')}</li>
-          <li>${t('plans.features.fullLiveTracking')}</li>
-          <li>${t('plans.features.fullPedal')}</li>
-          <li>${t('plans.features.fullRepertoire')}</li>
-          <li>${t('plans.features.fullOffline')}</li>
-          <li>${t('plans.features.fullNewRhythms')}</li>
-          ${plan.durationMonths >= 6 ? `<li>${t('plans.features.fullPrioritySupport')}</li>` : ''}
-          ${plan.durationMonths >= 36 ? `<li>${t('plans.features.fullPayOnce3Years')}</li>` : ''}
-          `}
-        </ul>
-        <button class="plan-btn" data-plan="${plan.id}">${hasCredit ? t('plans.card.btnUpgradeTo') : t('plans.card.btnSubscribe')} ${plan.displayName}</button>
-      `;
-
-      card.querySelector('.plan-btn')!.addEventListener('click', () => this.selectPlan(plan, finalPrice));
-      grid.appendChild(card);
+      const cards = document.createElement('div');
+      cards.className = 'plans-cards' + (section.items.length === 1 ? ' is-single' : '');
+      section.items.forEach(item => {
+        const plan = PLANS.find(p => p.id === item.planId);
+        if (plan) cards.appendChild(this.buildCard(plan, item, index === 0));
+      });
+      el.appendChild(cards);
+      grid.appendChild(el);
     });
+
+    // Assinatura da Apple com upgrade disponível: explica por que não tem "renovar".
+    if (offer.appleManaged) grid.appendChild(this.noteBox(t('plans.apple.managed')));
+  }
+
+  private sectionTitle(key: OfferSectionKey, primary: boolean): string {
+    if (key === 'choose') return t('plans.section.choose');
+    if (primary) return t(key === 'renew' ? 'plans.section.renew' : 'plans.section.upgrade');
+    return t(key === 'renew' ? 'plans.section.orRenew' : 'plans.section.orUpgrade');
+  }
+
+  private noteBox(text: string): HTMLElement {
+    const note = document.createElement('p');
+    note.className = 'plans-note';
+    note.textContent = text;
+    return note;
+  }
+
+  private buildCard(plan: Plan, item: OfferItem, primarySection: boolean): HTMLElement {
+    const offer = this.offer!;
+    const highlighted = item.recommended && primarySection;
+    const card = document.createElement('div');
+    card.className = 'plan-card' + (highlighted ? ' popular' : '') + ` is-${item.kind}`;
+
+    // Cupom restrito a plano: o desconto so aparece nos planos em que ele
+    // vale. Lista vazia = vale em todos (comportamento historico). O
+    // create-checkout barra de novo no servidor, isso aqui e so a vitrine
+    // (mostrar preco com desconto num plano que o backend vai recusar
+    // seria enganar o cliente na hora de pagar).
+    const planosDoCupom = this.appliedCoupon?.planos || [];
+    const cupomValeNestePlano = planosDoCupom.length === 0 || planosDoCupom.includes(plan.id);
+    const discount = cupomValeNestePlano ? (this.appliedCoupon?.discount_percent || 0) : 0;
+    const hasDiscount = discount > 0;
+    const originalPrice = plan.priceCents;
+
+    // Crédito: vem da oferta (mesma conta do create-checkout; 0 no iOS).
+    // ORDEM IMPORTA: primeiro o crédito, depois o cupom sobre o resto.
+    // Cupom antes do crédito deixava upgrade sair de graça.
+    const upgradeCredit = item.creditCents;
+    const hasCredit = upgradeCredit > 0;
+    const creditApplied = Math.min(upgradeCredit, originalPrice);
+    const finalPrice = computeFinalPrice(originalPrice, upgradeCredit, discount);
+
+    // Mensal com desconto mostra centavos (R$ 23,20, não R$ 23): é o valor
+    // cobrado. Planos longos: referência por mês arredondada.
+    const finalPerMonth = plan.durationMonths === 1
+      ? money(finalPrice)
+      : String(Math.round(finalPrice / Math.max(1, plan.durationMonths) / 100));
+
+    // Plano de DIAS (Modo Show 3 Dias): valor total em destaque, sem /mês.
+    const isDayPlan = !!(plan.durationDays && plan.durationDays > 0);
+    const isMultiMonth = plan.durationMonths > 1;
+    const totalDisplay = money(finalPrice);
+    const perMonthDisplay = (hasDiscount || hasCredit) ? finalPerMonth : plan.pricePerMonth;
+    const periodLabel = isDayPlan
+      ? `/ ${plan.durationDays} dias`
+      : isMultiMonth
+        ? (plan.durationMonths >= 36 ? 'total' : `/ ${plan.durationMonths} meses`)
+        : '/mês';
+    const amountDisplay = (isMultiMonth || isDayPlan) ? totalDisplay : perMonthDisplay;
+    const perMonthRef = isMultiMonth ? `R$ ${perMonthDisplay}/mês` : '';
+
+    // Linha de destaque do preço
+    let savingsText = '';
+    if (hasCredit && creditApplied > 0) {
+      const days = Math.max(0, offer.daysLeft ?? 0);
+      savingsText = t('plans.card.creditDays', { amount: money(creditApplied), days });
+    } else if (hasDiscount) {
+      savingsText = t('plans.card.discountApplied', { percent: discount });
+    } else if (plan.savings) {
+      savingsText = plan.savings;
+    }
+
+    // Selo
+    let badge = '';
+    if (item.kind === 'renew') badge = t('plans.card.badgeCurrent');
+    else if (highlighted && item.kind === 'upgrade') badge = t('plans.card.badgeRecommended');
+    else if (highlighted && offer.state === 'expired' && plan.id === offer.currentPlanId) badge = t('plans.card.badgeComeback');
+    else if (highlighted) badge = plan.popular ? t('plans.card.badgeMostPopular') : t('plans.card.badgeRecommended');
+
+    // O que muda pro cliente (renovar/upgrade): novo vencimento e economia.
+    const facts: string[] = [];
+    if (item.kind === 'renew') facts.push(t('plans.card.renewKeepsDays'));
+    if (item.kind === 'upgrade') {
+      const current = PLANS.find(p => p.id === offer.currentPlanId);
+      if (current && current.durationMonths > 0 && plan.durationMonths > 0) {
+        const diff = Math.round((current.priceCents / current.durationMonths - plan.priceCents / plan.durationMonths) / 100);
+        if (diff >= 1) facts.push(t('plans.card.cheaperPerMonth', { amount: diff, plan: current.displayName }));
+      }
+    }
+    if (item.kind !== 'new' && item.newExpiresAt) {
+      facts.push(t('plans.card.newExpiry', { date: formatDate(item.newExpiresAt) }));
+    }
+
+    // Benefícios: lista completa pra quem vai assinar; pra quem já é
+    // cliente, só o que o plano novo acrescenta (ele já conhece o resto).
+    const features: string[] = [];
+    if (item.kind === 'new') {
+      if (isDayPlan) {
+        features.push(
+          t('plans.features.dayAccess', { days: plan.durationDays! }),
+          t('plans.features.dayAllRhythms'),
+          t('plans.features.dayLiveTracking'),
+          t('plans.features.dayPedalRepertoire'),
+          t('plans.features.dayWeekendIdeal'),
+        );
+      } else {
+        features.push(
+          t('plans.features.fullAccess'),
+          t('plans.features.fullLiveTracking'),
+          t('plans.features.fullPedal'),
+          t('plans.features.fullRepertoire'),
+          t('plans.features.fullOffline'),
+          t('plans.features.fullNewRhythms'),
+        );
+      }
+    }
+    if (item.kind !== 'renew' && !isDayPlan) {
+      if (plan.durationMonths >= 6) features.push(t('plans.features.fullPrioritySupport'));
+      if (plan.durationMonths >= 36) features.push(t('plans.features.fullPayOnce3Years'));
+    }
+
+    const name = plan.durationMonths >= 36 ? plan.displayName + t('plans.card.years3Suffix') : plan.displayName;
+    let btnLabel: string;
+    if (item.kind === 'renew') btnLabel = t('plans.card.btnRenew', { plan: plan.displayName });
+    else if (item.kind === 'upgrade') btnLabel = t('plans.card.btnUpgrade', { plan: plan.displayName });
+    else if (offer.state === 'expired' && plan.id === offer.currentPlanId) btnLabel = t('plans.card.btnComeback', { plan: plan.displayName });
+    else btnLabel = `${t('plans.card.btnSubscribe')} ${plan.displayName}`;
+
+    card.innerHTML = `
+      ${badge ? `<div class="plan-badge">${badge}</div>` : ''}
+      <span class="plan-name">${name}</span>
+      ${plan.tagline && item.kind === 'new' ? `<div class="plan-tagline">${plan.tagline}</div>` : ''}
+      ${(hasDiscount || hasCredit) ? `<div class="plan-original-price">R$ ${(isMultiMonth || isDayPlan) ? money(originalPrice) : plan.pricePerMonth + '/mês'}</div>` : ''}
+      <div class="plan-price">
+        <span class="plan-currency">R$</span>
+        <span class="plan-amount">${amountDisplay}</span>
+        <span class="plan-period">${periodLabel}</span>
+      </div>
+      ${perMonthRef ? `<span class="plan-total">${perMonthRef}</span>` : ''}
+      ${savingsText ? `<span class="plan-savings">${savingsText}</span>` : ''}
+      ${facts.length ? `<ul class="plan-facts">${facts.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
+      ${features.length ? `<ul class="plan-features">${features.map(f => `<li>${f}</li>`).join('')}</ul>` : '<div class="plan-spacer"></div>'}
+      <button class="plan-btn" data-plan="${plan.id}">${btnLabel}</button>
+    `;
+
+    card.querySelector('.plan-btn')!.addEventListener('click', () => this.selectPlan(plan, finalPrice, creditApplied));
+    return card;
   }
 
   // ─── Selecionar plano ───────────────────────────────────────────────
 
-  private async selectPlan(plan: Plan, finalPriceCents: number): Promise<void> {
+  private async selectPlan(plan: Plan, finalPriceCents: number, creditCents: number): Promise<void> {
     const loading = document.getElementById('plansLoading');
     if (loading) loading.classList.add('active');
 
@@ -670,7 +809,7 @@ class PlansPage {
         coupon: this.appliedCoupon,
         originalPriceCents: plan.priceCents,
         finalPriceCents,
-        upgradeCredit: computeUpgradeCredit(this.profile, plan.id, PLAN_CATALOG, new Date()),
+        upgradeCredit: creditCents,
       }));
 
       // Criar checkout com preço final (já com desconto)
