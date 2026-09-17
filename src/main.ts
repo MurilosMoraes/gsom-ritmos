@@ -1836,7 +1836,7 @@ class RhythmSequencer {
       const res = await withNetTimeout(Promise.resolve(
         supabase
           .from('gdrums_profiles')
-          .select('role, subscription_status, subscription_expires_at, subscription_plan, active_session_id, cpf_hash, phone')
+          .select('role, subscription_status, subscription_expires_at, subscription_plan, active_session_id, cpf_hash, phone, country')
           .eq('id', session.user.id)
           .single()
       ));
@@ -1867,8 +1867,19 @@ class RhythmSequencer {
     // /completar-cadastro em vez de signOut + register. Mais amigável:
     // user pagante (ex: Romilson) não perde acesso, só preenche os campos.
     // Admin é exceção (não precisa de CPF/phone pra logar no painel).
-    if (profile && profile.role !== 'admin') {
-      const incomplete = !profile.cpf_hash || !profile.phone;
+    //
+    // CONTA INTERNACIONAL (country != 'BR'): CPF é documento brasileiro —
+    // exigir dele prenderia o estrangeiro pra sempre em /completar-cadastro.
+    // Lá o anti-abuso é rate limit + confirmação de e-mail (no servidor).
+    // country vem com DEFAULT 'BR', então os 4800+ perfis existentes e
+    // qualquer conta antiga continuam caindo na regra de sempre.
+    const isBrAccount = (profile?.country || 'BR') === 'BR';
+    //
+    // TELEFONE NÃO ENTRA: é opcional no cadastro desde o v7 (Apple 5.1.1).
+    // Exigir aqui prendia no /completar-cadastro quem pulou o WhatsApp
+    // (20 contas BR em set/2026, nenhuma virou pagante).
+    if (profile && profile.role !== 'admin' && isBrAccount) {
+      const incomplete = !profile.cpf_hash;
       if (incomplete) {
         // Log de segurança só pra contas criadas após o cutoff (mantém
         // rastreabilidade de trial farming sem bloquear acesso)

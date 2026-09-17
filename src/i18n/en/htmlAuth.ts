@@ -48,6 +48,7 @@ export const htmlAuth: Record<string, string> = {
   'htmlAuth.register.title': 'Create your account.',
   'htmlAuth.register.subtitle': '48h free to try everything. No card required.',
   'htmlAuth.register.nameLabel': 'Name',
+  'htmlAuth.register.countryLabel': 'Country',
   'htmlAuth.register.namePlaceholder': 'Your name',
   'htmlAuth.register.phoneLabel': 'WhatsApp <span style="opacity:0.55;font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span>',
   'htmlAuth.register.termsCheckbox': 'I accept the <a href="/terms">terms of use</a> and <a href="/privacy">privacy policy</a>',
@@ -58,6 +59,6 @@ export const htmlAuth: Record<string, string> = {
   'htmlAuth.docTitleCompletarCadastro': 'Complete Your Sign-Up | GDrums',
   'htmlAuth.completarCadastro.overline': 'Almost there!',
   'htmlAuth.completarCadastro.title': 'Finish your sign-up',
-  'htmlAuth.completarCadastro.subtitle': 'We need your CPF and WhatsApp number to confirm your account and send you updates. Takes 30 seconds.',
+  'htmlAuth.completarCadastro.subtitle': 'We need your CPF to confirm your account. WhatsApp is optional, just for updates. Takes 30 seconds.',
   'htmlAuth.completarCadastro.logoutText': 'Not you? <a id="ccLogout">Log out</a>',
 };

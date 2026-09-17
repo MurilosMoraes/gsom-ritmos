@@ -5,12 +5,12 @@ import { supabase } from './supabase';
 import { validateCPF, formatCPF } from '../utils/cpf';
 import { AttributionService } from '../native/AttributionService';
 import { isNativeApp, appHome } from '../native/Platform';
-import { registerSchema, zodErrorsToFieldMap } from './schemas';
+import { registerSchema, registerSchemaIntl, zodErrorsToFieldMap } from './schemas';
 import { updateRhythmCountInDom } from '../utils/rhythmCount';
 import { redirectIfRecoveryHash } from './recoveryGuard';
 import { setupPasswordToggle } from '../utils/passwordToggle';
 import { trackLead } from '../utils/metaTracking';
-import { t, hydrate } from '../i18n';
+import { t, hydrate, getLocale } from '../i18n';
 import { injectLanguagePill } from '../i18n/selector';
 
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
@@ -20,6 +20,7 @@ injectLanguagePill();
 
 class RegisterPage {
   private form: HTMLFormElement;
+  private countrySelect: HTMLSelectElement;
   private nameInput: HTMLInputElement;
   private cpfInput: HTMLInputElement;
   private phoneInput: HTMLInputElement;
@@ -33,6 +34,7 @@ class RegisterPage {
 
   constructor() {
     this.form = document.getElementById('registerForm') as HTMLFormElement;
+    this.countrySelect = document.getElementById('country') as HTMLSelectElement;
     this.nameInput = document.getElementById('name') as HTMLInputElement;
     this.cpfInput = document.getElementById('cpf') as HTMLInputElement;
     this.phoneInput = document.getElementById('phone') as HTMLInputElement;
@@ -81,6 +83,9 @@ class RegisterPage {
       return;
     }
 
+    // Seletor de país: popula, default por locale, e alterna o CPF.
+    this.setupCountry();
+
     // Social proof dinâmico — fire-and-forget, não bloqueia o formulário
     this.loadSocialProof();
 
@@ -121,6 +126,13 @@ class RegisterPage {
     };
 
     this.phoneInput.addEventListener('input', () => {
+      // Máscara brasileira SÓ pra conta do Brasil. Fora do Brasil o número
+      // tem código de país e outro formato: aceita dígitos, +, espaço,
+      // parênteses e hífen, sem cortar nem remover o "55".
+      if (!this.isBrazil()) {
+        this.phoneInput.value = this.phoneInput.value.replace(/[^\d+\s().-]/g, '').slice(0, 24);
+        return;
+      }
       let raw = this.phoneInput.value.replace(/\D/g, '');
       raw = stripCountryCode(raw);
       let v = raw.slice(0, 11);
@@ -138,6 +150,81 @@ class RegisterPage {
     this.passwordInput.addEventListener('input', () => this.updatePasswordStrength());
     this.setupFieldValidation();
   }
+
+  /** True se o país selecionado é Brasil — dirige CPF e validação. */
+  private isBrazil(): boolean {
+    return (this.countrySelect?.value || 'BR') === 'BR';
+  }
+
+  /**
+   * Popula o seletor de país (nomes traduzidos pro idioma da UI via
+   * Intl.DisplayNames), define o default pelo idioma/região do aparelho,
+   * e alterna o campo de CPF: Brasil mostra e exige; fora do Brasil
+   * esconde (o anti-abuso vira rate limit + confirmação de e-mail no
+   * servidor). BR = comportamento idêntico ao de sempre.
+   */
+  private setupCountry(): void {
+    if (!this.countrySelect) return;
+    // Lista curada dos mercados de lançamento. Servidor só distingue
+    // BR x não-BR; o resto é só rótulo. 'OTHER' cobre o mundo todo.
+    const CODES = ['BR', 'PT', 'US', 'GB', 'CA', 'ES', 'MX', 'AR', 'CO', 'CL', 'PE', 'EC', 'BO', 'PY', 'UY', 'VE', 'AO', 'MZ'];
+    let names: Intl.DisplayNames | null = null;
+    try { names = new Intl.DisplayNames([getLocale()], { type: 'region' }); } catch { names = null; }
+    const label = (code: string) => { try { return names?.of(code) || code; } catch { return code; } };
+
+    // Ordena por nome localizado, mas fixa Brasil no topo.
+    const rest = CODES.filter(c => c !== 'BR').sort((a, b) => label(a)!.localeCompare(label(b)!, getLocale()));
+    const ordered = ['BR', ...rest];
+
+    this.countrySelect.innerHTML =
+      ordered.map(c => `<option value="${c}">${label(c)}</option>`).join('') +
+      `<option value="OTHER">${t('auth.register.countryOther')}</option>`;
+
+    // Default (só sugestão; a pessoa troca): FUSO HORÁRIO brasileiro manda
+    // em tudo. Brasileiro com o celular em inglês (navigator en-US) não pode
+    // cair como "Estados Unidos" e perder o fluxo com CPF. Fora de fuso BR:
+    // região do navegador (es-MX → MX) se estiver na lista; senão o idioma
+    // (pt→BR, es→MX, en→US). Qualquer erro → BR.
+    let def = 'BR';
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      const brTz = /^America\/(Sao_Paulo|Bahia|Fortaleza|Recife|Maceio|Belem|Manaus|Cuiaba|Campo_Grande|Porto_Velho|Boa_Vista|Rio_Branco|Araguaina|Santarem|Noronha|Eirunepe)$/.test(tz)
+        || tz === 'Brazil/East' || tz === 'Brazil/West';
+      if (!brTz) {
+        const navRegion = (navigator.language.split('-')[1] || '').toUpperCase();
+        if (navRegion && ordered.includes(navRegion)) def = navRegion;
+        else { const loc = getLocale(); def = loc.startsWith('pt') ? 'BR' : loc.startsWith('es') ? 'MX' : 'US'; }
+      }
+    } catch { def = 'BR'; }
+    this.countrySelect.value = def;
+
+    this.toggleCpf();
+    this.countrySelect.addEventListener('change', () => {
+      this.toggleCpf();
+      // Revalida CPF (limpa erro se saiu do Brasil)
+      this.renderFieldError('cpf', null);
+    });
+  }
+
+  /** Mostra/esconde o campo de CPF conforme país (só Brasil) e ajusta o
+   *  telefone ao formato do país. */
+  private toggleCpf(): void {
+    const field = document.getElementById('cpfField');
+    const br = this.isBrazil();
+    if (field) field.style.display = br ? '' : 'none';
+    // required só no Brasil — evita o browser barrar submit fora do BR
+    if (this.cpfInput) this.cpfInput.required = br;
+    if (this.phoneInput) {
+      if (this.phoneBrPlaceholder === null) this.phoneBrPlaceholder = this.phoneInput.placeholder;
+      this.phoneInput.placeholder = br ? this.phoneBrPlaceholder : t('auth.register.phoneIntlPlaceholder');
+      // (00) 00000-0000 cabe em 15; formato internacional com + e espaços precisa de mais.
+      this.phoneInput.maxLength = br ? 15 : 24;
+      // Formato mudou: limpa pra não ficar número BR mascarado num país de fora (e vice-versa).
+      this.phoneInput.value = '';
+      this.renderFieldError('phone', null);
+    }
+  }
+  private phoneBrPlaceholder: string | null = null;
 
   /**
    * Validação inline campo-a-campo com Zod.
@@ -192,18 +279,26 @@ class RegisterPage {
   }
 
   private validateSingleField(): Record<string, string> {
-    const payload = {
+    const result = this.parseForm();
+    if (result.success) return {};
+    return zodErrorsToFieldMap(result.error);
+  }
+
+  /** Valida com o schema certo pro país: BR inclui CPF (registerSchema,
+   *  idêntico ao de sempre); fora do BR usa registerSchemaIntl (sem CPF). */
+  private parseForm() {
+    const base = {
       name: this.nameInput.value,
-      cpf: this.cpfInput.value,
       phone: this.phoneInput.value,
       email: this.emailInput.value,
       password: this.passwordInput.value,
       confirmPassword: this.confirmPasswordInput.value,
       acceptTerms: this.acceptTermsCheckbox.checked,
     };
-    const result = registerSchema.safeParse(payload);
-    if (result.success) return {};
-    return zodErrorsToFieldMap(result.error);
+    if (this.isBrazil()) {
+      return registerSchema.safeParse({ ...base, cpf: this.cpfInput.value });
+    }
+    return registerSchemaIntl.safeParse(base);
   }
 
   private renderFieldError(fieldKey: string, msg: string | null): void {
@@ -266,7 +361,10 @@ class RegisterPage {
           name: this.nameInput.value.trim(),
           email: this.emailInput.value.trim(),
           password: this.passwordInput.value,
-          cpf: this.cpfInput.value,
+          // País dirige o caminho no servidor: BR exige CPF (idêntico ao
+          // de hoje); fora do BR, sem CPF + confirmação de e-mail.
+          country: this.countrySelect?.value || 'BR',
+          cpf: this.isBrazil() ? this.cpfInput.value : '',
           phone: this.phoneInput.value.replace(/\D/g, ''),
           signup_source: attr.source,
           signup_medium: attr.medium,
@@ -297,6 +395,17 @@ class RegisterPage {
         email: this.emailInput.value.trim(),
         phone: this.phoneInput.value.replace(/\D/g, ''),
       });
+
+      // CADASTRO INTERNACIONAL: o servidor criou a conta mas o e-mail
+      // NÃO está confirmado (não dá pra logar ainda) — ele mandou um
+      // e-mail de confirmação. Mostra "confira seu e-mail" em vez de
+      // tentar signIn (que falharia com email_not_confirmed). O link do
+      // e-mail cai no login.ts (type=signup) e loga de lá.
+      if (result.confirmation_required) {
+        const { showCheckEmailScreen } = await import('./checkEmailScreen');
+        showCheckEmailScreen(this.emailInput.value.trim());
+        return;
+      }
 
       // Sucesso: servidor garantiu que conta tá completa. Agora faz signIn
       // pelo cliente pra gerar a sessão JWT local.
@@ -447,18 +556,9 @@ class RegisterPage {
   }
 
   private validateForm(): boolean {
-    // Validação completa via Zod — mais robusta que a sequência de ifs anterior.
-    // Mensagens em PT-BR vêm do schema (src/auth/schemas.ts).
-    const payload = {
-      name: this.nameInput.value,
-      cpf: this.cpfInput.value,
-      phone: this.phoneInput.value,
-      email: this.emailInput.value,
-      password: this.passwordInput.value,
-      confirmPassword: this.confirmPasswordInput.value,
-      acceptTerms: this.acceptTermsCheckbox.checked,
-    };
-    const result = registerSchema.safeParse(payload);
+    // Validação completa via Zod (schema por país — ver parseForm).
+    // Mensagens vêm do schema (src/auth/schemas.ts).
+    const result = this.parseForm();
 
     // Limpar erros antigos de TODOS os campos
     ['name', 'cpf', 'phone', 'email', 'password', 'confirmPassword', 'acceptTerms'].forEach(k => {

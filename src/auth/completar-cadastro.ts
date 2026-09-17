@@ -80,7 +80,8 @@ class CompletarCadastroPage {
       this.cpfInput.focus();
       return;
     }
-    if (phoneRaw.length < 10 || phoneRaw.length > 11) {
+    // WhatsApp é OPCIONAL (igual ao cadastro, Apple 5.1.1). Se preencher, valida.
+    if (phoneRaw.length > 0 && (phoneRaw.length < 10 || phoneRaw.length > 11)) {
       this.showFieldError('phone', t('auth.completarCadastro.phoneInvalidFull'));
       this.phoneInput.focus();
       return;
@@ -93,7 +94,7 @@ class CompletarCadastroPage {
       const cpfHashHex = await hashCPF(cpfRaw);
       const { data, error } = await supabase.rpc('complete_my_profile', {
         p_cpf_hash: cpfHashHex,
-        p_phone: phoneRaw,
+        p_phone: phoneRaw || null,
       });
 
       if (error) {

@@ -61,6 +61,33 @@ const phoneSchema = z
     error: t('auth.schemas.phoneDddInvalid'),
   });
 
+// ─── Variantes pro cadastro INTERNACIONAL ─────────────────────────────
+// Nome: qualquer alfabeto (cirílico, árabe, CJK, ł, ş...), sem exigir
+// sobrenome (muitos países usam nome único). Mínimo 3 igual ao servidor.
+const nameSchemaIntl = z
+  .string({ error: t('auth.schemas.nameRequired') })
+  .trim()
+  .min(3, { error: t('auth.schemas.nameMinLength') })
+  .max(80, { error: t('auth.schemas.nameMaxLength') })
+  .refine(v => /^[\p{L}\p{M}\s'.-]+$/u.test(v), {
+    error: t('auth.schemas.nameLettersOnly'),
+  });
+
+// Telefone internacional OPCIONAL: sem regra de DDD. Aceita +, espaço,
+// parênteses e hífen; 6 a 15 dígitos (limite do padrão E.164).
+const phoneSchemaIntl = z
+  .string()
+  .trim()
+  .optional()
+  .refine(v => {
+    if (!v) return true;
+    if (!/^[+\d\s().-]+$/.test(v)) return false;
+    const digits = v.replace(/\D/g, '');
+    return digits.length >= 6 && digits.length <= 15;
+  }, {
+    error: t('auth.schemas.phoneIntlInvalid'),
+  });
+
 const emailSchema = z
   .string({ error: t('auth.schemas.emailRequired') })
   .trim()
@@ -101,6 +128,27 @@ export const registerSchema = z
   });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+// Cadastro INTERNACIONAL (país != Brasil): SEM CPF. O anti-abuso do CPF
+// (documento BR único) é substituído no servidor por rate limit +
+// confirmação de e-mail. Nome e telefone aceitam formatos de outros
+// países (ver nameSchemaIntl / phoneSchemaIntl). E-mail, senha e termos
+// são os mesmos do registerSchema. O BR não é afetado por este schema.
+export const registerSchemaIntl = z
+  .object({
+    name: nameSchemaIntl,
+    phone: phoneSchemaIntl,
+    email: emailSchema,
+    password: passwordSchema,
+    confirmPassword: z.string({ error: t('auth.schemas.confirmPasswordRequired') }),
+    acceptTerms: z.boolean().refine(v => v === true, {
+      error: t('auth.schemas.acceptTermsRequired'),
+    }),
+  })
+  .refine(d => d.password === d.confirmPassword, {
+    error: t('auth.errors.passwordsDontMatch'),
+    path: ['confirmPassword'],
+  });
 
 export const loginSchema = z.object({
   email: emailSchema,
