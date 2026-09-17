@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Política de Privacidade | GDrums</title>
-  <meta name="description" content="Política de Privacidade do GDrums. Como coletamos, usamos e protegemos seus dados pessoais. Compliance LGPD.">
+  <meta name="description" content="Política de Privacidade do GDrums. Como coletamos, usamos e protegemos seus dados pessoais. LGPD e GDPR. Privacy Policy. Política de Privacidad.">
   <meta name="author" content="Murilo Moraes, Staner Goulart">
   <meta name="robots" content="index, follow">
   <meta name="theme-color" content="#030014">
@@ -12,161 +12,464 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
   <link rel="apple-touch-icon" sizes="192x192" href="/img/icon-192.png">
   <link rel="canonical" href="https://gdrums.com.br/privacy">
+  <link rel="alternate" hreflang="pt-BR" href="https://gdrums.com.br/privacy?lang=pt">
+  <link rel="alternate" hreflang="es" href="https://gdrums.com.br/privacy?lang=es">
+  <link rel="alternate" hreflang="en" href="https://gdrums.com.br/privacy?lang=en">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif; background:#030014; color:rgba(255,255,255,0.7); line-height:1.8; }
-    .legal-container { max-width:720px; margin:0 auto; padding:2rem 1.5rem 4rem; }
-    .legal-header { text-align:center; margin-bottom:2.5rem; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:1.5rem; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif; background:#030014; color:rgba(255,255,255,0.8); line-height:1.75; }
+    .legal-container { max-width:760px; margin:0 auto; padding:1.5rem 1.25rem 4rem; }
+    .legal-top { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+    .legal-back { font-size:0.9rem; color:rgba(255,255,255,0.72); text-decoration:none; }
+    .legal-back:hover { color:#00D4FF; }
+    .legal-langs { display:flex; gap:0.35rem; }
+    .legal-langs a { font-size:0.82rem; font-weight:600; color:rgba(255,255,255,0.72); padding:0.3rem 0.65rem; border:1px solid rgba(255,255,255,0.18); border-radius:999px; text-decoration:none; }
+    .legal-langs a[aria-current="true"] { color:#030014; background:#fff; border-color:#fff; }
+    .legal-header { text-align:center; margin-bottom:2rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:1.5rem; }
     .legal-brand { display:flex; align-items:center; justify-content:center; gap:0.45rem; margin-bottom:1rem; }
     .legal-brand img { height:28px; width:auto; }
-    .legal-brand span { font-size:1rem; font-weight:700; letter-spacing:-0.01em; color:#fff; }
-    .legal-header h1 { color:#fff; font-size:1.4rem; font-weight:700; margin-bottom:0.3rem; }
-    .legal-header p { font-size:0.78rem; color:rgba(255,255,255,0.3); }
-    h2 { color:#fff; font-size:1rem; font-weight:700; margin:2rem 0 0.75rem; }
-    h3 { color:rgba(255,255,255,0.85); font-size:0.9rem; font-weight:600; margin:1.5rem 0 0.5rem; }
-    p, li { font-size:0.85rem; margin-bottom:0.6rem; }
+    .legal-brand span { font-size:1rem; font-weight:700; color:#fff; }
+    .legal-header h1 { color:#fff; font-size:1.5rem; font-weight:700; margin-bottom:0.3rem; }
+    .legal-header p { font-size:0.85rem; color:rgba(255,255,255,0.6); }
+    h2 { color:#fff; font-size:1.08rem; font-weight:700; margin:2rem 0 0.75rem; }
+    h3 { color:rgba(255,255,255,0.92); font-size:0.95rem; font-weight:600; margin:1.4rem 0 0.5rem; }
+    p, li { font-size:0.93rem; margin-bottom:0.6rem; }
     ul { padding-left:1.25rem; }
     li { margin-bottom:0.4rem; }
+    strong { color:#fff; }
     a { color:#00D4FF; text-decoration:none; }
-    .legal-footer { text-align:center; margin-top:3rem; padding-top:1.5rem; border-top:1px solid rgba(255,255,255,0.06); font-size:0.72rem; color:rgba(255,255,255,0.2); font-style:italic; }
-    .legal-back { display:inline-block; margin-bottom:1.5rem; font-size:0.8rem; color:rgba(255,255,255,0.4); text-decoration:none; }
-    .legal-back:hover { color:#00D4FF; }
-    table { width:100%; border-collapse:collapse; margin:1rem 0; font-size:0.82rem; }
-    th, td { padding:0.5rem 0.75rem; border:1px solid rgba(255,255,255,0.08); text-align:left; }
-    th { color:#fff; font-weight:600; background:rgba(255,255,255,0.03); }
+    .table-wrap { overflow-x:auto; margin:1rem 0; }
+    table { width:100%; border-collapse:collapse; font-size:0.88rem; }
+    th, td { padding:0.55rem 0.75rem; border:1px solid rgba(255,255,255,0.14); text-align:left; vertical-align:top; }
+    th { color:#fff; font-weight:600; background:rgba(255,255,255,0.05); }
+    article[hidden] { display:none; }
+    .legal-footer { text-align:center; margin-top:3rem; padding-top:1.5rem; border-top:1px solid rgba(255,255,255,0.1); font-size:0.8rem; color:rgba(255,255,255,0.55); font-style:italic; }
   </style>
 </head>
 <body>
   <div class="legal-container">
-    <a href="javascript:void(0)" class="legal-back" onclick="history.length>1?history.back():location.href='/landing'">&larr; Voltar</a>
+    <div class="legal-top">
+      <a href="javascript:void(0)" class="legal-back" id="legalBack" onclick="history.length>1?history.back():location.href='/landing'">&larr; Voltar</a>
+      <nav class="legal-langs" aria-label="Idioma / Language">
+        <a href="?lang=pt" data-lang-link="pt">PT</a>
+        <a href="?lang=es" data-lang-link="es">ES</a>
+        <a href="?lang=en" data-lang-link="en">EN</a>
+      </nav>
+    </div>
 
     <div class="legal-header">
       <div class="legal-brand">
         <img src="/img/logo.png" alt="GDrums">
         <span>GDrums</span>
       </div>
-      <h1>Politica de Privacidade</h1>
-      <p>Ultima atualizacao: 05 de abril de 2026</p>
     </div>
 
-    <h2>1. Introducao</h2>
-    <p>A GDrums LTDA ("GDrums", "nos") valoriza a privacidade de seus usuarios. Esta Politica de Privacidade descreve como coletamos, usamos, armazenamos e protegemos seus dados pessoais quando voce utiliza o aplicativo GDrums ("Plataforma"), em conformidade com a Lei Geral de Protecao de Dados (Lei 13.709/2018, LGPD) e demais legislacoes aplicaveis.</p>
+    <!-- ═══════════════════════════ PORTUGUÊS ═══════════════════════════ -->
+    <article data-lang="pt" lang="pt-BR" data-title="Política de Privacidade | GDrums" data-back="&larr; Voltar">
+      <div class="legal-header" style="border:0;padding:0;margin-bottom:1.5rem;">
+        <h1>Política de Privacidade</h1>
+        <p>Última atualização: 17 de setembro de 2026</p>
+      </div>
 
-    <h2>2. Dados Coletados</h2>
-    <h3>2.1 Dados fornecidos pelo usuario</h3>
-    <table>
-      <tr><th>Dado</th><th>Finalidade</th><th>Base Legal (LGPD)</th></tr>
-      <tr><td>Nome completo</td><td>Identificacao e personalizacao</td><td>Execucao de contrato</td></tr>
-      <tr><td>CPF (hash criptografado)</td><td>Prevencao de fraude e conta unica</td><td>Interesse legitimo</td></tr>
-      <tr><td>E-mail</td><td>Autenticacao, comunicacao e recuperacao de conta</td><td>Execucao de contrato</td></tr>
-      <tr><td>Telefone (WhatsApp)</td><td>Suporte, comunicacao e recuperacao de conta</td><td>Consentimento</td></tr>
-      <tr><td>Senha</td><td>Autenticacao (armazenada com hash, nunca em texto puro)</td><td>Execucao de contrato</td></tr>
-    </table>
+      <h2>1. Introdução</h2>
+      <p>A GDrums LTDA ("GDrums", "nós") valoriza a sua privacidade. Esta Política explica como coletamos, usamos, armazenamos e protegemos seus dados pessoais quando você usa o site e os aplicativos GDrums ("Plataforma"), em conformidade com a Lei Geral de Proteção de Dados (Lei 13.709/2018, LGPD), com o Regulamento Geral de Proteção de Dados da União Europeia (GDPR), quando aplicável, e com as demais leis aplicáveis.</p>
 
-    <h3>2.2 Dados coletados automaticamente</h3>
-    <table>
-      <tr><th>Dado</th><th>Finalidade</th><th>Base Legal (LGPD)</th></tr>
-      <tr><td>Endereco IP</td><td>Seguranca, prevencao de fraude e logs de acesso</td><td>Interesse legitimo</td></tr>
-      <tr><td>User-Agent (navegador/dispositivo)</td><td>Compatibilidade tecnica e seguranca</td><td>Interesse legitimo</td></tr>
-      <tr><td>Dados de uso (ritmos tocados, BPM preferido)</td><td>Personalizacao da experiencia</td><td>Interesse legitimo</td></tr>
-      <tr><td>Dados de transacao (plano, valor, data)</td><td>Gestao financeira e fiscal</td><td>Obrigacao legal</td></tr>
-    </table>
+      <h2>2. Dados coletados</h2>
+      <h3>2.1 Dados que você fornece</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Dado</th><th>Finalidade</th><th>Base legal</th></tr>
+        <tr><td>Nome</td><td>Identificação e personalização</td><td>Execução de contrato</td></tr>
+        <tr><td>E-mail</td><td>Autenticação, confirmação da conta, comunicação e recuperação de acesso</td><td>Execução de contrato</td></tr>
+        <tr><td>Senha</td><td>Autenticação (armazenada apenas como hash, nunca em texto puro)</td><td>Execução de contrato</td></tr>
+        <tr><td>País</td><td>Definir as regras de cadastro e de pagamento aplicáveis</td><td>Execução de contrato</td></tr>
+        <tr><td>CPF (somente contas do Brasil), guardado apenas como hash criptográfico</td><td>Prevenção de fraude e garantia de conta única</td><td>Legítimo interesse</td></tr>
+        <tr><td>Telefone / WhatsApp (opcional)</td><td>Suporte, comunicação e recuperação de conta</td><td>Consentimento</td></tr>
+      </table></div>
 
-    <h3>2.3 Dados que NAO coletamos</h3>
-    <ul>
-      <li>Dados de cartao de credito (processados exclusivamente pelo parceiro de pagamento)</li>
-      <li>Localizacao GPS</li>
-      <li>Contatos do telefone</li>
-      <li>Audio do microfone</li>
-      <li>Dados biometricos</li>
-    </ul>
+      <h3>2.2 Dados coletados automaticamente</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Dado</th><th>Finalidade</th><th>Base legal</th></tr>
+        <tr><td>Endereço IP e dados do aparelho/navegador</td><td>Segurança, prevenção de fraude, limite de tentativas de cadastro e compatibilidade</td><td>Legítimo interesse</td></tr>
+        <tr><td>Dados de uso (ritmos, repertórios, preferências)</td><td>Funcionamento e personalização</td><td>Execução de contrato</td></tr>
+        <tr><td>Dados de compra (plano, valor, data, identificador da transação)</td><td>Gestão da assinatura e obrigações fiscais</td><td>Execução de contrato e obrigação legal</td></tr>
+        <tr><td>Identificador de notificações do aparelho</td><td>Envio de notificações que você autorizou</td><td>Consentimento</td></tr>
+        <tr><td>Eventos de cadastro e compra para medição de anúncios</td><td>Saber quais anúncios trazem novos clientes</td><td>Legítimo interesse ou consentimento, conforme a lei e a plataforma</td></tr>
+      </table></div>
 
-    <h2>3. Como Usamos Seus Dados</h2>
-    <ul>
-      <li>Fornecer, manter e melhorar a Plataforma</li>
-      <li>Processar pagamentos e gerenciar assinaturas</li>
-      <li>Enviar comunicacoes sobre o servico (atualizacoes, novos ritmos, suporte)</li>
-      <li>Enviar comunicacoes de marketing (cupons, promocoes), com possibilidade de descadastro</li>
-      <li>Prevenir fraude, abuso e uso indevido da Plataforma</li>
-      <li>Cumprir obrigacoes legais e regulatorias</li>
-      <li>Gerar estatisticas anonimizadas para melhoria do servico</li>
-    </ul>
+      <h3>2.3 Dados que não coletamos</h3>
+      <ul>
+        <li>Dados completos de cartão de crédito (tratados apenas pelo meio de pagamento)</li>
+        <li>Localização por GPS, contatos do telefone ou áudio do microfone</li>
+        <li>Dados biométricos: o Face ID / impressão digital é verificado pelo próprio aparelho. Se você ativar esse recurso, suas credenciais ficam guardadas apenas no cofre seguro do aparelho (Keychain/Keystore) e não chegam aos nossos servidores.</li>
+      </ul>
 
-    <h2>4. Armazenamento e Seguranca</h2>
-    <h3>4.1 Onde seus dados sao armazenados</h3>
-    <p>Seus dados sao armazenados em servidores seguros fornecidos pela Supabase Inc. (infraestrutura AWS), com data centers localizados nos Estados Unidos, em conformidade com padroes internacionais de seguranca (SOC 2 Type II, ISO 27001).</p>
+      <h2>3. Como usamos seus dados</h2>
+      <ul>
+        <li>Fornecer, manter e melhorar a Plataforma</li>
+        <li>Processar pagamentos e gerenciar assinaturas</li>
+        <li>Enviar comunicações sobre o serviço (atualizações, novos ritmos, suporte)</li>
+        <li>Enviar comunicações de marketing (cupons, promoções), com opção de descadastro</li>
+        <li>Medir o resultado de anúncios</li>
+        <li>Prevenir fraude, abuso e uso indevido</li>
+        <li>Cumprir obrigações legais e regulatórias</li>
+      </ul>
 
-    <h3>4.2 Medidas de seguranca</h3>
-    <ul>
-      <li>Criptografia em transito (TLS/SSL) e em repouso</li>
-      <li>CPF armazenado exclusivamente como hash criptografico (SHA-256), impossivel reverter ao numero original</li>
-      <li>Senhas armazenadas com hash bcrypt, nunca em texto puro</li>
-      <li>Controle de acesso baseado em funcao (RLS, Row Level Security)</li>
-      <li>Chaves de API rotacionadas periodicamente</li>
-      <li>Logs de seguranca para deteccao de atividades suspeitas</li>
-      <li>Sessao unica por dispositivo, acesso simultaneo bloqueado</li>
-    </ul>
+      <h2>4. Armazenamento e segurança</h2>
+      <h3>4.1 Onde ficam seus dados</h3>
+      <p>Seus dados são armazenados em servidores da Supabase Inc. (infraestrutura AWS), com padrões internacionais de segurança.</p>
+      <h3>4.2 Medidas de segurança</h3>
+      <ul>
+        <li>Criptografia em trânsito (TLS) e em repouso</li>
+        <li>CPF guardado só como hash (SHA-256), sem possibilidade de reverter ao número original</li>
+        <li>Senhas guardadas só como hash</li>
+        <li>Controle de acesso por usuário no banco de dados (Row Level Security)</li>
+        <li>Registros de segurança para detectar atividades suspeitas</li>
+        <li>Sessão única por conta</li>
+      </ul>
+      <h3>4.3 Retenção</h3>
+      <p>Mantemos seus dados enquanto a conta estiver ativa ou pelo tempo necessário para cumprir obrigações legais. Após a exclusão da conta, os dados são anonimizados ou excluídos em até 30 dias, exceto os necessários para obrigações fiscais (mantidos por até 5 anos).</p>
+      <h3>4.4 Exclusão da conta</h3>
+      <p>Você pode excluir sua conta a qualquer momento pelo app (Minha conta &gt; Excluir conta) ou pela página <a href="/excluir-conta">gdrums.com.br/excluir-conta</a>.</p>
 
-    <h3>4.3 Retencao de dados</h3>
-    <p>Seus dados pessoais sao mantidos enquanto sua conta estiver ativa ou conforme necessario para cumprir obrigacoes legais. Apos a exclusao da conta, os dados serao anonimizados ou excluidos em ate 30 dias, exceto dados necessarios para obrigacoes fiscais (mantidos por 5 anos conforme legislacao tributaria).</p>
+      <h2>5. Compartilhamento de dados</h2>
+      <p>O GDrums <strong>não vende</strong> seus dados pessoais. Compartilhamos dados somente com parceiros necessários para operar o serviço:</p>
+      <div class="table-wrap"><table>
+        <tr><th>Parceiro</th><th>Finalidade</th><th>Dados</th></tr>
+        <tr><td>Supabase Inc.</td><td>Infraestrutura e banco de dados</td><td>Dados da conta e de uso (como operador)</td></tr>
+        <tr><td>Vercel Inc.</td><td>Hospedagem do site</td><td>Dados de acesso (IP, navegador)</td></tr>
+        <tr><td>InfinitePay (CloudWalk)</td><td>Pagamentos pelo site (Brasil)</td><td>Nome, e-mail, valor e dados da transação</td></tr>
+        <tr><td>Apple Inc.</td><td>Compras dentro do app iOS (App Store)</td><td>Identificadores da compra. A Apple trata os dados de pagamento conforme a política dela.</td></tr>
+        <tr><td>Google LLC</td><td>Notificações no Android (Firebase Cloud Messaging) e distribuição pela Google Play</td><td>Identificador de notificações do aparelho</td></tr>
+        <tr><td>OneSignal Inc.</td><td>Envio de notificações</td><td>Identificador de notificações e identificador interno da conta</td></tr>
+        <tr><td>Meta Platforms Inc.</td><td>Medição de anúncios (Pixel da Meta no site e API de Conversões)</td><td>Eventos de cadastro e compra, IP, navegador e, quando disponíveis, e-mail e telefone enviados apenas em forma de hash (SHA-256)</td></tr>
+        <tr><td>Hostinger</td><td>Envio de e-mails</td><td>E-mail e nome</td></tr>
+        <tr><td>Discord Inc.</td><td>Aviso interno de vendas para a equipe</td><td>Nome, e-mail, plano e valor da compra</td></tr>
+      </table></div>
+      <p>Também podemos compartilhar dados quando exigido por lei ou por ordem de autoridade competente.</p>
 
-    <h2>5. Compartilhamento de Dados</h2>
-    <p>O GDrums NAO vende, aluga ou comercializa seus dados pessoais. Compartilhamos dados apenas com:</p>
-    <table>
-      <tr><th>Parceiro</th><th>Finalidade</th><th>Dados compartilhados</th></tr>
-      <tr><td>InfinitePay (CloudWalk)</td><td>Processamento de pagamentos</td><td>Nome, e-mail, valor da transacao</td></tr>
-      <tr><td>Supabase Inc.</td><td>Infraestrutura e banco de dados</td><td>Todos os dados (como processador)</td></tr>
-      <tr><td>Vercel Inc.</td><td>Hospedagem da aplicacao</td><td>Dados de acesso (IP, User-Agent)</td></tr>
-      <tr><td>Hostinger</td><td>Servico de e-mail</td><td>E-mail do usuario (para comunicacoes)</td></tr>
-    </table>
-    <p>Todos os parceiros estao sujeitos a acordos de confidencialidade e processamento de dados em conformidade com a LGPD.</p>
+      <h2>6. Seus direitos</h2>
+      <p>Conforme a LGPD (e o GDPR, se você estiver no Espaço Econômico Europeu ou no Reino Unido), você pode:</p>
+      <ul>
+        <li>Confirmar se tratamos seus dados e obter uma cópia</li>
+        <li>Corrigir dados incompletos ou incorretos</li>
+        <li>Pedir a anonimização, o bloqueio ou a exclusão</li>
+        <li>Receber seus dados em formato estruturado (portabilidade)</li>
+        <li>Revogar o consentimento a qualquer momento</li>
+        <li>Saber com quem seus dados foram compartilhados</li>
+        <li>Se opor ao tratamento baseado em legítimo interesse, inclusive para marketing</li>
+        <li>Pedir a limitação do tratamento, quando aplicável</li>
+      </ul>
+      <p>Para exercer seus direitos, escreva para <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a>. Respondemos em até 15 dias.</p>
 
-    <h2>6. Seus Direitos (LGPD)</h2>
-    <p>Conforme a Lei Geral de Protecao de Dados, voce tem direito a:</p>
-    <ul>
-      <li><strong>Confirmacao e acesso:</strong> saber se tratamos seus dados e obter copia</li>
-      <li><strong>Correcao:</strong> solicitar atualizacao de dados incompletos ou incorretos</li>
-      <li><strong>Anonimizacao ou exclusao:</strong> solicitar a remocao de dados desnecessarios</li>
-      <li><strong>Portabilidade:</strong> receber seus dados em formato estruturado</li>
-      <li><strong>Revogacao do consentimento:</strong> retirar consentimento a qualquer momento</li>
-      <li><strong>Informacao sobre compartilhamento:</strong> saber com quem seus dados foram compartilhados</li>
-      <li><strong>Oposicao:</strong> opor-se ao tratamento realizado com base em interesse legitimo</li>
-    </ul>
-    <p>Para exercer seus direitos, entre em contato pelo e-mail <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a>. Responderemos em ate 15 dias uteis.</p>
+      <h2>7. Cookies, armazenamento local e medição</h2>
+      <ul>
+        <li><strong>Armazenamento local (localStorage/sessionStorage):</strong> preferências, idioma, repertório, sessão e funcionamento offline</li>
+        <li><strong>Service Worker:</strong> funcionamento offline (cache de ritmos e sons)</li>
+        <li><strong>Cookies próprios:</strong> controle da demonstração e preferências</li>
+        <li><strong>Pixel da Meta:</strong> usado para medir o resultado dos nossos anúncios. Você pode limitar esse tipo de medição nas configurações do seu navegador, do seu aparelho e da sua conta Meta.</li>
+      </ul>
 
-    <h2>7. Cookies e Armazenamento Local</h2>
-    <p>A Plataforma utiliza:</p>
-    <ul>
-      <li><strong>localStorage:</strong> para armazenar preferencias do usuario (BPM, ritmos favoritos, setlist, modo offline)</li>
-      <li><strong>sessionStorage:</strong> para controle de sessao ativa</li>
-      <li><strong>Cookies:</strong> para controle de demonstracao e preferencias persistentes</li>
-      <li><strong>Service Worker:</strong> para funcionamento offline (cache de ritmos e samples)</li>
-    </ul>
-    <p>Nao utilizamos cookies de rastreamento de terceiros, pixels de conversao ou ferramentas de analytics que identifiquem individualmente o usuario.</p>
+      <h2>8. Menores de idade</h2>
+      <p>A Plataforma não é destinada a menores de 18 anos sem autorização do responsável legal. Se identificarmos um cadastro indevido de menor, excluiremos a conta.</p>
 
-    <h2>8. Menores de Idade</h2>
-    <p>A Plataforma nao e destinada a menores de 18 anos. Nao coletamos intencionalmente dados de menores. Se tomarmos conhecimento de que um menor se cadastrou, excluiremos a conta imediatamente.</p>
+      <h2>9. Transferência internacional</h2>
+      <p>Seus dados podem ser processados fora do seu país, principalmente nos Estados Unidos, por meio dos parceiros listados acima. Essas transferências seguem as salvaguardas previstas na LGPD (Capítulo V) e, quando aplicável, cláusulas contratuais padrão aceitas pelo GDPR.</p>
 
-    <h2>9. Transferencia Internacional de Dados</h2>
-    <p>Seus dados podem ser transferidos e processados em servidores localizados fora do Brasil (Estados Unidos), por meio de nossos parceiros de infraestrutura. Essas transferencias sao realizadas com base em clausulas contratuais padrao e em conformidade com o Capitulo V da LGPD.</p>
+      <h2>10. Alterações nesta Política</h2>
+      <p>Esta Política pode ser atualizada. Avisaremos as mudanças relevantes pela Plataforma ou por e-mail.</p>
 
-    <h2>10. Alteracoes nesta Politica</h2>
-    <p>Esta Politica pode ser atualizada periodicamente. As alteracoes serao comunicadas por meio da Plataforma ou por e-mail. Recomendamos a revisao periodica deste documento.</p>
+      <h2>11. Encarregado de Dados (DPO)</h2>
+      <ul>
+        <li>E-mail: <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a></li>
+        <li>Website: <a href="https://gdrums.com.br">gdrums.com.br</a></li>
+      </ul>
 
-    <h2>11. Encarregado de Dados (DPO)</h2>
-    <p>Para questoes relacionadas a protecao de dados pessoais, entre em contato com nosso encarregado:</p>
-    <ul>
-      <li>E-mail: <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a></li>
-      <li>Website: <a href="https://gdrums.com.br">gdrums.com.br</a></li>
-    </ul>
+      <h2>12. Autoridades de proteção de dados</h2>
+      <p>No Brasil, você pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD) em <a href="https://www.gov.br/anpd" target="_blank" rel="noopener">gov.br/anpd</a>. Na União Europeia, à autoridade de proteção de dados do seu país.</p>
+    </article>
 
-    <h2>12. Autoridade Nacional de Protecao de Dados</h2>
-    <p>Caso entenda que o tratamento de seus dados pessoais viola a LGPD, voce pode apresentar reclamacao perante a Autoridade Nacional de Protecao de Dados (ANPD) por meio do site <a href="https://www.gov.br/anpd" target="_blank">gov.br/anpd</a>.</p>
+    <!-- ═══════════════════════════ ESPAÑOL ═══════════════════════════ -->
+    <article data-lang="es" lang="es" data-title="Política de Privacidad | GDrums" data-back="&larr; Volver" hidden>
+      <div class="legal-header" style="border:0;padding:0;margin-bottom:1.5rem;">
+        <h1>Política de Privacidad</h1>
+        <p>Última actualización: 17 de septiembre de 2026</p>
+      </div>
+
+      <h2>1. Introducción</h2>
+      <p>GDrums LTDA ("GDrums", "nosotros") valora tu privacidad. Esta Política explica cómo recopilamos, usamos, almacenamos y protegemos tus datos personales cuando usas el sitio y las aplicaciones de GDrums ("Plataforma"), de acuerdo con la Ley General de Protección de Datos de Brasil (Ley 13.709/2018, LGPD), el Reglamento General de Protección de Datos de la Unión Europea (RGPD), cuando corresponda, y las demás leyes aplicables.</p>
+
+      <h2>2. Datos que recopilamos</h2>
+      <h3>2.1 Datos que nos proporcionas</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Dato</th><th>Finalidad</th><th>Base legal</th></tr>
+        <tr><td>Nombre</td><td>Identificación y personalización</td><td>Ejecución del contrato</td></tr>
+        <tr><td>Correo electrónico</td><td>Autenticación, confirmación de la cuenta, comunicación y recuperación de acceso</td><td>Ejecución del contrato</td></tr>
+        <tr><td>Contraseña</td><td>Autenticación (guardada solo como hash, nunca en texto plano)</td><td>Ejecución del contrato</td></tr>
+        <tr><td>País</td><td>Definir las reglas de registro y de pago aplicables</td><td>Ejecución del contrato</td></tr>
+        <tr><td>CPF (solo cuentas de Brasil), guardado únicamente como hash criptográfico</td><td>Prevención de fraude y cuenta única</td><td>Interés legítimo</td></tr>
+        <tr><td>Teléfono / WhatsApp (opcional)</td><td>Soporte, comunicación y recuperación de cuenta</td><td>Consentimiento</td></tr>
+      </table></div>
+
+      <h3>2.2 Datos recopilados automáticamente</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Dato</th><th>Finalidad</th><th>Base legal</th></tr>
+        <tr><td>Dirección IP y datos del dispositivo/navegador</td><td>Seguridad, prevención de fraude, límite de intentos de registro y compatibilidad</td><td>Interés legítimo</td></tr>
+        <tr><td>Datos de uso (ritmos, repertorios, preferencias)</td><td>Funcionamiento y personalización</td><td>Ejecución del contrato</td></tr>
+        <tr><td>Datos de compra (plan, importe, fecha, identificador de la transacción)</td><td>Gestión de la suscripción y obligaciones fiscales</td><td>Ejecución del contrato y obligación legal</td></tr>
+        <tr><td>Identificador de notificaciones del dispositivo</td><td>Enviar las notificaciones que autorizaste</td><td>Consentimiento</td></tr>
+        <tr><td>Eventos de registro y compra para medir anuncios</td><td>Saber qué anuncios atraen nuevos clientes</td><td>Interés legítimo o consentimiento, según la ley y la plataforma</td></tr>
+      </table></div>
+
+      <h3>2.3 Datos que no recopilamos</h3>
+      <ul>
+        <li>Datos completos de tarjetas (los trata únicamente el medio de pago)</li>
+        <li>Ubicación GPS, contactos del teléfono ni audio del micrófono</li>
+        <li>Datos biométricos: Face ID / huella digital los verifica el propio dispositivo. Si activas esta función, tus credenciales se guardan solo en el almacenamiento seguro del dispositivo (Keychain/Keystore) y nunca llegan a nuestros servidores.</li>
+      </ul>
+
+      <h2>3. Cómo usamos tus datos</h2>
+      <ul>
+        <li>Prestar, mantener y mejorar la Plataforma</li>
+        <li>Procesar pagos y gestionar suscripciones</li>
+        <li>Enviar comunicaciones sobre el servicio (actualizaciones, ritmos nuevos, soporte)</li>
+        <li>Enviar comunicaciones de marketing (cupones, promociones), con opción de darte de baja</li>
+        <li>Medir el resultado de los anuncios</li>
+        <li>Prevenir fraude, abuso y uso indebido</li>
+        <li>Cumplir obligaciones legales y regulatorias</li>
+      </ul>
+
+      <h2>4. Almacenamiento y seguridad</h2>
+      <h3>4.1 Dónde se guardan tus datos</h3>
+      <p>Tus datos se almacenan en servidores de Supabase Inc. (infraestructura de AWS), con estándares internacionales de seguridad.</p>
+      <h3>4.2 Medidas de seguridad</h3>
+      <ul>
+        <li>Cifrado en tránsito (TLS) y en reposo</li>
+        <li>CPF guardado solo como hash (SHA-256), imposible de revertir</li>
+        <li>Contraseñas guardadas solo como hash</li>
+        <li>Control de acceso por usuario en la base de datos (Row Level Security)</li>
+        <li>Registros de seguridad para detectar actividades sospechosas</li>
+        <li>Sesión única por cuenta</li>
+      </ul>
+      <h3>4.3 Conservación</h3>
+      <p>Conservamos tus datos mientras la cuenta esté activa o el tiempo necesario para cumplir obligaciones legales. Tras eliminar la cuenta, los datos se anonimizan o eliminan en un plazo de 30 días, salvo los necesarios para obligaciones fiscales (conservados hasta 5 años).</p>
+      <h3>4.4 Eliminación de la cuenta</h3>
+      <p>Puedes eliminar tu cuenta en cualquier momento desde la app (Mi cuenta &gt; Eliminar cuenta) o en <a href="/excluir-conta">gdrums.com.br/excluir-conta</a>.</p>
+
+      <h2>5. Con quién compartimos datos</h2>
+      <p>GDrums <strong>no vende</strong> tus datos personales. Solo los compartimos con proveedores necesarios para operar el servicio:</p>
+      <div class="table-wrap"><table>
+        <tr><th>Proveedor</th><th>Finalidad</th><th>Datos</th></tr>
+        <tr><td>Supabase Inc.</td><td>Infraestructura y base de datos</td><td>Datos de la cuenta y de uso (como encargado)</td></tr>
+        <tr><td>Vercel Inc.</td><td>Alojamiento del sitio</td><td>Datos de acceso (IP, navegador)</td></tr>
+        <tr><td>InfinitePay (CloudWalk)</td><td>Pagos en el sitio (Brasil)</td><td>Nombre, correo, importe y datos de la transacción</td></tr>
+        <tr><td>Apple Inc.</td><td>Compras dentro de la app de iOS (App Store)</td><td>Identificadores de la compra. Apple trata los datos de pago según su propia política.</td></tr>
+        <tr><td>Google LLC</td><td>Notificaciones en Android (Firebase Cloud Messaging) y distribución en Google Play</td><td>Identificador de notificaciones del dispositivo</td></tr>
+        <tr><td>OneSignal Inc.</td><td>Envío de notificaciones</td><td>Identificador de notificaciones e identificador interno de la cuenta</td></tr>
+        <tr><td>Meta Platforms Inc.</td><td>Medición de anuncios (Píxel de Meta en el sitio y API de Conversiones)</td><td>Eventos de registro y compra, IP, navegador y, cuando existen, correo y teléfono enviados solo como hash (SHA-256)</td></tr>
+        <tr><td>Hostinger</td><td>Envío de correos</td><td>Correo y nombre</td></tr>
+        <tr><td>Discord Inc.</td><td>Aviso interno de ventas al equipo</td><td>Nombre, correo, plan e importe de la compra</td></tr>
+      </table></div>
+      <p>También podemos compartir datos cuando lo exija la ley o una autoridad competente.</p>
+
+      <h2>6. Tus derechos</h2>
+      <p>Según la LGPD (y el RGPD, si estás en el Espacio Económico Europeo o en el Reino Unido), puedes:</p>
+      <ul>
+        <li>Confirmar si tratamos tus datos y obtener una copia</li>
+        <li>Corregir datos incompletos o incorrectos</li>
+        <li>Solicitar la anonimización, el bloqueo o la eliminación</li>
+        <li>Recibir tus datos en formato estructurado (portabilidad)</li>
+        <li>Retirar tu consentimiento en cualquier momento</li>
+        <li>Saber con quién se compartieron tus datos</li>
+        <li>Oponerte al tratamiento basado en interés legítimo, incluido el marketing</li>
+        <li>Solicitar la limitación del tratamiento, cuando corresponda</li>
+      </ul>
+      <p>Para ejercerlos, escribe a <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a>. Respondemos en un plazo de 15 días.</p>
+
+      <h2>7. Cookies, almacenamiento local y medición</h2>
+      <ul>
+        <li><strong>Almacenamiento local (localStorage/sessionStorage):</strong> preferencias, idioma, repertorio, sesión y funcionamiento sin conexión</li>
+        <li><strong>Service Worker:</strong> funcionamiento sin conexión (caché de ritmos y sonidos)</li>
+        <li><strong>Cookies propias:</strong> control de la demostración y preferencias</li>
+        <li><strong>Píxel de Meta:</strong> se usa para medir el resultado de nuestros anuncios. Puedes limitar este tipo de medición en la configuración de tu navegador, de tu dispositivo y de tu cuenta de Meta.</li>
+      </ul>
+
+      <h2>8. Menores de edad</h2>
+      <p>La Plataforma no está dirigida a menores de 18 años sin autorización de su representante legal. Si detectamos el registro indebido de un menor, eliminaremos la cuenta.</p>
+
+      <h2>9. Transferencias internacionales</h2>
+      <p>Tus datos pueden procesarse fuera de tu país, principalmente en los Estados Unidos, a través de los proveedores indicados. Estas transferencias siguen las garantías de la LGPD (Capítulo V) y, cuando corresponda, las cláusulas contractuales tipo aceptadas por el RGPD.</p>
+
+      <h2>10. Cambios en esta Política</h2>
+      <p>Podemos actualizar esta Política. Avisaremos los cambios relevantes a través de la Plataforma o por correo.</p>
+
+      <h2>11. Encargado de Protección de Datos (DPO)</h2>
+      <ul>
+        <li>Correo: <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a></li>
+        <li>Sitio: <a href="https://gdrums.com.br">gdrums.com.br</a></li>
+      </ul>
+
+      <h2>12. Autoridades de protección de datos</h2>
+      <p>En Brasil, puedes presentar un reclamo ante la ANPD en <a href="https://www.gov.br/anpd" target="_blank" rel="noopener">gov.br/anpd</a>. En la Unión Europea, ante la autoridad de protección de datos de tu país.</p>
+    </article>
+
+    <!-- ═══════════════════════════ ENGLISH ═══════════════════════════ -->
+    <article data-lang="en" lang="en" data-title="Privacy Policy | GDrums" data-back="&larr; Back" hidden>
+      <div class="legal-header" style="border:0;padding:0;margin-bottom:1.5rem;">
+        <h1>Privacy Policy</h1>
+        <p>Last updated: September 17, 2026</p>
+      </div>
+
+      <h2>1. Introduction</h2>
+      <p>GDrums LTDA ("GDrums", "we") values your privacy. This Policy explains how we collect, use, store and protect your personal data when you use the GDrums website and apps (the "Platform"), in accordance with Brazil's General Data Protection Law (Law 13,709/2018, LGPD), the EU General Data Protection Regulation (GDPR) where applicable, and other applicable laws.</p>
+
+      <h2>2. Data we collect</h2>
+      <h3>2.1 Data you provide</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Data</th><th>Purpose</th><th>Legal basis</th></tr>
+        <tr><td>Name</td><td>Identification and personalization</td><td>Performance of contract</td></tr>
+        <tr><td>Email</td><td>Sign-in, account confirmation, communication and account recovery</td><td>Performance of contract</td></tr>
+        <tr><td>Password</td><td>Sign-in (stored only as a hash, never in plain text)</td><td>Performance of contract</td></tr>
+        <tr><td>Country</td><td>Applying the right sign-up and payment rules</td><td>Performance of contract</td></tr>
+        <tr><td>CPF (Brazilian accounts only), stored only as a cryptographic hash</td><td>Fraud prevention and one account per person</td><td>Legitimate interest</td></tr>
+        <tr><td>Phone / WhatsApp (optional)</td><td>Support, communication and account recovery</td><td>Consent</td></tr>
+      </table></div>
+
+      <h3>2.2 Data collected automatically</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Data</th><th>Purpose</th><th>Legal basis</th></tr>
+        <tr><td>IP address and device/browser data</td><td>Security, fraud prevention, sign-up rate limiting and compatibility</td><td>Legitimate interest</td></tr>
+        <tr><td>Usage data (rhythms, setlists, preferences)</td><td>Operating and personalizing the service</td><td>Performance of contract</td></tr>
+        <tr><td>Purchase data (plan, amount, date, transaction ID)</td><td>Subscription management and tax obligations</td><td>Performance of contract and legal obligation</td></tr>
+        <tr><td>Device notification token</td><td>Sending the notifications you allowed</td><td>Consent</td></tr>
+        <tr><td>Sign-up and purchase events for ad measurement</td><td>Knowing which ads bring new customers</td><td>Legitimate interest or consent, depending on the law and platform</td></tr>
+      </table></div>
+
+      <h3>2.3 Data we do not collect</h3>
+      <ul>
+        <li>Full payment card data (handled only by the payment provider)</li>
+        <li>GPS location, phone contacts or microphone audio</li>
+        <li>Biometric data: Face ID / fingerprint is checked by your device itself. If you turn this feature on, your credentials are kept only in your device's secure storage (Keychain/Keystore) and never reach our servers.</li>
+      </ul>
+
+      <h2>3. How we use your data</h2>
+      <ul>
+        <li>Provide, maintain and improve the Platform</li>
+        <li>Process payments and manage subscriptions</li>
+        <li>Send service messages (updates, new rhythms, support)</li>
+        <li>Send marketing messages (coupons, promotions), which you can opt out of</li>
+        <li>Measure the results of our ads</li>
+        <li>Prevent fraud, abuse and misuse</li>
+        <li>Comply with legal and regulatory obligations</li>
+      </ul>
+
+      <h2>4. Storage and security</h2>
+      <h3>4.1 Where your data is stored</h3>
+      <p>Your data is stored on servers provided by Supabase Inc. (AWS infrastructure), following international security standards.</p>
+      <h3>4.2 Security measures</h3>
+      <ul>
+        <li>Encryption in transit (TLS) and at rest</li>
+        <li>CPF stored only as a hash (SHA-256), which cannot be reversed</li>
+        <li>Passwords stored only as hashes</li>
+        <li>Per-user access control in the database (Row Level Security)</li>
+        <li>Security logs to detect suspicious activity</li>
+        <li>One active session per account</li>
+      </ul>
+      <h3>4.3 Retention</h3>
+      <p>We keep your data while your account is active or as long as needed to meet legal obligations. After your account is deleted, your data is anonymized or deleted within 30 days, except data required for tax purposes (kept for up to 5 years).</p>
+      <h3>4.4 Deleting your account</h3>
+      <p>You can delete your account at any time in the app (My account &gt; Delete account) or at <a href="/excluir-conta">gdrums.com.br/excluir-conta</a>.</p>
+
+      <h2>5. Who we share data with</h2>
+      <p>GDrums <strong>does not sell</strong> your personal data. We only share data with providers we need to run the service:</p>
+      <div class="table-wrap"><table>
+        <tr><th>Provider</th><th>Purpose</th><th>Data</th></tr>
+        <tr><td>Supabase Inc.</td><td>Infrastructure and database</td><td>Account and usage data (as processor)</td></tr>
+        <tr><td>Vercel Inc.</td><td>Website hosting</td><td>Access data (IP, browser)</td></tr>
+        <tr><td>InfinitePay (CloudWalk)</td><td>Website payments (Brazil)</td><td>Name, email, amount and transaction data</td></tr>
+        <tr><td>Apple Inc.</td><td>In-app purchases on iOS (App Store)</td><td>Purchase identifiers. Apple handles payment data under its own policy.</td></tr>
+        <tr><td>Google LLC</td><td>Android notifications (Firebase Cloud Messaging) and distribution on Google Play</td><td>Device notification token</td></tr>
+        <tr><td>OneSignal Inc.</td><td>Sending notifications</td><td>Notification token and internal account ID</td></tr>
+        <tr><td>Meta Platforms Inc.</td><td>Ad measurement (Meta Pixel on the website and Conversions API)</td><td>Sign-up and purchase events, IP, browser and, when available, email and phone sent only as a hash (SHA-256)</td></tr>
+        <tr><td>Hostinger</td><td>Sending emails</td><td>Email and name</td></tr>
+        <tr><td>Discord Inc.</td><td>Internal sales alerts for our team</td><td>Name, email, plan and purchase amount</td></tr>
+      </table></div>
+      <p>We may also share data when required by law or by a competent authority.</p>
+
+      <h2>6. Your rights</h2>
+      <p>Under the LGPD (and the GDPR, if you are in the European Economic Area or the United Kingdom), you can:</p>
+      <ul>
+        <li>Confirm whether we process your data and get a copy</li>
+        <li>Correct incomplete or inaccurate data</li>
+        <li>Ask for anonymization, blocking or deletion</li>
+        <li>Receive your data in a structured format (portability)</li>
+        <li>Withdraw consent at any time</li>
+        <li>Know who your data was shared with</li>
+        <li>Object to processing based on legitimate interest, including marketing</li>
+        <li>Ask us to restrict processing, where applicable</li>
+      </ul>
+      <p>To exercise your rights, email <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a>. We reply within 15 days.</p>
+
+      <h2>7. Cookies, local storage and measurement</h2>
+      <ul>
+        <li><strong>Local storage (localStorage/sessionStorage):</strong> preferences, language, setlists, session and offline use</li>
+        <li><strong>Service Worker:</strong> offline use (cached rhythms and sounds)</li>
+        <li><strong>First-party cookies:</strong> demo control and preferences</li>
+        <li><strong>Meta Pixel:</strong> used to measure the results of our ads. You can limit this kind of measurement in your browser, device and Meta account settings.</li>
+      </ul>
+
+      <h2>8. Children</h2>
+      <p>The Platform is not intended for anyone under 18 without a parent or guardian's permission. If we find that a minor signed up improperly, we will delete the account.</p>
+
+      <h2>9. International transfers</h2>
+      <p>Your data may be processed outside your country, mainly in the United States, by the providers listed above. These transfers follow the safeguards of the LGPD (Chapter V) and, where applicable, the Standard Contractual Clauses recognized under the GDPR.</p>
+
+      <h2>10. Changes to this Policy</h2>
+      <p>We may update this Policy. We will let you know about relevant changes through the Platform or by email.</p>
+
+      <h2>11. Data Protection Officer (DPO)</h2>
+      <ul>
+        <li>Email: <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a></li>
+        <li>Website: <a href="https://gdrums.com.br">gdrums.com.br</a></li>
+      </ul>
+
+      <h2>12. Data protection authorities</h2>
+      <p>In Brazil, you can file a complaint with the ANPD at <a href="https://www.gov.br/anpd" target="_blank" rel="noopener">gov.br/anpd</a>. In the European Union, with the data protection authority of your country.</p>
+    </article>
 
     <div class="legal-footer">
-      <p>&copy; 2026 GDrums. Todos os direitos reservados.</p>
-      <p style="margin-top:0.5rem;">Pra honra e gloria de Deus</p>
+      <p>&copy; 2026 GDrums. Todos os direitos reservados. All rights reserved.</p>
+      <p style="margin-top:0.5rem;">Pra honra e glória de Deus</p>
     </div>
   </div>
+
+  <script>
+    // Idioma: ?lang= > escolha salva no app (gdrums-locale) > idioma do aparelho > inglês.
+    (function () {
+      var map = { 'pt-BR': 'pt', 'es-419': 'es', 'en': 'en' };
+      var lang = '';
+      try { lang = (new URLSearchParams(location.search).get('lang') || '').slice(0, 2).toLowerCase(); } catch (e) {}
+      if (['pt', 'es', 'en'].indexOf(lang) < 0) {
+        try { lang = map[localStorage.getItem('gdrums-locale')] || ''; } catch (e) {}
+      }
+      if (!lang) {
+        var nav = (navigator.language || '').toLowerCase();
+        lang = nav.indexOf('pt') === 0 ? 'pt' : nav.indexOf('es') === 0 ? 'es' : 'en';
+      }
+      var shown = null;
+      document.querySelectorAll('article[data-lang]').forEach(function (a) {
+        var on = a.getAttribute('data-lang') === lang;
+        a.hidden = !on;
+        if (on) shown = a;
+      });
+      if (!shown) return;
+      document.documentElement.lang = shown.getAttribute('lang');
+      document.title = shown.getAttribute('data-title');
+      var back = document.getElementById('legalBack');
+      if (back) back.innerHTML = shown.getAttribute('data-back');
+      document.querySelectorAll('[data-lang-link]').forEach(function (l) {
+        l.setAttribute('aria-current', l.getAttribute('data-lang-link') === lang ? 'true' : 'false');
+      });
+    })();
+  </script>
 </body>
 </html>

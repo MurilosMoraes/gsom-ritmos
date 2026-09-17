@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Termos de Uso | GDrums</title>
-  <meta name="description" content="Termos de Uso do GDrums. Direitos e deveres do usuário, política de assinatura, cancelamento e reembolso.">
+  <meta name="description" content="Termos de Uso do GDrums. Direitos e deveres do usuário, assinatura, cancelamento e reembolso. Terms of Use. Términos de Uso.">
   <meta name="author" content="Murilo Moraes, Staner Goulart">
   <meta name="robots" content="index, follow">
   <meta name="theme-color" content="#030014">
@@ -12,151 +12,460 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
   <link rel="apple-touch-icon" sizes="192x192" href="/img/icon-192.png">
   <link rel="canonical" href="https://gdrums.com.br/terms">
+  <link rel="alternate" hreflang="pt-BR" href="https://gdrums.com.br/terms?lang=pt">
+  <link rel="alternate" hreflang="es" href="https://gdrums.com.br/terms?lang=es">
+  <link rel="alternate" hreflang="en" href="https://gdrums.com.br/terms?lang=en">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif; background:#030014; color:rgba(255,255,255,0.7); line-height:1.8; }
-    .legal-container { max-width:720px; margin:0 auto; padding:2rem 1.5rem 4rem; }
-    .legal-header { text-align:center; margin-bottom:2.5rem; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:1.5rem; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif; background:#030014; color:rgba(255,255,255,0.8); line-height:1.75; }
+    .legal-container { max-width:760px; margin:0 auto; padding:1.5rem 1.25rem 4rem; }
+    .legal-top { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+    .legal-back { font-size:0.9rem; color:rgba(255,255,255,0.72); text-decoration:none; }
+    .legal-back:hover { color:#00D4FF; }
+    .legal-langs { display:flex; gap:0.35rem; }
+    .legal-langs a { font-size:0.82rem; font-weight:600; color:rgba(255,255,255,0.72); padding:0.3rem 0.65rem; border:1px solid rgba(255,255,255,0.18); border-radius:999px; text-decoration:none; }
+    .legal-langs a[aria-current="true"] { color:#030014; background:#fff; border-color:#fff; }
+    .legal-header { text-align:center; margin-bottom:2rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:1.5rem; }
     .legal-brand { display:flex; align-items:center; justify-content:center; gap:0.45rem; margin-bottom:1rem; }
     .legal-brand img { height:28px; width:auto; }
-    .legal-brand span { font-size:1rem; font-weight:700; letter-spacing:-0.01em; color:#fff; }
-    .legal-header h1 { color:#fff; font-size:1.4rem; font-weight:700; margin-bottom:0.3rem; }
-    .legal-header p { font-size:0.78rem; color:rgba(255,255,255,0.3); }
-    h2 { color:#fff; font-size:1rem; font-weight:700; margin:2rem 0 0.75rem; }
-    h3 { color:rgba(255,255,255,0.85); font-size:0.9rem; font-weight:600; margin:1.5rem 0 0.5rem; }
-    p, li { font-size:0.85rem; margin-bottom:0.6rem; }
+    .legal-brand span { font-size:1rem; font-weight:700; color:#fff; }
+    .legal-header h1 { color:#fff; font-size:1.5rem; font-weight:700; margin-bottom:0.3rem; }
+    .legal-header p { font-size:0.85rem; color:rgba(255,255,255,0.6); }
+    h2 { color:#fff; font-size:1.08rem; font-weight:700; margin:2rem 0 0.75rem; }
+    h3 { color:rgba(255,255,255,0.92); font-size:0.95rem; font-weight:600; margin:1.4rem 0 0.5rem; }
+    p, li { font-size:0.93rem; margin-bottom:0.6rem; }
     ul { padding-left:1.25rem; }
     li { margin-bottom:0.4rem; }
+    strong { color:#fff; }
     a { color:#00D4FF; text-decoration:none; }
-    .legal-footer { text-align:center; margin-top:3rem; padding-top:1.5rem; border-top:1px solid rgba(255,255,255,0.06); font-size:0.72rem; color:rgba(255,255,255,0.2); font-style:italic; }
-    .legal-back { display:inline-block; margin-bottom:1.5rem; font-size:0.8rem; color:rgba(255,255,255,0.4); text-decoration:none; }
-    .legal-back:hover { color:#00D4FF; }
+    article[hidden] { display:none; }
+    .legal-footer { text-align:center; margin-top:3rem; padding-top:1.5rem; border-top:1px solid rgba(255,255,255,0.1); font-size:0.8rem; color:rgba(255,255,255,0.55); font-style:italic; }
   </style>
 </head>
 <body>
   <div class="legal-container">
-    <a href="javascript:void(0)" class="legal-back" onclick="history.length>1?history.back():location.href='/landing'">&larr; Voltar</a>
+    <div class="legal-top">
+      <a href="javascript:void(0)" class="legal-back" id="legalBack" onclick="history.length>1?history.back():location.href='/landing'">&larr; Voltar</a>
+      <nav class="legal-langs" aria-label="Idioma / Language">
+        <a href="?lang=pt" data-lang-link="pt">PT</a>
+        <a href="?lang=es" data-lang-link="es">ES</a>
+        <a href="?lang=en" data-lang-link="en">EN</a>
+      </nav>
+    </div>
 
     <div class="legal-header">
       <div class="legal-brand">
         <img src="/img/logo.png" alt="GDrums">
         <span>GDrums</span>
       </div>
-      <h1>Termos de Uso</h1>
-      <p>Última atualização: 11 de setembro de 2026</p>
     </div>
 
-    <h2>1. Aceitação dos Termos</h2>
-    <p>Ao acessar, cadastrar-se ou utilizar o aplicativo GDrums ("Plataforma"), operado por GDrums LTDA ("GDrums", "nós"), você concorda integralmente com estes Termos de Uso. Caso não concorde, não utilize a Plataforma.</p>
+    <!-- ═══════════════════════════ PORTUGUÊS ═══════════════════════════ -->
+    <article data-lang="pt" lang="pt-BR" data-title="Termos de Uso | GDrums" data-back="&larr; Voltar">
+      <div class="legal-header" style="border:0;padding:0;margin-bottom:1.5rem;">
+        <h1>Termos de Uso</h1>
+        <p>Última atualização: 17 de setembro de 2026</p>
+      </div>
 
-    <h2>2. Descrição do Serviço</h2>
-    <p>O GDrums é uma plataforma digital de acompanhamento musical que oferece sequenciamento de ritmos profissionais para performance ao vivo e ensaios. O serviço inclui biblioteca de ritmos, controle por pedal Bluetooth, repertório personalizado, modo offline e atualizações periódicas de conteúdo.</p>
+      <h2>1. Aceitação dos Termos</h2>
+      <p>Ao acessar, cadastrar-se ou utilizar o site ou os aplicativos GDrums ("Plataforma"), operados por GDrums LTDA ("GDrums", "nós"), você concorda integralmente com estes Termos de Uso. Caso não concorde, não utilize a Plataforma.</p>
 
-    <h2>3. Cadastro e Conta</h2>
-    <h3>3.1 Requisitos</h3>
-    <p>Para utilizar a Plataforma, você deve ter no mínimo 18 anos ou possuir autorização de responsável legal. O cadastro exige informações verdadeiras e atualizadas, incluindo nome completo, CPF, telefone (WhatsApp) e e-mail.</p>
-    <h3>3.2 Responsabilidade da Conta</h3>
-    <p>Você e exclusivamente responsável por manter a confidencialidade de suas credenciais de acesso. Qualquer atividade realizada em sua conta será de sua responsabilidade. Notifique-nos imediatamente em caso de uso não autorizado.</p>
-    <h3>3.3 Conta Única</h3>
-    <p>Cada usuário pode manter apenas uma conta ativa. A criação de múltiplas contas para obter beneficios repetidos (como periodos de teste) constitui violação destes Termos e resultara em banimento permanente.</p>
+      <h2>2. Descrição do Serviço</h2>
+      <p>O GDrums é uma plataforma digital de acompanhamento musical que oferece sequenciamento de ritmos profissionais para performance ao vivo e ensaios. O serviço inclui biblioteca de ritmos, controle por pedal Bluetooth, repertório personalizado, modo offline e atualizações periódicas de conteúdo.</p>
 
-    <h2>4. Planos e Pagamento</h2>
-    <h3>4.1 Período de Teste</h3>
-    <p>Novos usuários recebem um período de teste gratuito conforme disponibilidade. O período de teste e limitado a um por pessoa (identificada por CPF). Ao termino do período de teste, o acesso será restrito até a contratação de um plano pago.</p>
-    <h3>4.2 Assinatura</h3>
-    <p>Os planos são oferecidos nas modalidades mensal, trimestral, semestral, anual, plurianual e, quando disponível, vitalícia (cláusula 4.6), com preços e condições informados na pagina de planos. Os valores podem ser alterados com aviso prévio de 30 dias.</p>
-    <h3>4.3 Pagamento</h3>
-    <p>Os pagamentos são processados por meio de parceiro de pagamento autorizado (InfinitePay). O GDrums não armazena dados de cartão de crédito. Eventuais taxas de parcelamento ou juros são de responsabilidade do usuário junto ao emissor do cartão.</p>
-    <h3>4.4 Cancelamento</h3>
-    <p>Não ha multa por cancelamento. O acesso permanece ativo até o fim do período ja pago. Não ha reembolso proporcional por período não utilizado, exceto nos casos previstos pelo Codigo de Defesa do Consumidor (Lei 8.078/90).</p>
-    <h3>4.5 Cupons e Promoções</h3>
-    <p>Cupons de desconto são pessoais e intransferiveis, válidos conforme condições especificas de cada promoção. O uso indevido de cupons poderá resultar em cancelamento da assinatura.</p>
-    <h3>4.6 Plano Vitalício</h3>
-    <p>O Plano Vitalício, quando oferecido, é contratado mediante pagamento único, sem mensalidades nem renovações. O termo "vitalício" refere-se à vida útil da Plataforma, e não à vida do titular: o acesso é garantido enquanto o GDrums mantiver a Plataforma em operação.</p>
-    <ul>
-      <li><strong>O que está incluído:</strong> acesso à Plataforma com as mesmas funcionalidades, ritmos e atualizações disponibilizados aos assinantes dos planos pagos. Produtos ou serviços distintos que venham a ser lançados separadamente, serviços de terceiros e equipamentos (como pedais Bluetooth) não fazem parte do plano.</li>
-      <li><strong>Pessoal e intransferível:</strong> o plano é vinculado a uma única conta e ao CPF do titular, não podendo ser vendido, cedido, transferido, dividido ou compartilhado. Aplicam-se integralmente as regras das cláusulas 3 e 5.</li>
-      <li><strong>Direito de arrependimento:</strong> nas compras realizadas fora de estabelecimento comercial, o titular pode desistir em até 7 (sete) dias contados da compra, com devolução integral do valor pago, nos termos do art. 49 do Código de Defesa do Consumidor.</li>
-      <li><strong>Estorno e contestação:</strong> o cancelamento, estorno ou contestação do pagamento junto ao meio de pagamento encerra o acesso vinculado ao plano.</li>
-      <li><strong>Encerramento por violação:</strong> o plano poderá ser encerrado nas hipóteses da cláusula 11, sem direito a reembolso. Salvo nos casos de fraude, invasão ou atividade ilícita, que autorizam a suspensão imediata, o titular será notificado previamente e poderá apresentar esclarecimentos no prazo de 5 (cinco) dias.</li>
-      <li><strong>Continuidade do serviço:</strong> caso o GDrums decida encerrar definitivamente a Plataforma, os titulares serão comunicados com antecedência mínima de 90 (noventa) dias, período durante o qual o acesso permanecerá ativo, sem prejuízo dos direitos assegurados pelo Código de Defesa do Consumidor.</li>
-      <li><strong>Condições comerciais:</strong> o preço, a disponibilidade e as condições de oferta do Plano Vitalício podem ser alterados ou descontinuados para novas contratações a qualquer momento, sem afetar os planos já adquiridos.</li>
-    </ul>
+      <h2>3. Cadastro e Conta</h2>
+      <h3>3.1 Requisitos</h3>
+      <p>Para utilizar a Plataforma, você deve ter no mínimo 18 anos ou possuir autorização de responsável legal. O cadastro exige informações verdadeiras e atualizadas: nome, e-mail, senha e país. Para contas do Brasil, também é exigido o CPF. O telefone (WhatsApp) é opcional. Fora do Brasil, a conta só é liberada após a confirmação do e-mail.</p>
+      <h3>3.2 Responsabilidade da Conta</h3>
+      <p>Você é exclusivamente responsável por manter a confidencialidade de suas credenciais de acesso. Qualquer atividade realizada em sua conta será de sua responsabilidade. Notifique-nos imediatamente em caso de uso não autorizado.</p>
+      <h3>3.3 Conta Única</h3>
+      <p>Cada pessoa pode manter apenas uma conta ativa. A criação de múltiplas contas para obter benefícios repetidos (como períodos de teste) constitui violação destes Termos e resultará em banimento permanente.</p>
 
-    <h2>5. Uso Permitido</h2>
-    <p>A Plataforma destina-se exclusivamente ao uso pessoal e profissional do usuário cadastrado para fins de acompanhamento musical. É expressamente proibido:</p>
-    <ul>
-      <li>Compartilhar credenciais de acesso com terceiros</li>
-      <li>Utilizar a Plataforma simultaneamente em mais de um dispositivo</li>
-      <li>Copiar, distribuir, modificar ou fazer engenharia reversa do software</li>
-      <li>Extrair, copiar ou redistribuir os ritmos, samples ou conteúdo da biblioteca</li>
-      <li>Vender, cobrar ou oferecer venda de ritmos, repertórios ou qualquer conteúdo na Comunidade GDrums, inclusive por meio de link, PIX, catálogo ou redirecionamento para canais externos</li>
-      <li>Tentar acessar áreas restritas, sistemas internos ou dados de outros usuários</li>
-      <li>Utilizar automação, bots ou scripts para interagir com a Plataforma</li>
-      <li>Criar contas falsas ou com dados de terceiros</li>
-    </ul>
+      <h2>4. Planos e Pagamento</h2>
+      <h3>4.1 Período de Teste</h3>
+      <p>Novos usuários podem receber um período de teste gratuito, conforme disponibilidade. O período de teste é limitado a um por pessoa (no Brasil, identificada pelo CPF; nos demais países, pelos meios de verificação da Plataforma). Ao término do período de teste, o acesso será restrito até a contratação de um plano pago.</p>
+      <h3>4.2 Assinatura</h3>
+      <p>Os planos são oferecidos nas modalidades mensal, trimestral, semestral, anual, plurianual e, quando disponível, vitalícia (cláusula 4.6), com preços e condições informados na página de planos. A disponibilidade de cada plano pode variar conforme o país e a loja de aplicativos. Os valores podem ser alterados com aviso prévio de 30 dias.</p>
+      <h3>4.3 Pagamento</h3>
+      <p>Os pagamentos são processados por parceiros autorizados: no site, pela InfinitePay; no aplicativo para iOS, pela Apple (App Store), conforme a cláusula 4.7. O GDrums não armazena dados de cartão de crédito. Eventuais taxas de parcelamento, juros ou conversão de moeda são de responsabilidade do usuário junto ao emissor do cartão.</p>
+      <h3>4.4 Cancelamento</h3>
+      <p>Não há multa por cancelamento. O acesso permanece ativo até o fim do período já pago. Não há reembolso proporcional por período não utilizado, exceto nos casos previstos pelo Código de Defesa do Consumidor (Lei 8.078/90) ou pela legislação de proteção ao consumidor aplicável no país do usuário.</p>
+      <h3>4.5 Cupons e Promoções</h3>
+      <p>Cupons de desconto são pessoais e intransferíveis, válidos conforme as condições específicas de cada promoção. O uso indevido de cupons poderá resultar em cancelamento da assinatura.</p>
+      <h3>4.6 Plano Vitalício</h3>
+      <p>O Plano Vitalício, quando oferecido, é contratado mediante pagamento único, sem mensalidades nem renovações. O termo "vitalício" refere-se à vida útil da Plataforma, e não à vida do titular: o acesso é garantido enquanto o GDrums mantiver a Plataforma em operação.</p>
+      <ul>
+        <li><strong>O que está incluído:</strong> acesso à Plataforma com as mesmas funcionalidades, ritmos e atualizações disponibilizados aos assinantes dos planos pagos. Produtos ou serviços distintos que venham a ser lançados separadamente, serviços de terceiros e equipamentos (como pedais Bluetooth) não fazem parte do plano.</li>
+        <li><strong>Pessoal e intransferível:</strong> o plano é vinculado a uma única conta e ao CPF do titular, não podendo ser vendido, cedido, transferido, dividido ou compartilhado. Aplicam-se integralmente as regras das cláusulas 3 e 5.</li>
+        <li><strong>Direito de arrependimento:</strong> nas compras realizadas fora de estabelecimento comercial, o titular pode desistir em até 7 (sete) dias contados da compra, com devolução integral do valor pago, nos termos do art. 49 do Código de Defesa do Consumidor.</li>
+        <li><strong>Estorno e contestação:</strong> o cancelamento, estorno ou contestação do pagamento junto ao meio de pagamento encerra o acesso vinculado ao plano.</li>
+        <li><strong>Encerramento por violação:</strong> o plano poderá ser encerrado nas hipóteses da cláusula 11, sem direito a reembolso. Salvo nos casos de fraude, invasão ou atividade ilícita, que autorizam a suspensão imediata, o titular será notificado previamente e poderá apresentar esclarecimentos no prazo de 5 (cinco) dias.</li>
+        <li><strong>Continuidade do serviço:</strong> caso o GDrums decida encerrar definitivamente a Plataforma, os titulares serão comunicados com antecedência mínima de 90 (noventa) dias, período durante o qual o acesso permanecerá ativo, sem prejuízo dos direitos assegurados pelo Código de Defesa do Consumidor.</li>
+        <li><strong>Condições comerciais:</strong> o preço, a disponibilidade e as condições de oferta do Plano Vitalício podem ser alterados ou descontinuados para novas contratações a qualquer momento, sem afetar os planos já adquiridos.</li>
+      </ul>
+      <h3>4.7 Assinaturas pela App Store (iOS)</h3>
+      <ul>
+        <li>O valor é cobrado na sua conta Apple ID na confirmação da compra, na moeda e com os impostos definidos pela App Store para o seu país.</li>
+        <li>A assinatura renova automaticamente pelo mesmo período e valor, a menos que a renovação automática seja desativada pelo menos 24 horas antes do fim do período atual.</li>
+        <li>A cobrança da renovação ocorre nas 24 horas anteriores ao fim do período atual.</li>
+        <li>Você pode gerenciar ou cancelar a assinatura em Ajustes do aparelho, no seu nome, em Assinaturas. O cancelamento vale a partir do próximo período.</li>
+        <li>Pedidos de reembolso de compras feitas pela App Store são analisados pela Apple, conforme as regras dela (<a href="https://reportaproblem.apple.com" target="_blank" rel="noopener">reportaproblem.apple.com</a>).</li>
+        <li>Para compras pela App Store, também se aplicam os <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener">Termos de Uso padrão da Apple (EULA)</a>.</li>
+      </ul>
 
-    <h2>6. Comunidade GDrums</h2>
-    <p>A Comunidade GDrums (<a href="https://comunidade.gdrums.com.br">comunidade.gdrums.com.br</a>) é um espaço da Plataforma onde os usuários compartilham, de forma voluntária e gratuita, ritmos e repertórios que criaram.</p>
+      <h2>5. Uso Permitido</h2>
+      <p>A Plataforma destina-se exclusivamente ao uso pessoal e profissional do usuário cadastrado para fins de acompanhamento musical. É expressamente proibido:</p>
+      <ul>
+        <li>Compartilhar credenciais de acesso com terceiros</li>
+        <li>Utilizar a Plataforma simultaneamente em mais de um dispositivo</li>
+        <li>Copiar, distribuir, modificar ou fazer engenharia reversa do software</li>
+        <li>Extrair, copiar ou redistribuir os ritmos, samples ou conteúdo da biblioteca</li>
+        <li>Vender, cobrar ou oferecer venda de ritmos, repertórios ou qualquer conteúdo na Comunidade GDrums, inclusive por meio de link, PIX, catálogo ou redirecionamento para canais externos</li>
+        <li>Tentar acessar áreas restritas, sistemas internos ou dados de outros usuários</li>
+        <li>Utilizar automação, bots ou scripts para interagir com a Plataforma</li>
+        <li>Criar contas falsas ou com dados de terceiros</li>
+      </ul>
 
-    <h3>6.1 A Comunidade é gratuita</h3>
-    <p>Todo conteúdo publicado na Comunidade é disponibilizado sem custo aos demais usuários. É proibido vender, cobrar ou obter qualquer vantagem econômica por conteúdo publicado ou oferecido ali, incluindo anunciar catálogos pagos, divulgar chave PIX ou link de pagamento, e usar a Comunidade para captar clientes e vender por canais externos.</p>
+      <h2>6. Comunidade GDrums</h2>
+      <p>A Comunidade GDrums (<a href="https://comunidade.gdrums.com.br">comunidade.gdrums.com.br</a>) é um espaço da Plataforma onde os usuários compartilham, de forma voluntária e gratuita, ritmos e repertórios que criaram.</p>
+      <h3>6.1 A Comunidade é gratuita</h3>
+      <p>Todo conteúdo publicado na Comunidade é disponibilizado sem custo aos demais usuários. É proibido vender, cobrar ou obter qualquer vantagem econômica por conteúdo publicado ou oferecido ali, incluindo anunciar catálogos pagos, divulgar chave PIX ou link de pagamento, e usar a Comunidade para captar clientes e vender por canais externos.</p>
+      <h3>6.2 Consequência</h3>
+      <p>Vender ou oferecer venda na Comunidade acarreta o encerramento definitivo da conta, sem reembolso do período restante da assinatura, além da remoção do conteúdo publicado.</p>
+      <h3>6.3 Conteúdo publicado pelo usuário</h3>
+      <p>Ao publicar, o usuário declara ser autor do conteúdo ou ter autorização para compartilhá-lo, e concede ao GDrums e aos demais usuários uma licença gratuita e não exclusiva para uso dentro da Plataforma. Essa licença não transfere a titularidade nem autoriza comercialização. O GDrums pode remover, a qualquer tempo, conteúdo que viole estes Termos ou a finalidade da Comunidade.</p>
 
-    <h3>6.2 Consequência</h3>
-    <p>Vender ou oferecer venda na Comunidade acarreta o encerramento definitivo da conta, sem reembolso do período restante da assinatura, além da remoção do conteúdo publicado.</p>
+      <h2>7. Propriedade Intelectual</h2>
+      <p>Todo o conteúdo da Plataforma, incluindo mas não limitado a software, ritmos, samples de áudio, design, marca, logotipo e textos, é de propriedade exclusiva do GDrums ou de seus licenciadores, protegido pela legislação brasileira de direitos autorais (Lei 9.610/98) e propriedade industrial (Lei 9.279/96), e pelos tratados internacionais aplicáveis.</p>
+      <p>A assinatura concede ao usuário uma licença limitada, não exclusiva, não transferível e revogável para uso pessoal do conteúdo, exclusivamente dentro da Plataforma.</p>
 
-    <h3>6.3 Conteúdo publicado pelo usuário</h3>
-    <p>Ao publicar, o usuário declara ser autor do conteúdo ou ter autorização para compartilhá-lo, e concede ao GDrums e aos demais usuários uma licença gratuita e não exclusiva para uso dentro da Plataforma. Essa licença não transfere a titularidade nem autoriza comercialização. O GDrums pode remover, a qualquer tempo, conteúdo que viole estes Termos ou a finalidade da Comunidade.</p>
+      <h2>8. Programa de Afiliados</h2>
+      <p>O GDrums oferece programa de afiliados mediante convite. Os afiliados recebem comissão sobre vendas realizadas com seu cupom exclusivo, conforme percentual definido no momento do cadastro. O pagamento das comissões é realizado via PIX conforme política vigente. O GDrums reserva-se o direito de suspender ou encerrar a participação de afiliados a qualquer momento.</p>
 
-    <h2>7. Propriedade Intelectual</h2>
-    <p>Todo o conteúdo da Plataforma, incluindo mas não limitado a software, ritmos, samples de áudio, design, marca, logotipo e textos, é de propriedade exclusiva do GDrums ou de seus licenciadores, protegido pela legislação brasileira de direitos autorais (Lei 9.610/98) e propriedade industrial (Lei 9.279/96).</p>
-    <p>A assinatura concede ao usuário uma licença limitada, não exclusiva, não transferível e revogável para uso pessoal do conteúdo, exclusivamente dentro da Plataforma.</p>
+      <h2>9. Disponibilidade e Suporte</h2>
+      <p>O GDrums empenha-se para manter a Plataforma disponível de forma ininterrupta, mas não garante disponibilidade contínua. Interrupções podem ocorrer por manutenção, atualizações ou fatores fora de nosso controle. O suporte é oferecido por e-mail e WhatsApp em horário comercial (horário de Brasília).</p>
 
-    <h2>8. Programa de Afiliados</h2>
-    <p>O GDrums oferece programa de afiliados mediante convite. Os afiliados recebem comissão sobre vendas realizadas com seu cupom exclusivo, conforme percentual definido no momento do cadastro. O pagamento das comissões é realizado via PIX conforme política vigente. O GDrums reserva-se o direito de suspender ou encerrar a participação de afiliados a qualquer momento.</p>
+      <h2>10. Limitação de Responsabilidade</h2>
+      <p>O GDrums não se responsabiliza por:</p>
+      <ul>
+        <li>Danos indiretos, incidentais ou consequenciais decorrentes do uso da Plataforma</li>
+        <li>Falhas de conexão de internet, dispositivos ou sistemas operacionais do usuário</li>
+        <li>Incompatibilidade com dispositivos ou periféricos específicos (incluindo pedais Bluetooth)</li>
+        <li>Perda de dados armazenados localmente no dispositivo do usuário</li>
+        <li>Uso da Plataforma em desacordo com estes Termos</li>
+      </ul>
+      <p>A responsabilidade total do GDrums, em qualquer hipótese, limita-se ao valor pago pelo usuário nos últimos 12 meses ou, no caso do Plano Vitalício, ao valor pago pelo plano, na medida permitida pela lei aplicável.</p>
 
-    <h2>9. Disponibilidade e Suporte</h2>
-    <p>O GDrums empenha-se para manter a Plataforma disponível de forma ininterrupta, mas não garante disponibilidade continua. Interrupções podem ocorrer por manutenção, atualizações ou fatores fora de nosso controle. O suporte técnico é oferecido por e-mail e WhatsApp em horário comercial.</p>
+      <h2>11. Suspensão e Encerramento</h2>
+      <p>O GDrums reserva-se o direito de suspender ou encerrar contas que violem estes Termos, sem aviso prévio e sem direito a reembolso, ressalvado o procedimento de notificação previsto na cláusula 4.6 para o Plano Vitalício, especialmente em casos de:</p>
+      <ul>
+        <li>Criação de múltiplas contas</li>
+        <li>Uso de dados falsos ou de terceiros</li>
+        <li>Tentativa de fraude, invasão ou manipulação do sistema</li>
+        <li>Compartilhamento de credenciais</li>
+        <li>Extração ou redistribuição de conteúdo</li>
+        <li>Venda, cobrança ou oferta de venda de conteúdo na Comunidade GDrums, conforme a cláusula 6</li>
+      </ul>
 
-    <h2>10. Limitação de Responsabilidade</h2>
-    <p>O GDrums não se responsabiliza por:</p>
-    <ul>
-      <li>Danos indiretos, incidentais ou consequenciais decorrentes do uso da Plataforma</li>
-      <li>Falhas de conexão de internet, dispositivos ou sistemas operacionais do usuário</li>
-      <li>Incompatibilidade com dispositivos ou periféricos específicos (incluindo pedais Bluetooth)</li>
-      <li>Perda de dados armazenados localmente no dispositivo do usuário</li>
-      <li>Uso da Plataforma em desacordo com estes Termos</li>
-    </ul>
-    <p>A responsabilidade total do GDrums, em qualquer hipótese, limita-se ao valor pago pelo usuário nos últimos 12 meses ou, no caso do Plano Vitalício, ao valor pago pelo plano.</p>
+      <h2>12. Alterações nos Termos</h2>
+      <p>O GDrums pode alterar estes Termos a qualquer momento. As alterações serão comunicadas por meio da Plataforma ou por e-mail. O uso continuado após a notificação constitui aceitação dos novos termos. As alterações não reduzirão os direitos essenciais do Plano Vitalício já contratado, especialmente o pagamento único, a ausência de cobranças recorrentes e o acesso pela vida útil da Plataforma.</p>
 
-    <h2>11. Suspensão e Encerramento</h2>
-    <p>O GDrums reserva-se o direito de suspender ou encerrar contas que violem estes Termos, sem aviso prévio e sem direito a reembolso, ressalvado o procedimento de notificação previsto na cláusula 4.6 para o Plano Vitalício, especialmente em casos de:</p>
-    <ul>
-      <li>Criação de múltiplas contas</li>
-      <li>Uso de dados falsos ou de terceiros</li>
-      <li>Tentativa de fraude, invasão ou manipulação do sistema</li>
-      <li>Compartilhamento de credenciais</li>
-      <li>Extração ou redistribuição de conteúdo</li>
-      <li>Venda, cobrança ou oferta de venda de conteúdo na Comunidade GDrums, conforme a cláusula 6</li>
-    </ul>
+      <h2>13. Legislação e Foro</h2>
+      <p>Estes Termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro da comarca de Santa Maria, Estado do Rio Grande do Sul, para dirimir quaisquer controvérsias decorrentes destes Termos. Nada nestes Termos afasta os direitos que o usuário consumidor tenha pelas normas obrigatórias do seu país de residência, inclusive o direito de propor ação no foro do seu domicílio quando a lei assim garantir.</p>
 
-    <h2>12. Alterações nos Termos</h2>
-    <p>O GDrums pode alterar estes Termos a qualquer momento. As alterações serão comunicadas por meio da Plataforma ou por e-mail. O uso continuado após a notificação constitui aceitação dos novos termos. As alterações não reduzirão os direitos essenciais do Plano Vitalício já contratado, especialmente o pagamento único, a ausência de cobranças recorrentes e o acesso pela vida útil da Plataforma.</p>
+      <h2>14. Idiomas</h2>
+      <p>Estes Termos estão disponíveis em português, espanhol e inglês. Em caso de divergência entre as versões, prevalece a versão em português, salvo quando a lei do país do usuário exigir o contrário.</p>
 
-    <h2>13. Legislação e Foro</h2>
-    <p>Estes Termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro da comarca de Santa Maria, Estado do Rio Grande do Sul, para dirimir quaisquer controvérsias decorrentes destes Termos, com renúncia a qualquer outro, por mais privilegiado que seja.</p>
+      <h2>15. Contato</h2>
+      <p>Para dúvidas, sugestões ou reclamações, entre em contato:</p>
+      <ul>
+        <li>E-mail: <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a></li>
+        <li>Website: <a href="https://gdrums.com.br">gdrums.com.br</a></li>
+      </ul>
+    </article>
 
-    <h2>14. Contato</h2>
-    <p>Para dúvidas, sugestões ou reclamações, entre em contato:</p>
-    <ul>
-      <li>E-mail: <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a></li>
-      <li>Website: <a href="https://gdrums.com.br">gdrums.com.br</a></li>
-    </ul>
+    <!-- ═══════════════════════════ ESPAÑOL ═══════════════════════════ -->
+    <article data-lang="es" lang="es" data-title="Términos de Uso | GDrums" data-back="&larr; Volver" hidden>
+      <div class="legal-header" style="border:0;padding:0;margin-bottom:1.5rem;">
+        <h1>Términos de Uso</h1>
+        <p>Última actualización: 17 de septiembre de 2026</p>
+      </div>
+
+      <h2>1. Aceptación de los Términos</h2>
+      <p>Al acceder, registrarte o usar el sitio o las aplicaciones de GDrums ("Plataforma"), operados por GDrums LTDA ("GDrums", "nosotros"), aceptas íntegramente estos Términos de Uso. Si no estás de acuerdo, no uses la Plataforma.</p>
+
+      <h2>2. Descripción del Servicio</h2>
+      <p>GDrums es una plataforma digital de acompañamiento musical que ofrece secuenciación de ritmos profesionales para presentaciones en vivo y ensayos. El servicio incluye biblioteca de ritmos, control con pedal Bluetooth, repertorio personalizado, modo sin conexión y actualizaciones periódicas de contenido.</p>
+
+      <h2>3. Registro y Cuenta</h2>
+      <h3>3.1 Requisitos</h3>
+      <p>Para usar la Plataforma debes tener al menos 18 años o contar con la autorización de tu representante legal. El registro exige información verdadera y actualizada: nombre, correo electrónico, contraseña y país. Para cuentas de Brasil también se exige el CPF. El teléfono (WhatsApp) es opcional. Fuera de Brasil, la cuenta se habilita solo después de confirmar el correo electrónico.</p>
+      <h3>3.2 Responsabilidad de la Cuenta</h3>
+      <p>Eres el único responsable de mantener la confidencialidad de tus credenciales. Toda actividad realizada en tu cuenta será tu responsabilidad. Avísanos de inmediato si detectas un uso no autorizado.</p>
+      <h3>3.3 Cuenta Única</h3>
+      <p>Cada persona puede tener una sola cuenta activa. Crear varias cuentas para obtener beneficios repetidos (como períodos de prueba) infringe estos Términos y resultará en la suspensión permanente.</p>
+
+      <h2>4. Planes y Pago</h2>
+      <h3>4.1 Período de Prueba</h3>
+      <p>Los usuarios nuevos pueden recibir un período de prueba gratuito, según disponibilidad. Se limita a uno por persona (en Brasil, identificada por el CPF; en los demás países, por los medios de verificación de la Plataforma). Al finalizar la prueba, el acceso se restringe hasta contratar un plan pago.</p>
+      <h3>4.2 Suscripción</h3>
+      <p>Los planes se ofrecen en modalidades mensual, trimestral, semestral, anual, plurianual y, cuando esté disponible, vitalicia (cláusula 4.6), con precios y condiciones informados en la página de planes. La disponibilidad de cada plan puede variar según el país y la tienda de aplicaciones. Los precios pueden cambiar con 30 días de aviso previo.</p>
+      <h3>4.3 Pago</h3>
+      <p>Los pagos los procesan proveedores autorizados: en el sitio, InfinitePay; en la aplicación para iOS, Apple (App Store), según la cláusula 4.7. GDrums no almacena datos de tarjetas. Los cargos por cuotas, intereses o conversión de moneda son responsabilidad del usuario ante el emisor de la tarjeta.</p>
+      <h3>4.4 Cancelación</h3>
+      <p>No hay penalización por cancelar. El acceso sigue activo hasta el final del período ya pagado. No hay reembolso proporcional por el período no utilizado, salvo en los casos previstos por el Código de Defensa del Consumidor de Brasil (Ley 8.078/90) o por la legislación de protección al consumidor aplicable en tu país.</p>
+      <h3>4.5 Cupones y Promociones</h3>
+      <p>Los cupones de descuento son personales e intransferibles y valen según las condiciones de cada promoción. El uso indebido de cupones puede resultar en la cancelación de la suscripción.</p>
+      <h3>4.6 Plan Vitalicio</h3>
+      <p>El Plan Vitalicio, cuando se ofrece, se contrata con un pago único, sin mensualidades ni renovaciones. "Vitalicio" se refiere a la vida útil de la Plataforma y no a la vida del titular: el acceso está garantizado mientras GDrums mantenga la Plataforma en funcionamiento.</p>
+      <ul>
+        <li><strong>Qué incluye:</strong> acceso a la Plataforma con las mismas funciones, ritmos y actualizaciones que reciben los suscriptores de planes pagos. No incluye productos o servicios distintos lanzados por separado, servicios de terceros ni equipos (como pedales Bluetooth).</li>
+        <li><strong>Personal e intransferible:</strong> el plan está vinculado a una sola cuenta y al documento del titular, y no puede venderse, cederse, transferirse, dividirse ni compartirse. Se aplican íntegramente las cláusulas 3 y 5.</li>
+        <li><strong>Derecho de desistimiento:</strong> en compras realizadas fuera de un establecimiento comercial, el titular puede desistir dentro de los 7 (siete) días siguientes a la compra, con reembolso total, según el art. 49 del Código de Defensa del Consumidor de Brasil, sin perjuicio de derechos más amplios previstos en la ley de su país.</li>
+        <li><strong>Contracargo e impugnación:</strong> cancelar, revertir o impugnar el pago ante el medio de pago pone fin al acceso vinculado al plan.</li>
+        <li><strong>Terminación por incumplimiento:</strong> el plan puede terminarse en los casos de la cláusula 11, sin reembolso. Salvo fraude, intrusión o actividad ilícita, que permiten la suspensión inmediata, el titular será notificado previamente y podrá dar explicaciones en un plazo de 5 (cinco) días.</li>
+        <li><strong>Continuidad del servicio:</strong> si GDrums decide cerrar definitivamente la Plataforma, avisará a los titulares con al menos 90 (noventa) días de anticipación, período en el que el acceso seguirá activo.</li>
+        <li><strong>Condiciones comerciales:</strong> el precio, la disponibilidad y las condiciones del Plan Vitalicio pueden cambiar o descontinuarse para nuevas contrataciones en cualquier momento, sin afectar los planes ya adquiridos.</li>
+      </ul>
+      <h3>4.7 Suscripciones en la App Store (iOS)</h3>
+      <ul>
+        <li>El importe se cobra en tu cuenta de Apple ID al confirmar la compra, en la moneda y con los impuestos definidos por la App Store para tu país.</li>
+        <li>La suscripción se renueva automáticamente por el mismo período y precio, salvo que desactives la renovación automática al menos 24 horas antes del final del período actual.</li>
+        <li>El cobro de la renovación se realiza dentro de las 24 horas previas al final del período actual.</li>
+        <li>Puedes gestionar o cancelar la suscripción en Ajustes del dispositivo, tu nombre, Suscripciones. La cancelación rige a partir del siguiente período.</li>
+        <li>Las solicitudes de reembolso de compras en la App Store las evalúa Apple según sus reglas (<a href="https://reportaproblem.apple.com" target="_blank" rel="noopener">reportaproblem.apple.com</a>).</li>
+        <li>Para compras en la App Store también se aplican los <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener">Términos de Uso estándar de Apple (EULA)</a>.</li>
+      </ul>
+
+      <h2>5. Uso Permitido</h2>
+      <p>La Plataforma es solo para el uso personal y profesional del usuario registrado, con fines de acompañamiento musical. Está prohibido:</p>
+      <ul>
+        <li>Compartir las credenciales de acceso con terceros</li>
+        <li>Usar la Plataforma al mismo tiempo en más de un dispositivo</li>
+        <li>Copiar, distribuir, modificar o aplicar ingeniería inversa al software</li>
+        <li>Extraer, copiar o redistribuir los ritmos, samples o contenidos de la biblioteca</li>
+        <li>Vender, cobrar u ofrecer la venta de ritmos, repertorios o cualquier contenido en la Comunidad GDrums, incluso mediante enlaces, datos de pago, catálogos o redirección a canales externos</li>
+        <li>Intentar acceder a áreas restringidas, sistemas internos o datos de otros usuarios</li>
+        <li>Usar automatizaciones, bots o scripts para interactuar con la Plataforma</li>
+        <li>Crear cuentas falsas o con datos de terceros</li>
+      </ul>
+
+      <h2>6. Comunidad GDrums</h2>
+      <p>La Comunidad GDrums (<a href="https://comunidade.gdrums.com.br">comunidade.gdrums.com.br</a>) es un espacio de la Plataforma donde los usuarios comparten, de forma voluntaria y gratuita, los ritmos y repertorios que crearon.</p>
+      <h3>6.1 La Comunidad es gratuita</h3>
+      <p>Todo lo publicado en la Comunidad está disponible sin costo para los demás usuarios. Está prohibido vender, cobrar u obtener cualquier ventaja económica por el contenido publicado u ofrecido allí, incluido anunciar catálogos pagos, publicar datos o enlaces de pago y usar la Comunidad para captar clientes y vender por canales externos.</p>
+      <h3>6.2 Consecuencia</h3>
+      <p>Vender u ofrecer ventas en la Comunidad implica el cierre definitivo de la cuenta, sin reembolso del período restante de la suscripción, además de la eliminación del contenido publicado.</p>
+      <h3>6.3 Contenido publicado por el usuario</h3>
+      <p>Al publicar, el usuario declara ser autor del contenido o tener autorización para compartirlo, y otorga a GDrums y a los demás usuarios una licencia gratuita y no exclusiva para usarlo dentro de la Plataforma. Esta licencia no transfiere la titularidad ni autoriza su comercialización. GDrums puede eliminar en cualquier momento el contenido que infrinja estos Términos o la finalidad de la Comunidad.</p>
+
+      <h2>7. Propiedad Intelectual</h2>
+      <p>Todo el contenido de la Plataforma, incluidos, entre otros, el software, los ritmos, los samples de audio, el diseño, la marca, el logotipo y los textos, es propiedad exclusiva de GDrums o de sus licenciantes, y está protegido por la legislación brasileña de derechos de autor (Ley 9.610/98) y de propiedad industrial (Ley 9.279/96), y por los tratados internacionales aplicables.</p>
+      <p>La suscripción otorga al usuario una licencia limitada, no exclusiva, intransferible y revocable para el uso personal del contenido, únicamente dentro de la Plataforma.</p>
+
+      <h2>8. Programa de Afiliados</h2>
+      <p>GDrums ofrece un programa de afiliados por invitación. Los afiliados reciben una comisión por las ventas realizadas con su cupón exclusivo, según el porcentaje definido al registrarse. Las comisiones se pagan según la política vigente. GDrums puede suspender o finalizar la participación de afiliados en cualquier momento.</p>
+
+      <h2>9. Disponibilidad y Soporte</h2>
+      <p>GDrums se esfuerza por mantener la Plataforma disponible sin interrupciones, pero no garantiza una disponibilidad continua. Pueden ocurrir interrupciones por mantenimiento, actualizaciones o factores fuera de nuestro control. El soporte se brinda por correo electrónico y WhatsApp en horario comercial (hora de Brasilia).</p>
+
+      <h2>10. Limitación de Responsabilidad</h2>
+      <p>GDrums no se responsabiliza por:</p>
+      <ul>
+        <li>Daños indirectos, incidentales o consecuentes derivados del uso de la Plataforma</li>
+        <li>Fallas de conexión a internet, dispositivos o sistemas operativos del usuario</li>
+        <li>Incompatibilidad con dispositivos o periféricos específicos (incluidos pedales Bluetooth)</li>
+        <li>Pérdida de datos almacenados localmente en el dispositivo del usuario</li>
+        <li>Uso de la Plataforma en desacuerdo con estos Términos</li>
+      </ul>
+      <p>La responsabilidad total de GDrums se limita, en cualquier caso, al importe pagado por el usuario en los últimos 12 meses o, en el caso del Plan Vitalicio, al importe pagado por el plan, en la medida permitida por la ley aplicable.</p>
+
+      <h2>11. Suspensión y Cierre</h2>
+      <p>GDrums puede suspender o cerrar cuentas que infrinjan estos Términos, sin aviso previo y sin reembolso, salvo el procedimiento de notificación de la cláusula 4.6 para el Plan Vitalicio, especialmente en casos de:</p>
+      <ul>
+        <li>Creación de varias cuentas</li>
+        <li>Uso de datos falsos o de terceros</li>
+        <li>Intento de fraude, intrusión o manipulación del sistema</li>
+        <li>Compartir credenciales</li>
+        <li>Extracción o redistribución de contenido</li>
+        <li>Venta, cobro u oferta de venta de contenido en la Comunidad GDrums, según la cláusula 6</li>
+      </ul>
+
+      <h2>12. Cambios en los Términos</h2>
+      <p>GDrums puede modificar estos Términos en cualquier momento. Los cambios se comunicarán a través de la Plataforma o por correo electrónico. Seguir usando la Plataforma después del aviso implica aceptar los nuevos términos. Los cambios no reducirán los derechos esenciales del Plan Vitalicio ya contratado, en especial el pago único, la ausencia de cobros recurrentes y el acceso durante la vida útil de la Plataforma.</p>
+
+      <h2>13. Ley Aplicable y Jurisdicción</h2>
+      <p>Estos Términos se rigen por las leyes de la República Federativa de Brasil, con jurisdicción en la comarca de Santa Maria, estado de Rio Grande do Sul. Nada en estos Términos limita los derechos que tengas como consumidor según las normas obligatorias de tu país de residencia, incluido el derecho a demandar ante los tribunales de tu domicilio cuando la ley lo garantice.</p>
+
+      <h2>14. Idiomas</h2>
+      <p>Estos Términos están disponibles en portugués, español e inglés. En caso de diferencias entre las versiones, prevalece la versión en portugués, salvo que la ley de tu país exija lo contrario.</p>
+
+      <h2>15. Contacto</h2>
+      <p>Para dudas, sugerencias o reclamos, contáctanos:</p>
+      <ul>
+        <li>Correo: <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a></li>
+        <li>Sitio: <a href="https://gdrums.com.br">gdrums.com.br</a></li>
+      </ul>
+    </article>
+
+    <!-- ═══════════════════════════ ENGLISH ═══════════════════════════ -->
+    <article data-lang="en" lang="en" data-title="Terms of Use | GDrums" data-back="&larr; Back" hidden>
+      <div class="legal-header" style="border:0;padding:0;margin-bottom:1.5rem;">
+        <h1>Terms of Use</h1>
+        <p>Last updated: September 17, 2026</p>
+      </div>
+
+      <h2>1. Acceptance of the Terms</h2>
+      <p>By accessing, signing up for or using the GDrums website or apps (the "Platform"), operated by GDrums LTDA ("GDrums", "we"), you fully agree to these Terms of Use. If you do not agree, do not use the Platform.</p>
+
+      <h2>2. The Service</h2>
+      <p>GDrums is a digital music accompaniment platform that provides professional rhythm sequencing for live performance and rehearsals. The service includes a rhythm library, Bluetooth pedal control, custom setlists, offline mode and regular content updates.</p>
+
+      <h2>3. Sign-up and Account</h2>
+      <h3>3.1 Requirements</h3>
+      <p>You must be at least 18 years old or have permission from a parent or guardian. Sign-up requires true and up-to-date information: name, email, password and country. Brazilian accounts also require a CPF (Brazilian tax ID). A phone number (WhatsApp) is optional. Outside Brazil, the account is activated only after you confirm your email.</p>
+      <h3>3.2 Account Responsibility</h3>
+      <p>You are solely responsible for keeping your login credentials confidential. You are responsible for all activity on your account. Let us know right away if you notice unauthorized use.</p>
+      <h3>3.3 One Account per Person</h3>
+      <p>Each person may have only one active account. Creating multiple accounts to get repeated benefits (such as free trials) violates these Terms and will result in a permanent ban.</p>
+
+      <h2>4. Plans and Payment</h2>
+      <h3>4.1 Free Trial</h3>
+      <p>New users may get a free trial, subject to availability. The trial is limited to one per person (in Brazil, identified by CPF; elsewhere, by the Platform's verification methods). When the trial ends, access is restricted until you buy a paid plan.</p>
+      <h3>4.2 Subscription</h3>
+      <p>Plans are offered as monthly, quarterly, semiannual, annual, multi-year and, when available, lifetime (clause 4.6), with prices and conditions shown on the plans page. Plan availability may vary by country and app store. Prices may change with 30 days' notice.</p>
+      <h3>4.3 Payment</h3>
+      <p>Payments are processed by authorized providers: on the website, by InfinitePay; in the iOS app, by Apple (App Store), as described in clause 4.7. GDrums does not store card data. Any installment, interest or currency conversion fees are between you and your card issuer.</p>
+      <h3>4.4 Cancellation</h3>
+      <p>There is no cancellation fee. Access remains active until the end of the period already paid. There are no prorated refunds for unused time, except as required by the Brazilian Consumer Protection Code (Law 8,078/90) or by the consumer protection laws that apply in your country.</p>
+      <h3>4.5 Coupons and Promotions</h3>
+      <p>Discount coupons are personal and non-transferable, and are valid under the specific terms of each promotion. Misuse of coupons may result in cancellation of the subscription.</p>
+      <h3>4.6 Lifetime Plan</h3>
+      <p>The Lifetime Plan, when offered, is purchased with a single payment, with no monthly fees or renewals. "Lifetime" refers to the lifetime of the Platform, not of the account holder: access is guaranteed for as long as GDrums keeps the Platform running.</p>
+      <ul>
+        <li><strong>What is included:</strong> access to the Platform with the same features, rhythms and updates available to paid subscribers. Separately launched products or services, third-party services and equipment (such as Bluetooth pedals) are not included.</li>
+        <li><strong>Personal and non-transferable:</strong> the plan is tied to a single account and to the holder's ID, and may not be sold, assigned, transferred, split or shared. Clauses 3 and 5 apply in full.</li>
+        <li><strong>Right of withdrawal:</strong> for purchases made outside a physical store, the holder may cancel within 7 (seven) days of purchase for a full refund, under article 49 of the Brazilian Consumer Protection Code, without prejudice to broader rights under the law of your country.</li>
+        <li><strong>Chargebacks and disputes:</strong> canceling, reversing or disputing the payment with the payment provider ends the access tied to the plan.</li>
+        <li><strong>Termination for breach:</strong> the plan may be terminated in the cases listed in clause 11, without refund. Except for fraud, intrusion or unlawful activity, which allow immediate suspension, the holder will be notified in advance and may respond within 5 (five) days.</li>
+        <li><strong>Service continuity:</strong> if GDrums decides to permanently shut down the Platform, holders will be notified at least 90 (ninety) days in advance, and access will remain active during that period.</li>
+        <li><strong>Commercial terms:</strong> the price, availability and offer terms of the Lifetime Plan may be changed or discontinued for new purchases at any time, without affecting plans already purchased.</li>
+      </ul>
+      <h3>4.7 App Store Subscriptions (iOS)</h3>
+      <ul>
+        <li>Payment is charged to your Apple ID account when you confirm the purchase, in the currency and with the taxes set by the App Store for your country.</li>
+        <li>Your subscription renews automatically for the same period and price unless auto-renew is turned off at least 24 hours before the end of the current period.</li>
+        <li>Your account is charged for renewal within 24 hours before the end of the current period.</li>
+        <li>You can manage or cancel your subscription in your device Settings, under your name, then Subscriptions. Cancellation takes effect from the next period.</li>
+        <li>Refund requests for App Store purchases are reviewed by Apple under its own rules (<a href="https://reportaproblem.apple.com" target="_blank" rel="noopener">reportaproblem.apple.com</a>).</li>
+        <li>App Store purchases are also subject to <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener">Apple's Standard License Agreement (EULA)</a>.</li>
+      </ul>
+
+      <h2>5. Permitted Use</h2>
+      <p>The Platform is intended solely for the personal and professional use of the registered user for music accompaniment. You may not:</p>
+      <ul>
+        <li>Share your login credentials with others</li>
+        <li>Use the Platform on more than one device at the same time</li>
+        <li>Copy, distribute, modify or reverse engineer the software</li>
+        <li>Extract, copy or redistribute the library's rhythms, samples or content</li>
+        <li>Sell, charge for or offer to sell rhythms, setlists or any content in the GDrums Community, including through links, payment details, catalogs or redirection to outside channels</li>
+        <li>Try to access restricted areas, internal systems or other users' data</li>
+        <li>Use automation, bots or scripts to interact with the Platform</li>
+        <li>Create fake accounts or accounts with someone else's data</li>
+      </ul>
+
+      <h2>6. GDrums Community</h2>
+      <p>The GDrums Community (<a href="https://comunidade.gdrums.com.br">comunidade.gdrums.com.br</a>) is a space where users voluntarily share, for free, the rhythms and setlists they created.</p>
+      <h3>6.1 The Community is free</h3>
+      <p>Everything published in the Community is available at no cost to other users. It is forbidden to sell, charge for or gain any financial advantage from content published or offered there, including advertising paid catalogs, posting payment details or links, and using the Community to find customers and sell through outside channels.</p>
+      <h3>6.2 Consequence</h3>
+      <p>Selling or offering to sell in the Community leads to permanent account termination, with no refund of the remaining subscription period, and removal of the published content.</p>
+      <h3>6.3 User content</h3>
+      <p>By publishing, you state that you created the content or have permission to share it, and you grant GDrums and other users a free, non-exclusive license to use it within the Platform. This license does not transfer ownership or allow commercial use. GDrums may remove, at any time, content that violates these Terms or the purpose of the Community.</p>
+
+      <h2>7. Intellectual Property</h2>
+      <p>All Platform content, including but not limited to software, rhythms, audio samples, design, brand, logo and text, is the exclusive property of GDrums or its licensors and is protected by Brazilian copyright law (Law 9,610/98), industrial property law (Law 9,279/96) and applicable international treaties.</p>
+      <p>Your subscription grants you a limited, non-exclusive, non-transferable and revocable license for personal use of the content, only within the Platform.</p>
+
+      <h2>8. Affiliate Program</h2>
+      <p>GDrums offers an invitation-only affiliate program. Affiliates earn a commission on sales made with their exclusive coupon, at the rate set when they join. Commissions are paid under the current policy. GDrums may suspend or end an affiliate's participation at any time.</p>
+
+      <h2>9. Availability and Support</h2>
+      <p>GDrums works to keep the Platform available at all times but does not guarantee uninterrupted availability. Interruptions may happen due to maintenance, updates or factors beyond our control. Support is provided by email and WhatsApp during business hours (Brasília time).</p>
+
+      <h2>10. Limitation of Liability</h2>
+      <p>GDrums is not liable for:</p>
+      <ul>
+        <li>Indirect, incidental or consequential damages arising from use of the Platform</li>
+        <li>Failures of your internet connection, devices or operating systems</li>
+        <li>Incompatibility with specific devices or peripherals (including Bluetooth pedals)</li>
+        <li>Loss of data stored locally on your device</li>
+        <li>Use of the Platform in breach of these Terms</li>
+      </ul>
+      <p>GDrums' total liability is, in any case, limited to the amount you paid in the last 12 months or, for the Lifetime Plan, the amount paid for the plan, to the extent permitted by applicable law.</p>
+
+      <h2>11. Suspension and Termination</h2>
+      <p>GDrums may suspend or terminate accounts that violate these Terms, without notice and without refund, subject to the notice procedure in clause 4.6 for the Lifetime Plan, especially in cases of:</p>
+      <ul>
+        <li>Creating multiple accounts</li>
+        <li>Using false or third-party data</li>
+        <li>Attempted fraud, intrusion or tampering with the system</li>
+        <li>Sharing credentials</li>
+        <li>Extracting or redistributing content</li>
+        <li>Selling, charging for or offering to sell content in the GDrums Community, as described in clause 6</li>
+      </ul>
+
+      <h2>12. Changes to the Terms</h2>
+      <p>GDrums may change these Terms at any time. Changes will be announced through the Platform or by email. Continuing to use the Platform after notice means you accept the new terms. Changes will not reduce the essential rights of a Lifetime Plan already purchased, especially the single payment, the absence of recurring charges and access for the lifetime of the Platform.</p>
+
+      <h2>13. Governing Law and Jurisdiction</h2>
+      <p>These Terms are governed by the laws of the Federative Republic of Brazil, with jurisdiction in the district of Santa Maria, state of Rio Grande do Sul. Nothing in these Terms limits the rights you have as a consumer under the mandatory laws of your country of residence, including the right to bring a claim in the courts where you live when the law guarantees it.</p>
+
+      <h2>14. Languages</h2>
+      <p>These Terms are available in Portuguese, Spanish and English. If the versions differ, the Portuguese version prevails, unless the law of your country requires otherwise.</p>
+
+      <h2>15. Contact</h2>
+      <p>For questions, suggestions or complaints, contact us:</p>
+      <ul>
+        <li>Email: <a href="mailto:contato@gdrums.com.br">contato@gdrums.com.br</a></li>
+        <li>Website: <a href="https://gdrums.com.br">gdrums.com.br</a></li>
+      </ul>
+    </article>
 
     <div class="legal-footer">
-      <p>&copy; 2026 GDrums. Todos os direitos reservados.</p>
+      <p>&copy; 2026 GDrums. Todos os direitos reservados. All rights reserved.</p>
       <p style="margin-top:0.5rem;">Pra honra e glória de Deus</p>
     </div>
   </div>
+
+  <script>
+    // Idioma: ?lang= > escolha salva no app (gdrums-locale) > idioma do aparelho > inglês.
+    (function () {
+      var map = { 'pt-BR': 'pt', 'es-419': 'es', 'en': 'en' };
+      var lang = '';
+      try { lang = (new URLSearchParams(location.search).get('lang') || '').slice(0, 2).toLowerCase(); } catch (e) {}
+      if (['pt', 'es', 'en'].indexOf(lang) < 0) {
+        try { lang = map[localStorage.getItem('gdrums-locale')] || ''; } catch (e) {}
+      }
+      if (!lang) {
+        var nav = (navigator.language || '').toLowerCase();
+        lang = nav.indexOf('pt') === 0 ? 'pt' : nav.indexOf('es') === 0 ? 'es' : 'en';
+      }
+      var shown = null;
+      document.querySelectorAll('article[data-lang]').forEach(function (a) {
+        var on = a.getAttribute('data-lang') === lang;
+        a.hidden = !on;
+        if (on) shown = a;
+      });
+      if (!shown) return;
+      document.documentElement.lang = shown.getAttribute('lang');
+      document.title = shown.getAttribute('data-title');
+      var back = document.getElementById('legalBack');
+      if (back) back.innerHTML = shown.getAttribute('data-back');
+      document.querySelectorAll('[data-lang-link]').forEach(function (l) {
+        l.setAttribute('aria-current', l.getAttribute('data-lang-link') === lang ? 'true' : 'false');
+      });
+    })();
+  </script>
 </body>
 </html>
