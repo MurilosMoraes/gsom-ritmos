@@ -5,13 +5,16 @@
 // ativa assinatura no gdrums_profiles + insere tx em gdrums_transactions.
 //
 // v2 (2026-06-05): dispara Meta CAPI Purchase server-side.
-// v5 (2026-09-17):
+// v6 (2026-09-17):
 //  - ASSINATURA da Apple conferida (_shared/appleJws.ts). Até a v4 o JWS
 //    só era decodificado: qualquer um montava um JWS falso (ou mandava só
-//    transactionId, sem JWS) e ganhava plano pago. Nesta versão o
-//    resultado vai pro log "iap_check" e NÃO bloqueia ainda
-//    (ENFORCE_SIGNATURE=false): primeiro confirmar nas compras reais que
-//    todas passam; aí a v6 liga a trava.
+//    transactionId, sem JWS) e ganhava plano pago.
+//  - Pedido forjado na cara (sem JWS, sem cadeia x5c, raiz que não é a da
+//    Apple) é RECUSADO agora — nenhum cliente legítimo cai nesses casos.
+//  - Cadeia completa com assinatura que não fecha: por ora só vai pro log
+//    "iap_check" (ENFORCE_SIGNATURE=false), pra não recusar compra real por
+//    algum detalhe de certificado ainda não visto em produção. Vira true
+//    quando as compras reais aparecerem no log com sig_ok true.
 //  - SEM Meta CAPI: mandar e-mail/telefone de compra feita no app iOS
 //    pra Meta é rastreamento pra Apple (exige ATT). O app também não
 //    carrega mais o Pixel no iOS.
@@ -25,8 +28,22 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://qsfziivubwdgtmwyzt
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const EXPECTED_BUNDLE_ID = "com.gdrums.app";
 
-// false = só registra o resultado da assinatura (log iap_check).
-// true  = compra sem JWS válido da Apple é recusada.
+// Motivos que NUNCA vêm da Apple. Em iOS 15+ (mínimo do app) toda compra
+// e todo restore trazem o JWS do StoreKit 2 com a cadeia de 3 certificados
+// terminando na raiz da Apple. Cair aqui é pedido forjado: recusa na hora.
+const NUNCA_VEM_DA_APPLE = new Set([
+  "sem_jws",
+  "formato",
+  "alg",
+  "x5c",
+  "raiz_nao_apple",
+  "intermediario_sem_oid",
+  "folha_sem_oid",
+]);
+
+// Cadeia completa mas assinatura/validade não fecharam: por ora só registra
+// (log iap_check). Vira true depois que as compras reais aparecerem no log
+// com sig_ok true — aí nenhum caminho sem assinatura da Apple ativa plano.
 const ENFORCE_SIGNATURE = false;
 
 const PRODUCT_TO_PLAN: Record<string, string> = {
@@ -175,10 +192,12 @@ serve(async (req) => {
     const signature = jws
       ? await verifyAppleJws<DecodedTransaction>(jws)
       : { ok: false as const, reason: "sem_jws", payload: undefined };
+    // Forjado na cara: recusa sempre. O resto respeita a flag.
+    const forjado = !signature.ok && NUNCA_VEM_DA_APPLE.has(signature.reason);
     // Com a trava ligada, só vale o que a Apple assinou.
-    const decoded = ENFORCE_SIGNATURE
-      ? (signature.ok ? signature.payload : null)
-      : (jws ? decodeJws(jws) : null);
+    const decoded = signature.ok
+      ? signature.payload
+      : (ENFORCE_SIGNATURE || forjado ? null : (jws ? decodeJws(jws) : null));
     console.log(JSON.stringify({
       tag: "iap_check",
       enforce: ENFORCE_SIGNATURE,
@@ -191,8 +210,9 @@ serve(async (req) => {
       has_token: !!signature.payload?.appAccountToken,
       token_match: signature.payload?.appAccountToken ? signature.payload.appAccountToken === userId : null,
       product_match: signature.payload ? signature.payload.productId === productId : null,
+      forjado,
     }));
-    if (ENFORCE_SIGNATURE && !signature.ok) {
+    if (forjado || (ENFORCE_SIGNATURE && !signature.ok)) {
       return jsonResponse({ success: false, error: "Compra não confirmada pela Apple" }, 400);
     }
 

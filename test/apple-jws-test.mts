@@ -46,7 +46,7 @@ check('alg diferente de ES256', await verifyAppleJws(await makeJws(tx, { alg: 'n
 check('assinado em 2090 (certificado vencido)', await verifyAppleJws(await makeJws({ ...tx, signedDate: Date.UTC(2090, 0, 1) }), { rootB64: ROOT }), false, 'certificado_fora_da_validade');
 check('assinado em 2000 (antes da emissão)', await verifyAppleJws(await makeJws({ ...tx, signedDate: Date.UTC(2000, 0, 1) }), { rootB64: ROOT }), false, 'certificado_fora_da_validade');
 check('lixo', await verifyAppleJws('abc', { rootB64: ROOT }), false, 'formato');
-check('três partes sem sentido', await verifyAppleJws('a.b.c', { rootB64: ROOT }), false);
+check('três partes sem sentido ("a.b.c")', await verifyAppleJws('a.b.c', { rootB64: ROOT }), false, 'formato');
 check('não é string', await verifyAppleJws(undefined as unknown as string), false, 'formato');
 const legacyNone = `${b64url(JSON.stringify({ alg: 'ES256' }))}.${b64url(JSON.stringify(tx))}.`;
 check('JWS "decodificável" sem cadeia (o que a v4 aceitava)', await verifyAppleJws(legacyNone), false, 'x5c');

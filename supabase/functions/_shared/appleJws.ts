@@ -206,6 +206,10 @@ export async function verifyAppleJws<T = Record<string, unknown>>(
     if (!valid) return { ok: false, reason: "assinatura", payload };
     return { ok: true, payload };
   } catch (e) {
+    // Sem payload = nem o cabeçalho/corpo em base64 abriu: é lixo, não é
+    // token da Apple mal-assinado. Vale como "formato" (motivo que o
+    // apple-iap-verify recusa na hora).
+    if (payload === undefined) return { ok: false, reason: "formato" };
     return { ok: false, reason: "erro:" + String((e as Error)?.message || e).slice(0, 60), payload };
   }
 }
