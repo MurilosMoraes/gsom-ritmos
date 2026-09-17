@@ -8,6 +8,8 @@
 // Disparar SÓ quando a conta foi realmente criada (sucesso do cadastro),
 // não em todo submit — senão infla Lead com tentativa que falhou.
 
+import { isIOSNative } from '../native/Platform';
+
 const CAPI_ENDPOINT = 'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/capi-lead';
 const CAPI_PURCHASE_ENDPOINT = 'https://qsfziivubwdgtmwyztfw.supabase.co/functions/v1/capi-purchase';
 
@@ -32,6 +34,9 @@ function readCookie(name: string): string | undefined {
  * Nunca lança — tracking não pode quebrar o cadastro.
  */
 export function trackLead(opts?: { email?: string; phone?: string }): void {
+  // App iOS: nada vai pra Meta (nem Pixel nem CAPI). Seria rastreamento
+  // sem o pedido de permissão da Apple (ATT).
+  if (isIOSNative()) return;
   try {
     const eventId =
       (crypto as Crypto & { randomUUID?: () => string }).randomUUID?.() ||
@@ -89,6 +94,7 @@ export function trackPurchase(opts: {
   email?: string;
   phone?: string;
 }): void {
+  if (isIOSNative()) return; // mesmo motivo do trackLead
   try {
     const eventId =
       opts.eventId ||

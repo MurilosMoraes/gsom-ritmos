@@ -1,42 +1,34 @@
 // apple-iap-verify
 // =================================================================
-// Recebe o JWS (StoreKit 2) ou receipt (StoreKit 1 fallback) que o
-// cliente iOS recebeu da Apple após uma compra, valida com a Apple,
-// e ativa a assinatura no gdrums_profiles + insere registro em
-// gdrums_transactions.
+// Recebe JWS (StoreKit 2) ou receipt (SK1 fallback) do cliente iOS,
+// valida campos críticos (bundleId, productId, appAccountToken),
+// ativa assinatura no gdrums_profiles + insere tx em gdrums_transactions.
 //
-// Estratégia: validação LOCAL do JWS via App Store Server API
-// (usando o endpoint /inApps/v1/transactions/{transactionId} que
-// retorna o JWS assinado pela Apple — se bate com o que veio do
-// cliente, é genuíno). Como ainda não temos a chave privada da
-// Apple Connect (precisa criar em ASC → Users → Keys → In-App
-// Purchase), fazemos verificação por DECODE+CHECK de campos
-// críticos (bundleId, productId, expiresDate, environment) +
-// idempotência por transactionId. Isso é seguro o suficiente
-// para MVP — a Apple só assina JWS pra compras reais; cliente
-// não tem como falsificar sem private key da Apple.
-//
-// FUTURO (recomendado): trocar por chamada à App Store Server API
-// com JWT assinado (Auth Key .p8 do ASC). Aí valida assinatura
-// bate-bate certinho. Mas requer setup adicional.
-//
-// Doc: https://developer.apple.com/documentation/appstoreserverapi
+// v2 (2026-06-05): dispara Meta CAPI Purchase server-side.
+// v5 (2026-09-17):
+//  - ASSINATURA da Apple conferida (_shared/appleJws.ts). Até a v4 o JWS
+//    só era decodificado: qualquer um montava um JWS falso (ou mandava só
+//    transactionId, sem JWS) e ganhava plano pago. Nesta versão o
+//    resultado vai pro log "iap_check" e NÃO bloqueia ainda
+//    (ENFORCE_SIGNATURE=false): primeiro confirmar nas compras reais que
+//    todas passam; aí a v6 liga a trava.
+//  - SEM Meta CAPI: mandar e-mail/telefone de compra feita no app iOS
+//    pra Meta é rastreamento pra Apple (exige ATT). O app também não
+//    carrega mais o Pixel no iOS.
 // =================================================================
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAppleJws } from "../_shared/appleJws.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://qsfziivubwdgtmwyztfw.supabase.co";
-// Service role injetada pelo Supabase Functions runtime via env var
-// SUPABASE_SERVICE_ROLE_KEY. Nunca commitar valor real no repo.
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-
-// IMPORTANTE: trocar pelo bundleId real do app iOS quando confirmar
-// no Xcode. Hoje o capacitor.config.ts diz com.gdrums.app.
 const EXPECTED_BUNDLE_ID = "com.gdrums.app";
 
-// Mapping de productId Apple → planId interno do GDrums.
-// Tem que bater EXATAMENTE com src/native/IAPService.ts.
+// false = só registra o resultado da assinatura (log iap_check).
+// true  = compra sem JWS válido da Apple é recusada.
+const ENFORCE_SIGNATURE = false;
+
 const PRODUCT_TO_PLAN: Record<string, string> = {
   "com.gdrums.app.mensal": "mensal",
   "com.gdrums.app.trimestral": "trimestral",
@@ -45,17 +37,21 @@ const PRODUCT_TO_PLAN: Record<string, string> = {
   "com.gdrums.app.reidospalcos": "rei-dos-palcos",
 };
 
-// Duração padrão de cada plano (fallback caso Apple não envie expiresDate).
 const PLAN_DURATIONS: Record<string, number> = {
-  mensal: 1,
-  trimestral: 3,
-  semestral: 6,
-  anual: 12,
-  "rei-dos-palcos": 36,
+  mensal: 1, trimestral: 3, semestral: 6, anual: 12, "rei-dos-palcos": 36,
 };
 
-// Discord webhook injetado via env var. Setar em Supabase Dashboard →
-// Edge Functions → Secrets como DISCORD_WEBHOOK_URL.
+// Preços em centavos (R$) — mesmos dos planos web.
+// Sandbox tem preço $0 no JWS, então usamos o preço oficial pra registrar
+// o valor da transação.
+const PLAN_PRICES_CENTS: Record<string, number> = {
+  mensal: 2900,
+  trimestral: 8100,
+  semestral: 14400,
+  anual: 22800,
+  "rei-dos-palcos": 52200,
+};
+
 const DISCORD_WEBHOOK = Deno.env.get("DISCORD_WEBHOOK_URL") || "";
 
 const corsHeaders = {
@@ -84,12 +80,8 @@ interface DecodedTransaction {
   appAccountToken?: string;
   webOrderLineItemId?: string;
   type?: string;
+  signedDate?: number;
 }
-
-// ─── Decode JWS sem validar assinatura ─────────────────────────────────
-// Apenas decodifica o payload pra extrair os campos. Usado pra ler
-// transactionId, productId, expiresDate, etc. A "validação" real é
-// feita verificando que bundleId/productId batem + idempotência.
 
 function base64UrlDecode(str: string): string {
   const pad = str.length % 4;
@@ -109,8 +101,6 @@ function decodeJws(jws: string): DecodedTransaction | null {
   }
 }
 
-// ─── Validar transação ─────────────────────────────────────────────────
-
 interface ValidationResult {
   valid: boolean;
   reason?: string;
@@ -122,61 +112,27 @@ function validateTransaction(
   expectedProductId: string,
   expectedUserId: string,
 ): ValidationResult {
-  if (!decoded) {
-    return { valid: false, reason: "JWS não decodificável" };
-  }
-
-  // 1. bundleId DEVE ser o do nosso app (defesa contra outro app fazendo
-  // request pra essa fn com seu próprio JWS).
+  if (!decoded) return { valid: false, reason: "JWS não decodificável" };
   if (decoded.bundleId !== EXPECTED_BUNDLE_ID) {
-    return {
-      valid: false,
-      reason: `bundleId inválido: ${decoded.bundleId} (esperado: ${EXPECTED_BUNDLE_ID})`,
-    };
+    return { valid: false, reason: `bundleId inválido: ${decoded.bundleId}` };
   }
-
-  // 2. productId DEVE bater com o que o cliente disse comprar.
-  // Caso não bata, alguém tá tentando ativar plano caro com compra de
-  // plano barato.
   if (decoded.productId !== expectedProductId) {
-    return {
-      valid: false,
-      reason: `productId não bate: ${decoded.productId} ≠ ${expectedProductId}`,
-    };
+    return { valid: false, reason: `productId não bate: ${decoded.productId} ≠ ${expectedProductId}` };
   }
-
-  // 3. productId tem que estar na nossa lista (paranoia extra).
   if (!PRODUCT_TO_PLAN[decoded.productId]) {
-    return {
-      valid: false,
-      reason: `productId desconhecido: ${decoded.productId}`,
-    };
+    return { valid: false, reason: `productId desconhecido: ${decoded.productId}` };
   }
-
-  // 4. transactionId é obrigatório (idempotência).
-  if (!decoded.transactionId) {
-    return { valid: false, reason: "transactionId ausente" };
-  }
-
-  // 5. appAccountToken (opcional mas recomendado): se veio, deve ser o
-  // userId do cliente. Apple aceita qualquer UUID; usamos user.id pra
-  // correlacionar. Se não bater, é compra de outro user — não ativamos.
+  if (!decoded.transactionId) return { valid: false, reason: "transactionId ausente" };
   if (decoded.appAccountToken && decoded.appAccountToken !== expectedUserId) {
-    return {
-      valid: false,
-      reason: `appAccountToken não bate com userId logado`,
-    };
+    return { valid: false, reason: "appAccountToken não bate com userId logado" };
   }
-
   return { valid: true, decoded };
 }
-
-// ─── Discord notify ────────────────────────────────────────────────────
 
 async function notifyDiscord(
   fields: { user_email?: string; user_name?: string; planId: string; amount?: number; environment?: string; transactionId: string },
 ) {
-  if (!DISCORD_WEBHOOK) return; // env var não configurada — silencioso
+  if (!DISCORD_WEBHOOK) return;
   try {
     const amountRS = fields.amount ? `R$ ${(fields.amount / 100).toFixed(2)}` : "—";
     await fetch(DISCORD_WEBHOOK, {
@@ -201,8 +157,6 @@ async function notifyDiscord(
   } catch { /* best-effort */ }
 }
 
-// ─── Handler principal ────────────────────────────────────────────────
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -212,25 +166,39 @@ serve(async (req) => {
     const payload = (await req.json()) as VerifyRequest;
     const { planId, productId, jws, transactionId, userId } = payload;
 
-    if (!userId) {
-      return jsonResponse({ success: false, error: "userId ausente" }, 400);
-    }
-    if (!planId || !PLAN_DURATIONS[planId]) {
-      return jsonResponse({ success: false, error: "planId inválido" }, 400);
-    }
-    if (!productId) {
-      return jsonResponse({ success: false, error: "productId ausente" }, 400);
-    }
-    if (!jws && !transactionId) {
-      return jsonResponse({ success: false, error: "jws ou transactionId é obrigatório" }, 400);
+    if (!userId) return jsonResponse({ success: false, error: "userId ausente" }, 400);
+    if (!planId || !PLAN_DURATIONS[planId]) return jsonResponse({ success: false, error: "planId inválido" }, 400);
+    if (!productId) return jsonResponse({ success: false, error: "productId ausente" }, 400);
+    if (!jws && !transactionId) return jsonResponse({ success: false, error: "jws ou transactionId é obrigatório" }, 400);
+
+    // ─── Assinatura da Apple ───────────────────────────────
+    const signature = jws
+      ? await verifyAppleJws<DecodedTransaction>(jws)
+      : { ok: false as const, reason: "sem_jws", payload: undefined };
+    // Com a trava ligada, só vale o que a Apple assinou.
+    const decoded = ENFORCE_SIGNATURE
+      ? (signature.ok ? signature.payload : null)
+      : (jws ? decodeJws(jws) : null);
+    console.log(JSON.stringify({
+      tag: "iap_check",
+      enforce: ENFORCE_SIGNATURE,
+      plan: planId,
+      has_jws: !!jws,
+      has_receipt: !!payload.receipt,
+      sig_ok: signature.ok,
+      reason: signature.ok ? undefined : signature.reason,
+      environment: signature.payload?.environment,
+      has_token: !!signature.payload?.appAccountToken,
+      token_match: signature.payload?.appAccountToken ? signature.payload.appAccountToken === userId : null,
+      product_match: signature.payload ? signature.payload.productId === productId : null,
+    }));
+    if (ENFORCE_SIGNATURE && !signature.ok) {
+      return jsonResponse({ success: false, error: "Compra não confirmada pela Apple" }, 400);
     }
 
-    // ─── Decodificar e validar JWS ────────────────────────────────────
-    const decoded = jws ? decodeJws(jws) : null;
     const validation = validateTransaction(decoded, productId, userId);
 
     if (!validation.valid && decoded) {
-      // JWS chegou mas falhou validação — log e rejeita.
       console.warn("[apple-iap-verify] validation failed:", validation.reason, decoded);
       return jsonResponse({
         success: false,
@@ -238,8 +206,6 @@ serve(async (req) => {
       }, 400);
     }
 
-    // Se chegou JWS válido, prefere os dados dele (Apple-signed).
-    // Caso contrário, usa transactionId que veio do cliente.
     const finalTxId = validation.decoded?.transactionId || transactionId || "";
     const originalTxId = validation.decoded?.originalTransactionId || finalTxId;
     const environment = validation.decoded?.environment || "Production";
@@ -247,31 +213,27 @@ serve(async (req) => {
       ? new Date(validation.decoded.expiresDate)
       : null;
 
-    if (!finalTxId) {
-      return jsonResponse({ success: false, error: "transactionId não recuperado" }, 400);
-    }
+    if (!finalTxId) return jsonResponse({ success: false, error: "transactionId não recuperado" }, 400);
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // ─── Idempotência: já processamos esse transactionId? ─────────────
     const orderNsu = `apple_iap_${userId}_${planId}_${originalTxId}`;
     {
       const { data: existing } = await supabase
         .from("gdrums_transactions")
-        .select("id, status")
+        .select("id, status, event_id")
         .eq("order_nsu", orderNsu)
         .maybeSingle();
 
       if (existing?.status === "confirmed") {
-        // Apple às vezes manda a mesma compra 2x (retry, restore).
-        // Já está ativo — retorna sucesso sem fazer nada.
-        return jsonResponse({ success: true, idempotent: true });
+        return jsonResponse({
+          success: true,
+          idempotent: true,
+          event_id: existing.event_id,
+        });
       }
     }
 
-    // ─── Calcular validade da assinatura ──────────────────────────────
-    // Prefere expiresDate da Apple (correto pra renovação automática);
-    // se não veio (compra fresca), usa duração padrão do plano.
     const durationMonths = PLAN_DURATIONS[planId];
     const expiresAt = expiresFromApple || (() => {
       const d = new Date();
@@ -279,7 +241,6 @@ serve(async (req) => {
       return d;
     })();
 
-    // Sanity check: assinatura não pode expirar no passado.
     if (expiresAt.getTime() < Date.now()) {
       return jsonResponse({
         success: false,
@@ -287,7 +248,6 @@ serve(async (req) => {
       }, 400);
     }
 
-    // ─── Ativar profile ───────────────────────────────────────────────
     try {
       await supabase.from("gdrums_profiles").update({
         subscription_status: "active",
@@ -297,21 +257,22 @@ serve(async (req) => {
       }).eq("id", userId);
     } catch (e) {
       console.error("[apple-iap-verify] profile update falhou:", e);
-      // Continua mesmo assim — registro de transação é mais importante
-      // pra reconciliação manual depois.
     }
 
-    // ─── Inserir/atualizar transaction ────────────────────────────────
+    const planPriceCents = PLAN_PRICES_CENTS[planId] || 0;
+    const eventId = crypto.randomUUID();
+
     const txData = {
       user_id: userId,
       order_nsu: orderNsu,
       transaction_nsu: finalTxId,
       plan: planId,
-      amount_cents: 0, // Apple não envia preço no JWS — server pode buscar via App Store Server API se quiser
-      original_amount_cents: 0,
+      amount_cents: planPriceCents,
+      original_amount_cents: planPriceCents,
       status: "confirmed",
       payment_method: environment === "Sandbox" ? "apple_iap_sandbox" : "apple_iap",
       receipt_url: null,
+      event_id: eventId,
     };
 
     try {
@@ -332,25 +293,32 @@ serve(async (req) => {
       console.error("[apple-iap-verify] transaction insert falhou:", e);
     }
 
-    // ─── Notificar Discord (best-effort) ──────────────────────────────
+    // Nome e e-mail só pro aviso interno no Discord.
+    let userEmail = "";
+    let userName = "";
     try {
       const { data: profile } = await supabase
         .from("gdrums_profiles")
         .select("name")
         .eq("id", userId)
         .maybeSingle();
+      userName = profile?.name || "";
       const { data: userData } = await supabase.auth.admin.getUserById(userId);
+      userEmail = userData?.user?.email || "";
+    } catch { /* ok */ }
 
+    try {
       await notifyDiscord({
-        user_email: userData?.user?.email,
-        user_name: profile?.name,
+        user_email: userEmail,
+        user_name: userName,
         planId,
+        amount: planPriceCents,
         environment,
         transactionId: finalTxId,
       });
     } catch { /* best-effort */ }
 
-    return jsonResponse({ success: true });
+    return jsonResponse({ success: true, event_id: eventId });
   } catch (e) {
     console.error("[apple-iap-verify] error:", e);
     return jsonResponse({ success: false, error: String(e) }, 500);

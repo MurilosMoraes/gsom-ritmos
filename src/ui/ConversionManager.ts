@@ -28,6 +28,7 @@
 // Sempre espera o user parar OU trocar de ritmo OU ficar idle.
 
 import { gotoPlans } from '../native/Platform';
+import { applyMonthlyStorePrice } from '../native/storePriceLabel';
 import { awaitingAge, AWAITING_QUIET_MS } from '../auth/paymentSync';
 import { deviceStore } from '../auth/plansRouting';
 import { t } from '../i18n';
@@ -425,6 +426,11 @@ export class ConversionManager {
       </div>
     `;
     document.body.appendChild(overlay);
+    applyMonthlyStorePrice(
+      overlay.querySelector<HTMLElement>('.cv-price-block'),
+      overlay.querySelector<HTMLElement>('.cv-price-amount'),
+      price => price,
+    );
 
     this.injectCSS();
 

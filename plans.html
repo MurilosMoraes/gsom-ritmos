@@ -4,13 +4,17 @@
   <meta charset="UTF-8" />
   <!-- Meta Pixel -->
   <script>
-  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
-  (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-  fbq('init', '796553853446469');
-  fbq('track', 'PageView');
+  // App iOS (capacitor://): sem Pixel. Rastrear lá exige o pedido de
+  // permissão da Apple (ATT); sem ele o app é recusado na revisão.
+  if (location.protocol !== 'capacitor:') {
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
+    (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '796553853446469');
+    fbq('track', 'PageView');
+  }
   </script>
   <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=796553853446469&ev=PageView&noscript=1"/></noscript>
@@ -404,6 +408,7 @@
     .plan-price { display: flex; align-items: baseline; gap: 0.25rem; margin-bottom: 0.25rem; }
     .plan-currency { font-size: 1.05rem; font-weight: 600; color: var(--pl-text-2); }
     .plan-amount { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em; color: var(--pl-text); line-height: 1; }
+    .plan-price.is-store .plan-amount { font-size: 2rem; }
     .plan-period { font-size: 0.92rem; color: var(--pl-text-3); margin-left: 0.1rem; }
     .plan-total { font-size: 0.88rem; color: var(--pl-text-2); margin-bottom: 0.35rem; }
     .plan-savings {

@@ -13,6 +13,7 @@ import { AttributionService } from './native/AttributionService';
 import { RHYTHM_COUNT, LOCKED_RHYTHM_COUNT, updateRhythmCountInDom } from './utils/rhythmCount';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 import { isNativeApp, internalNav } from './native/Platform';
+import { applyMonthlyStorePrice } from './native/storePriceLabel';
 import { t, hydrate } from './i18n';
 import { injectLanguagePill } from './i18n/selector';
 
@@ -1244,7 +1245,7 @@ class DemoPlayer {
             <span class="demo-expired-offer-head">${t('demo.offer.head')}</span>
           </div>
           <div class="demo-expired-offer-sub">${t('demo.expired.offerSub')}</div>
-          <div class="demo-expired-offer-price">${t('demo.expired.offerPrice')}</div>
+          <div class="demo-expired-offer-price" id="demoOfferPrice">${t('demo.expired.offerPrice')}</div>
         </div>
         <!-- Campo inline de e-mail: reduz fricção do cadastro.
              O user digita aqui, a gente leva pro /register com o email
@@ -1268,6 +1269,8 @@ class DemoPlayer {
       </div>
     `;
     document.body.appendChild(overlay);
+    const offerPrice = overlay.querySelector<HTMLElement>('#demoOfferPrice');
+    applyMonthlyStorePrice(offerPrice, offerPrice, price => t('demo.expired.offerPriceStore', { price }));
 
     // Popular o carrossel com os ritmos bloqueados reais
     this.populateExpiredCatalog();

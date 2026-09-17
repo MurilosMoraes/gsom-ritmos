@@ -54,7 +54,10 @@ export function getPlanIdFromAppleProduct(productId: string): string | null {
 export interface IAPProductInfo {
   productId: string;
   planId: string;
+  /** Preço formatado pela App Store, na moeda da conta Apple ("US$ 4,99"). */
   priceString: string;
+  /** Mesmo preço em número (sem moeda), pra comparar planos. */
+  price?: number;
   title: string;
   description: string;
 }
@@ -89,7 +92,8 @@ export async function loadProducts(): Promise<IAPProductInfo[]> {
     return products.map(p => ({
       productId: p.identifier || p.productIdentifier || p.id,
       planId: getPlanIdFromAppleProduct(p.identifier || p.productIdentifier || p.id) || '',
-      priceString: p.priceString || p.price || '',
+      priceString: typeof p.priceString === 'string' ? p.priceString : '',
+      price: typeof p.price === 'number' && p.price > 0 ? p.price : undefined,
       title: p.title || '',
       description: p.description || '',
     })).filter(p => p.planId);
@@ -97,6 +101,26 @@ export async function loadProducts(): Promise<IAPProductInfo[]> {
     console.warn('[IAP] loadProducts falhou:', e);
     return [];
   }
+}
+
+let storePrices: Promise<Record<string, IAPProductInfo>> | null = null;
+
+/**
+ * Produtos da App Store por plano, com o preço que a Apple vai cobrar
+ * (cada país tem moeda e valor próprios; o preço em R$ do PLANS só vale
+ * pro site). Uma consulta por página; se a Apple não respondeu, a próxima
+ * chamada tenta de novo.
+ */
+export function getStorePrices(): Promise<Record<string, IAPProductInfo>> {
+  if (!storePrices) {
+    storePrices = loadProducts().then(list => {
+      const byPlan: Record<string, IAPProductInfo> = {};
+      for (const p of list) if (p.priceString) byPlan[p.planId] = p;
+      if (Object.keys(byPlan).length === 0) storePrices = null;
+      return byPlan;
+    });
+  }
+  return storePrices;
 }
 
 /**

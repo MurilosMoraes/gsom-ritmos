@@ -416,6 +416,18 @@ Todas moram em `src/auth/plansRouting.ts` (funções puras) e são cobertas por 
 - **Reconheceu** (validade andou ≥1h ou virou pago): atualiza cache offline, some com aviso de renovação e upsell, toast de confirmação. Se estava no aviso "assine no site" (Android), recarrega.
 - **Aviso de renovação/trial fica calado** se foi pagar há <30 min ou se o pedido pendente já tem `transaction_nsu` (`shouldSilenceRenewalNag`).
 
+### iOS fora do Brasil: preço da loja e nada de Meta
+- **Preço:** no iOS quem cobra é a Apple, na moeda do país da conta. A tela de planos esconde o preço até a App Store responder e mostra o `priceString` dela (`getStorePrices()` em `src/native/IAPService.ts`); a economia do plano longo é recalculada com esses valores (`src/auth/storePrice.ts`, `test/store-price-test.ts`). Sem resposta da Apple o cartão fica sem preço, nunca com R$. Mesma regra no aviso de assinatura e na demo (`src/native/storePriceLabel.ts`).
+- **Nunca escreva "R$" fixo** em texto que o app iOS mostra (i18n de plans/demo/ui). O site e o Android seguem em R$.
+- **Meta (Pixel e CAPI) desligados no iOS:** o snippet nos `.html` não roda em `capacitor:`, `metaTracking.ts` sai cedo no iOS nativo e `apple-iap-verify` não manda mais Purchase pro CAPI. Motivo: rastrear no app exige o pedido de permissão da Apple (ATT) e é motivo de rejeição. Se um dia quiser o Pixel no iOS, tem que implementar ATT antes.
+- **Arquivos nativos:** `Info.plist` com pt-BR/en/es e `ITSAppUsesNonExemptEncryption=false`; `PrivacyInfo.xcprivacy` e `*.lproj/InfoPlist.strings` (Face ID) registrados no `project.pbxproj`.
+
+### Compra da Apple (IAP): assinatura é conferida
+`supabase/functions/_shared/appleJws.ts` verifica o JWS da Apple com WebCrypto: cadeia x5c de 3, raiz igual byte a byte ao Apple Root CA G3, OIDs da Apple, validade na data da assinatura e assinatura da folha. Coberto por `npx tsx test/apple-jws-test.mts` (inclui o intermediário real WWDR G6).
+- Até a v4 o `apple-iap-verify` só DECODIFICAVA o JWS: dava pra ativar plano pago com JWS inventado, ou só com `transactionId`. Nenhuma das 130 compras Apple até 17/09/2026 tinha sinal disso (todos os ids no formato da Apple).
+- v5 (17/09/2026): confere e registra no log `iap_check`, **sem bloquear** (`ENFORCE_SIGNATURE=false`). Quando os logs mostrarem `sig_ok:true` nas compras reais, virar a flag (v6).
+- `apple-iap-webhook` ainda só decodifica as notificações da Apple: mesma correção pendente.
+
 ### SEO e landings em 3 idiomas
 - `landing.html` (pt-BR, /landing) é a FONTE. `landing-es.html` (/es) e `landing-en.html` (/en) são GERADAS por `node scripts/build-landing-i18n.mjs`: mesmo visual, sem preço em R$/Passe/WhatsApp BR, head e dados estruturados próprios. Mexeu na landing BR → rode o script (ele para com erro se algum trecho mudou).
 - As 3 se apontam por `hreflang` (x-default = /en) e estão no `public/sitemap.xml`.

@@ -5,7 +5,8 @@ import { supabase } from './supabase';
 import { PLANS, generateOrderNsu, createCheckoutLink } from './PaymentService';
 import type { Plan } from './PaymentService';
 import { internalNav, isIOSNative, appHome } from '../native/Platform';
-import { purchasePlan as iapPurchase, restorePurchases as iapRestore, loadProducts as iapLoadProducts } from '../native/IAPService';
+import { purchasePlan as iapPurchase, restorePurchases as iapRestore, getStorePrices } from '../native/IAPService';
+import { storeSavingsPercent } from './storePrice';
 import { redirectIfRecoveryHash } from './recoveryGuard';
 import { initDeepLinks } from '../native/DeepLinks';
 import { markAwaitingPayment } from './paymentSync';
@@ -223,7 +224,7 @@ class PlansPage {
     // Pré-carrega produtos da App Store em background pra acelerar o
     // primeiro tap (a Apple às vezes demora 1-2s na 1ª query).
     if (isIOSNative()) {
-      iapLoadProducts().catch(() => {});
+      getStorePrices().catch(() => {});
     }
   }
 
@@ -581,6 +582,33 @@ class PlansPage {
 
     // Assinatura da Apple com upgrade disponível: explica por que não tem "renovar".
     if (offer.appleManaged) grid.appendChild(this.noteBox(t('plans.apple.managed')));
+
+    this.fillStorePrices();
+  }
+
+  // iOS: preço e economia vêm da App Store (moeda e valor do país da conta
+  // Apple). Os cartões nascem com o preço escondido e aparecem quando a
+  // Apple responde. Sem resposta fica sem preço: a folha de compra da
+  // Apple mostra o valor antes de cobrar.
+  private fillStorePrices(): void {
+    if (!isIOSNative()) return;
+    getStorePrices().then(byPlan => {
+      const monthly = byPlan['mensal']?.price;
+      document.querySelectorAll<HTMLElement>('[data-iap-price]').forEach(el => {
+        const product = byPlan[el.dataset.iapPrice || ''];
+        const amount = el.querySelector('.plan-amount');
+        if (!product || !amount) return;
+        amount.textContent = product.priceString;
+        el.hidden = false;
+      });
+      document.querySelectorAll<HTMLElement>('[data-iap-savings]').forEach(el => {
+        const plan = PLANS.find(p => p.id === el.dataset.iapSavings);
+        const pct = plan ? storeSavingsPercent(byPlan[plan.id]?.price, plan.durationMonths, monthly) : 0;
+        if (!pct) return;
+        el.textContent = t('plans.card.storeSavings', { percent: pct });
+        el.hidden = false;
+      });
+    }).catch(() => {});
   }
 
   private sectionTitle(key: OfferSectionKey, primary: boolean): string {
@@ -598,6 +626,7 @@ class PlansPage {
 
   private buildCard(plan: Plan, item: OfferItem, primarySection: boolean): HTMLElement {
     const offer = this.offer!;
+    const ios = isIOSNative();
     const highlighted = item.recommended && primarySection;
     const card = document.createElement('div');
     card.className = 'plan-card' + (highlighted ? ' popular' : '') + ` is-${item.kind}`;
@@ -633,12 +662,12 @@ class PlansPage {
     const totalDisplay = money(finalPrice);
     const perMonthDisplay = (hasDiscount || hasCredit) ? finalPerMonth : plan.pricePerMonth;
     const periodLabel = isDayPlan
-      ? `/ ${plan.durationDays} dias`
+      ? t('plans.card.periodDays', { n: plan.durationDays! })
       : isMultiMonth
-        ? (plan.durationMonths >= 36 ? 'total' : `/ ${plan.durationMonths} meses`)
-        : '/mês';
+        ? (plan.durationMonths >= 36 ? t('plans.card.periodTotal') : t('plans.card.periodMonths', { n: plan.durationMonths }))
+        : t('plans.card.periodMonth');
     const amountDisplay = (isMultiMonth || isDayPlan) ? totalDisplay : perMonthDisplay;
-    const perMonthRef = isMultiMonth ? `R$ ${perMonthDisplay}/mês` : '';
+    const perMonthRef = isMultiMonth && !ios ? t('plans.card.perMonthRef', { amount: perMonthDisplay }) : '';
 
     // Linha de destaque do preço
     let savingsText = '';
@@ -647,9 +676,11 @@ class PlansPage {
       savingsText = t('plans.card.creditDays', { amount: money(creditApplied), days });
     } else if (hasDiscount) {
       savingsText = t('plans.card.discountApplied', { percent: discount });
-    } else if (plan.savings) {
+    } else if (plan.savings && !ios) {
       savingsText = plan.savings;
     }
+    // iOS: economia calculada com os preços da loja (fillStorePrices).
+    const storeSavingsSlot = ios && !savingsText && plan.savings;
 
     // Selo
     let badge = '';
@@ -661,7 +692,7 @@ class PlansPage {
     // O que muda pro cliente (renovar/upgrade): novo vencimento e economia.
     const facts: string[] = [];
     if (item.kind === 'renew') facts.push(t('plans.card.renewKeepsDays'));
-    if (item.kind === 'upgrade') {
+    if (item.kind === 'upgrade' && !ios) {
       const current = PLANS.find(p => p.id === offer.currentPlanId);
       if (current && current.durationMonths > 0 && plan.durationMonths > 0) {
         const diff = Math.round((current.priceCents / current.durationMonths - plan.priceCents / plan.durationMonths) / 100);
@@ -711,14 +742,18 @@ class PlansPage {
       ${badge ? `<div class="plan-badge">${badge}</div>` : ''}
       <span class="plan-name">${name}</span>
       ${plan.tagline && item.kind === 'new' ? `<div class="plan-tagline">${plan.tagline}</div>` : ''}
-      ${(hasDiscount || hasCredit) ? `<div class="plan-original-price">R$ ${(isMultiMonth || isDayPlan) ? money(originalPrice) : plan.pricePerMonth + '/mês'}</div>` : ''}
-      <div class="plan-price">
+      ${(hasDiscount || hasCredit) ? `<div class="plan-original-price">R$ ${(isMultiMonth || isDayPlan) ? money(originalPrice) : plan.pricePerMonth + t('plans.card.periodMonth')}</div>` : ''}
+      ${ios ? `<div class="plan-price is-store" data-iap-price="${plan.id}" hidden>
+        <span class="plan-amount"></span>
+        <span class="plan-period">${periodLabel}</span>
+      </div>` : `<div class="plan-price">
         <span class="plan-currency">R$</span>
         <span class="plan-amount">${amountDisplay}</span>
         <span class="plan-period">${periodLabel}</span>
-      </div>
+      </div>`}
       ${perMonthRef ? `<span class="plan-total">${perMonthRef}</span>` : ''}
       ${savingsText ? `<span class="plan-savings">${savingsText}</span>` : ''}
+      ${storeSavingsSlot ? `<span class="plan-savings" data-iap-savings="${plan.id}" hidden></span>` : ''}
       ${facts.length ? `<ul class="plan-facts">${facts.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
       ${features.length ? `<ul class="plan-features">${features.map(f => `<li>${f}</li>`).join('')}</ul>` : '<div class="plan-spacer"></div>'}
       <button class="plan-btn" data-plan="${plan.id}">${btnLabel}</button>

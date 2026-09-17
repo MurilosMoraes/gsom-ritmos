@@ -73,6 +73,7 @@ export const demo: Record<string, string> = {
   'demo.expired.featureOfflineLabel': 'offline on stage',
   'demo.expired.offerSub': '✓ No card required · ✓ No automatic charges · cancel anytime',
   'demo.expired.offerPrice': 'Only after the 48h, if you like it: R$ 29/month',
+  'demo.expired.offerPriceStore': 'Only after the 48h, if you like it: {price}/month',
   'demo.expired.emailPlaceholder': 'Your email',
   'demo.expired.hasAccount': 'Already have an account?',
   'demo.expired.loginLink': 'Log in',
