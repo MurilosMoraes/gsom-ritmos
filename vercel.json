@@ -29,11 +29,11 @@
     },
     {
       "source": "/es",
-      "destination": "/landing-es.html"
+      "destination": "/landing-es"
     },
     {
       "source": "/en",
-      "destination": "/landing-en.html"
+      "destination": "/landing-en"
     },
     {
       "source": "/login",
