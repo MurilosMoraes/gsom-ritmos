@@ -416,6 +416,11 @@ Todas moram em `src/auth/plansRouting.ts` (funções puras) e são cobertas por 
 - **Reconheceu** (validade andou ≥1h ou virou pago): atualiza cache offline, some com aviso de renovação e upsell, toast de confirmação. Se estava no aviso "assine no site" (Android), recarrega.
 - **Aviso de renovação/trial fica calado** se foi pagar há <30 min ou se o pedido pendente já tem `transaction_nsu` (`shouldSilenceRenewalNag`).
 
+### SEO e landings em 3 idiomas
+- `landing.html` (pt-BR, /landing) é a FONTE. `landing-es.html` (/es) e `landing-en.html` (/en) são GERADAS por `node scripts/build-landing-i18n.mjs`: mesmo visual, sem preço em R$/Passe/WhatsApp BR, head e dados estruturados próprios. Mexeu na landing BR → rode o script (ele para com erro se algum trecho mudou).
+- As 3 se apontam por `hreflang` (x-default = /en) e estão no `public/sitemap.xml`.
+- Títulos com o termo de busca na frente ("Ritmos de Bateria e Baterista Virtual | GDrums"); descrição até ~155 caracteres. Textos das lojas: `STORE-LISTING.md` (`node scripts/check-store-listing.mjs`).
+
 ### Cupons
 - Validação: `active=true`, `valid_from <= now < valid_until`, `current_uses < max_uses`.
 - Código digitado é `.toUpperCase()`.

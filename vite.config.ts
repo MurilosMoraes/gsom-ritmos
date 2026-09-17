@@ -15,6 +15,8 @@ export default defineConfig({
       input: {
         main: './index.html',
         landing: './landing.html',
+        landingEs: './landing-es.html',
+        landingEn: './landing-en.html',
         login: './login.html',
         register: './register.html',
         admin: './admin.html',

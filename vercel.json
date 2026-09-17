@@ -28,6 +28,14 @@
       "destination": "/landing.html"
     },
     {
+      "source": "/es",
+      "destination": "/landing-es.html"
+    },
+    {
+      "source": "/en",
+      "destination": "/landing-en.html"
+    },
+    {
       "source": "/login",
       "destination": "/login.html"
     },
