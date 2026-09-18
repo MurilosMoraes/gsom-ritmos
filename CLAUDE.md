@@ -429,6 +429,14 @@ Todas moram em `src/auth/plansRouting.ts` (funções puras) e são cobertas por 
 - **Erro de cadastro:** o servidor responde em inglês, quem manda é o `code` (`invalid_name`, `weak_password`, `rate_limited`, `disposable_email`…) e o app traduz em `src/auth/register.ts`. Erro novo no servidor = código novo + chave nos 3 idiomas.
 - **Rate limit** do cadastro só existe no caminho internacional: 20/h e 60/dia por IP (era 5/h, barrava banda no mesmo Wi-Fi), 3/h por e-mail. O Brasil não tem limite: lá a trava é o CPF.
 
+### Push e e-mail automáticos: idioma pelo país
+- `supabase/functions/_shared/idioma.ts` decide: BR/PT e país em branco = pt, países hispânicos = es, resto = en. Textos em `_shared/textos-push.ts` e `_shared/textos-email.ts`.
+- `cron-push-notifications` (v14) e `cron-recovery-emails` (v5) trazem o país de toda a leva em UMA consulta (`select id,country ... in(ids)`), sem consulta por usuário.
+- **O português não muda.** `npx tsx test/disparos-idioma-test.mts` roda a versão anterior (guardada em `test/fixtures/disparos-originais/`) e a nova lado a lado e compara caractere a caractere. Mexeu em texto pt? O teste quebra, e é pra quebrar mesmo.
+- Fora do Brasil o e-mail muda de conteúdo, não só de idioma: sem WhatsApp (número BR), sem cupom e sem R$ (são do checkout brasileiro), botão pra App Store e suporte por e-mail.
+- Campanha nova sem tradução sai em português e o id volta em `sem_traducao` na resposta do cron.
+- `send-push` e `send-push-fcm` são disparo MANUAL do painel (texto livre do admin): continuam saindo como foi digitado.
+
 ### Compra da Apple (IAP): assinatura é conferida
 `supabase/functions/_shared/appleJws.ts` verifica o JWS da Apple com WebCrypto: cadeia x5c de 3, raiz igual byte a byte ao Apple Root CA G3, OIDs da Apple, validade na data da assinatura e assinatura da folha. Coberto por `npx tsx test/apple-jws-test.mts` (inclui o intermediário real WWDR G6).
 - Até a v4 o `apple-iap-verify` só DECODIFICAVA o JWS: dava pra ativar plano pago com JWS inventado, ou só com `transactionId`. Nenhuma das 130 compras Apple até 17/09/2026 tinha sinal disso (todos os ids no formato da Apple).
