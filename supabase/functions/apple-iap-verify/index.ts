@@ -11,10 +11,9 @@
 //    transactionId, sem JWS) e ganhava plano pago.
 //  - Pedido forjado na cara (sem JWS, sem cadeia x5c, raiz que não é a da
 //    Apple) é RECUSADO agora — nenhum cliente legítimo cai nesses casos.
-//  - Cadeia completa com assinatura que não fecha: por ora só vai pro log
-//    "iap_check" (ENFORCE_SIGNATURE=false), pra não recusar compra real por
-//    algum detalhe de certificado ainda não visto em produção. Vira true
-//    quando as compras reais aparecerem no log com sig_ok true.
+//  - v7 (mesmo dia): trava total ligada (ENFORCE_SIGNATURE=true) depois que
+//    uma compra real passou no log com assinatura válida. Cadeia de uma
+//    compra verdadeira com conteúdo trocado também é recusada.
 //  - SEM Meta CAPI: mandar e-mail/telefone de compra feita no app iOS
 //    pra Meta é rastreamento pra Apple (exige ATT). O app também não
 //    carrega mais o Pixel no iOS.
@@ -41,10 +40,12 @@ const NUNCA_VEM_DA_APPLE = new Set([
   "folha_sem_oid",
 ]);
 
-// Cadeia completa mas assinatura/validade não fecharam: por ora só registra
-// (log iap_check). Vira true depois que as compras reais aparecerem no log
-// com sig_ok true — aí nenhum caminho sem assinatura da Apple ativa plano.
-const ENFORCE_SIGNATURE = false;
+// Ligada em 17/09/2026, depois que uma compra real (mensal, 19:30) passou
+// no log iap_check com sig_ok/token_match/product_match. Agora NENHUM
+// caminho sem assinatura válida da Apple ativa plano — inclusive o caso
+// esperto: pegar a cadeia de uma compra própria e trocar o conteúdo.
+// Se alguma compra real aparecer recusada no log, voltar pra false.
+const ENFORCE_SIGNATURE = true;
 
 const PRODUCT_TO_PLAN: Record<string, string> = {
   "com.gdrums.app.mensal": "mensal",
@@ -206,6 +207,7 @@ serve(async (req) => {
       has_receipt: !!payload.receipt,
       sig_ok: signature.ok,
       reason: signature.ok ? undefined : signature.reason,
+      // recusa de compra REAL apareceria aqui: motivo sem ser de forjado.
       environment: signature.payload?.environment,
       has_token: !!signature.payload?.appAccountToken,
       token_match: signature.payload?.appAccountToken ? signature.payload.appAccountToken === userId : null,
