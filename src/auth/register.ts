@@ -382,6 +382,16 @@ class RegisterPage {
         if (code === 'cpf_duplicate') msg = t('auth.register.cpfDuplicate');
         else if (code === 'phone_duplicate') msg = t('auth.register.phoneDuplicate');
         else if (code === 'email_duplicate') msg = t('auth.register.emailDuplicate');
+        // Caminho internacional: o servidor responde em inglês, então quem
+        // manda é o CÓDIGO. Sem código conhecido, usa o texto do servidor.
+        else if (code === 'rate_limited') msg = t('auth.register.rateLimited');
+        else if (code === 'disposable_email') msg = t('auth.register.disposableEmail');
+        else if (code === 'email_typo') msg = t('auth.register.emailTypo');
+        else if (code === 'invalid_name') msg = t('auth.register.invalidName');
+        else if (code === 'invalid_email') msg = t('auth.register.invalidEmail');
+        else if (code === 'weak_password') msg = t('auth.register.weakPassword');
+        else if (code === 'invalid_phone') msg = t('auth.register.invalidPhone');
+        else if (code === 'anon_key_missing' || code === 'signup_failed') msg = t('auth.register.genericError');
         this.showAlert(msg, 'error');
         this.setLoading(false);
         return;
@@ -627,9 +637,9 @@ class RegisterPage {
       // Só mostra se tem números significativos (>100) pra não parecer vazio
       if (ativos < 100) return;
       el.innerHTML = `
-        <span><strong>${ativos.toLocaleString('pt-BR')}</strong> ${t('auth.register.socialProofActive')}</span>
+        <span><strong>${ativos.toLocaleString(getLocale())}</strong> ${t('auth.register.socialProofActive')}</span>
         <span class="sp-sep"></span>
-        <span><strong>${cad30.toLocaleString('pt-BR')}</strong> ${t('auth.register.socialProofSignups')}</span>
+        <span><strong>${cad30.toLocaleString(getLocale())}</strong> ${t('auth.register.socialProofSignups')}</span>
       `;
       el.classList.add('sp-ready');
     } catch {

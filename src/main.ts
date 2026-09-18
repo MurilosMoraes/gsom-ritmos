@@ -2160,7 +2160,7 @@ class RhythmSequencer {
 
     void import('./auth/PaymentService').then(({ PLANS }) => {
       const planName = PLANS.find(p => p.id === plan)?.displayName || plan;
-      const date = new Date(expires).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+      const date = new Date(expires).toLocaleDateString(getLocale(), { day: '2-digit', month: 'long', year: 'numeric' });
       Toast.show(t('main.payment.recognized', { plan: planName, date }), { type: 'success' });
     }).catch(() => {});
   }
@@ -5101,17 +5101,17 @@ class RhythmSequencer {
     const overlay = document.createElement('div');
     overlay.className = 'fs-overlay';
     const btns = PRESETS.map(p =>
-      `<button class="fs-preset${p === current ? ' active' : ''}" data-fs="${p}">${p}%${p === DEFAULT_FS ? '<span class="fs-tag">padrão</span>' : ''}</button>`
+      `<button class="fs-preset${p === current ? ' active' : ''}" data-fs="${p}">${p}%${p === DEFAULT_FS ? `<span class="fs-tag">${t('main.fontSize.default')}</span>` : ''}</button>`
     ).join('');
     overlay.innerHTML = `
-      <div class="fs-card" role="dialog" aria-label="Tamanho da fonte">
+      <div class="fs-card" role="dialog" aria-label="${t('main.fontSize.title')}">
         <div class="fs-head">
-          <div class="fs-title">Tamanho da fonte</div>
-          <button class="fs-close" id="fsClose" aria-label="Fechar">&#10005;</button>
+          <div class="fs-title">${t('main.fontSize.title')}</div>
+          <button class="fs-close" id="fsClose" aria-label="${t('core.share.close')}">&#10005;</button>
         </div>
-        <div class="fs-sub">Ajuste o texto do app inteiro. Toque num tamanho:</div>
+        <div class="fs-sub">${t('main.fontSize.sub')}</div>
         <div class="fs-grid">${btns}</div>
-        <div class="fs-hint">Prévia: <span class="fs-sample">Ritmo 1 · Virada · Bolero 115</span></div>
+        <div class="fs-hint">${t('main.fontSize.previewLabel')} <span class="fs-sample">${t('main.fontSize.previewText')}</span></div>
       </div>`;
     document.body.appendChild(overlay);
 
@@ -5261,9 +5261,12 @@ class RhythmSequencer {
         <span style="font-size:1.08rem;color:rgba(255,255,255,0.9);line-height:1.55;">${html}</span>
       </li>`;
     const b = (s: string): string => `<strong style="color:#fff;">${s}</strong>`;
+    // Texto do tutorial vem do dicionario com *negrito* marcado por asterisco:
+    // evita repetir HTML de estilo em cada idioma.
+    const fmt = (s: string): string => s.replace(/\*([^*]+)\*/g, (_m, x) => b(x));
     const arrowDown = `<span style="display:inline-block;color:${c};font-weight:800;font-size:1.35rem;line-height:0;vertical-align:middle;margin-left:0.25rem;">↓</span>`;
 
-    const btnFechar = `<button id="chocoCfgClose" style="width:100%;padding:0.9rem;border:none;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.65);font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer;">Fechar</button>`;
+    const btnFechar = `<button id="chocoCfgClose" style="width:100%;padding:0.9rem;border:none;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.65);font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer;">${t('core.share.close')}</button>`;
 
     /** Casca do modal — igual nas duas telas, só muda o miolo. */
     const shell = (titulo: string, sub: string, inner: string): string => `
@@ -5285,7 +5288,7 @@ class RhythmSequencer {
     // de abrir os dois e comparar.
     const cartao = (n: 1 | 2, titulo: string, sub: string): string => `
       <button id="chocoOpt${n}" style="width:100%;display:flex;align-items:center;gap:0.9rem;text-align:left;padding:1.15rem 1rem;margin-bottom:0.9rem;border:1px solid rgba(180,120,60,0.35);border-radius:16px;background:rgba(180,120,60,0.06);font-family:inherit;cursor:pointer;">
-        <span style="flex-shrink:0;font-size:0.68rem;font-weight:800;letter-spacing:1.1px;color:${c};background:rgba(180,120,60,0.18);border:1px solid rgba(180,120,60,0.5);border-radius:999px;padding:0.3rem 0.65rem;">OPÇÃO ${n}</span>
+        <span style="flex-shrink:0;font-size:0.68rem;font-weight:800;letter-spacing:1.1px;color:${c};background:rgba(180,120,60,0.18);border:1px solid rgba(180,120,60,0.5);border-radius:999px;padding:0.3rem 0.65rem;">${t('main.choco.optionBadge', { n })}</span>
         <span style="flex:1;min-width:0;">
           <span style="display:block;font-size:1.05rem;font-weight:700;color:#fff;line-height:1.3;">${titulo}</span>
           <span style="display:block;font-size:0.85rem;color:rgba(255,255,255,0.5);line-height:1.35;margin-top:0.15rem;">${sub}</span>
@@ -5302,18 +5305,18 @@ class RhythmSequencer {
           <span style="width:0;height:0;border-left:11px solid rgba(255,255,255,0.9);border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px;"></span>
         </span>
         <span style="flex:1;min-width:0;">
-          <span style="display:block;font-size:1.05rem;font-weight:700;color:#fff;line-height:1.3;">Vídeo explicativo</span>
-          <span style="display:block;font-size:0.85rem;color:rgba(255,255,255,0.5);line-height:1.35;margin-top:0.15rem;">Prefere ver? Assista o passo a passo</span>
+          <span style="display:block;font-size:1.05rem;font-weight:700;color:#fff;line-height:1.3;">${t('main.choco.videoTitle')}</span>
+          <span style="display:block;font-size:0.85rem;color:rgba(255,255,255,0.5);line-height:1.35;margin-top:0.15rem;">${t('main.choco.videoSub')}</span>
         </span>
         <span style="flex-shrink:0;color:rgba(255,255,255,0.5);font-size:1.4rem;font-weight:800;line-height:1;">›</span>
       </button>`;
 
     const renderEscolha = (): void => {
       overlay.innerHTML = shell(
-        'Configurar Chocolate',
-        `Tem dois jeitos de deixar o M-VAVE Chocolate pronto.<br><span style="color:${c};font-weight:700;">Escolha um deles.</span>`,
-        `${cartao(1, 'Pelo aplicativo Midi Suite', 'Você baixa o Midi Suite e configura por lá')}
-         ${cartao(2, 'Pelo site de configuração', 'Sem instalar nada, direto no navegador')}
+        t('main.choco.title'),
+        `${t('main.choco.sub')}<br><span style="color:${c};font-weight:700;">${t('main.choco.subChoose')}</span>`,
+        `${cartao(1, t('main.choco.opt1.title'), t('main.choco.opt1.sub'))}
+         ${cartao(2, t('main.choco.opt2.title'), t('main.choco.opt2.sub'))}
          ${btnVideo}
          ${btnFechar}`,
       );
@@ -5324,47 +5327,38 @@ class RhythmSequencer {
     };
 
     // ─── Tela 2: passo a passo do caminho escolhido ──────────────────────
-    const btnVoltar = `<button id="chocoBack" style="width:100%;padding:0.85rem;margin-bottom:0.7rem;border-radius:14px;background:rgba(180,120,60,0.1);border:1px solid rgba(180,120,60,0.35);color:${c};font-size:0.95rem;font-weight:700;font-family:inherit;cursor:pointer;">Voltar e escolher a outra opção</button>`;
+    const btnVoltar = `<button id="chocoBack" style="width:100%;padding:0.85rem;margin-bottom:0.7rem;border-radius:14px;background:rgba(180,120,60,0.1);border:1px solid rgba(180,120,60,0.35);color:${c};font-size:0.95rem;font-weight:700;font-family:inherit;cursor:pointer;">${t('main.choco.back')}</button>`;
 
     const passos1 = `
       <ol style="list-style:none;padding:0;margin:0 0 0.6rem;">
-        ${step(1, `Ligue o pedal na chave ${b('H')}.`)}
-        ${step(2, `Aperte ao mesmo tempo o botão ${b('1 e 4')} (${b('A e D')}) e segure os dois por ${b('10 segundos')} pra resetar o pedal. Precisa aparecer ${b('000')} na tela. Desligue e ligue novamente no ${b('H')}, irá aparecer ${b('001')}.`)}
-        ${step(3, `Ative o ${b('Bluetooth do celular')} e ${b('conecte no FootCtrl')}.`)}
-        ${step(4, `Baixe o aplicativo ${b('Midi Suite')} e abra ele.`)}
-        ${step(5, `Clique em ${b('“Scan Devices”')}, depois clique no ${b('desenho do pedal')}.`)}
-        ${step(6, `Role as opções até encontrar o ${b('“Keyboard Mode A”')} e selecione essa.`)}
-        ${step(7, `Pronto! Agora é só entrar no GDrums, ir nas opções e ${b('mapear seu pedal de 4 botões')}.`)}
+        ${[1, 2, 3, 4, 5, 6, 7].map(i => step(i, fmt(t(`main.choco.a.s${i}`)))).join('')}
       </ol>
 
       <div style="background:rgba(255,200,60,0.06);border:1px solid rgba(255,200,60,0.25);border-radius:14px;padding:0.95rem 1.05rem;margin:0.4rem 0 1.2rem;">
-        <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs:</strong> Se não funcionar, ${b('feche o app e abra de novo')}. Se mesmo assim não der certo, refaça o processo e escolha a opção ${b('Keyboard Mode B')} (alternativo).</span>
+        <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">${t('main.choco.noteLabel')}</strong> ${fmt(t('main.choco.a.note'))}</span>
       </div>`;
 
     const passos2 = `
       <ol style="list-style:none;padding:0;margin:0;">
-        ${step(1, `Ligue o pedal na chave ${b('H')}.`)}
-        ${step(2, `Aperte ao mesmo tempo o botão ${b('1 e 4')} (${b('A e D')}) e segure os dois por ${b('10 segundos')} pra resetar o pedal. Precisa aparecer ${b('000')} na tela. Desligue e ligue novamente no ${b('H')}, irá aparecer ${b('001')}.`)}
-        ${step(3, `Ligue o ${b('Bluetooth do celular')} e ${b('NÃO conecte o pedal ainda')}. Se ele já estiver conectado, ${b('desconecte')}.`)}
-        ${step(4, `Com a luz do pedal ${b('piscando')}, abra o site de configuração no botão abaixo ${arrowDown}`)}
+        ${[1, 2, 3].map(i => step(i, fmt(t(`main.choco.b.s${i}`)))).join('')}
+        ${step(4, fmt(t('main.choco.b.s4')) + ' ' + arrowDown)}
       </ol>
 
-      <button id="chocoCfgOpen" style="width:100%;padding:1.05rem;margin:0.2rem 0 0.4rem;border:none;border-radius:14px;background:linear-gradient(160deg,rgba(180,120,60,0.95),rgba(120,74,34,0.95));color:#fff;font-size:1.1rem;font-weight:800;font-family:inherit;cursor:pointer;">Abrir o site de configuração</button>
+      <button id="chocoCfgOpen" style="width:100%;padding:1.05rem;margin:0.2rem 0 0.4rem;border:none;border-radius:14px;background:linear-gradient(160deg,rgba(180,120,60,0.95),rgba(120,74,34,0.95));color:#fff;font-size:1.1rem;font-weight:800;font-family:inherit;cursor:pointer;">${t('main.choco.b.openSite')}</button>
 
       <ol style="list-style:none;padding:0;margin:1.2rem 0 0;">
-        ${step(5, `No site, toque em ${b('“Configurar meu pedal”')}. Vai abrir uma janela de conexão Bluetooth ${b('do site')} — não é a do celular.`)}
-        ${step(6, `Selecione o ${b('FootCtrl')} nessa janela e clique em ${b('PAREAR')}. A configuração é ${b('automática')}.`)}
+        ${[5, 6].map(i => step(i, fmt(t(`main.choco.b.s${i}`)))).join('')}
       </ol>
 
       <div style="background:rgba(255,200,60,0.06);border:1px solid rgba(255,200,60,0.25);border-radius:14px;padding:0.95rem 1.05rem;margin:0.4rem 0 1.2rem;display:flex;flex-direction:column;gap:0.7rem;">
-        <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs 1:</strong> Na tela do pedal deve aparecer ${b('n10')}. Ao abrir a janela de Bluetooth do site, o celular pode pedir autorização da ferramenta — ${b('autorize')} pra dar certo.</span>
-        <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">Obs 2:</strong> Se não funcionar, ${b('feche o app e abra de novo')}. Se mesmo assim não der certo, refaça o processo e escolha a opção ${b('Keyboard B')} (alternativo).</span>
+        <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">${t('main.choco.noteLabel1')}</strong> ${fmt(t('main.choco.b.note1'))}</span>
+        <span style="font-size:0.95rem;color:rgba(255,255,255,0.75);line-height:1.55;"><strong style="color:#facc15;">${t('main.choco.noteLabel2')}</strong> ${fmt(t('main.choco.b.note2'))}</span>
       </div>`;
 
     const renderPasso = (n: 1 | 2): void => {
       overlay.innerHTML = shell(
-        `Opção ${n}`,
-        n === 1 ? 'Pelo aplicativo Midi Suite' : 'Pelo site de configuração',
+        t('main.choco.screenTitle', { n }),
+        t(n === 1 ? 'main.choco.opt1.title' : 'main.choco.opt2.title'),
         `${n === 1 ? passos1 : passos2}${btnVoltar}${btnFechar}`,
       );
       // Só existe na opção 2 — por isso o optional chaining.
@@ -5474,7 +5468,7 @@ class RhythmSequencer {
 
           <div id="pedalStatus" style="text-align:center;font-size:0.7rem;color:rgba(0,210,255,0.7);min-height:1.4rem;margin-bottom:0.9rem;">${listening ? t('main.pedalMapper.listeningStatus', { label: listening === 'playPause' ? t('main.pedalMapper.label.playPause') : listening === 'end' ? t('main.pedalMapper.label.end') : listening === 'left' ? t('main.pedalMapper.label.left') : t('main.pedalMapper.label.right') }) : ''}</div>
 
-          ${tempCount === 4 ? `<button id="pedalChocolateCfg" style="width:100%;padding:0.6rem;margin-bottom:0.7rem;border-radius:10px;background:rgba(180,120,60,0.12);border:1px solid rgba(180,120,60,0.4);color:rgba(216,160,100,0.95);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">Configurar Chocolate</button>` : ''}
+          ${tempCount === 4 ? `<button id="pedalChocolateCfg" style="width:100%;padding:0.6rem;margin-bottom:0.7rem;border-radius:10px;background:rgba(180,120,60,0.12);border:1px solid rgba(180,120,60,0.4);color:rgba(216,160,100,0.95);font-size:0.8rem;font-weight:700;font-family:inherit;cursor:pointer;">${t('main.choco.title')}</button>` : ''}
 
           <div style="display:flex;gap:0.5rem;">
             <button id="pedalReset" style="flex:1;padding:0.6rem;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:0.78rem;font-weight:600;font-family:inherit;cursor:pointer;">${t('main.pedalMapper.resetButton')}</button>
@@ -7088,7 +7082,7 @@ class RhythmSequencer {
   private async shareSetlist(id: string): Promise<void> {
     const items = this.setlistManager.getItemsOf(id);
     const name = this.setlistManager.getNameOf(id) || 'Repertório';
-    if (items.length === 0) { Toast.show('Esse repertório está vazio', { type: 'info' }); return; }
+    if (items.length === 0) { Toast.show(t('main.share.emptySetlist'), { type: 'info' }); return; }
     const payload = buildSetlistPayload(name, items, (rid) => this.userRhythmService.getById(rid));
     const code = await this.getShareCode(payload);
     showShareResultModal(shortUrl(code), name, 'Repertório');
@@ -7167,7 +7161,7 @@ class RhythmSequencer {
       const recipe = await fetchCommunity(communityCode);
       const payload = recipe ? await this.hydrateCommunityRecipe(recipe) : null;
       if (payload) { this.showImportPreview(payload); return; }
-      Toast.show('Não consegui abrir esse item da comunidade. Ele pode ter sido removido.', { type: 'warn', durationMs: 7000 });
+      Toast.show(t('main.share.communityFailed'), { type: 'warn', durationMs: 7000 });
       return;
     }
 
@@ -7177,7 +7171,7 @@ class RhythmSequencer {
       // backend primeiro (cross-device); senão, o store LOCAL (mesmo aparelho)
       const payload = (await fetchShare(code)) || getLocalShare(code);
       if (payload) { this.showImportPreview(payload); return; }
-      Toast.show('Esse link curto não abriu aqui. No teste sem backend, o link curto só abre no MESMO aparelho onde foi criado (pro celular precisa do SQL).', { type: 'warn', durationMs: 9000 });
+      Toast.show(t('main.share.shortLinkFailed'), { type: 'warn', durationMs: 9000 });
       return;
     }
     const payload = await readImportFromUrl();
@@ -7195,12 +7189,12 @@ class RhythmSequencer {
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,2,12,0.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:100000;display:flex;align-items:center;justify-content:center;padding:1rem;';
     overlay.innerHTML = `
       <div style="background:rgba(10,10,26,0.97);border:1px solid rgba(250,204,21,0.35);border-radius:20px;padding:1.5rem;max-width:400px;width:100%;text-align:center;">
-        <h2 style="font-size:1.15rem;font-weight:700;color:#fff;margin:0 0 0.3rem;">Alguém compartilhou com você</h2>
-        <p style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin:0 0 0.3rem;">${isRhythm ? 'Ritmo' : 'Repertório'}</p>
+        <h2 style="font-size:1.15rem;font-weight:700;color:#fff;margin:0 0 0.3rem;">${t('main.import.title')}</h2>
+        <p style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin:0 0 0.3rem;">${t(isRhythm ? 'main.import.typeRhythm' : 'main.import.typeSetlist')}</p>
         <div style="font-size:1.05rem;font-weight:700;color:#facc15;margin:0 0 0.4rem;word-break:break-word;">${esc(payload.title || '')}</div>
-        ${!isRhythm ? `<p style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin:0 0 1.1rem;">${count} ${count === 1 ? 'música' : 'músicas'}</p>` : '<div style="margin-bottom:1.1rem;"></div>'}
-        <button id="impDoBtn" style="width:100%;padding:0.8rem;border:none;border-radius:12px;background:linear-gradient(160deg,rgba(250,204,21,0.95),rgba(202,138,4,0.95));color:#1a1400;font-size:0.92rem;font-weight:800;font-family:inherit;cursor:pointer;margin-bottom:0.6rem;">Importar pra minha conta</button>
-        <button id="impCancelBtn" style="width:100%;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">Agora não</button>
+        ${!isRhythm ? `<p style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin:0 0 1.1rem;">${t(count === 1 ? 'main.import.songOne' : 'main.import.songMany', { n: count })}</p>` : '<div style="margin-bottom:1.1rem;"></div>'}
+        <button id="impDoBtn" style="width:100%;padding:0.8rem;border:none;border-radius:12px;background:linear-gradient(160deg,rgba(250,204,21,0.95),rgba(202,138,4,0.95));color:#1a1400;font-size:0.92rem;font-weight:800;font-family:inherit;cursor:pointer;margin-bottom:0.6rem;">${t('main.import.btn')}</button>
+        <button id="impCancelBtn" style="width:100%;padding:0.65rem;border:none;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;">${t('main.import.later')}</button>
       </div>
     `;
     document.body.appendChild(overlay);
@@ -7210,7 +7204,7 @@ class RhythmSequencer {
     const doBtn = overlay.querySelector('#impDoBtn') as HTMLButtonElement;
     doBtn.addEventListener('click', async () => {
       doBtn.disabled = true;
-      doBtn.textContent = 'Importando…';
+      doBtn.textContent = t('main.import.working');
       try {
         if (isRhythm) {
           await this.userRhythmService.save(payload.title || 'Ritmo', payload.bpm || 80, payload.data, payload.base, true);
@@ -7248,11 +7242,11 @@ class RhythmSequencer {
         this.updateSetlistUI();
         this.renderRhythmStrip();
         close();
-        Toast.show(isRhythm ? 'Ritmo importado!' : 'Repertório importado!', { type: 'success', durationMs: 5000 });
+        Toast.show(t(isRhythm ? 'main.import.okRhythm' : 'main.import.okSetlist'), { type: 'success', durationMs: 5000 });
       } catch (e: any) {
         doBtn.disabled = false;
-        doBtn.textContent = 'Importar pra minha conta';
-        Toast.show('Falha ao importar: ' + (e?.message || ''), { type: 'warn', durationMs: 7000 });
+        doBtn.textContent = t('main.import.btn');
+        Toast.show(t('main.import.failed', { erro: e?.message || '' }), { type: 'warn', durationMs: 7000 });
       }
     });
   }
@@ -7995,7 +7989,7 @@ class RhythmSequencer {
     // Datas
     const formatDate = (iso: string) => {
       const d = new Date(iso);
-      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+      return d.toLocaleDateString(getLocale(), { day: '2-digit', month: 'long', year: 'numeric' });
     };
 
     const expiresFormatted = expiresAt ? formatDate(expiresAt) : '--';
@@ -9794,7 +9788,7 @@ class RhythmSequencer {
       s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
     const all = this.getAllRhythmsWithCategory()
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+      .sort((a, b) => a.name.localeCompare(b.name, getLocale()));
     const cats = Object.keys(this.rhythmCategories).sort();
     if (all.some(r => r.cat === 'Outros')) cats.push('Outros');
     const pills = ['Todos', ...cats];
@@ -9978,7 +9972,7 @@ class RhythmSequencer {
     const left = document.getElementById('deskRhythmsBody');
     if (left) {
       const all = this.getAllRhythmsWithCategory()
-        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+        .sort((a, b) => a.name.localeCompare(b.name, getLocale()));
       const cats = Object.keys(this.rhythmCategories).sort();
       if (all.some(r => r.cat === 'Outros')) cats.push('Outros');
       // "Todos" primeiro (tudo em ordem alfabética), igual ao modal TODOS

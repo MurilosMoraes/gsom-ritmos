@@ -187,8 +187,8 @@ export class SetlistEditorUI {
     hubPanel.innerHTML = `
       <div class="sle-search-wrap sle-hub-search">
         <svg class="sle-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="sle-search-v2 sle-hub-search-input" placeholder="Buscar repertório" autocomplete="off" />
-        <button class="sle-search-clear sle-hub-search-clear" aria-label="Limpar" style="display:none;">
+        <input type="text" class="sle-search-v2 sle-hub-search-input" placeholder="${t('main.setlistEditor.searchSetlists')}" autocomplete="off" />
+        <button class="sle-search-clear sle-hub-search-clear" aria-label="${t('main.setlistEditor.clear')}" style="display:none;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -264,7 +264,7 @@ export class SetlistEditorUI {
           <button class="sle-setlist-hdr-act sle-setlist-rename-btn" aria-label="${t('ui.setlist.renameAriaLabel')}" title="${t('ui.setlist.renameAriaLabel')}">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           </button>
-          <button class="sle-setlist-hdr-act sle-setlist-share-btn" aria-label="Compartilhar" title="Compartilhar repertório">
+          <button class="sle-setlist-hdr-act sle-setlist-share-btn" aria-label="${t('core.share.title')}" title="${t('main.setlistEditor.shareSetlist')}">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           </button>
           <button class="sle-clear-btn">${t('ui.setlist.clearButton')}</button>
@@ -272,8 +272,8 @@ export class SetlistEditorUI {
       </div>
       <div class="sle-search-wrap sle-setlist-search">
         <svg class="sle-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="sle-search-v2 sle-setlist-search-input" placeholder="Buscar no repertório" autocomplete="off" />
-        <button class="sle-search-clear sle-setlist-search-clear" aria-label="Limpar" style="display:none;">
+        <input type="text" class="sle-search-v2 sle-setlist-search-input" placeholder="${t('main.setlistEditor.searchInside')}" autocomplete="off" />
+        <button class="sle-search-clear sle-setlist-search-clear" aria-label="${t('main.setlistEditor.clear')}" style="display:none;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -473,7 +473,7 @@ export class SetlistEditorUI {
             <button class="sle-hub-act sle-hub-rename" data-id="${l.id}" aria-label="${t('ui.setlist.renameAriaLabel')}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
             </button>
-            <button class="sle-hub-act sle-hub-share" data-id="${l.id}" aria-label="Compartilhar">
+            <button class="sle-hub-act sle-hub-share" data-id="${l.id}" aria-label="${t('core.share.title')}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
             ${lists.length > 1 ? `<button class="sle-hub-act sle-hub-del" data-id="${l.id}" aria-label="${t('ui.setlist.deleteAriaLabel')}">
@@ -496,7 +496,7 @@ export class SetlistEditorUI {
           </div>
         </div>
       `).join('')}
-      ${q && lists.length === 0 ? `<div class="sle-hub-limit">Nenhum repertório com "${this.escapeHtml(this.hubQuery.trim())}"</div>` : ''}
+      ${q && lists.length === 0 ? `<div class="sle-hub-limit">${t('main.setlistEditor.noSetlistFound', { termo: this.escapeHtml(this.hubQuery.trim()) })}</div>` : ''}
       ${!q && allLists.length < max
         ? `<button class="sle-hub-new" type="button">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
@@ -1569,7 +1569,7 @@ export class SetlistEditorUI {
 
     // Busca sem resultado dentro do repertório
     if (q && !container.querySelector('.sle-setlist-item')) {
-      container.innerHTML = `<div class="sle-empty-pro"><div class="sle-empty-desc">Nenhuma música com "${this.escapeHtml(this.setlistQuery.trim())}"</div></div>`;
+      container.innerHTML = `<div class="sle-empty-pro"><div class="sle-empty-desc">${t('main.setlistEditor.noSongFound', { termo: this.escapeHtml(this.setlistQuery.trim()) })}</div></div>`;
     }
 
     // Após render, re-sincroniza estado do preview pros botões recém-criados

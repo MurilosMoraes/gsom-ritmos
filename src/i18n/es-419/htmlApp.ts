@@ -14,7 +14,7 @@ export const htmlApp: Record<string, string> = {
   'htmlApp.topbar.offlineBtn': 'Descargar para usar sin conexión',
   'htmlApp.topbar.installBtn': 'Instalar app',
   'htmlApp.topbar.myAccountBtn': 'Mi Cuenta',
-  'htmlApp.topbar.supportLink': 'Soporte / Comunidad',
+  'htmlApp.topbar.supportLink': 'Soporte (escríbenos)',
   'htmlApp.topbar.freeRhythmsLink': 'Ritmos y repertorios listos',
   'htmlApp.topbar.footerCredit': 'Para la honra y gloria de Dios',
 

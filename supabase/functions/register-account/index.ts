@@ -87,8 +87,12 @@ function trialExpiry(): string {
 
 // Rate limit do cadastro INTERNACIONAL (o BR não tem: grupo de igreja no
 // mesmo Wi-Fi não pode ser bloqueado; lá a trava é o CPF).
-const RL_IP_HOUR = 5;
-const RL_IP_DAY = 15;
+// Limite só do caminho internacional (o BR não tem). Subiu em 18/09/2026:
+// 5/hora por IP barrava caso legítimo de banda/igreja/estúdio cadastrando
+// junto no mesmo Wi-Fi. O limite por e-mail continua apertado, que é o que
+// segura tentativa repetida na mesma conta.
+const RL_IP_HOUR = 20;
+const RL_IP_DAY = 60;
 const RL_EMAIL_HOUR = 3;
 
 function clientIp(req: Request): string {
@@ -309,13 +313,13 @@ async function handleInternational(
 
     // ── Validações (mesmas regras do BR, menos o CPF) ─────────────────
     if (!name || typeof name !== "string" || name.trim().length < 3) {
-      return jsonError("Invalid name (minimum 3 characters)", 400);
+      return jsonError("Invalid name (minimum 3 characters)", 400, "invalid_name");
     }
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-      return jsonError("Invalid email", 400);
+      return jsonError("Invalid email", 400, "invalid_email");
     }
     if (!password || typeof password !== "string" || password.length < 6) {
-      return jsonError("Password must be at least 6 characters", 400);
+      return jsonError("Password must be at least 6 characters", 400, "weak_password");
     }
 
     const emailNorm = email.trim().toLowerCase();
@@ -353,7 +357,7 @@ async function handleInternational(
     const phoneClean = String(phone || "").replace(/\D/g, "");
     const phoneProvided = phoneClean.length > 0;
     if (phoneProvided && (phoneClean.length < 6 || phoneClean.length > 20)) {
-      return jsonError("Invalid phone number", 400);
+      return jsonError("Invalid phone number", 400, "invalid_phone");
     }
 
     // ── Criar user via signUp (NÃO admin API) ─────────────────────────
@@ -378,7 +382,7 @@ async function handleInternational(
       if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("registered")) {
         return jsonError("This email is already registered. Try signing in.", 409, "email_duplicate");
       }
-      return jsonError(msg, 400);
+      return jsonError(msg, 400, "signup_failed");
     }
 
     // Supabase devolve user com identities:[] quando o e-mail JÁ existe

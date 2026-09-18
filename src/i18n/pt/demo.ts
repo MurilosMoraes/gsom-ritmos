@@ -1,6 +1,7 @@
 // Preenchido pela extração de strings (fase 1 do i18n) — valores byte-idênticos aos literais originais.
 export const demo: Record<string, string> = {
   // Tour guiado
+  'demo.allRhythms.back': 'Voltar',
   'demo.tour.step1.title': 'Comece tocando',
   'demo.tour.step1.body': 'Aperte o Ritmo 1 pra ouvir a banda entrar.',
   'demo.tour.step2.title': 'Agora solte uma virada',

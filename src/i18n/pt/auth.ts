@@ -50,6 +50,13 @@ export const auth: Record<string, string> = {
 
   // ─── register.ts ────────────────────────────────────────────────────
   'auth.register.genericError': 'Erro ao criar conta. Tente novamente.',
+  'auth.register.rateLimited': 'Muitas tentativas de cadastro. Tente de novo mais tarde.',
+  'auth.register.disposableEmail': 'Use um e-mail permanente, não um e-mail temporário.',
+  'auth.register.emailTypo': 'Parece que tem um erro de digitação no e-mail. Confira, por favor.',
+  'auth.register.invalidName': 'Nome inválido (mínimo de 3 letras).',
+  'auth.register.invalidEmail': 'E-mail inválido.',
+  'auth.register.weakPassword': 'A senha precisa ter pelo menos 6 caracteres.',
+  'auth.register.invalidPhone': 'Número de telefone inválido.',
   'auth.register.cpfDuplicate': 'Este CPF já possui uma conta cadastrada. Se não consegue acessar, fale com o suporte.',
   'auth.register.phoneDuplicate': 'Este WhatsApp já possui uma conta cadastrada. Se não consegue acessar, fale com o suporte.',
   'auth.register.emailDuplicate': 'Este e-mail já está cadastrado. Faça login normalmente.',

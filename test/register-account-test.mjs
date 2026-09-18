@@ -251,10 +251,12 @@ for (const [label, body, code, status] of [
   ['e-mail fmail.com (farming visto em produção)', { ...intl, email: 'a@fmail.com' }, 'disposable_email', 400],
   ['domínio digitado errado', { ...intl, email: 'john@gmail.come' }, 'email_typo', 400],
   ['final inexistente (.con)', { ...intl, email: 'john@empresa.con' }, 'email_typo', 400],
-  ['e-mail sem domínio', { ...intl, email: 'john@gmail' }, undefined, 400],
-  ['nome curto', { ...intl, name: 'Jo' }, undefined, 400],
-  ['senha curta', { ...intl, password: '123' }, undefined, 400],
-  ['telefone absurdo', { ...intl, phone: '12' }, undefined, 400],
+  // Todo erro do caminho internacional tem CÓDIGO: é por ele que o app
+  // mostra a mensagem no idioma do cliente (o servidor responde em inglês).
+  ['e-mail sem domínio', { ...intl, email: 'john@gmail' }, 'invalid_email', 400],
+  ['nome curto', { ...intl, name: 'Jo' }, 'invalid_name', 400],
+  ['senha curta', { ...intl, password: '123' }, 'weak_password', 400],
+  ['telefone absurdo', { ...intl, phone: '12' }, 'invalid_phone', 400],
 ]) {
   freshDb(); idSeq = 0;
   const r = await call('new', body);
@@ -273,9 +275,10 @@ for (const [label, body, code, status] of [
 }
 {
   freshDb(); idSeq = 0;
+  // 20 por hora por IP (era 5, que barrava banda/igreja no mesmo Wi-Fi).
   const codes = [];
-  for (let i = 0; i < 7; i++) codes.push((await call('new', { ...intl, email: `u${i}@gmail.com` }, { ip: '9.9.9.9' })).status);
-  ok(codes.slice(0, 5).every(s => s === 200) && codes[5] === 429 && codes[6] === 429, `rate limit por IP: 5 passam, 6ª bloqueada (${codes.join(',')})`);
+  for (let i = 0; i < 22; i++) codes.push((await call('new', { ...intl, email: `u${i}@gmail.com` }, { ip: '9.9.9.9' })).status);
+  ok(codes.slice(0, 20).every(s => s === 200) && codes[20] === 429 && codes[21] === 429, `rate limit por IP: 20 passam, 21ª bloqueada (${codes.slice(18).join(',')})`);
   const other = await call('new', { ...intl, email: 'z@gmail.com' }, { ip: '8.8.8.8' });
   ok(other.status === 200, 'outro IP não é afetado');
   // BR no mesmo IP bloqueado continua livre

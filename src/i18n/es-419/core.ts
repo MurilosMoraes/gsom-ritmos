@@ -2,6 +2,13 @@
 export const core: Record<string, string> = {
   // SetlistManager.ts
   'core.setlist.defaultName': 'Mi repertorio',
+  'core.share.title': 'Compartir',
+  'core.share.whatsapp': 'Enviar por WhatsApp',
+  'core.share.copy': 'Copiar enlace',
+  'core.share.copied': '¡Copiado!',
+  'core.share.copyFallback': 'Copia el enlace de arriba',
+  'core.share.close': 'Cerrar',
+  'core.share.waText': 'Mira este {tipo} que armé en GDrums: {titulo}',
   'core.setlist.numbered': 'Repertorio {n}',
   'core.setlist.copyName': '{name} (copia)',
 

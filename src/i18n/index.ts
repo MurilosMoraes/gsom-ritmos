@@ -72,6 +72,16 @@ export function setLocale(locale: string): boolean {
   return true;
 }
 
+/** Canal de suporte: o grupo de WhatsApp é brasileiro e em português, então
+ *  só serve pra quem está em pt-BR. Qualquer outro idioma vai pro e-mail,
+ *  que é o canal que atende fora do Brasil. */
+const SUPPORT_WHATSAPP = 'https://chat.whatsapp.com/LBZhUH3vnNQBkauNLFCbWu';
+export const SUPPORT_EMAIL = 'contato@gdrums.com.br';
+
+export function supportHref(): string {
+  return currentLocale === 'pt-BR' ? SUPPORT_WHATSAPP : 'mailto:' + SUPPORT_EMAIL;
+}
+
 export function availableLocales(): string[] {
   return Object.keys(dictionaries);
 }
@@ -88,6 +98,7 @@ export function availableLocales(): string[] {
  *   data-i18n-title="chave"        → title
  *   data-i18n-aria="chave"         → aria-label
  *   data-i18n-content="chave"      → content (meta description)
+ *   data-support-link              → href do canal de suporte do idioma
  *
  * Também ajusta <html lang> e, se data-i18n-doc-title existir no <html>,
  * o título da aba.
@@ -101,6 +112,10 @@ export function hydrate(root: ParentNode = document): void {
 
   root.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
     el.innerHTML = t(el.getAttribute('data-i18n')!);
+  });
+  // Links de suporte (data-support-link): WhatsApp em pt-BR, e-mail no resto.
+  root.querySelectorAll<HTMLElement>('[data-support-link]').forEach((el) => {
+    el.setAttribute('href', supportHref());
   });
   root.querySelectorAll<HTMLElement>('[data-i18n-placeholder]').forEach((el) => {
     el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')!));

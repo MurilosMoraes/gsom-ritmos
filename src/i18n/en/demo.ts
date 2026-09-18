@@ -1,6 +1,7 @@
 // Tradução en — preenchido por extração/tradução (chaves espelham pt/demo.ts)
 export const demo: Record<string, string> = {
   // Guided tour
+  'demo.allRhythms.back': 'Back',
   'demo.tour.step1.title': 'Start playing',
   'demo.tour.step1.body': 'Tap Rhythm 1 to hear the band kick in.',
   'demo.tour.step2.title': 'Now drop a fill',

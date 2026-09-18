@@ -14,7 +14,7 @@ import { RHYTHM_COUNT, LOCKED_RHYTHM_COUNT, updateRhythmCountInDom } from './uti
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 import { isNativeApp, internalNav } from './native/Platform';
 import { applyMonthlyStorePrice } from './native/storePriceLabel';
-import { t, hydrate } from './i18n';
+import { t, hydrate, getLocale } from './i18n';
 import { injectLanguagePill } from './i18n/selector';
 
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
@@ -769,7 +769,7 @@ class DemoPlayer {
     const manifest = await res.json();
     this.allRhythmNames = ((manifest.rhythms || []) as string[])
       .map(f => f.replace(/\.json$/, ''))
-      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      .sort((a, b) => a.localeCompare(b, getLocale()));
     return this.allRhythmNames;
   }
 
@@ -787,9 +787,9 @@ class DemoPlayer {
     overlay.innerHTML = `
       <div class="demo-all-panel" role="dialog" aria-label="${t('demo.allRhythms.title')}">
         <div class="demo-all-head">
-          <button class="demo-all-back" aria-label="Voltar" style="display:inline-flex;align-items:center;gap:0.3rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);color:rgba(255,255,255,0.85);border-radius:10px;padding:0.4rem 0.7rem 0.4rem 0.55rem;font-family:inherit;font-size:0.8rem;font-weight:700;cursor:pointer;flex-shrink:0;">
+          <button class="demo-all-back" aria-label="${t('demo.allRhythms.back')}" style="display:inline-flex;align-items:center;gap:0.3rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);color:rgba(255,255,255,0.85);border-radius:10px;padding:0.4rem 0.7rem 0.4rem 0.55rem;font-family:inherit;font-size:0.8rem;font-weight:700;cursor:pointer;flex-shrink:0;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
-            <span>Voltar</span>
+            <span>${t('demo.allRhythms.back')}</span>
           </button>
           <div style="text-align:right;min-width:0;">
             <div class="demo-all-title">${t('demo.allRhythms.title')}</div>
