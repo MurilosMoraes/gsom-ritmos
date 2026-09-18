@@ -1,5 +1,6 @@
 // Preenchido pela extração de strings (fase 1 do i18n) — valores byte-idênticos aos literais originais.
 export const main: Record<string, string> = {
+  'main.push.channelDescription': 'Notificações do GDrums (novidades, lembretes, ofertas)',
   'main.choco.title': 'Configurar Chocolate',
   'main.choco.sub': 'Tem dois jeitos de deixar o M-VAVE Chocolate pronto.',
   'main.choco.subChoose': 'Escolha um deles.',

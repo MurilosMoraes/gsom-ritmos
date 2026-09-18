@@ -16,6 +16,7 @@
 // Web push continua via OneSignalService.ts (web SDK + service worker).
 
 import { Capacitor } from '@capacitor/core';
+import { t } from '../i18n';
 import { supabase } from '../auth/supabase';
 import { openAppUrl } from './DeepLinks';
 import { internalNav, appHome } from './Platform';
@@ -85,7 +86,7 @@ async function initAndroid(userId: string): Promise<void> {
     await PushNotifications.createChannel({
       id: 'gdrums-default',
       name: 'GDrums',
-      description: 'Notificações do GDrums (novidades, lembretes, ofertas)',
+      description: t('main.push.channelDescription'),
       importance: 4,
       visibility: 1,
       sound: 'default',

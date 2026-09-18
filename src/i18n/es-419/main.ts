@@ -1,5 +1,6 @@
 // Traducción es-419 — claves reflejan pt/main.ts (fase 2 del i18n).
 export const main: Record<string, string> = {
+  'main.push.channelDescription': 'Notificaciones de GDrums (novedades, recordatorios, ofertas)',
   'main.choco.title': 'Configurar el Chocolate',
   'main.choco.sub': 'Hay dos formas de dejar listo el M-VAVE Chocolate.',
   'main.choco.subChoose': 'Elige una de ellas.',

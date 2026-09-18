@@ -1,5 +1,6 @@
 // Tradução en — preenchido por extração/tradução (chaves espelham pt/main.ts)
 export const main: Record<string, string> = {
+  'main.push.channelDescription': 'GDrums notifications (news, reminders, offers)',
   'main.choco.title': 'Set up the Chocolate',
   'main.choco.sub': 'There are two ways to get the M-VAVE Chocolate ready.',
   'main.choco.subChoose': 'Pick one of them.',
