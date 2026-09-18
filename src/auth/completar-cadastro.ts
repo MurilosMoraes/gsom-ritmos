@@ -34,6 +34,21 @@ class CompletarCadastroPage {
       return;
     }
 
+    // CPF é documento brasileiro: conta de fora não tem o que completar aqui.
+    // Sem isso, estrangeiro que caísse nesta URL ficava preso (o formulário
+    // exige CPF válido e a página não tem saída além de sair da conta).
+    try {
+      const { data: perfil } = await supabase
+        .from('gdrums_profiles')
+        .select('country')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (perfil && perfil.country && perfil.country !== 'BR') {
+        internalNav(appHome());
+        return;
+      }
+    } catch { /* sem rede: segue no formulário, que é o caminho de hoje */ }
+
     this.cpfInput = document.getElementById('ccCpf') as HTMLInputElement;
     this.phoneInput = document.getElementById('ccPhone') as HTMLInputElement;
     this.cpfError = document.getElementById('ccCpfError') as HTMLElement;

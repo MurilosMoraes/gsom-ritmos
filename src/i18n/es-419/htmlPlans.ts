@@ -16,7 +16,7 @@ export const htmlPlans: Record<string, string> = {
       `,
   'htmlPlans.plansCouponPlaceholder': '¿Tienes un cupón?',
   'htmlPlans.plansCouponApplyBtn': 'Aplicar',
-  'htmlPlans.plansFooterPayment': 'Pago seguro a través de InfinitePay.',
+  'htmlPlans.plansFooterPayment': 'Pago seguro.',
   'htmlPlans.plansGlory': 'Para la honra y gloria de Dios',
   'htmlPlans.plansLoadingText': 'Redirigiendo al pago',
 

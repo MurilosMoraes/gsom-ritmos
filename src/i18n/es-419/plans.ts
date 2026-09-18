@@ -68,7 +68,7 @@ export const plans: Record<string, string> = {
   'plans.top.message': 'Ya estás en el plan más completo. ¡Gracias por tocar con GDrums!',
   'plans.coupon.label': '¿Tienes un cupón de descuento?',
   'plans.trust.secure': 'Pago seguro',
-  'plans.trust.methods': 'Pix o tarjeta',
+  'plans.trust.methods': 'Tarjeta',
   'plans.trust.instant': 'Acceso al instante',
   'plans.iap.restoreLink': 'Restaurar compras',
   'plans.iap.subscriptionTerms': 'La suscripción se cobra en tu cuenta Apple ID al confirmar la compra y se renueva automáticamente, salvo cancelación con al menos 24h de anticipación. Adminístrala en Ajustes de la App Store.',
