@@ -512,6 +512,14 @@ class PlansPage {
     if (!offer || !box) return;
     if (offer.state === 'subscribe' || !offer.currentPlanId || !offer.expiresAt) return;
 
+    // Vitalício: mostrar contagem de dias até 2099 seria ridículo.
+    if (offer.state === 'lifetime') {
+      box.hidden = false;
+      box.innerHTML = `<span class="plans-current-name">${escapeHtml(t('plans.lifetime.planName'))}</span>
+        <span class="plans-current-line">${escapeHtml(t('plans.lifetime.line'))}</span>`;
+      return;
+    }
+
     const plan = PLANS.find(p => p.id === offer.currentPlanId);
     const name = plan?.displayName || offer.currentPlanId;
     const date = formatDate(offer.expiresAt);
@@ -558,7 +566,10 @@ class PlansPage {
 
     // Nada a vender (topo da hierarquia, ou assinatura da Apple no topo).
     if (offer.sections.length === 0) {
-      grid.appendChild(this.noteBox(offer.appleManaged ? t('plans.apple.managed') : t('plans.top.message')));
+      const recado = offer.state === 'lifetime'
+        ? t('plans.lifetime.message')
+        : (offer.appleManaged ? t('plans.apple.managed') : t('plans.top.message'));
+      grid.appendChild(this.noteBox(recado));
       return;
     }
 

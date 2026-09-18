@@ -27,7 +27,7 @@ export interface OfferCatalogPlan extends PlanPrice {
 
 export type OfferItemKind = 'renew' | 'upgrade' | 'new';
 export type OfferSectionKey = 'renew' | 'upgrade' | 'choose';
-export type OfferState = 'subscribe' | 'expired' | 'active' | 'active-pass';
+export type OfferState = 'subscribe' | 'expired' | 'active' | 'active-pass' | 'lifetime';
 
 export interface OfferItem {
   planId: string;
@@ -72,6 +72,17 @@ export interface OfferInput {
 /** Até quantos dias antes do vencimento "renovar" vira a ação principal. */
 export const RENEW_WINDOW_DAYS = 15;
 
+/** Planos de cortesia que não vencem, pela convenção do banco: 'vitalicio'
+ *  (cliente com acesso pra sempre) e 'admin' (equipe). Não estão no
+ *  catálogo, então caíam no caminho do Passe e a tela oferecia TUDO pra
+ *  quem já tem tudo. */
+export const LIFETIME_PLANS = ['vitalicio', 'admin'];
+
+/** Acesso pago que vai tão longe que é vitalício na prática (as cortesias
+ *  ficam com 2099). Cobre também quem foi marcado com um plano do catálogo
+ *  e data lá na frente. */
+const LIFETIME_YEARS = 5;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Mesmo cálculo do payment-webhook (setMonth rodando em UTC). */
@@ -83,6 +94,15 @@ export function addPlanDuration(base: Date, plan: Pick<OfferCatalogPlan, 'durati
     d.setUTCMonth(d.getUTCMonth() + (plan.durationMonths || 1));
   }
   return d;
+}
+
+/** Tem acesso que não vence: nada a vender pra essa pessoa. */
+export function isLifetime(profile: ProfileLike | null, now: Date): boolean {
+  if (!isPaidActive(profile, now)) return false;
+  if (LIFETIME_PLANS.includes(profile?.subscription_plan || '')) return true;
+  const expira = profile?.subscription_expires_at;
+  if (!expira) return false;
+  return new Date(expira).getTime() > now.getTime() + LIFETIME_YEARS * 365 * DAY_MS;
 }
 
 export function buildPlanOffer(input: OfferInput): PlanOffer {
@@ -104,6 +124,11 @@ export function buildPlanOffer(input: OfferInput): PlanOffer {
     if (preferred && list.some(p => p.id === preferred)) return preferred;
     return list.find(p => p.popular)?.id || list[0]?.id || null;
   };
+
+  // ─── Vitalício: não existe o que vender ──────────────────────────
+  if (isLifetime(profile, now)) {
+    return { ...base, state: 'lifetime', sections: [] };
+  }
 
   // ─── Sem assinatura paga válida ──────────────────────────────────
   if (!isPaidActive(profile, now)) {

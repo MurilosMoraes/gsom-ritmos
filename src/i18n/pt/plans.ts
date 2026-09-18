@@ -1,6 +1,9 @@
 // Preenchido pela extração de strings (fase 1 do i18n) — valores byte-idênticos aos literais originais.
 export const plans: Record<string, string> = {
   // PaymentService.ts — PLANS (nomes/descrições visíveis)
+  'plans.lifetime.planName': 'Vitalício',
+  'plans.lifetime.line': 'Acesso pra sempre, sem vencimento',
+  'plans.lifetime.message': 'Você tem acesso vitalício ao GDrums. Não precisa assinar nada.',
   'plans.name.passe3dias': 'Modo Show 3 Dias GDrums',
   'plans.displayName.passe3dias': 'Modo Show 3 Dias',
   'plans.tagline.passe3dias': 'Pro show do fim de semana ou festa de família',

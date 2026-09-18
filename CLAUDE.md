@@ -429,6 +429,12 @@ Todas moram em `src/auth/plansRouting.ts` (funções puras) e são cobertas por 
 - **Erro de cadastro:** o servidor responde em inglês, quem manda é o `code` (`invalid_name`, `weak_password`, `rate_limited`, `disposable_email`…) e o app traduz em `src/auth/register.ts`. Erro novo no servidor = código novo + chave nos 3 idiomas.
 - **Rate limit** do cadastro só existe no caminho internacional: 20/h e 60/dia por IP (era 5/h, barrava banda no mesmo Wi-Fi), 3/h por e-mail. O Brasil não tem limite: lá a trava é o CPF.
 
+### Cortesia vitalícia (convenção do banco)
+- Cliente com acesso pra sempre = `subscription_plan = 'vitalicio'`, status `active`, `subscription_expires_at = 2099-12-31`. Equipe usa `'admin'`. **Data em branco NÃO é vitalício**: o `checkAccess` e o cache offline exigem data futura, sem data o cliente é BARRADO.
+- Esses planos não estão no catálogo. `isLifetime()` (em `src/auth/planOffer.ts`) trata 'vitalicio', 'admin' e qualquer acesso pago com vencimento a mais de 5 anos: estado `lifetime`, nenhuma seção, recado "você tem acesso vitalício". Antes de 18/09/2026 eles caíam no caminho do Passe e a tela oferecia TODOS os planos pra quem já tinha tudo (18 clientes e 4 admins).
+- O nome do plano nas telas vem de `plans.lifetime.planName`; sem isso aparecia o id cru ("vitalicio") pro cliente.
+- Cortesia não gera transação: não aparece em faturamento. Se precisar aparecer, lançar transação manual (`order_nsu` `manual_...`, valor 0).
+
 ### Push e e-mail automáticos: idioma pelo país
 - `supabase/functions/_shared/idioma.ts` decide: BR/PT e país em branco = pt, países hispânicos = es, resto = en. Textos em `_shared/textos-push.ts` e `_shared/textos-email.ts`.
 - `cron-push-notifications` (v14) e `cron-recovery-emails` (v5) trazem o país de toda a leva em UMA consulta (`select id,country ... in(ids)`), sem consulta por usuário.

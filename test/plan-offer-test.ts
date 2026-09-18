@@ -93,6 +93,22 @@ function main(): void {
   const pass = offer(prof('active', 'passe-3-dias', 2));
   eq([pass.state, shape(pass)], ['active-pass', ['choose:mensal,trimestral,semestral*,anual,rei-dos-palcos']], 'Passe ativo → planos mensais em diante, sem o passe');
 
+  console.log('\n═══ Vitalício e cortesia ═══\n');
+
+  // Convenção do banco: cortesia vitalícia é subscription_plan "vitalicio"
+  // (e "admin" pra equipe), com data em 2099. Como não estão no catálogo,
+  // caíam no caminho do Passe e a tela oferecia TODOS os planos pra quem
+  // já tem acesso pra sempre. 18 clientes e 4 admins estavam assim.
+  const vitalicio = offer(prof('active', 'vitalicio', 26000));
+  eq([vitalicio.state, vitalicio.sections.length], ['lifetime', 0], 'vitalício: nada a vender');
+  eq([offer(prof('active', 'admin', 26000)).state, offer(prof('active', 'admin', 26000)).sections.length], ['lifetime', 0], 'admin: nada a vender');
+  eq([offer(prof('active', 'rei-dos-palcos', 26000)).state, offer(prof('active', 'rei-dos-palcos', 26000)).sections.length], ['lifetime', 0], 'plano do catálogo com data em 2099 também é vitalício');
+  eq([offer(prof('active', 'vitalicio', 26000), { ios: true }).state, offer(prof('active', 'vitalicio', 26000), { ios: true }).sections.length], ['lifetime', 0], 'vitalício no iOS: idem');
+  eq(offer(prof('active', 'rei-dos-palcos', 1000)).state, 'active', 'Rei dos Palcos de 3 anos NÃO é vitalício');
+  // Cortesia com data vencida vira "assinar", não "vencido": quem recebeu
+  // cortesia nunca comprou plano, então não existe "voltar pro seu plano".
+  eq(offer(prof('expired', 'vitalicio', -1)).state, 'subscribe', 'cortesia vencida cai em assinar (nunca comprou plano)');
+
   console.log('\n═══ Datas ═══\n');
 
   eq(addPlanDuration(new Date('2026-01-31T12:00:00Z'), { durationMonths: 1 }).toISOString(), '2026-03-03T12:00:00.000Z', '31/jan + 1 mês = igual ao servidor (setMonth)');

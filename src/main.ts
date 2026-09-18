@@ -43,6 +43,7 @@ import { startMarquee, stopMarquee } from './utils/marquee';
 import { buildRhythmPayload, buildSetlistPayload, makeShareUrl, showShareResultModal, readImportFromUrl, clearImportFromUrl, type SharePayload } from './core/ShareLink';
 import { publishShare, fetchShare, shortUrl, readShareCodeFromPath, clearShareCodeFromPath, saveLocalShare, getLocalShare, readCommunityCodeFromPath, fetchCommunity, type CommunityRecipe } from './core/ShareService';
 import { redirectIfRecoveryHash } from './auth/recoveryGuard';
+import { LIFETIME_PLANS } from './auth/planOffer';
 import { clearPendingNext, deviceStore, type ProfileLike } from './auth/plansRouting';
 import { PaymentWatcher, shouldSilenceRenewalNag, markAwaitingPayment, type PendingTx } from './auth/paymentSync';
 
@@ -7975,7 +7976,11 @@ class RhythmSequencer {
 
     // Info do plano
     const currentPlan = PLANS.find(p => p.id === planId);
-    const planName = currentPlan?.displayName || (planId === 'trial' ? t('main.accountModal.trialPlanName') : planId);
+    const planName = currentPlan?.displayName
+      || (planId === 'trial' ? t('main.accountModal.trialPlanName') : null)
+      // 'vitalicio' e 'admin' não estão no catálogo: sem isso a tela mostrava
+      // o id cru ("vitalicio") como nome do plano pro cliente.
+      || (LIFETIME_PLANS.includes(planId) ? t('plans.lifetime.planName') : planId);
 
     // Status formatado
     const statusMap: Record<string, { label: string; color: string }> = {

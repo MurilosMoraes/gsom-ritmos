@@ -1,6 +1,9 @@
 // Tradução es-419 — preenchido por extração/tradução (chaves espelham pt/plans.ts)
 export const plans: Record<string, string> = {
   // PaymentService.ts — PLANS (nomes/descrições visíveis)
+  'plans.lifetime.planName': 'Vitalicio',
+  'plans.lifetime.line': 'Acceso para siempre, sin vencimiento',
+  'plans.lifetime.message': 'Tienes acceso vitalicio a GDrums. No necesitas suscribirte a nada.',
   'plans.name.passe3dias': 'Modo Show 3 Días GDrums',
   'plans.displayName.passe3dias': 'Modo Show 3 Días',
   'plans.tagline.passe3dias': 'Para el show del fin de semana o la fiesta familiar',
