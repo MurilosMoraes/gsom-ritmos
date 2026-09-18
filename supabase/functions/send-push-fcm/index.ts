@@ -8,11 +8,10 @@
 // Solução: mandar com payload `notification: {title, body}` que FCM padrão
 // renderiza automaticamente no system tray, sem precisar de SDK do OneSignal.
 //
-// SÓ é usado pra Android. iOS continua via OneSignal (que funciona perfeito
-// com APNS bypass nativo).
+// SÓ é usado pra Android. iOS continua via OneSignal.
 //
 // Auth: Bearer <user JWT> + role=admin
-// Secrets necessários: FIREBASE_SERVICE_ACCOUNT_JSON (JSON inteiro como string)
+// Secrets: FIREBASE_SERVICE_ACCOUNT_JSON (JSON inteiro como string)
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -42,18 +41,17 @@ interface SendPayload {
   body: string;
   url?: string;
   target_user_id?: string;
-  segment?: "user" | "all_android";
+  user_ids?: string[];
+  segment?: "user" | "all_android" | "renewal";
 }
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 async function getAccessToken(sa: ServiceAccount): Promise<string> {
-  // Cache 50min (token vale 1h)
   if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
     return cachedToken.token;
   }
 
-  // Importa private key PEM como CryptoKey
   const pemHeader = "-----BEGIN PRIVATE KEY-----";
   const pemFooter = "-----END PRIVATE KEY-----";
   const pemBody = sa.private_key
@@ -116,7 +114,6 @@ async function sendToToken(
       priority: "HIGH",
       notification: {
         channel_id: "gdrums-default",
-        click_action: url ? undefined : undefined,
       },
     },
   };
@@ -174,7 +171,6 @@ serve(async (req) => {
       return jsonError("title e body obrigatórios", 400);
     }
 
-    // Busca tokens FCM no DB
     let tokens: string[] = [];
     if (payload.segment === "user" && payload.target_user_id) {
       const { data } = await supabase
@@ -184,6 +180,19 @@ serve(async (req) => {
         .not("fcm_token", "is", null)
         .single();
       if (data?.fcm_token) tokens = [data.fcm_token];
+    } else if (payload.segment === "renewal" && Array.isArray(payload.user_ids)) {
+      // Lista de user.id (aba Renovação). Resolve só quem tem fcm_token
+      // (= Android nativo). iOS/web vai por outro canal (send-push).
+      const ids = payload.user_ids.filter(Boolean);
+      if (ids.length === 0) {
+        return jsonError("Lista de user_ids vazia", 400);
+      }
+      const { data } = await supabase
+        .from("gdrums_profiles")
+        .select("fcm_token")
+        .in("id", ids)
+        .not("fcm_token", "is", null);
+      tokens = (data || []).map((r: { fcm_token: string }) => r.fcm_token);
     } else if (payload.segment === "all_android") {
       const { data } = await supabase
         .from("gdrums_profiles")
@@ -191,11 +200,14 @@ serve(async (req) => {
         .not("fcm_token", "is", null);
       tokens = (data || []).map((r: { fcm_token: string }) => r.fcm_token);
     } else {
-      return jsonError("segment inválido (use 'user' + target_user_id ou 'all_android')", 400);
+      return jsonError("segment inválido", 400);
     }
 
     if (tokens.length === 0) {
-      return jsonError("Nenhum fcm_token encontrado", 400);
+      // Não é erro: pode não ter nenhum Android no segmento
+      return new Response(JSON.stringify({ success: true, sent: 0, failed: 0, note: "nenhum fcm_token no segmento" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const accessToken = await getAccessToken(sa);
