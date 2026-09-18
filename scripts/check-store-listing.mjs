@@ -20,7 +20,7 @@ const byLang = {};
 const lines = md.split('\n');
 for (let i = 0; i < lines.length; i++) {
   const l = lines[i];
-  if (/^# (🇧🇷|🇲🇽|🇺🇸)/.test(l)) lang = l.replace(/^# /, '').split(' ')[1];
+  if (/^# (🇧🇷|🇲🇽|🇺🇸|🇪🇸|🇬🇧|🇵🇹)/.test(l)) lang = l.replace(/^# /, '').split(' ')[1];
   const h = l.match(/^### (.+)$/);
   if (!h) continue;
   const rule = RULES.find(r => r.re.test(h[1]));

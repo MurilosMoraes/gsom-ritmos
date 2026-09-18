@@ -280,3 +280,82 @@ Obrigado pelo feedback!
 ```
 node scripts/check-store-listing.mjs
 ```
+
+---
+
+# 🇪🇸 ESPAÑOL (Apple: "Spanish (Spain)" — loja da Espanha)
+
+> Campo de busca SEPARADO do espanhol do México. Mesmas descrições do
+> ES-419; o que muda são as palavras-chave, pra pegar termos da Espanha.
+
+### Nombre (Apple, hasta 30)
+```
+GDrums: Ritmos de Batería
+```
+
+### Subtítulo (Apple, hasta 30)
+```
+Batería virtual y loops
+```
+
+### Palabras clave (Apple, hasta 100, separadas por coma, sin espacios)
+```
+caja,electronica,metronomo,pedal,rumba,flamenco,iglesia,alabanza,pista,percusion,ensayo,directo
+```
+
+### Texto promocional (Apple, hasta 170)
+```
+180 ritmos de batería con redobles, intro y final. Controla todo con un pedal Bluetooth y toca en directo sin baterista. Funciona sin conexión.
+```
+
+---
+
+# 🇬🇧 ENGLISH (Apple: "English (U.K.)" — loja do Reino Unido)
+
+> Campo de busca separado do inglês dos EUA. Descrição igual à do EN-US.
+
+### App name (Apple, up to 30)
+```
+GDrums: Drum Rhythms & Loops
+```
+
+### Subtitle (Apple, up to 30)
+```
+Virtual drummer for gigs
+```
+
+### Keywords (Apple, up to 100, comma separated, no spaces)
+```
+machine,beats,backing,metronome,pedal,percussion,worship,busking,groove,practice,band,cajon
+```
+
+### Promotional text (Apple, up to 170)
+```
+180 drum rhythms with fills, intros and endings. Control everything with a Bluetooth pedal and play live without a drummer. Works offline.
+```
+
+---
+
+# 🇵🇹 PORTUGUÊS (Apple: "Portuguese (Portugal)" — loja de Portugal)
+
+> Campo de busca separado do português do Brasil. Sem gíria brasileira.
+
+### Nome (Apple, até 30)
+```
+GDrums: Ritmos de Bateria
+```
+
+### Subtítulo (Apple, até 30)
+```
+Baterista virtual e loops
+```
+
+### Palavras-chave (Apple, até 100, separadas por vírgula, sem espaço)
+```
+pedaleira,metronomo,playback,acompanhamento,ensaio,igreja,pimba,baiao,pop,rock,percussao,drum
+```
+
+### Texto promocional (Apple, até 170)
+```
+180 ritmos de bateria com viradas, intro e final. Controle tudo com pedal Bluetooth e toque ao vivo sem baterista. Funciona sem internet.
+```
