@@ -433,7 +433,18 @@ Todas moram em `src/auth/plansRouting.ts` (funções puras) e são cobertas por 
 - Cliente com acesso pra sempre = `subscription_plan = 'vitalicio'`, status `active`, `subscription_expires_at = 2099-12-31`. Equipe usa `'admin'`. **Data em branco NÃO é vitalício**: o `checkAccess` e o cache offline exigem data futura, sem data o cliente é BARRADO.
 - Esses planos não estão no catálogo. `isLifetime()` (em `src/auth/planOffer.ts`) trata 'vitalicio', 'admin' e qualquer acesso pago com vencimento a mais de 5 anos: estado `lifetime`, nenhuma seção, recado "você tem acesso vitalício". Antes de 18/09/2026 eles caíam no caminho do Passe e a tela oferecia TODOS os planos pra quem já tinha tudo (18 clientes e 4 admins).
 - O nome do plano nas telas vem de `plans.lifetime.planName`; sem isso aparecia o id cru ("vitalicio") pro cliente.
-- Cortesia não gera transação: não aparece em faturamento. Se precisar aparecer, lançar transação manual (`order_nsu` `manual_...`, valor 0).
+- **Vitalício é VENDA, não cortesia.** O preço depende do plano que o cliente tinha na hora do upgrade:
+
+| Plano na hora | Preço do vitalício |
+|---|---|
+| Mensal | R$ 599 |
+| Trimestral | R$ 499 |
+| Semestral | R$ 399 |
+| Anual | R$ 299 |
+| Rei dos Palcos | R$ 199 |
+
+- A venda entra em `gdrums_transactions` no mesmo formato das anteriores: `order_nsu` = `<user_id>_vitalicio_<timestamp_ms>`, `plan` = 'vitalicio', `amount_cents` = `original_amount_cents` = o preço da tabela, `status` = 'confirmed', `payment_method` = 'manual', sem cupom. Sem isso a venda não aparece em faturamento nenhum.
+- Antes de perguntar como registrar, OLHE os vitalícios que já existem (`select * from gdrums_transactions where plan = 'vitalicio'`): o padrão está lá.
 
 ### Push e e-mail automáticos: idioma pelo país
 - `supabase/functions/_shared/idioma.ts` decide: BR/PT e país em branco = pt, países hispânicos = es, resto = en. Textos em `_shared/textos-push.ts` e `_shared/textos-email.ts`.
