@@ -422,6 +422,13 @@ Todas moram em `src/auth/plansRouting.ts` (funções puras) e são cobertas por 
 - **Meta (Pixel e CAPI) desligados no iOS:** o snippet nos `.html` não roda em `capacitor:`, `metaTracking.ts` sai cedo no iOS nativo e `apple-iap-verify` não manda mais Purchase pro CAPI. Motivo: rastrear no app exige o pedido de permissão da Apple (ATT) e é motivo de rejeição. Se um dia quiser o Pixel no iOS, tem que implementar ATT antes.
 - **Arquivos nativos:** `Info.plist` com pt-BR/en/es e `ITSAppUsesNonExemptEncryption=false`; `PrivacyInfo.xcprivacy` e `*.lproj/InfoPlist.strings` (Face ID) registrados no `project.pbxproj`.
 
+### App fora do Brasil: idioma, suporte e erros
+- **Suporte:** o grupo de WhatsApp é brasileiro e em PT, então só aparece em pt-BR. Nos outros idiomas os links de suporte viram `mailto:contato@gdrums.com.br` (`supportHref()` no `src/i18n/index.ts`, atributo `data-support-link` no HTML). Link novo de suporte: marque com `data-support-link`.
+- **Nada de texto fixo em português** em tela que o cliente vê. Já passaram pelo i18n: link compartilhado, modal de compartilhar, editor de repertório, tamanho da fonte e o tutorial do pedal Chocolate. No tutorial o negrito vem como `*assim*` no dicionário (`fmt()` expande), pra tradução não carregar HTML.
+- **Datas, números e ordenação** usam `getLocale()`, nunca `pt-BR` fixo.
+- **Erro de cadastro:** o servidor responde em inglês, quem manda é o `code` (`invalid_name`, `weak_password`, `rate_limited`, `disposable_email`…) e o app traduz em `src/auth/register.ts`. Erro novo no servidor = código novo + chave nos 3 idiomas.
+- **Rate limit** do cadastro só existe no caminho internacional: 20/h e 60/dia por IP (era 5/h, barrava banda no mesmo Wi-Fi), 3/h por e-mail. O Brasil não tem limite: lá a trava é o CPF.
+
 ### Compra da Apple (IAP): assinatura é conferida
 `supabase/functions/_shared/appleJws.ts` verifica o JWS da Apple com WebCrypto: cadeia x5c de 3, raiz igual byte a byte ao Apple Root CA G3, OIDs da Apple, validade na data da assinatura e assinatura da folha. Coberto por `npx tsx test/apple-jws-test.mts` (inclui o intermediário real WWDR G6).
 - Até a v4 o `apple-iap-verify` só DECODIFICAVA o JWS: dava pra ativar plano pago com JWS inventado, ou só com `transactionId`. Nenhuma das 130 compras Apple até 17/09/2026 tinha sinal disso (todos os ids no formato da Apple).
