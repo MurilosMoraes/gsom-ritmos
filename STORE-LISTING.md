@@ -29,7 +29,7 @@ Onde colar:
 
 ### Nome (Play e Apple, até 30)
 ```
-GDrums: Ritmos de Bateria
+GDrums | Ritmos de bateria
 ```
 
 ### Subtítulo (Apple, até 30)
@@ -103,7 +103,7 @@ Suporte: contato@gdrums.com.br
 
 ### Nombre (Play y Apple, hasta 30)
 ```
-GDrums: Ritmos de Batería
+GDrums | Ritmos de Batería
 ```
 
 ### Subtítulo (Apple, hasta 30)
@@ -177,7 +177,7 @@ Soporte: contato@gdrums.com.br
 
 ### App name (Play and Apple, up to 30)
 ```
-GDrums: Drum Rhythms & Loops
+GDrums | Drum Rhythms & Loops
 ```
 
 ### Subtitle (Apple, up to 30)
@@ -290,7 +290,7 @@ node scripts/check-store-listing.mjs
 
 ### Nombre (Apple, hasta 30)
 ```
-GDrums: Ritmos de Batería
+GDrums | Ritmos de Batería
 ```
 
 ### Subtítulo (Apple, hasta 30)
@@ -316,7 +316,7 @@ caja,electronica,metronomo,pedal,rumba,flamenco,iglesia,alabanza,pista,percusion
 
 ### App name (Apple, up to 30)
 ```
-GDrums: Drum Rhythms & Loops
+GDrums | Drum Rhythms & Loops
 ```
 
 ### Subtitle (Apple, up to 30)
@@ -342,7 +342,7 @@ machine,beats,backing,metronome,pedal,percussion,worship,busking,groove,practice
 
 ### Nome (Apple, até 30)
 ```
-GDrums: Ritmos de Bateria
+GDrums | Ritmos de bateria
 ```
 
 ### Subtítulo (Apple, até 30)
