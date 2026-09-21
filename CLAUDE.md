@@ -720,6 +720,18 @@ Double-tap = 2 cliques em <500ms (dead zone).
 
 ---
 
+### Bump de versão (os 4 lugares)
+O Xcode mostra a versão do **projeto**, não do Info.plist. Mudar só o plist não muda nada na tela nem no build.
+
+| Arquivo | Campos |
+|---|---|
+| `ios/App/App.xcodeproj/project.pbxproj` | `MARKETING_VERSION` e `CURRENT_PROJECT_VERSION`, **nos dois blocos** (Debug e Release) |
+| `ios/App/App/Info.plist` | `CFBundleShortVersionString` e `CFBundleVersion` |
+| `android/app/build.gradle` | `versionName` e `versionCode` |
+| `package.json` | `version` |
+
+Depois: `npm run build:mobile` → `npx cap sync ios` → `npx cap sync android` → `npx cap open` nos dois.
+
 ## 15. Comandos rápidos
 
 ```bash

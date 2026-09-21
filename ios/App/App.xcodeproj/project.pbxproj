@@ -20,9 +20,9 @@
 		F965C71F2FA7FFE200BD2F19 /* GDrumsNowPlayingPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F965C71C2FA7FFE100BD2F19 /* GDrumsNowPlayingPlugin.swift */; };
 		F965C7232FA8062C00BD2F19 /* GDrumsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F965C7222FA8062C00BD2F19 /* GDrumsViewController.swift */; };
 		F976A7552FB5683D00419705 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F976A7542FB5683D00419705 /* GoogleService-Info.plist */; };
+		F9BC20772FC510EC00D41A26 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9BC20762FC510EC00D41A26 /* StoreKit.framework */; };
 		F9D1A0012FC0000100AA0001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F9D1A0022FC0000100AA0001 /* PrivacyInfo.xcprivacy */; };
 		F9D1A0032FC0000100AA0001 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = F9D1A0042FC0000100AA0001 /* InfoPlist.strings */; };
-		F9BC20772FC510EC00D41A26 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9BC20762FC510EC00D41A26 /* StoreKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,12 +41,12 @@
 		F965C71C2FA7FFE100BD2F19 /* GDrumsNowPlayingPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDrumsNowPlayingPlugin.swift; sourceTree = "<group>"; };
 		F965C7222FA8062C00BD2F19 /* GDrumsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDrumsViewController.swift; sourceTree = "<group>"; };
 		F976A7542FB5683D00419705 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		F9A3B6772FB3FF480029C4F2 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		F9BC20762FC510EC00D41A26 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		F9D1A0022FC0000100AA0001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F9D1A0052FC0000100AA0001 /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "pt-BR.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		F9D1A0062FC0000100AA0001 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		F9D1A0072FC0000100AA0001 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		F9A3B6772FB3FF480029C4F2 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
-		F9BC20762FC510EC00D41A26 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -208,16 +208,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
-		F9D1A0042FC0000100AA0001 /* InfoPlist.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				F9D1A0052FC0000100AA0001 /* pt-BR */,
-				F9D1A0062FC0000100AA0001 /* en */,
-				F9D1A0072FC0000100AA0001 /* es */,
-			);
-			name = InfoPlist.strings;
-			sourceTree = "<group>";
-		};
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -232,6 +222,16 @@
 				504EC3111FED79650016851F /* Base */,
 			);
 			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		F9D1A0042FC0000100AA0001 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				F9D1A0052FC0000100AA0001 /* pt-BR */,
+				F9D1A0062FC0000100AA0001 /* en */,
+				F9D1A0072FC0000100AA0001 /* es */,
+			);
+			name = InfoPlist.strings;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
@@ -353,7 +353,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 70;
+				CURRENT_PROJECT_VERSION = 71;
 				DEVELOPMENT_TEAM = 2MW7WMBCB3;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -361,7 +361,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.4.2;
+				MARKETING_VERSION = 1.5.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.gdrums.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -377,7 +377,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 70;
+				CURRENT_PROJECT_VERSION = 71;
 				DEVELOPMENT_TEAM = 2MW7WMBCB3;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -385,7 +385,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.4.2;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.gdrums.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
