@@ -344,7 +344,7 @@ for (const [code, L] of Object.entries(LANGS)) {
     `<h4>${t.footProduct}</h4>\n            <a href="#features">${t.navFeatures}</a>\n            <a href="#pricing">${t.navPricing}</a>`);
   R('<h4>Conta</h4>\n            <a href="/?entrar=1">Entrar</a>\n            <a href="/register">Criar Conta</a>',
     `<h4>${t.footAccount}</h4>\n            <a href="/login">${t.footLogin}</a>\n            <a href="/register">${t.footSignup}</a>`);
-  R('<h4>Suporte</h4>\n            <a href="https://chat.whatsapp.com/LBZhUH3vnNQBkauNLFCbWu" target="_blank">Comunidade WhatsApp</a>\n            <a href="/terms">Termos de Uso</a>\n            <a href="/privacy">Politica de Privacidade</a>',
+  R('<h4>Suporte</h4>\n            <a href="https://chat.whatsapp.com/HVpdIhgInQ5BwV7eKGAbXq?mode=gi_t" target="_blank">Comunidade WhatsApp</a>\n            <a href="/terms">Termos de Uso</a>\n            <a href="/privacy">Politica de Privacidade</a>',
     `<h4>${t.footSupport}</h4>\n            <a href="mailto:contato@gdrums.com.br">${t.footEmail}</a>\n            <a href="/terms?lang=${code}">${t.footTerms}</a>\n            <a href="/privacy?lang=${code}">${t.footPrivacy}</a>`);
   R('<p>&copy; 2026 GDrums Studio. Todos os direitos reservados.</p>\n        <p>gdrums.com.br</p>',
     `<p>&copy; 2026 GDrums Studio. ${t.footRights}</p>\n        <p><a href="/landing" hreflang="pt-BR" style="color:inherit;">Português</a> | <a href="${code === 'es' ? '/en' : '/es'}" hreflang="${code === 'es' ? 'en' : 'es'}" style="color:inherit;">${code === 'es' ? 'English' : 'Español'}</a></p>`);

@@ -75,7 +75,7 @@ export function setLocale(locale: string): boolean {
 /** Canal de suporte: o grupo de WhatsApp é brasileiro e em português, então
  *  só serve pra quem está em pt-BR. Qualquer outro idioma vai pro e-mail,
  *  que é o canal que atende fora do Brasil. */
-const SUPPORT_WHATSAPP = 'https://chat.whatsapp.com/LBZhUH3vnNQBkauNLFCbWu';
+const SUPPORT_WHATSAPP = 'https://chat.whatsapp.com/HVpdIhgInQ5BwV7eKGAbXq?mode=gi_t';
 export const SUPPORT_EMAIL = 'contato@gdrums.com.br';
 
 export function supportHref(): string {
