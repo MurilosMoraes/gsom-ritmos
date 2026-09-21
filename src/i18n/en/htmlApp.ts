@@ -14,7 +14,7 @@ export const htmlApp: Record<string, string> = {
   'htmlApp.topbar.offlineBtn': 'Download to use offline',
   'htmlApp.topbar.installBtn': 'Install app',
   'htmlApp.topbar.myAccountBtn': 'My Account',
-  'htmlApp.topbar.supportLink': 'Support (email us)',
+  'htmlApp.topbar.supportLink': 'Support on WhatsApp',
   'htmlApp.topbar.freeRhythmsLink': 'Ready-made rhythms and setlists',
   'htmlApp.topbar.footerCredit': 'For the honor and glory of God',
 

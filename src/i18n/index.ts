@@ -72,14 +72,22 @@ export function setLocale(locale: string): boolean {
   return true;
 }
 
-/** Canal de suporte: o grupo de WhatsApp é brasileiro e em português, então
- *  só serve pra quem está em pt-BR. Qualquer outro idioma vai pro e-mail,
- *  que é o canal que atende fora do Brasil. */
-const SUPPORT_WHATSAPP = 'https://chat.whatsapp.com/HVpdIhgInQ5BwV7eKGAbXq?mode=gi_t';
+/** Canal de suporte.
+ *
+ *  pt-BR: o GRUPO da comunidade, que é brasileiro e em português.
+ *  Fora do Brasil: conversa DIRETA no WhatsApp do atendimento, com a
+ *  primeira mensagem já escrita no idioma do cliente. Não jogamos o
+ *  estrangeiro num grupo em português, e `mailto:` sozinho não servia:
+ *  em celular sem app de e-mail configurado o toque não faz nada.
+ *  O e-mail continua existindo como alternativa (landings, privacidade,
+ *  termos e ficha das lojas). */
+const SUPPORT_WHATSAPP_GROUP = 'https://chat.whatsapp.com/HVpdIhgInQ5BwV7eKGAbXq?mode=gi_t';
+const SUPPORT_WHATSAPP_NUMBER = '5547984639792';
 export const SUPPORT_EMAIL = 'contato@gdrums.com.br';
 
 export function supportHref(): string {
-  return currentLocale === 'pt-BR' ? SUPPORT_WHATSAPP : 'mailto:' + SUPPORT_EMAIL;
+  if (currentLocale === 'pt-BR') return SUPPORT_WHATSAPP_GROUP;
+  return `https://wa.me/${SUPPORT_WHATSAPP_NUMBER}?text=${encodeURIComponent(t('support.firstMessage'))}`;
 }
 
 export function availableLocales(): string[] {

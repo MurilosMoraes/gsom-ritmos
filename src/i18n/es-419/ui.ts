@@ -4,6 +4,7 @@
 // (Toast.ts não tem strings visíveis — só recebe `message` por parâmetro.)
 export const ui: Record<string, string> = {
   // ─── ModalManager.ts ──────────────────────────────────────────────
+  'support.firstMessage': '¡Hola! Uso GDrums y necesito ayuda.',
   'ui.modal.gotIt': 'Entendido',
   'ui.modal.cancel': 'Cancelar',
   'ui.modal.confirm': 'Confirmar',

@@ -18,7 +18,7 @@ export const htmlAuth: Record<string, string> = {
   'htmlAuth.login.firstTime': 'First time here?',
   'htmlAuth.login.createFreeAccount': 'Create free account',
   'htmlAuth.login.trialSub': '48h to try everything · no card required',
-  'htmlAuth.login.supportLink': 'Need help? Email our support',
+  'htmlAuth.login.supportLink': 'Need help? Talk to support on WhatsApp',
   'htmlAuth.login.glory': 'For the honor and glory of God',
 
   // Rhythm ticker (genre names — not translated in any language)
