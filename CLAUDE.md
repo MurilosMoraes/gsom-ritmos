@@ -486,7 +486,7 @@ Todas moram em `src/auth/plansRouting.ts` (funções puras) e são cobertas por 
 - **Steps:** cada variação tem de 4 a 32 steps (padrão 16 p/ main/fill, 8 p/ end, 16 p/ intro).
 - **Canais:** `MAX_CHANNELS = 12` canais de áudio por variação.
 - **Speed:** cada variação tem `speed` (0.25× a 4×, default 1).
-- **Tempo:** BPM global (40-280).
+- **Tempo:** BPM global (40-360).
 - **Volume:** `masterVolume` (0-2) + `volumes[channel][step]` (0-1).
 
 ### Timing (Scheduler)

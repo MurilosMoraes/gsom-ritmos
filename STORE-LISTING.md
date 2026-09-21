@@ -54,47 +54,37 @@ eletronica,pedal,metronomo,vaneira,sertanejo,gospel,forro,playback,acompanhament
 
 ### Descrição completa (Play e Apple, até 4000)
 ```
-GDrums é o baterista virtual pra quem toca ao vivo. São 180 ritmos de bateria profissionais, com viradas, intro e finalização, prontos pra acompanhar você no palco, na igreja ou no ensaio. Sem precisar de baterista: só você, seu instrumento e o GDrums.
+GDrums é a sua banda completa no celular. Toque ao vivo com acompanhamento profissional de bateria, controlado pelo pedal sem fio. Sem depender de baterista: só você, sua música e o palco.
 
-RITMOS DE BATERIA PRA TODO ESTILO
-Vaneira, sertanejo, gospel e worship, forró, piseiro, arrocha, pagode, samba, bossa nova, MPB, axé, reggae, rock, pop, blues, jazz, country, bolero, xote, baião, chamamé, milonga, cumbia, bachata, salsa, reggaeton e muito mais. Tudo organizado por categoria pra você achar o ritmo certo rapidinho.
+RITMOS BRASILEIROS PRA TODO ESTILO
+Sertanejo, gospel, forró, samba, pagode, vaneira, MPB, rock, reggae, axé, brega, piseiro, baião, frevo e muito mais. Toda a riqueza musical do Brasil numa biblioteca organizada por categoria, que cresce a cada atualização. Faltou um estilo? Pede no suporte que a gente adiciona.
 
-LOOP DE BATERIA QUE SOA COMO BANDA
-Cada ritmo tem 3 variações, 3 viradas, intro e final. O GDrums entra na virada no tempo certo e fecha a música no compasso, como um baterista de verdade. Nada de loop de bateria repetitivo e sem vida.
+PERFORMANCE AO VIVO DE VERDADE
+- Variações, viradas, introduções e finalizações que entram no tempo musical certo
+- Pause pra falar com o público e volte exatamente de onde parou
+- BPM ajustável de 40 a 360
+- Equalizador e reverb pra adaptar o som ao seu equipamento
+- Volume alto e limpo, sem distorção
 
-CONTROLE COM PEDAL BLUETOOTH
-Mãos livres no palco: use um pedal Bluetooth pra iniciar, trocar variação, fazer virada e finalizar. Mapeie os botões do seu jeito. Pedal vendido separadamente.
+PEDAL BLUETOOTH, MÃOS LIVRES
+Compatível com pedais de 2, 3 ou 4 botões, incluindo o MVAVE Chocolate. Mapeie cada botão do seu jeito: play, virada, finalização, pausa. Você toca seu instrumento, o GDrums acompanha.
 
-REPERTÓRIO DO SHOW
-Monte a setlist na ordem do show e passe pra próxima música com um toque. Salve seus ritmos personalizados com BPM e volume do seu jeito.
+REPERTÓRIOS PRO SHOW
+Monte a sequência completa antes de subir no palco e crie repertórios separados pra cada show, banda ou igreja. Avance com um toque ou deixe no modo automático. Salve seus ritmos personalizados e use junto com os da biblioteca.
 
-FUNCIONA OFFLINE
-Baixe os ritmos uma vez e toque em qualquer lugar: bar, casamento, igreja, festa. A internet pode cair, sua banda não para.
+FUNCIONA SEM INTERNET
+Depois do primeiro uso, seus ritmos ficam disponíveis offline. O show acontece em qualquer lugar, com ou sem sinal.
 
-CONTROLE TOTAL
-• 12 canais de bateria e percussão (bumbo, caixa, chimbal, pratos, toms, surdo, cajón, pandeiro, zabumba e mais)
-• BPM ajustável com tap tempo
-• Volume por canal e por batida
-• Marcador visual do compasso
+PARA MÚSICOS DE VERDADE
+Cantores, violonistas, sanfoneiros e tecladistas que tocam sozinhos em barzinhos, casamentos, eventos e igrejas. Sua banda completa, sempre com você.
 
-RITMOS NOVOS TODO MÊS
-A biblioteca de ritmos de bateria não para de crescer. Faltou um estilo? Fala com a gente.
+TESTE GRÁTIS POR 48 HORAS
+Cadastre grátis e use tudo por 48 horas, sem cartão. Se gostar, assine um dos planos e cancele quando quiser.
 
-TESTE GRÁTIS
-Crie sua conta e use tudo por 48 horas. Depois, escolha o plano que combina com você. Cancele quando quiser.
+Suporte: WhatsApp (47) 98463-9792
+Termos de Uso (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula
 
-PRA QUEM É
-• Cantores e violonistas que tocam sozinhos
-• Ministérios de louvor e igrejas
-• Bailes gaúchos, forró e festas regionais
-• Músicos que ensaiam em casa e querem um metrônomo com groove
-• Compositores gravando demos
-
-GDrums: seu baterista virtual, com ritmos e loops de bateria prontos pra qualquer show. Bora fazer música!
-
-Termos de uso: gdrums.com.br/terms
-Política de privacidade: gdrums.com.br/privacy
-Suporte: contato@gdrums.com.br
+Para músicos. Por músicos.
 ```
 
 ---
@@ -128,47 +118,37 @@ caja,electronica,metronomo,pedal,cumbia,bachata,salsa,cristiana,alabanza,drum,pe
 
 ### Descripción completa (Play y Apple, hasta 4000)
 ```
-GDrums es el baterista virtual para quienes tocan en vivo. Son 180 ritmos de batería profesionales, con redobles, intro y final, listos para acompañarte en el escenario, en la iglesia o en el ensayo. Sin baterista: solo tú, tu instrumento y GDrums.
+GDrums es tu banda completa en el celular. Toca en vivo con acompañamiento profesional de batería, controlado por el pedal inalámbrico. Sin depender de un baterista: solo tú, tu música y el escenario.
 
-RITMOS DE BATERÍA PARA CADA ESTILO
-Cumbia, bachata, salsa, reggaetón, pop latino, tango, rumba, flamenco, bolero, chamamé, polka paraguaya, guarania, milonga, ranchera, rock, pop, blues, jazz, country, reggae, música cristiana y alabanza, y ritmos brasileños como samba, bossa nova y forró. Todo organizado por categoría para encontrar el ritmo justo en segundos.
+RITMOS PARA TODO ESTILO
+Cumbia, bachata, salsa, merengue, reggaetón, rock, pop, balada, bolero, música cristiana y alabanza, sertanejo, forró, samba, reggae y mucho más. Una biblioteca organizada por categoría que crece en cada actualización. ¿Falta un estilo? Pídelo al soporte y lo agregamos.
 
-LOOPS DE BATERÍA QUE SUENAN COMO UNA BANDA
-Cada ritmo tiene 3 variaciones, 3 redobles, intro y final. GDrums entra en el redoble a tiempo y cierra la canción en el compás, como un baterista de verdad. Nada de loops de batería repetitivos y sin vida.
+PERFORMANCE EN VIVO DE VERDAD
+- Variaciones, redobles, intros y finales que entran en el tiempo musical correcto
+- Pausa para hablar con el público y vuelve exactamente donde paraste
+- BPM ajustable de 40 a 360
+- Ecualizador y reverb para adaptar el sonido a tu equipo
+- Volumen alto y limpio, sin distorsión
 
-CONTROL CON PEDAL BLUETOOTH
-Manos libres en el escenario: usa un pedal Bluetooth para iniciar, cambiar de variación, hacer redobles y terminar. Configura los botones a tu manera. Pedal vendido por separado.
+PEDAL BLUETOOTH, MANOS LIBRES
+Compatible con pedales de 2, 3 o 4 botones, incluido el MVAVE Chocolate. Asigna cada botón a tu manera: play, redoble, final, pausa. Tú tocas tu instrumento, GDrums te acompaña.
 
-REPERTORIO DEL SHOW
-Arma tu setlist en el orden del show y pasa a la siguiente canción con un toque. Guarda tus ritmos personalizados con tu BPM y volumen.
+REPERTORIOS PARA EL SHOW
+Arma la secuencia completa antes de subir al escenario y crea repertorios separados para cada show, banda o iglesia. Avanza con un toque o déjalo en modo automático. Guarda tus ritmos personalizados y úsalos junto a los de la biblioteca.
 
-FUNCIONA SIN CONEXIÓN
-Descarga los ritmos una vez y toca donde sea: bar, boda, iglesia, fiesta. Si se cae internet, tu banda sigue sonando.
+FUNCIONA SIN INTERNET
+Después del primer uso, tus ritmos quedan disponibles sin conexión. El show sucede en cualquier lugar, con señal o sin ella.
 
-CONTROL TOTAL
-• 12 canales de batería y percusión (bombo, caja, hi-hat, platillos, toms, cajón, pandero y más)
-• BPM ajustable con tap tempo
-• Volumen por canal y por golpe
-• Marcador visual del compás
+PARA MÚSICOS DE VERDAD
+Cantantes, guitarristas, acordeonistas y tecladistas que tocan solos en bares, bodas, eventos e iglesias. Tu banda completa, siempre contigo.
 
-RITMOS NUEVOS CADA MES
-La biblioteca de ritmos de batería sigue creciendo. ¿Falta algún estilo? Escríbenos.
+PRUEBA GRATIS POR 48 HORAS
+Regístrate gratis y usa todo por 48 horas, sin tarjeta. Si te gusta, elige un plan y cancela cuando quieras.
 
-PRUEBA GRATIS
-Crea tu cuenta y usa todo por 48 horas. Después elige el plan que más te convenga. Cancela cuando quieras.
+Soporte: WhatsApp +55 47 98463-9792
+Términos de uso (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula
 
-PARA QUIÉN ES
-• Cantantes y guitarristas que tocan solos
-• Ministerios de alabanza e iglesias
-• Músicos de fiestas, bodas y eventos
-• Quien ensaya en casa y quiere un metrónomo con groove
-• Compositores que graban demos
-
-GDrums: tu baterista virtual, con ritmos y loops de batería listos para cualquier show. ¡A hacer música!
-
-Términos de uso: gdrums.com.br/terms?lang=es
-Política de privacidad: gdrums.com.br/privacy?lang=es
-Soporte: contato@gdrums.com.br
+Para músicos. Por músicos.
 ```
 
 ---
@@ -202,47 +182,37 @@ machine,beats,backing track,metronome,pedal,percussion,worship,latin,groove,prac
 
 ### Full description (Play and Apple, up to 4000)
 ```
-GDrums is the virtual drummer for musicians who play live. Get 180 professional drum rhythms with fills, intros and endings, ready to back you up on stage, at church or in rehearsal. No drummer needed: just you, your instrument and GDrums.
+GDrums is your whole band on your phone. Play live with professional drum backing, controlled by a wireless pedal. No drummer needed: just you, your music and the stage.
 
-DRUM RHYTHMS FOR EVERY STYLE
-Rock, pop, blues, jazz, country, reggae, funk, R&B, worship, Latin grooves like cumbia, bachata, salsa, reggaeton and tango, and Brazilian rhythms like samba, bossa nova and forró. Everything is organized by category so you find the right groove in seconds.
+RHYTHMS FOR EVERY STYLE
+Rock, pop, blues, country, ballad, bolero, worship and gospel, reggae, funk, latin, cumbia, bossa nova, samba, forró and much more. A library organized by category that grows with every update. Missing a style? Ask support and we add it.
 
-DRUM LOOPS THAT SOUND LIKE A BAND
-Each rhythm has 3 variations, 3 fills, an intro and an ending. GDrums drops the fill right on time and ends the song on the bar, just like a real drummer. No more flat, repetitive drum loops.
+REAL LIVE PERFORMANCE
+- Variations, fills, intros and endings that land on the right musical beat
+- Pause to talk to the crowd and come back exactly where you stopped
+- BPM adjustable from 40 to 360
+- Equalizer and reverb to match your gear
+- Loud and clean output, no distortion
 
-BLUETOOTH PEDAL CONTROL
-Hands-free on stage: use a Bluetooth pedal to start, switch variations, trigger fills and end the song. Map the buttons your way. Pedal sold separately.
+BLUETOOTH PEDAL, HANDS FREE
+Works with 2, 3 and 4 button pedals, including the MVAVE Chocolate. Map every button your way: play, fill, ending, pause. You play your instrument, GDrums follows you.
 
 SETLISTS FOR THE GIG
-Build your setlist in show order and jump to the next song with one tap. Save your own rhythms with your tempo and volume settings.
+Build the full running order before you go on stage and keep separate setlists for each gig, band or church. Move on with one tap or leave it on automatic. Save your own rhythms and use them alongside the library.
 
-WORKS OFFLINE
-Download the rhythms once and play anywhere: bars, weddings, church, parties. If the internet drops, your band keeps playing.
+WORKS WITHOUT INTERNET
+After the first use, your rhythms stay available offline. The show happens anywhere, signal or no signal.
 
-FULL CONTROL
-• 12 drum and percussion channels (kick, snare, hi-hat, cymbals, toms, cajón, tambourine and more)
-• Adjustable BPM with tap tempo
-• Volume per channel and per hit
-• Visual beat marker
+FOR REAL MUSICIANS
+Singers, guitar players, accordion and keyboard players who perform alone in bars, weddings, events and churches. Your whole band, always with you.
 
-NEW RHYTHMS EVERY MONTH
-The drum rhythm library keeps growing. Missing a style? Let us know.
+48 HOUR FREE TRIAL
+Sign up for free and use everything for 48 hours, no card required. If you like it, pick a plan and cancel whenever you want.
 
-FREE TRIAL
-Create your account and use everything for 48 hours. Then pick the plan that fits you. Cancel anytime.
+Support: WhatsApp +55 47 98463-9792
+Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula
 
-WHO IT'S FOR
-• Solo singers and guitarists
-• Worship teams and churches
-• Musicians playing parties, weddings and events
-• Anyone practicing at home who wants a metronome with groove
-• Songwriters recording demos
-
-GDrums: your virtual drummer, with drum rhythms and drum loops ready for any gig.
-
-Terms of use: gdrums.com.br/terms?lang=en
-Privacy policy: gdrums.com.br/privacy?lang=en
-Support: contato@gdrums.com.br
+For musicians. By musicians.
 ```
 
 ---
