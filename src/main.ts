@@ -5426,7 +5426,7 @@ class RhythmSequencer {
       const colorRgba = (alpha: number) => `rgba(${color},${alpha})`;
       return `
         <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;width:110px;flex:0 0 110px;">
-          <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:${colorRgba(0.7)};text-align:center;line-height:1.2;height:1.6rem;display:flex;align-items:center;justify-content:center;">${label}</div>
+          <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:${colorRgba(0.7)};text-align:center;line-height:1.2;min-height:1.6rem;width:100%;overflow-wrap:anywhere;display:flex;align-items:center;justify-content:center;">${label}</div>
           <button id="pedalBtn-${which}" style="width:110px;height:78px;border-radius:14px;border:2px solid ${colorRgba(isListening ? 0.85 : 0.3)};background:${colorRgba(0.08)};cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;padding:0.4rem;${isListening ? `box-shadow:0 0 20px ${colorRgba(0.4)};transform:scale(1.04);` : ''}">
             <div style="font-size:0.7rem;font-weight:700;color:${colorRgba(0.95)};background:${colorRgba(0.15)};padding:0.3rem 0.55rem;border-radius:8px;text-align:center;">${code ? getLabel(code) : '—'}</div>
           </button>
