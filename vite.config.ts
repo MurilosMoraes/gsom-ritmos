@@ -1,6 +1,36 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import pkg from './package.json' with { type: 'json' };
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+/**
+ * O registerSW.js gerado pelo vite-plugin-pwa registra o service worker em
+ * QUALQUER contexto, inclusive dentro do app nativo. No Android o Capacitor
+ * serve o app por https://localhost, então o SW assume o controle e passa a
+ * entregar os arquivos da instalação anterior: build novo instalado, app
+ * velho na tela. Aqui o registro passa a acontecer só na web.
+ */
+function swSoNaWeb() {
+  return {
+    name: 'gdrums-sw-so-na-web',
+    enforce: 'post' as const,
+    closeBundle() {
+      const arquivo = resolve(__dirname, 'dist/registerSW.js');
+      if (!existsSync(arquivo)) return;
+      const original = readFileSync(arquivo, 'utf8');
+      if (original.includes('capacitor:')) return;
+      const guardado = `// GDrums: nunca registrar o service worker dentro do app nativo.
+// Capacitor serve o app por capacitor:// (iOS) ou https://localhost (Android);
+// com SW registrado, o build novo é servido do cache do build antigo.
+if (location.protocol !== 'capacitor:' && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) {
+${original}
+}
+`;
+      writeFileSync(arquivo, guardado);
+    },
+  };
+}
 
 export default defineConfig({
   root: '.',
@@ -34,6 +64,7 @@ export default defineConfig({
     }
   },
   plugins: [
+    swSoNaWeb(),
     VitePWA({
       // injectManifest: temos um SW custom em src/sw.ts que faz
       // importScripts do OneSignal SDK Worker + Workbox routing.

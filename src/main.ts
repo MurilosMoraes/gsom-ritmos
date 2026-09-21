@@ -6,6 +6,11 @@ import { flagSvg, showLanguageSelector } from './i18n/selector';
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
 // pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
 hydrate();
+
+// App nativo não pode ter service worker: ele serve o build anterior por
+// cima do novo (instala versão nova, aparece a velha). O build já não
+// registra mais; isto limpa o que ficou preso em quem atualizou por cima.
+void limparServiceWorkerNoNativo();
 import { StateManager } from './core/StateManager';
 import type { IAudioEngine } from './core/audio/IAudioEngine';
 import { createAudioEngine } from './core/audio/engineFactory';
@@ -35,6 +40,7 @@ import { AttributionService } from './native/AttributionService';
 // PushService removido — push agora é gerenciado pelo OneSignalService
 // (tanto web quanto Capacitor nativo via onesignal-cordova-plugin).
 import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore, isIOSNative, APP_STORE_URL, appHome, gotoPlans } from './native/Platform';
+import { limparServiceWorkerNoNativo } from './native/swGuard';
 import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
 import { UserRhythmService } from './core/UserRhythmService';
