@@ -6070,9 +6070,20 @@ class RhythmSequencer {
       try { (navigator as any).mediaSession.playbackState = 'paused'; } catch {}
     }
     void NowPlayingService.setPlaybackState(false);
-    // Para o ForegroundService Android — sem isso, notificação "GDrums
-    // tocando" fica mesmo após pause / após user fechar o app.
-    this.stopBackgroundAudioService();
+    // ⚠️ A PAUSA NÃO DERRUBA O ForegroundService DO ANDROID.
+    //
+    // Derrubava, e custava caro em dois lugares:
+    //  1. Ninguém religava. `resumeFromPause` não chama o start, então a
+    //     partir da PRIMEIRA pausa o show seguia sem proteção: bloqueou a
+    //     tela ou trocou de app, o áudio morria no meio da música.
+    //  2. Pausar é o 3º botão do pedal. Cada pisada virava desligar e
+    //     religar um serviço do sistema, e cada religada abre um contrato
+    //     com prazo (ver GDrumsAudioService). Era o caminho mais curto
+    //     pro crash que respondia por 93% das falhas no Play.
+    //
+    // Pausa é temporária: o serviço fica de pé e o `stop()` de verdade é
+    // que desliga. É o que Spotify e afins fazem, a notificação continua
+    // na barra enquanto a sessão existe.
     const statusAdmin = document.getElementById('status');
     const statusUser = document.getElementById('statusUser');
     if (statusAdmin) statusAdmin.textContent = t('main.status.paused');
