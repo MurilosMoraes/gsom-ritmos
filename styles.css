@@ -123,7 +123,23 @@ body::before {
     radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.1) 0%, transparent 60%);
   pointer-events: none;
   z-index: 0;
-  animation: backgroundMove 20s ease-in-out infinite;
+  /* ⚠️ SEM ANIMAÇÃO AQUI. O gradiente é fixo de propósito.
+   *
+   * Isto tinha `animation: backgroundMove 20s infinite`: um pulso de
+   * opacidade 1→0,8 com scale 1→1,1, numa camada de tela cheia.
+   *
+   * Custo medido (Android 14, tela do sequenciador, app PARADO, ninguém
+   * tocando na tela): 162 quadros desenhados em 20 segundos. Sem a
+   * animação: ZERO. Esta regra sozinha fazia o app redesenhar a tela
+   * inteira pra sempre, queimando bateria e entupindo a métrica de
+   * frames lentos do Play (39,86%, contra 1,17% dos concorrentes).
+   *
+   * Pior: como o fundo se mexia, TODO painel com backdrop-filter em cima
+   * dele tinha que recalcular o desfoque a cada quadro.
+   *
+   * Ganho visual: nenhum. Comparei print a print e não dá pra ver
+   * diferença, o gradiente já é 0,15 de alfa. Se um dia quiser de volta,
+   * que seja só no desktop, nunca no app nativo. */
 }
 
 @keyframes backgroundMove {

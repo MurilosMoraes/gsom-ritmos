@@ -60,7 +60,9 @@ body {
     rgba(0, 212, 255, 0.05) 0%,
     transparent 70%
   );
-  animation: pulse 15s ease-in-out infinite;
+  /* Sem animação: mesma razão do fundo do app (ver styles.css). Camada
+   * de 200% x 200% animada pra sempre fazia a tela de login redesenhar
+   * sem parar, mesmo com o cliente só olhando. O gradiente fica. */
 }
 
 @keyframes pulse {
