@@ -76,6 +76,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             let sessao = AVAudioSession.sharedInstance()
             try sessao.setCategory(.playback, mode: .default, options: [])
             try sessao.setActive(true, options: [])
+            print("[GDrums] AVAudioSession reactivated on sceneDidBecomeActive")
         } catch {
             print("[GDrums] AVAudioSession reactivate failed: \(error)")
         }
