@@ -592,7 +592,13 @@ class PlansPage {
     });
 
     // Assinatura da Apple com upgrade disponível: explica por que não tem "renovar".
-    if (offer.appleManaged) grid.appendChild(this.noteBox(t('plans.apple.managed')));
+    //
+    // Só vale pra quem TEM assinatura ativa na Apple. Pra quem já venceu, o
+    // recado é mentira ("renova sozinha" não renovou) e, pior, desanima a
+    // compra: o cliente que voltou pra assinar lê que está tudo certo e sai.
+    // Aconteceu com os clientes de agosto que compraram pela App Store.
+    const assinaturaAtiva = offer.state === 'active' || offer.state === 'active-pass';
+    if (offer.appleManaged && assinaturaAtiva) grid.appendChild(this.noteBox(t('plans.apple.managed')));
 
     this.fillStorePrices();
   }
