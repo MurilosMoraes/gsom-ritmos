@@ -8,6 +8,7 @@ import { validateCPF, formatCPF, hashCPF } from '../utils/cpf';
 import { internalNav, appHome, isNativeApp } from '../native/Platform';
 import { peekPendingNext, nextForPlatform, deviceStore } from './plansRouting';
 import { t, hydrate } from '../i18n';
+import { bootIntencao } from '../native/bootIntencao';
 
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
 // pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
@@ -172,5 +173,6 @@ class CompletarCadastroPage {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  bootIntencao();
   new CompletarCadastroPage();
 });

@@ -9,6 +9,7 @@ import { loginPathWithNext, clearPendingNext, deviceStore } from './plansRouting
 import { clearAwaitingPayment } from './paymentSync';
 import { trackPurchase } from '../utils/metaTracking';
 import { t, hydrate } from '../i18n';
+import { bootIntencao } from '../native/bootIntencao';
 
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
 // pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
@@ -314,5 +315,6 @@ class PaymentSuccessPage {
 
 window.addEventListener('DOMContentLoaded', () => {
   if (redirectIfRecoveryHash()) return;
+  bootIntencao();
   new PaymentSuccessPage();
 });

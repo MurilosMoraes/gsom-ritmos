@@ -16,6 +16,7 @@ import { isNativeApp, internalNav } from './native/Platform';
 import { applyMonthlyStorePrice } from './native/storePriceLabel';
 import { t, hydrate, getLocale } from './i18n';
 import { injectLanguagePill } from './i18n/selector';
+import { bootIntencao } from './native/bootIntencao';
 
 // Hidrata o HTML estático (data-i18n) ANTES de qualquer render dinâmico —
 // pra pt-BR é no-op visual (valores byte-idênticos ao HTML).
@@ -1347,6 +1348,7 @@ function corrigirLinksInternosNoApp(): void {
 
 window.addEventListener('DOMContentLoaded', () => {
   if (redirectIfRecoveryHash()) return;
+  bootIntencao();
   corrigirLinksInternosNoApp();
   AttributionService.init();
   new DemoPlayer();

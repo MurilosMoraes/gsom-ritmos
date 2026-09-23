@@ -25,6 +25,11 @@
 
 import { App as CapacitorApp } from '@capacitor/app';
 import { isNativeApp, isIOSNative, internalNav, gotoPlans, lockInternalNav } from './Platform';
+import {
+  guardarIntencao, lerIntencao, limparIntencao, contarTentativa, decidir,
+  lancamentoJaUsado, marcarLancamentoUsado,
+  type Intencao, type KeyValueStore,
+} from './deepLinkIntent';
 
 /**
  * Mapeia o pathname externo (que veio no link) pro arquivo .html do
@@ -43,7 +48,7 @@ const PATH_MAP: Record<string, string> = {
   '/register': '/register.html',
 };
 
-function routeFromUrl(url: string): string | null {
+export function routeFromUrl(url: string): string | null {
   try {
     const u = new URL(url);
     // Só processa nosso próprio domínio (defesa contra abuso).
@@ -79,44 +84,126 @@ function routeFromUrl(url: string): string | null {
  * (InfinitePay), então vai pelo gotoPlans(), levando a query junto. Sem
  * isso, o link de renovação abria a tela de planos DENTRO do WebView.
  */
-export function openAppUrl(url: string): boolean {
+const local = (): KeyValueStore | null => {
+  try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch { return null; }
+};
+const sessao = (): KeyValueStore | null => {
+  try { return typeof sessionStorage !== 'undefined' ? sessionStorage : null; } catch { return null; }
+};
+
+/**
+ * Chegou uma URL nossa (link universal ou push). Guarda a intenção ANTES de
+ * qualquer navegação e tenta atender.
+ *
+ * Guardar antes é o ponto todo: o destino é outra página, ou seja, outro
+ * contexto JS. Se o boot dele redirecionar (deslogado indo pro login), a
+ * intenção continua de pé e é atendida quando o caminho liberar.
+ */
+export function openAppUrl(url: string, origem: Intencao['origem'] = 'link'): boolean {
   const target = routeFromUrl(url);
   if (!target) return false;
+  guardarIntencao(local(), target, origem);
+  aplicarIntencaoPendente();
+  return true;
+}
 
-  if (target.startsWith('/plans.html') && isNativeApp() && !isIOSNative()) {
-    gotoPlans('/plans' + target.slice('/plans.html'.length).replace(/#.*$/, ''));
+/**
+ * Olha a intenção guardada e decide o que fazer nesta página. Chamar no
+ * boot de TODA página do app.
+ *
+ * Devolve true se agiu (navegou ou atendeu).
+ */
+export function aplicarIntencaoPendente(): boolean {
+  const store = local();
+  const intencao = lerIntencao(store);
+  const aqui = window.location.pathname + window.location.search + window.location.hash;
+  const d = decidir(aqui, intencao);
+
+  if (d.acao === 'nada') return false;
+
+  if (d.acao === 'atender') {
+    // Já estamos na página certa, com a query certa. O código da própria
+    // página lê a URL e faz o resto. Só tiramos a intenção do caminho pra
+    // ela não reabrir nada depois.
+    limparIntencao(store);
     return true;
   }
 
-  // Link pra página que já está aberta, mudando só o #hash (ex: recovery com
-  // o app parado no login): trocar href NÃO recarrega, e a página nunca
-  // processaria o token. Força o reload.
-  const samePage = target.replace(/#.*$/, '') === window.location.pathname + window.location.search;
-  internalNav(target, { force: true });
-  if (samePage) window.location.reload();
+  // Vai ter que navegar. Conta a tentativa ANTES, senão a trava
+  // anti-pingue-pongue não conta nada.
+  contarTentativa(store);
+
+  // Planos no Android saem do app: o pagamento é no Chrome (InfinitePay).
+  // Como não voltamos pra cá, a intenção se encerra aqui.
+  if (d.destino.startsWith('/plans.html') && isNativeApp() && !isIOSNative()) {
+    limparIntencao(store);
+    gotoPlans('/plans' + d.destino.slice('/plans.html'.length).replace(/#.*$/, ''));
+    return true;
+  }
+
+  // Mesma página mudando só o #hash: trocar o href NÃO recarrega, e a
+  // página nunca processaria o token. Aí só o reload resolve, e ele
+  // sozinho, sem o internalNav junto (os dois brigavam entre si).
+  const semHash = (s: string) => s.replace(/#.*$/, '');
+  if (semHash(d.destino) === semHash(aqui) && d.destino !== aqui) {
+    window.location.hash = d.destino.slice(d.destino.indexOf('#') + 1);
+    window.location.reload();
+    return true;
+  }
+
   // O que o cliente tocou vence qualquer redirect que o boot desta página
   // ainda dispare (ex: main.ts mandando deslogado pro /login sem destino).
   lockInternalNav();
+  internalNav(d.destino, { force: true });
   return true;
 }
 
 let listening = false;
 
 /**
- * Registra o listener de deep link no app Capacitor. Chamar na
- * inicialização de CADA página que o cliente pode estar vendo quando toca
- * num link (main, login, plans): cada .html é um contexto JS separado, e
- * sem listener na página atual o toque não faz nada.
+ * Liga o roteamento por link nesta página. Chamar no boot de TODA página
+ * do app: cada .html é um contexto JS separado, e sem isto o toque do
+ * cliente não faz nada.
  *
- * No web não faz nada (deep links só rolam no Capacitor).
+ * Trata as TRÊS formas de o app receber uma intenção:
+ *
+ *  1. APP ABERTO (`appUrlOpen`). O plugin dispara de `handleOnNewIntent` e
+ *     retém o evento até alguém escutar, então basta registrar.
+ *
+ *  2. APP FECHADO (`getLaunchUrl`). ⚠️ `onNewIntent` NÃO roda em abertura
+ *     fria, então `appUrlOpen` NUNCA dispara nesse caso. A URL existe só
+ *     em `bridge.getIntentUri()`. Isto aqui não é otimização: sem esta
+ *     chamada, deep link com o app fechado simplesmente não funciona, que
+ *     era o estado do app até agora.
+ *
+ *  3. INTENÇÃO GUARDADA de uma navegação anterior, que é o que faz o
+ *     destino ser alcançado mesmo passando por redirect no meio.
+ *
+ * No web não faz nada (deep link só existe no Capacitor).
  */
-export function initDeepLinks(): void {
-  if (!isNativeApp() || listening) return;
-  listening = true;
+export async function initDeepLinks(): Promise<void> {
+  if (!isNativeApp()) return;
 
-  CapacitorApp.addListener('appUrlOpen', (event: { url: string }) => {
-    if (!openAppUrl(event.url)) {
-      console.warn('[DeepLink] URL não roteada:', event.url);
+  if (!listening) {
+    listening = true;
+    CapacitorApp.addListener('appUrlOpen', (event: { url: string }) => {
+      if (!openAppUrl(event.url, 'link')) {
+        console.warn('[DeepLink] URL não roteada:', event.url);
+      }
+    });
+  }
+
+  // Abertura fria. A trava por sessão é obrigatória: getLaunchUrl devolve
+  // a MESMA URL enquanto a Activity viver, então sem ela o index manda pro
+  // login, o login lê de novo, e o app fica preso indo e voltando.
+  try {
+    const r = await CapacitorApp.getLaunchUrl();
+    const url = r?.url;
+    if (url && !lancamentoJaUsado(sessao(), url)) {
+      marcarLancamentoUsado(sessao(), url);
+      if (openAppUrl(url, 'lancamento')) return;
     }
-  });
+  } catch { /* plugin indisponível: segue pro passo 3 */ }
+
+  aplicarIntencaoPendente();
 }

@@ -8,7 +8,7 @@ import { internalNav, isIOSNative, appHome } from '../native/Platform';
 import { purchasePlan as iapPurchase, restorePurchases as iapRestore, getStorePrices } from '../native/IAPService';
 import { storeSavingsPercent } from './storePrice';
 import { redirectIfRecoveryHash } from './recoveryGuard';
-import { initDeepLinks } from '../native/DeepLinks';
+import { bootIntencao } from '../native/bootIntencao';
 import { markAwaitingPayment } from './paymentSync';
 import { t, hydrate, getLocale } from '../i18n';
 import {
@@ -896,6 +896,6 @@ window.addEventListener('DOMContentLoaded', () => {
   if (redirectIfRecoveryHash()) return;
   // Link/push aberto com o app já NESTA tela: sem listener aqui o toque
   // não fazia nada (cada .html é um contexto JS separado).
-  initDeepLinks();
+  bootIntencao();
   new PlansPage();
 });

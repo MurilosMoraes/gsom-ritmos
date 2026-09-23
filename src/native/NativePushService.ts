@@ -124,11 +124,9 @@ async function initAndroid(userId: string): Promise<void> {
     // No-op por enquanto
   });
 
-  // 6. User tocou na notificação — navega pra URL se vier
-  FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
-    const data = event.notification?.data as { url?: string } | undefined;
-    if (data?.url && typeof data.url === 'string') openPushUrl(data.url);
-  });
+  // 6. O toque na notificação NÃO é tratado aqui. Ver
+  //    escutarToquesDePush(), que roda no boot de toda página, logado ou
+  //    não. Registrar nos dois lugares fazia o toque disparar em dobro.
 }
 
 // ─── iOS: @capacitor/push-notifications (NÃO MEXER — funciona) ──────
@@ -228,12 +226,9 @@ async function setupListeners(userId: string): Promise<void> {
     // No-op por enquanto. Notificações chegam normal no system tray.
   });
 
-  // User clicou na notificação — pode navegar pra URL embutida
-  PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-    const data = action.notification.data as { url?: string } | undefined;
-    // OneSignal manda URL pra abrir — se for nosso domínio, navega interno
-    if (data?.url && typeof data.url === 'string') openPushUrl(data.url);
-  });
+  // O toque na notificação NÃO é tratado aqui. Ver escutarToquesDePush(),
+  // que roda no boot de toda página, logado ou não. Registrar nos dois
+  // lugares fazia o toque disparar em dobro.
 }
 
 /**
@@ -246,10 +241,59 @@ function openPushUrl(url: string): void {
   try {
     const u = new URL(url);
     if (u.hostname !== 'gdrums.com.br') return;
-    if (openAppUrl(url)) return;
+    if (openAppUrl(url, 'push')) return;
     // Caminho sem rota dedicada (ex: a raiz): abre o app normal.
     internalNav(appHome());
   } catch { /* ignore */ }
+}
+
+let escutandoToques = false;
+
+/**
+ * ESCUTAR O TOQUE NO PUSH ≠ REGISTRAR O APARELHO.
+ *
+ * Isto aqui só escuta, e roda no boot de toda página, logado ou não.
+ * Registrar aparelho (permissão, token, backend) continua sendo do
+ * `initNativePush`, que depende de ter usuário.
+ *
+ * Por que separar: o `initNativePush` só era chamado DEPOIS do login,
+ * DENTRO do index.html. Então quem tocasse num push estando deslogado, ou
+ * caísse em qualquer outra página, não tinha ninguém escutando e o app
+ * abria na home, sem motivo aparente. Era o "clica no push e só abre o
+ * app" que o cliente reclamava.
+ *
+ * Pior no Android: o `initAndroid` faz `return` quando a permissão foi
+ * negada, ANTES de anexar os listeners. Aparelho que negou notificação uma
+ * vez nunca mais respondia a toque, nem pros pushes que já tinham chegado.
+ *
+ * Os dois plugins disparam o evento com `retainUntilConsumed`, ou seja, o
+ * toque fica guardado esperando alguém escutar. Registrar cedo é o que faz
+ * a abertura fria funcionar.
+ */
+export async function escutarToquesDePush(): Promise<void> {
+  if (!Capacitor.isNativePlatform() || escutandoToques) return;
+  escutandoToques = true;
+
+  const plataforma = Capacitor.getPlatform();
+  try {
+    if (plataforma === 'android') {
+      const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
+      await FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
+        const data = event.notification?.data as { url?: string } | undefined;
+        if (data?.url && typeof data.url === 'string') openPushUrl(data.url);
+      });
+    }
+    // O plugin @capacitor/push-notifications é usado no iOS e também no
+    // Android (OneSignal entrega por ele), então escuta nos dois.
+    const { PushNotifications } = await import('@capacitor/push-notifications');
+    await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+      const data = action.notification.data as { url?: string } | undefined;
+      if (data?.url && typeof data.url === 'string') openPushUrl(data.url);
+    });
+  } catch (e) {
+    escutandoToques = false;
+    console.warn('[NativePush] nao consegui escutar toques:', e);
+  }
 }
 
 /**

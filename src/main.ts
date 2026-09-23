@@ -52,6 +52,7 @@ import { redirectIfRecoveryHash } from './auth/recoveryGuard';
 import { LIFETIME_PLANS } from './auth/planOffer';
 import { clearPendingNext, deviceStore, type ProfileLike } from './auth/plansRouting';
 import { PaymentWatcher, shouldSilenceRenewalNag, markAwaitingPayment, type PendingTx } from './auth/paymentSync';
+import { bootIntencao } from './native/bootIntencao';
 
 /** Teclas de um modelo de pedal (ver PEDAL_STORE_KEY). */
 interface PedalMap { left?: string; right?: string; playPause?: string; end?: string }
@@ -449,7 +450,10 @@ class RhythmSequencer {
     // https://gdrums.com.br/* clicado em email/whatsapp e roteia pra
     // página correspondente dentro do app. Crítico pro recovery de senha
     // funcionar quando o user clica no link do email com o app instalado.
-    import('./native/DeepLinks').then(m => m.initDeepLinks()).catch(() => {});
+    // Ponto unico: deep link (aberto E fechado) + toque em push.
+    // Sincrono de proposito. Era um import() dinamico, e numa abertura
+    // fria a promessa resolvia DEPOIS de o boot ja ter redirecionado.
+    bootIntencao();
 
     // Inicializar UI
     this.init();

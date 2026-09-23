@@ -9,7 +9,7 @@ import { setupPasswordToggle } from '../utils/passwordToggle';
 import { OfflineCache } from '../native/OfflineCache';
 import { t, hydrate } from '../i18n';
 import { injectLanguagePill } from '../i18n/selector';
-import { initDeepLinks } from '../native/DeepLinks';
+import { bootIntencao } from '../native/bootIntencao';
 import {
   sanitizeNext, nextForPlatform, savePendingNext, peekPendingNext, clearPendingNext,
   deviceStore, tabStore, canAutoBounce, markAutoBounce,
@@ -1016,7 +1016,7 @@ class LoginPage {
 window.addEventListener('DOMContentLoaded', () => {
   // Link/push aberto com o app parado no login (ex: link de renovação ou
   // de recovery): sem listener aqui o toque não fazia nada.
-  initDeepLinks();
+  bootIntencao();
   AttributionService.init();
   setupPasswordToggle(); // olhinho em todos os input[type=password] da página
   new LoginPage();
