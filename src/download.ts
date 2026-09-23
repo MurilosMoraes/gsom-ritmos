@@ -3,6 +3,10 @@
 // URL: gdrums.com.br/download/<slug> → smart link customizado pelo admin.
 
 import { supabase } from './auth/supabase';
+import { t, hydrate } from './i18n';
+
+// Traduz o HTML da pagina antes de qualquer coisa aparecer.
+hydrate();
 
 type Platform = 'android' | 'ios' | 'other';
 
@@ -37,13 +41,13 @@ function showFallback(targetUrl: string, msg: string): void {
   const fallback = document.getElementById('dlFallback');
   const link = document.getElementById('dlFallbackLink') as HTMLAnchorElement | null;
 
-  if (title) title.textContent = 'Tudo pronto!';
+  if (title) title.textContent = t('core.download.readyTitle');
   if (sub) sub.textContent = msg;
   if (spinner) spinner.style.display = 'none';
   if (fallback) fallback.style.display = 'block';
   if (link) {
     link.href = targetUrl;
-    link.textContent = 'Continuar';
+    link.textContent = t('core.download.continue');
   }
 }
 
@@ -54,13 +58,13 @@ function showError(): void {
   const fallback = document.getElementById('dlFallback');
   const link = document.getElementById('dlFallbackLink') as HTMLAnchorElement | null;
 
-  if (title) title.textContent = 'Link não encontrado';
-  if (sub) sub.textContent = 'Esse link não existe ou foi desativado.';
+  if (title) title.textContent = t('core.download.notFound');
+  if (sub) sub.textContent = t('core.download.notFoundSub');
   if (spinner) spinner.style.display = 'none';
   if (fallback) fallback.style.display = 'block';
   if (link) {
     link.href = '/';
-    link.textContent = 'Ir pro site';
+    link.textContent = t('core.download.goSite');
   }
 }
 

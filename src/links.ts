@@ -3,6 +3,10 @@
 // renderiza a lista. Tracking simples de cliques via RPC increment_link_click.
 
 import { supabase } from './auth/supabase';
+import { t, hydrate } from './i18n';
+
+// Traduz o HTML da pagina antes de qualquer coisa aparecer.
+hydrate();
 
 interface LinkRow {
   id: string;
@@ -99,7 +103,7 @@ async function loadAndRender(): Promise<void> {
     .order('position', { ascending: true });
 
   if (error) {
-    container.innerHTML = `<div class="links-empty">Não foi possível carregar os links agora.</div>`;
+    container.innerHTML = `<div class="links-empty">${t('core.links.empty')}</div>`;
     return;
   }
 

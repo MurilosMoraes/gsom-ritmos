@@ -24,4 +24,19 @@ export const core: Record<string, string> = {
   'core.bio.subtitleFingerprint': 'Use your fingerprint to log in',
   'core.bio.labelFace': 'Face ID',
   'core.bio.labelFingerprint': 'fingerprint',
+
+  // /download e /links (paginas de marketing)
+  'core.download.docTitle': 'Download GDrums',
+  'core.download.title': 'Taking you to the right place…',
+  'core.download.sub': 'Detecting your device',
+  'core.download.manual': 'Continue manually',
+  'core.download.readyTitle': 'All set!',
+  'core.download.continue': 'Continue',
+  'core.download.notFound': 'Link not found',
+  'core.download.notFoundSub': 'This link does not exist or was turned off.',
+  'core.download.goSite': 'Go to the website',
+  'core.links.bio': 'Your whole band on your phone. <br/>180+ rhythms, Bluetooth pedal, made for playing live.',
+  'core.links.loading': 'Loading…',
+  'core.links.empty': 'We could not load the links right now.',
+  'core.links.footer': 'For the honor and glory of God',
 };

@@ -24,4 +24,19 @@ export const core: Record<string, string> = {
   'core.bio.subtitleFingerprint': 'Use sua digital pra entrar',
   'core.bio.labelFace': 'Face ID',
   'core.bio.labelFingerprint': 'digital',
+
+  // /download e /links (paginas de marketing)
+  'core.download.docTitle': 'Baixar GDrums',
+  'core.download.title': 'Te levando pro lugar certo…',
+  'core.download.sub': 'Detectando seu dispositivo',
+  'core.download.manual': 'Continuar manualmente',
+  'core.download.readyTitle': 'Tudo pronto!',
+  'core.download.continue': 'Continuar',
+  'core.download.notFound': 'Link não encontrado',
+  'core.download.notFoundSub': 'Esse link não existe ou foi desativado.',
+  'core.download.goSite': 'Ir pro site',
+  'core.links.bio': 'Sua banda completa no celular. <br/>+180 ritmos brasileiros, pedal Bluetooth, pra músico tocar ao vivo.',
+  'core.links.loading': 'Carregando…',
+  'core.links.empty': 'Não foi possível carregar os links agora.',
+  'core.links.footer': 'Pra honra e glória de Deus',
 };
