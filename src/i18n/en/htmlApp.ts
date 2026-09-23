@@ -12,6 +12,7 @@ export const htmlApp: Record<string, string> = {
   'htmlApp.topbar.languageBtn': '🌎 Language',
   'htmlApp.topbar.pedalInfoBtn': 'How to use the pedal',
   'htmlApp.topbar.offlineBtn': 'Download to use offline',
+  'htmlApp.topbar.offlineSyncBtn': 'Download and sync',
   'htmlApp.topbar.installBtn': 'Install app',
   'htmlApp.topbar.myAccountBtn': 'My Account',
   'htmlApp.topbar.supportLink': 'Support on WhatsApp',

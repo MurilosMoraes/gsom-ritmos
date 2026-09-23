@@ -12,6 +12,7 @@ export const htmlApp: Record<string, string> = {
   'htmlApp.topbar.languageBtn': '🌎 Idioma',
   'htmlApp.topbar.pedalInfoBtn': 'Como usar o pedal',
   'htmlApp.topbar.offlineBtn': 'Baixar pra usar offline',
+  'htmlApp.topbar.offlineSyncBtn': 'Baixar e sincronizar',
   'htmlApp.topbar.installBtn': 'Instalar app',
   'htmlApp.topbar.myAccountBtn': 'Minha Conta',
   'htmlApp.topbar.supportLink': 'Suporte / Comunidade',

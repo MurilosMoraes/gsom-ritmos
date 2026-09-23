@@ -16,6 +16,8 @@ export const htmlAuth: Record<string, string> = {
   'htmlAuth.login.passwordPlaceholder': 'Sua senha',
   'htmlAuth.login.rememberMe': 'Lembrar de mim',
   'htmlAuth.login.forgotPassword': 'Esqueci a senha',
+  'htmlAuth.login.demoCtaSub': '· sem cadastro',
+  'htmlAuth.login.demoCtaTitle': '▶ Teste rápido',
   'htmlAuth.login.backBtn': 'Entrar com outro e-mail',
   'htmlAuth.login.firstTime': 'Primeira vez?',
   'htmlAuth.login.createFreeAccount': 'Criar conta grátis',
