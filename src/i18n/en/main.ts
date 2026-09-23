@@ -66,6 +66,23 @@ export const main: Record<string, string> = {
   'main.iosStartup.body': "Tap to start playing. Your Bluetooth pedal's already good to go.",
   'main.iosStartup.cta': 'Start',
 
+  // Variantes da tela de abertura do iPhone (ver src/ui/aberturaIos.ts).
+  'main.abertura.trial-acabando.titulo': 'Your trial is ending',
+  'main.abertura.trial-acabando.corpo': 'Subscribe and keep the whole band: every rhythm, the pedal and your setlist.',
+  'main.abertura.trial-acabando.cta': 'See plans',
+  'main.abertura.renovar.titulo': 'Your plan expires soon',
+  'main.abertura.renovar.corpo': 'Renew now so you never walk on stage without your band.',
+  'main.abertura.renovar.cta': 'Renew',
+  'main.abertura.sem-pedal.titulo': 'Play without taking your hands off the instrument',
+  'main.abertura.sem-pedal.corpo': 'Set up your Bluetooth pedal and trigger fills, pause and endings with your foot.',
+  'main.abertura.sem-pedal.cta': 'Set up pedal',
+  'main.abertura.sem-repertorio.titulo': 'Get the show ready before you go on',
+  'main.abertura.sem-repertorio.corpo': 'Build your setlist in the right order and jump to the next song with one tap.',
+  'main.abertura.sem-repertorio.cta': 'Build setlist',
+  'main.abertura.sem-offline.titulo': 'A venue with no signal gives no warning',
+  'main.abertura.sem-offline.corpo': 'Download the rhythms now and play anywhere, with or without internet.',
+  'main.abertura.sem-offline.cta': 'Download now',
+
   // ── Status bar / pattern names ──
   'main.status.playing': 'Playing',
   'main.status.stopped': 'Stopped',

@@ -53,6 +53,7 @@ import { LIFETIME_PLANS } from './auth/planOffer';
 import { clearPendingNext, deviceStore, type ProfileLike } from './auth/plansRouting';
 import { PaymentWatcher, shouldSilenceRenewalNag, markAwaitingPayment, type PendingTx } from './auth/paymentSync';
 import { bootIntencao } from './native/bootIntencao';
+import { escolherVariante, textosDaVariante, destinoDaVariante, botaoDaVariante, eOferta, type Variante, type EstadoAbertura } from './ui/aberturaIos';
 
 /** Teclas de um modelo de pedal (ver PEDAL_STORE_KEY). */
 interface PedalMap { left?: string; right?: string; playPause?: string; end?: string }
@@ -311,15 +312,29 @@ class RhythmSequencer {
         // Se já destravou (user já tocou na tela antes do modal aparecer), skip
         if ((this.audioContext.state as string) === 'running') return;
 
+        // ═══════════════════════════════════════════════════════════════
+        // Qual versão desta tela mostrar hoje. Ver src/ui/aberturaIos.ts.
+        // ═══════════════════════════════════════════════════════════════
+        // ⚠️ Isto NÃO pode, em hipótese alguma, atrapalhar o destrave do
+        // áudio. Por isso: decisão 100% local e síncrona (nada de rede),
+        // e envolvida em try/catch. Deu qualquer problema, cai no modal
+        // de sempre e o toque destrava do mesmo jeito. O pedal nunca
+        // depende de nada disto dar certo.
+        let variante: Variante = 'padrao';
+        try {
+          variante = escolherVariante(this.lerEstadoAbertura());
+        } catch { variante = 'padrao'; }
+        const textos = textosDaVariante(variante);
+
         const overlay = document.createElement('div');
         overlay.id = 'iosStartupModal';
         overlay.style.cssText = 'position:fixed;inset:0;background:#030014;display:flex;align-items:center;justify-content:center;z-index:100000;padding:2rem;';
         overlay.innerHTML = `
           <div style="text-align:center;max-width:360px;width:100%;">
             <img src="/img/logo.png" alt="GDrums" style="height:48px;opacity:0.9;margin-bottom:2rem;">
-            <h2 style="color:#fff;font-size:1.3rem;font-weight:700;margin:0 0 0.5rem;letter-spacing:-0.3px;">${t('main.iosStartup.title')}</h2>
+            <h2 style="color:#fff;font-size:1.3rem;font-weight:700;margin:0 0 0.5rem;letter-spacing:-0.3px;">${t(textos.titulo)}</h2>
             <p style="color:rgba(255,255,255,0.5);font-size:0.9rem;line-height:1.6;margin:0 0 2rem;">
-              ${t('main.iosStartup.body')}
+              ${t(textos.corpo)}
             </p>
             <button id="iosStartupBtn" style="
               width:100%;padding:1rem;border:none;border-radius:14px;
@@ -327,23 +342,35 @@ class RhythmSequencer {
               color:#fff;font-size:1rem;font-weight:700;
               font-family:inherit;cursor:pointer;
               box-shadow:0 8px 24px rgba(0,212,255,0.25);
-            ">${t('main.iosStartup.cta')}</button>
+            ">${t(textos.cta)}</button>
           </div>
         `;
         document.body.appendChild(overlay);
 
         const startBtn = overlay.querySelector('#iosStartupBtn') as HTMLButtonElement;
-        const closeModal = () => {
-          // Unlock síncrono dentro do click
+
+        // ⚠️ REGRA SAGRADA: unlockAudio() é a PRIMEIRA linha, SÍNCRONA,
+        // dentro do gesto. Nada de await, nada de setTimeout antes dele.
+        // Perdeu o contexto do gesto, o iOS recusa e o pedal morre.
+        // Tudo que é novidade vem DEPOIS, e dentro de try/catch.
+        const fecharModal = () => {
           unlockAudio();
-          // Remover overlay com fade
           overlay.style.transition = 'opacity 0.25s ease';
           overlay.style.opacity = '0';
           setTimeout(() => overlay.remove(), 280);
         };
-        startBtn.addEventListener('click', closeModal);
-        // Fallback: qualquer toque no overlay também destrava
-        overlay.addEventListener('touchstart', closeModal, { once: true, passive: true });
+
+        startBtn.addEventListener('click', () => {
+          fecharModal();                       // destrave primeiro, sempre
+          try { this.cumprirAberturaIos(variante); } catch { /* nunca quebra o boot */ }
+        });
+
+        // Fallback: qualquer toque no overlay também destrava. Aqui é só
+        // dispensa, não executa a ação da variante: o cliente tocou fora
+        // do botão, ou seja, não quis a oferta.
+        overlay.addEventListener('touchstart', () => fecharModal(), { once: true, passive: true });
+
+        try { this.registrarAberturaIos(variante); } catch { /* estatistica nao e critica */ }
       };
 
       if (document.readyState === 'loading') {
@@ -457,6 +484,111 @@ class RhythmSequencer {
 
     // Inicializar UI
     this.init();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // TELA DE ABERTURA DO iPHONE — a que destrava o áudio e o pedal.
+  // ═══════════════════════════════════════════════════════════════════════
+  // Ver src/ui/aberturaIos.ts pro porquê e pras regras. Aqui só o
+  // encanamento, e ele é defensivo de propósito: nada destes três métodos
+  // pode impedir o destrave. Todos são chamados dentro de try/catch e
+  // nenhum roda antes do unlockAudio().
+
+  /**
+   * Chave do cache de perfil. Tem que ser IGUAL à do OfflineCache.ts.
+   * Errei isto na primeira versão e o modal caía no padrão pra sempre, em
+   * silêncio, sem erro nenhum. test/abertura-ios-test.ts trava as duas.
+   */
+  private static readonly PERFIL_CACHE_KEY = 'gdrums-offline-profile';
+
+  /** Estado do cliente, lido SÓ do que já está no aparelho. Sem rede. */
+  private lerEstadoAbertura(): EstadoAbertura {
+    const ler = (k: string): string | null => {
+      try { return localStorage.getItem(k); } catch { return null; }
+    };
+    const temConteudo = (k: string): boolean => {
+      const v = ler(k);
+      if (!v) return false;
+      try {
+        const p = JSON.parse(v);
+        if (Array.isArray(p)) return p.length > 0;
+        if (p && typeof p === 'object') {
+          const lista = (p as { setlists?: unknown[] }).setlists;
+          return Array.isArray(lista) ? lista.length > 0 : Object.keys(p).length > 0;
+        }
+        return true;
+      } catch { return v.length > 0; }
+    };
+
+    // Perfil do cache offline que o app já mantém. É o único jeito de
+    // saber do plano sem esperar rede, e esperar rede aqui seria travar a
+    // abertura do app, que é pior que o problema.
+    let status: EstadoAbertura['status'] = null;
+    let venceEm: string | null = null;
+    try {
+      const cru = ler(RhythmSequencer.PERFIL_CACHE_KEY);
+      if (cru) {
+        const c = JSON.parse(cru) as { subscriptionStatus?: string; subscriptionExpiresAt?: string | null };
+        const s = c.subscriptionStatus;
+        if (s === 'active' || s === 'trial' || s === 'expired' || s === 'canceled') status = s;
+        venceEm = c.subscriptionExpiresAt ?? null;
+      }
+    } catch { /* cache corrompido: cai no padrão */ }
+
+    return {
+      status,
+      venceEm,
+      temPedal: !!ler(RhythmSequencer.PEDAL_STORE_KEY),
+      temRepertorio: temConteudo('gdrums-setlists-v2'),
+      temOffline: !!ler('gdrums-offline-ready'),
+      pagandoAgora: !!ler('gdrums-awaiting-payment'),
+      ofertasHoje: this.ofertasDeHoje(),
+      agora: Date.now(),
+    };
+  }
+
+  /** Quantas vezes a variante de oferta já apareceu hoje. */
+  private ofertasDeHoje(): number {
+    try {
+      const hoje = new Date().toISOString().slice(0, 10);
+      const cru = localStorage.getItem('gdrums-abertura-ofertas');
+      if (!cru) return 0;
+      const { dia, n } = JSON.parse(cru) as { dia: string; n: number };
+      return dia === hoje ? (Number(n) || 0) : 0;
+    } catch { return 0; }
+  }
+
+  /** Conta a exibição, pro teto diário de oferta valer alguma coisa. */
+  private registrarAberturaIos(variante: Variante): void {
+    if (!eOferta(variante)) return;
+    const hoje = new Date().toISOString().slice(0, 10);
+    localStorage.setItem('gdrums-abertura-ofertas',
+      JSON.stringify({ dia: hoje, n: this.ofertasDeHoje() + 1 }));
+  }
+
+  /**
+   * Faz o que a variante promete, DEPOIS do áudio já estar destravado.
+   *
+   * O atraso é pra ação acontecer com o modal já saindo da tela: abrir o
+   * mapeador de pedal por baixo de um overlay que ainda está sumindo fica
+   * horrível. E como o destrave já aconteceu, atrasar aqui não tem risco
+   * nenhum pro pedal.
+   */
+  private cumprirAberturaIos(variante: Variante): void {
+    const destino = destinoDaVariante(variante);
+    if (destino) {
+      // iOS: /plans interno, que aciona o StoreKit. NUNCA site externo
+      // (Apple 3.1.1). O gotoPlans já sabe disso.
+      setTimeout(() => { try { gotoPlans(destino); } catch { /* fica no app */ } }, 300);
+      return;
+    }
+    const botao = botaoDaVariante(variante);
+    if (botao) {
+      setTimeout(() => {
+        try { (document.getElementById(botao) as HTMLElement | null)?.click(); }
+        catch { /* o cliente acha no menu */ }
+      }, 320);
+    }
   }
 
   private setupCallbacks(): void {

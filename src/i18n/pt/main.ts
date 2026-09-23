@@ -66,6 +66,23 @@ export const main: Record<string, string> = {
   'main.iosStartup.body': 'Toque pra começar a tocar. Seu pedal Bluetooth já vai estar funcionando.',
   'main.iosStartup.cta': 'Começar',
 
+  // Variantes da tela de abertura do iPhone (ver src/ui/aberturaIos.ts).
+  'main.abertura.trial-acabando.titulo': 'Seu teste está acabando',
+  'main.abertura.trial-acabando.corpo': 'Assine e siga com a banda completa: todos os ritmos, o pedal e o repertório do seu show.',
+  'main.abertura.trial-acabando.cta': 'Ver planos',
+  'main.abertura.renovar.titulo': 'Seu plano vence em breve',
+  'main.abertura.renovar.corpo': 'Renove agora e não corra o risco de subir no palco sem banda.',
+  'main.abertura.renovar.cta': 'Renovar',
+  'main.abertura.sem-pedal.titulo': 'Toque sem tirar as mãos do instrumento',
+  'main.abertura.sem-pedal.corpo': 'Configure seu pedal Bluetooth e comande virada, pausa e finalização com o pé.',
+  'main.abertura.sem-pedal.cta': 'Configurar pedal',
+  'main.abertura.sem-repertorio.titulo': 'Deixe o show pronto antes de subir no palco',
+  'main.abertura.sem-repertorio.corpo': 'Monte o repertório na ordem certa e passe de uma música pra outra com um toque.',
+  'main.abertura.sem-repertorio.cta': 'Montar repertório',
+  'main.abertura.sem-offline.titulo': 'Palco sem sinal não avisa',
+  'main.abertura.sem-offline.corpo': 'Baixe os ritmos agora e toque mesmo sem internet, em qualquer lugar.',
+  'main.abertura.sem-offline.cta': 'Baixar agora',
+
   // ── Status bar / pattern names ──
   'main.status.playing': 'Tocando',
   'main.status.stopped': 'Parado',
