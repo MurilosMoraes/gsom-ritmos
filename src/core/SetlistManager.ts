@@ -815,16 +815,18 @@ export class SetlistManager {
       // diferença de UMA música passava no filtro dos 10%, a coluna legada
       // vencia, e o repertório perdia um item. O sync seguinte repetia.
       //
-      // Está registrado na vitrine da comunidade, que guarda uma
-      // publicação por alteração. A decadência inteira, quadro a quadro:
-      //   Doca Russo, "MPB":              82 → 1   (156 publicações)
-      //   Doca Russo, "SERTANEJO":        86 → 1   (95)
-      //   William, "Apresentação Pop":    48 → 1   (137)
-      //   Staner, "Repertório St.":       81 → 2   (96)
+      // ⚠️ SOBRE A EVIDÊNCIA: eu achei que a vitrine da comunidade
+      // provava isso, porque lá aparecem dezenas de versões do mesmo
+      // repertório encolhendo (86 → 1). NÃO PROVA. Aquelas linhas são
+      // `derived_from`: seleções de quem BAIXOU pedaços do repertório,
+      // uma linha por escolha. O repertório original foi publicado uma
+      // vez só, no tamanho cheio. Conferido em 24/09/2026.
       //
-      // Todos terminando em 1 ou 2 músicas. Não havia limite: bastava
-      // tempo. Agora a coluna legada só é adotada quando ACRESCENTA. Se
-      // ela vier menor, é resto de gravação antiga ou corrida do
+      // Então esta correção é endurecimento por leitura do código, não
+      // diagnóstico de um caso observado: a tolerância de 10% deixava a
+      // coluna legada encolher o repertório e nada impedia que isso se
+      // repetisse a cada sync. Agora ela só é adotada quando ACRESCENTA.
+      // Se vier menor, é resto de gravação antiga ou corrida do
       // dual-write, e é ignorada.
       //
       // O custo disto: remoção de música feita num app MUITO antigo (que
