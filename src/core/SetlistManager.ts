@@ -804,20 +804,41 @@ export class SetlistManager {
     let remoteState: MultiSetlistState | null = null;
     if (data.setlists && Array.isArray(data.setlists?.setlists)) {
       remoteState = this.normalizeState(data.setlists as MultiSetlistState);
-      // App ANTIGO pode ter gravado só a coluna legada `items` depois. Se
-      // divergir do repertório ativo e NÃO for encolhimento drástico, adota
-      // (não perde edição de app velho); se encolheu muito, ignora.
+      // App ANTIGO só grava a coluna legada `items`. Adotamos o que vier
+      // dela pra não perder edição feita de app velho.
+      //
+      // ⚠️ MAS ELA NUNCA PODE ENCOLHER O REPERTÓRIO. ISTO COMEU REPERTÓRIO
+      // DE CLIENTE PAGANTE.
+      //
+      // Antes a regra era "adota se não encolheu mais de 10%". Parecia
+      // prudente e era uma catraca que só descia: a cada sync, uma
+      // diferença de UMA música passava no filtro dos 10%, a coluna legada
+      // vencia, e o repertório perdia um item. O sync seguinte repetia.
+      //
+      // Está registrado na vitrine da comunidade, que guarda uma
+      // publicação por alteração. A decadência inteira, quadro a quadro:
+      //   Doca Russo, "MPB":              82 → 1   (156 publicações)
+      //   Doca Russo, "SERTANEJO":        86 → 1   (95)
+      //   William, "Apresentação Pop":    48 → 1   (137)
+      //   Staner, "Repertório St.":       81 → 2   (96)
+      //
+      // Todos terminando em 1 ou 2 músicas. Não havia limite: bastava
+      // tempo. Agora a coluna legada só é adotada quando ACRESCENTA. Se
+      // ela vier menor, é resto de gravação antiga ou corrida do
+      // dual-write, e é ignorada.
+      //
+      // O custo disto: remoção de música feita num app MUITO antigo (que
+      // só escreve `items`) deixa de propagar. É de longe o mal menor: o
+      // cliente reapaga em 2 toques, e ninguém mais perde repertório.
       if (Array.isArray(data.items) && data.items.length > 0) {
         const act = remoteState.setlists.find(s => s.id === remoteState!.activeId);
-        if (act && JSON.stringify(act.items) !== JSON.stringify(data.items)) {
-          const shrunk = data.items.length < act.items.length * 0.9;
-          if (!shrunk) {
-            act.items = data.items;
-            act.currentIndex = Math.min(
-              typeof data.current_index === 'number' ? data.current_index : 0,
-              Math.max(0, data.items.length - 1)
-            );
-          }
+        if (act && JSON.stringify(act.items) !== JSON.stringify(data.items)
+            && data.items.length > act.items.length) {
+          act.items = data.items;
+          act.currentIndex = Math.min(
+            typeof data.current_index === 'number' ? data.current_index : 0,
+            Math.max(0, data.items.length - 1)
+          );
         }
       }
     } else if (Array.isArray(data.items) && data.items.length > 0) {

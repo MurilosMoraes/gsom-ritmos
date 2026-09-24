@@ -171,5 +171,59 @@ t('o que o cliente apagou nao volta', () => {
   eq(r.setlists.map((s: Lista) => s.id), ['a'], 'ressuscitou o que ele apagou');
 });
 
+
+console.log('\n── A CATRACA: coluna legada não pode encolher repertório ──');
+
+// Isto comeu repertorio de cliente pagante. A regra antiga adotava a
+// coluna legada `items` quando ela nao tivesse encolhido mais de 10%.
+// A cada sync, uma diferenca de UMA musica passava no filtro, a coluna
+// vencia, e o repertorio perdia um item. Sem limite: so precisava de
+// tempo. Registrado na comunidade, quadro a quadro: 86 -> 1.
+
+const remoteStateFrom = (data: any): any =>
+  (SetlistManager.prototype as any).remoteStateFrom.call(
+    { normalizeState: (x: any) => x }, data);
+
+t('coluna legada com UMA musica a menos NAO encolhe', () => {
+  const dados = {
+    setlists: { setlists: [lista('a', 'Sertanejo', 86, 1000)], activeId: 'a', lastModified: 1000 },
+    items: Array.from({ length: 85 }, (_, i) => ({ name: `m${i}`, path: `/r/${i}.json` })),
+    current_index: 0,
+  };
+  eq(remoteStateFrom(dados).setlists[0].items.length, 86, 'perdia 1 por sync ate sobrar 1');
+});
+
+t('mesmo 10 por cento a menos NAO encolhe', () => {
+  const dados = {
+    setlists: { setlists: [lista('a', 'MPB', 82, 1000)], activeId: 'a', lastModified: 1000 },
+    items: Array.from({ length: 75 }, (_, i) => ({ name: `m${i}`, path: `/r/${i}.json` })),
+  };
+  eq(remoteStateFrom(dados).setlists[0].items.length, 82);
+});
+
+t('coluna legada com MAIS musicas ainda e adotada (app velho adicionou)', () => {
+  const dados = {
+    setlists: { setlists: [lista('a', 'Rock', 10, 1000)], activeId: 'a', lastModified: 1000 },
+    items: Array.from({ length: 14 }, (_, i) => ({ name: `m${i}`, path: `/r/${i}.json` })),
+    current_index: 3,
+  };
+  const r = remoteStateFrom(dados);
+  eq(r.setlists[0].items.length, 14, 'nao pode ignorar adicao feita de app velho');
+  eq(r.setlists[0].currentIndex, 3);
+});
+
+t('a decadencia inteira do caso real nao acontece mais', () => {
+  // Simula 90 syncs seguidos, cada um com a coluna legada 1 atras.
+  let estado: any = { setlists: [lista('a', 'SERTANEJO', 86, 1000)], activeId: 'a', lastModified: 1000 };
+  for (let i = 0; i < 90; i++) {
+    const n = Math.max(1, estado.setlists[0].items.length - 1);
+    estado = remoteStateFrom({
+      setlists: estado,
+      items: Array.from({ length: n }, (_, k) => ({ name: `m${k}`, path: `/r/${k}.json` })),
+    });
+  }
+  eq(estado.setlists[0].items.length, 86, 'antes terminava em 1');
+});
+
 console.log(`\n${ok} ok, ${falhou} falharam\n`);
 process.exit(falhou ? 1 : 0);
