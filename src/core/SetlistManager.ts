@@ -84,6 +84,32 @@ function genId(): string {
     String(Date.now()) + Math.random().toString(16).slice(2);
 }
 
+/**
+ * Nomes que o app dá sozinho ao repertório inicial, nos 3 idiomas. Tem que
+ * cobrir todos: o cliente pode ter criado a conta em português e trocado
+ * pra espanhol depois, e o lixo antigo continua com o nome velho.
+ */
+const NOMES_PADRAO = new Set(['meu repertório', 'meu repertorio', 'my setlist', 'mi repertorio']);
+
+/**
+ * É lixo que o APP criou, não algo do cliente?
+ *
+ * Os três têm que ser verdade ao mesmo tempo:
+ *   - está vazio (não há o que perder além do nome);
+ *   - tem o nome padrão (se ele renomeou, é dele, mesmo vazio);
+ *   - nunca foi tocado (createSetlist/renomear/editar carimbam
+ *     lastModified — então repertório criado de propósito nunca cai aqui).
+ *
+ * Conservador de propósito: na dúvida, NÃO é lixo. Apagar repertório de
+ * cliente por engano é muito pior que deixar um vazio sobrando na lista.
+ */
+export function ehLixoAutomatico(s: NamedSetlist | undefined | null): boolean {
+  if (!s) return false;
+  if (Array.isArray(s.items) && s.items.length > 0) return false;
+  if (s.lastModified) return false;
+  return NOMES_PADRAO.has((s.name || '').trim().toLowerCase());
+}
+
 function emptyState(): MultiSetlistState {
   const id = genId();
   return {
@@ -839,13 +865,52 @@ export class SetlistManager {
     // Remove os excluídos (tombstones) da união — exclusão propaga
     for (const id of deleted) byId.delete(id);
 
-    let setlists = Array.from(byId.values()).slice(0, MAX_SETLISTS);
+    let setlists = Array.from(byId.values());
+
+    // ── 1. JOGA FORA O LIXO AUTOMÁTICO ────────────────────────────────
+    // Todo boot com o armazenamento local vazio criava um "Meu repertório"
+    // vazio (emptyState) e a união guardava TODOS eles. Na base real isso
+    // virou 1.650 contas com 2+ vazios, uma delas com 29, encostada no
+    // limite de 30 e sem conseguir criar mais nada.
+    //
+    // Só descarta o que é comprovadamente automático: vazio, com o nome
+    // padrão, e NUNCA tocado (createSetlist carimba lastModified, então
+    // repertório que o cliente criou de propósito nunca cai aqui).
+    const comConteudo = setlists.filter(s => !ehLixoAutomatico(s));
+    if (comConteudo.length > 0) setlists = comConteudo;
+
+    // ── 2. SE VAI CORTAR NO LIMITE, CORTA O VAZIO ─────────────────────
+    // O slice cego podia jogar fora repertório cheio e manter vazio.
+    if (setlists.length > MAX_SETLISTS) {
+      setlists = [...setlists].sort((a, b) =>
+        (b.items?.length || 0) - (a.items?.length || 0) ||
+        (b.lastModified || 0) - (a.lastModified || 0)
+      ).slice(0, MAX_SETLISTS);
+    }
+
     // Invariante: sempre existe pelo menos 1 repertório
     if (setlists.length === 0) setlists = emptyState().setlists;
 
     let activeId = local.activeId;
     if (!setlists.some(s => s.id === activeId)) {
       activeId = (remote && setlists.some(s => s.id === remote.activeId)) ? remote.activeId : setlists[0].id;
+    }
+
+    // ── 3. NÃO ABRIR NUM VAZIO TENDO REPERTÓRIO CHEIO ─────────────────
+    // ESTE era o "sumiu meu repertório". O dado nunca se perdia: o app
+    // abria no vazio recém-criado e o do cliente ficava escondido atrás
+    // do seletor. Dava 172 contas no dia em que medi, e é o que fazia o
+    // cliente sair apagando na mão até apagar o que tinha as músicas.
+    //
+    // Só reaponta quando o ativo é lixo automático. Repertório vazio que
+    // o cliente criou agora (pra encher em seguida) continua ativo.
+    const ativo = setlists.find(s => s.id === activeId);
+    if (ativo && ehLixoAutomatico(ativo)) {
+      const melhor = setlists
+        .filter(s => (s.items?.length || 0) > 0)
+        .sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0) ||
+                        (b.items?.length || 0) - (a.items?.length || 0))[0];
+      if (melhor) activeId = melhor.id;
     }
 
     const deletedArr = Array.from(deleted).slice(-MAX_TOMBSTONES);
