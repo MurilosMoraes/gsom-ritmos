@@ -158,17 +158,31 @@ serve(async (req) => {
       }
     }
 
-    // Se não tem cupom no order_nsu, verificar na transação pendente
-    if (!couponCode) {
+    // ─── O CUPOM DA TRANSAÇÃO MANDA, não o sufixo do order_nsu ────
+    //
+    // v20 (26/09/2026). O front reaproveita o order_nsu de um pedido
+    // pendente do mesmo plano (plans.ts: `existingPending?.order_nsu ||
+    // gerar...`), mas ATUALIZA a transação quando o cliente troca de
+    // cupom. Os dois divergiam, e este código lia só o sufixo velho.
+    //
+    // Pro cliente isso virava "Invalid price" e nenhuma forma de pagar.
+    // Caso real: order_nsu ..._mensal_..._AMANHECE (10%) com a transação
+    // já em 30ESPECIAL (30%). O backend calculava 2610, o front mandava
+    // 2030, e a validação recusava. Ou seja: quem trocava pra um cupom
+    // MELHOR era justamente quem ficava sem conseguir pagar.
+    //
+    // Não afrouxa nada. O cupom escolhido continua sendo revalidado
+    // inteiro contra gdrums_coupons logo abaixo (ativo, prazo, usos,
+    // restrição de plano, uma por conta). A transação só diz QUAL cupom
+    // o cliente escolheu, nunca quanto ele vale.
+    {
       const { data: pendingTx } = await supabase
         .from("gdrums_transactions")
-        .select("coupon_code, discount_percent")
+        .select("coupon_code")
         .eq("order_nsu", order_nsu)
-        .single();
+        .maybeSingle();
 
-      if (pendingTx?.coupon_code) {
-        couponCode = pendingTx.coupon_code;
-      }
+      if (pendingTx?.coupon_code) couponCode = pendingTx.coupon_code;
     }
 
     // Desconto do cupom (aplicado DEPOIS do crédito de upgrade, lá embaixo)

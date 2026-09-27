@@ -2,7 +2,7 @@
 
 import { authService } from './AuthService';
 import { supabase } from './supabase';
-import { PLANS, generateOrderNsu, createCheckoutLink } from './PaymentService';
+import { PLANS, generateOrderNsu, cupomDoOrderNsu, createCheckoutLink } from './PaymentService';
 import type { Plan } from './PaymentService';
 import { internalNav, isIOSNative, appHome } from '../native/Platform';
 import { purchasePlan as iapPurchase, restorePurchases as iapRestore, getStorePrices } from '../native/IAPService';
@@ -825,9 +825,27 @@ class PlansPage {
         .limit(1)
         .single();
 
-      // Gerar order_nsu com info do cupom
+      // Gerar order_nsu com info do cupom.
+      //
+      // ⚠️ TROCOU DE CUPOM, PEDIDO NOVO. Reaproveitar o pendente era o que
+      // impedia o cliente de pagar: o order_nsu ficava com o cupom ANTIGO
+      // (é ele que carrega o sufixo) enquanto a transação era atualizada
+      // com o novo. O create-checkout lia o sufixo velho, calculava outro
+      // preço, e recusava com "Invalid price".
+      //
+      // Caso real de 24/09/2026: ..._mensal_..._AMANHECE (10%) com a
+      // transação já em 30ESPECIAL (30%). O cliente trocou pra um cupom
+      // MELHOR e ficou sem conseguir pagar, sem entender por quê.
+      //
+      // O backend (create-checkout v20) já passou a confiar no cupom da
+      // transação, então isto aqui é o cinto junto com o suspensório: os
+      // dois param de divergir na origem.
       const couponSuffix = this.appliedCoupon ? `_${this.appliedCoupon.code}` : '';
-      const orderNsu = existingPending?.order_nsu || (generateOrderNsu(user.id, plan.id) + couponSuffix);
+      const pendenteServe = !!existingPending?.order_nsu
+        && cupomDoOrderNsu(existingPending.order_nsu) === (this.appliedCoupon?.code || '');
+      const orderNsu = pendenteServe
+        ? existingPending!.order_nsu
+        : (generateOrderNsu(user.id, plan.id) + couponSuffix);
       const redirectUrl = `${window.location.origin}/payment-success.html`;
 
       // Salvar pedido pendente no banco

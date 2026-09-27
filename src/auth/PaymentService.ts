@@ -101,6 +101,25 @@ export function generateOrderNsu(userId: string, planId: string): string {
   return `${userId}_${planId}_${Date.now()}`;
 }
 
+/**
+ * O cupom que está cravado no order_nsu, ou '' se não tem.
+ *
+ * Espelha EXATAMENTE a leitura do create-checkout (edge function): o
+ * último pedaço é o cupom quando não é só dígito, porque o formato é
+ * `<userId>_<planId>_<timestamp>[_<CUPOM>]` e o timestamp é numérico.
+ *
+ * Existe pra o front saber se o pedido pendente ainda serve. Trocar de
+ * cupom e reaproveitar o order_nsu antigo fazia o backend cobrar pelo
+ * cupom velho e recusar a compra com "Invalid price". Se mudar a leitura
+ * aqui, mude lá também: as duas TÊM que concordar.
+ */
+export function cupomDoOrderNsu(orderNsu: string): string {
+  const parts = (orderNsu || '').split('_');
+  if (parts.length < 4) return '';
+  const last = parts[parts.length - 1];
+  return last && !/^\d+$/.test(last) ? last : '';
+}
+
 export function parseOrderNsu(orderNsu: string): { userId: string; planId: string } | null {
   const parts = orderNsu.split('_');
   if (parts.length < 3) return null;
