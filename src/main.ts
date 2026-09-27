@@ -4124,6 +4124,24 @@ class RhythmSequencer {
       userManualBtn.addEventListener('click', () => this.showUserManual());
     }
 
+    // Links externos do menu (comunidade, suporte) SAEM pro navegador do
+    // celular. O capacitor.config tem allowNavigation '*', entao target
+    // _blank carrega o site DENTRO da janela do app — e ali a comunidade
+    // morria: o botao de baixar dela monta um endereco intent://, que so
+    // Chrome e Samsung Internet entendem. Na janela do app dava
+    // ERR_UNKNOWN_URL_SCHEME e a pessoa via tela de erro em vez do ritmo.
+    //
+    // openExternal e o mesmo caminho que o pagamento no Android ja usa.
+    // Na web nao muda nada: continua abrindo em aba nova.
+    document.querySelectorAll<HTMLAnchorElement>('a[data-abrir-fora]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        const url = a.getAttribute('href');
+        if (!url || !isNativeApp()) return;   // web segue o comportamento normal
+        e.preventDefault();
+        openExternal(url);
+      });
+    });
+
     // Equalizador e Reverb
     const eqBtn = document.getElementById('eqBtn');
     if (eqBtn) {
