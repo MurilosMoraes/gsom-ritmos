@@ -848,27 +848,42 @@ class PlansPage {
         : (generateOrderNsu(user.id, plan.id) + couponSuffix);
       const redirectUrl = `${window.location.origin}/payment-success.html`;
 
-      // Salvar pedido pendente no banco
-      if (!existingPending) {
+      // Salvar pedido pendente no banco, SEMPRE pelo order_nsu que vai pro
+      // checkout.
+      //
+      // Antes isto decidia olhando se EXISTIA pendente, nao QUAL. Com a
+      // troca de cupom gerando order_nsu novo, o update caia no pedido
+      // VELHO e o novo ia pro checkout sem linha nenhuma no banco.
+      // (O payment-webhook v31 insere como confirmada quando nao acha, ou
+      // seja ninguem perdia pagamento, mas a linha nascia sem
+      // original_amount_cents nem discount_percent e o pendente velho
+      // ficava orfao.)
+      //
+      // O pendente velho fica como esta, de proposito: se o cliente pagar
+      // o link antigo que ficou aberto em outra aba, o webhook precisa
+      // achar a linha em 'pending' pra confirmar sem duplicar a venda.
+      const dadosDoPedido = {
+        coupon_code: this.appliedCoupon?.code || null,
+        discount_percent: this.appliedCoupon?.discount_percent || null,
+        amount_cents: finalPriceCents,
+      };
+
+      if (pendenteServe) {
+        // Mesmo pedido de antes. Acerta valor e cupom, inclusive LIMPAR o
+        // cupom quando o cliente removeu: antes so gravava quando tinha
+        // cupom, entao o desconto removido continuava valendo no banco.
+        await supabase.from('gdrums_transactions')
+          .update(dadosDoPedido)
+          .eq('order_nsu', orderNsu);
+      } else {
         await supabase.from('gdrums_transactions').insert({
           user_id: user.id,
           order_nsu: orderNsu,
           plan: plan.id,
-          amount_cents: finalPriceCents,
           original_amount_cents: plan.priceCents,
           status: 'pending',
-          coupon_code: this.appliedCoupon?.code || null,
-          discount_percent: this.appliedCoupon?.discount_percent || null,
+          ...dadosDoPedido,
         });
-      } else if (this.appliedCoupon) {
-        // Pedido pendente já existe mas agora tem cupom — atualizar
-        await supabase.from('gdrums_transactions')
-          .update({
-            coupon_code: this.appliedCoupon.code,
-            discount_percent: this.appliedCoupon.discount_percent,
-            amount_cents: finalPriceCents,
-          })
-          .eq('order_nsu', existingPending.order_nsu);
       }
 
       // Backup local (fallback)

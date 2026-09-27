@@ -16,6 +16,7 @@
 // A leitura do cupom aqui TEM que concordar com a do create-checkout. Se
 // uma mudar sem a outra, o bug volta.
 
+import { readFileSync } from 'node:fs';
 import { cupomDoOrderNsu, generateOrderNsu } from '../src/auth/PaymentService';
 
 let ok = 0, falhou = 0;
@@ -116,6 +117,41 @@ t('com a correcao os dois usam 30% e passa', () => {
 t('cupom pra MENOS nao trava (cliente paga o que o backend calculou)', () => {
   // Trocar 30% por 10%: o front manda 2610, o backend calcula 2610.
   eq(recusa(2610, precoBackend(2900, 0, 30)), false);
+});
+
+console.log('\n── O pedido e gravado pelo order_nsu que vai pro checkout ──');
+
+// Guarda de FONTE. A decisao de gravar mora dentro de um metodo da
+// PlansPage, que depende de DOM e Supabase, e nao da pra chamar aqui. Mas
+// o erro que importa e visivel no codigo: gravar em um order_nsu e mandar
+// outro pro checkout. Foi o que aconteceu na primeira versao desta
+// correcao — o update caia no pedido velho e o novo ia pro checkout sem
+// linha no banco.
+const plansSrc = readFileSync(new URL('../src/auth/plans.ts', import.meta.url), 'utf-8');
+
+t('nao grava no order_nsu do pendente velho', () => {
+  // So o padrao de ESCRITA e proibido. Ler o cupom do pendente
+  // (cupomDoOrderNsu(existingPending.order_nsu)) e exatamente o certo.
+  eq(plansSrc.includes(".eq('order_nsu', existingPending.order_nsu)"), false,
+     'update tem que cair no orderNsu que vai pro checkout');
+});
+
+t('o update usa o orderNsu do checkout', () => {
+  eq(plansSrc.includes(".eq('order_nsu', orderNsu)"), true);
+});
+
+t('o insert usa o orderNsu do checkout', () => {
+  eq(plansSrc.includes('order_nsu: orderNsu,'), true);
+});
+
+t('remover o cupom LIMPA o cupom no banco (nao fica desconto fantasma)', () => {
+  eq(plansSrc.includes("coupon_code: this.appliedCoupon?.code || null,"), true);
+  // O ramo antigo gravava cupom SO quando tinha cupom aplicado.
+  eq(plansSrc.includes('} else if (this.appliedCoupon) {'), false);
+});
+
+t('o insert mantem original_amount_cents (faturamento e desconto real)', () => {
+  eq(plansSrc.includes('original_amount_cents: plan.priceCents,'), true);
 });
 
 console.log(`\n${ok} ok, ${falhou} falharam\n`);
