@@ -8,6 +8,11 @@
   "trailingSlash": false,
   "redirects": [
     {
+      "source": "/landing",
+      "destination": "https://www.gdrums.com.br/",
+      "permanent": true
+    },
+    {
       "source": "/comunidade",
       "destination": "https://comunidade.gdrums.com.br",
       "permanent": true
@@ -22,10 +27,6 @@
     {
       "source": "/",
       "destination": "/index.html"
-    },
-    {
-      "source": "/landing",
-      "destination": "/landing.html"
     },
     {
       "source": "/es",

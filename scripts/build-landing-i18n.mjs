@@ -188,7 +188,7 @@ function buildHead(L) {
   <meta name="author" content="Murilo Moraes, Staner Goulart">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <link rel="canonical" href="${L.url}">
-  <link rel="alternate" hreflang="pt-BR" href="https://gdrums.com.br/landing">
+  <link rel="alternate" hreflang="pt-BR" href="https://www.gdrums.com.br/">
   <link rel="alternate" hreflang="es" href="https://gdrums.com.br/es">
   <link rel="alternate" hreflang="en" href="https://gdrums.com.br/en">
   <link rel="alternate" hreflang="x-default" href="https://gdrums.com.br/en">
@@ -347,7 +347,7 @@ for (const [code, L] of Object.entries(LANGS)) {
   R('<h4>Suporte</h4>\n            <a href="https://chat.whatsapp.com/HVpdIhgInQ5BwV7eKGAbXq?mode=gi_t" target="_blank">Comunidade WhatsApp</a>\n            <a href="/terms">Termos de Uso</a>\n            <a href="/privacy">Politica de Privacidade</a>',
     `<h4>${t.footSupport}</h4>\n            <a href="mailto:contato@gdrums.com.br">${t.footEmail}</a>\n            <a href="/terms?lang=${code}">${t.footTerms}</a>\n            <a href="/privacy?lang=${code}">${t.footPrivacy}</a>`);
   R('<p>&copy; 2026 GDrums Studio. Todos os direitos reservados.</p>\n        <p>gdrums.com.br</p>',
-    `<p>&copy; 2026 GDrums Studio. ${t.footRights}</p>\n        <p><a href="/landing" hreflang="pt-BR" style="color:inherit;">Português</a> | <a href="${code === 'es' ? '/en' : '/es'}" hreflang="${code === 'es' ? 'en' : 'es'}" style="color:inherit;">${code === 'es' ? 'English' : 'Español'}</a></p>`);
+    `<p>&copy; 2026 GDrums Studio. ${t.footRights}</p>\n        <p><a href="https://www.gdrums.com.br/" hreflang="pt-BR" style="color:inherit;">Português</a> | <a href="${code === 'es' ? '/en' : '/es'}" hreflang="${code === 'es' ? 'en' : 'es'}" style="color:inherit;">${code === 'es' ? 'English' : 'Español'}</a></p>`);
   R('Pra honra e glória de Deus', t.footGlory);
 
   // Nenhum resquício de preço em real ou do grupo de WhatsApp BR
