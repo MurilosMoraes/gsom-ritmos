@@ -45,6 +45,11 @@ export class AudioManager {
   // Não afeta o ataque do sample novo (esse segue FADE_TIME).
   private readonly CUT_FADE = 0.030;
   private bufferCache = new Map<string, AudioBuffer>();
+  // Carga em andamento por path: evita baixar/decodificar o mesmo arquivo
+  // duas vezes quando varios canais pedem o mesmo sample ao mesmo tempo.
+  private cargasEmVoo = new Map<string, Promise<AudioBuffer>>();
+  // Canais que tocaram sem buffer (avisa 1x cada, nao inunda o console).
+  private canaisSemBufferAvisados = new Set<string>();
   // Master node — DynamicsCompressor previne clipping na soma de canais.
   // Sem isso, masterVolume * stepVolume * múltiplos canais podia somar > 1.0
   // → clipping digital → harmônicos altos = clique perceptual aleatório.
@@ -265,17 +270,65 @@ export class AudioManager {
     return await this.audioContext.decodeAudioData(arrayBuffer);
   }
 
+  /**
+   * Carrega (e decodifica) um sample, com cache por path.
+   *
+   * TRES coisas que faltavam aqui, todas descobertas no relato de
+   * 27/09/2026 ("nao toca todas as wav, fica espaco vazio"):
+   *
+   * 1. Nao checava `response.ok`. Um 404 entregava o HTML da pagina de erro
+   *    pro decodeAudioData, que rejeitava: 404 e arquivo corrompido davam
+   *    exatamente o mesmo silencio, impossivel de separar em campo.
+   * 2. Nao tinha retry. Um soluco de rede deixava o canal MUDO pelo resto
+   *    da sessao, porque quem chama engole o erro e segue com buffer null.
+   * 3. Nao deduplicava carga EM VOO. O cache so era preenchido depois do
+   *    decode, entao dois pedidos simultaneos do mesmo arquivo baixavam e
+   *    decodificavam duas vezes. Isso nao importava enquanto a carga era
+   *    em serie; virou obrigatorio quando o FileManager passou a carregar
+   *    os canais em paralelo (um ritmo pede o mesmo sample em varias
+   *    variacoes: ~66 canais para ~12 arquivos distintos).
+   */
   async loadAudioFromPath(path: string): Promise<AudioBuffer> {
     // Cache por path normalizado (sem query params)
     const cacheKey = path.split('?')[0];
     const cached = this.bufferCache.get(cacheKey);
     if (cached) return cached;
 
-    const response = await fetch(path);
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
-    this.bufferCache.set(cacheKey, buffer);
-    return buffer;
+    const emVoo = this.cargasEmVoo.get(cacheKey);
+    if (emVoo) return emVoo;
+
+    const carga = this.buscarEDecodificar(path, cacheKey);
+    this.cargasEmVoo.set(cacheKey, carga);
+    try {
+      return await carga;
+    } finally {
+      // Sai da fila em voo tanto no sucesso (ja esta no bufferCache) quanto
+      // no erro (proxima tentativa pode dar certo).
+      this.cargasEmVoo.delete(cacheKey);
+    }
+  }
+
+  private async buscarEDecodificar(path: string, cacheKey: string): Promise<AudioBuffer> {
+    let ultimoErro: unknown = null;
+    for (let tentativa = 0; tentativa < 2; tentativa++) {
+      try {
+        const response = await fetch(path);
+        if (!response.ok) throw new Error(`HTTP ${response.status} em ${path}`);
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+        this.bufferCache.set(cacheKey, buffer);
+        return buffer;
+      } catch (e) {
+        ultimoErro = e;
+        if (tentativa === 0) await new Promise((r) => setTimeout(r, 250));
+      }
+    }
+    throw ultimoErro instanceof Error ? ultimoErro : new Error(String(ultimoErro));
+  }
+
+  /** Esse sample ja esta decodificado e pronto pra tocar? */
+  temNoCache(path: string): boolean {
+    return this.bufferCache.has((path || '').split('?')[0]);
   }
 
   async loadAudioFromBase64(base64: string): Promise<AudioBuffer> {
@@ -424,8 +477,15 @@ export class AudioManager {
     for (let channel = 0; channel < MAX_CHANNELS; channel++) {
       if (!pattern[channel] || !pattern[channel][step]) continue;
 
-      const buffer = channels[channel]?.buffer;
-      if (!buffer) continue;
+      const canal = channels[channel];
+      const buffer = canal?.buffer;
+      if (!buffer) {
+        // Canal COM som configurado mas SEM buffer = buraco audivel no lugar
+        // do som. Isso era pulado em silencio absoluto, e o cliente relatava
+        // "nao toca todas as wav" sem deixar um unico rastro no app.
+        if (canal?.midiPath || canal?.fileName) this.avisarCanalSemBuffer(channel, canal);
+        continue;
+      }
 
       const stepVolume = volumes[channel]?.[step] ?? 1.0;
       const finalVolume = stepVolume * masterVolume;
@@ -444,6 +504,26 @@ export class AudioManager {
 
       this.playSoundOnChannel(channel, buffer, cellTime, finalVolume);
     }
+  }
+
+  /**
+   * Registra (uma vez por canal+arquivo) que um step pediu som e o buffer
+   * nao estava pronto. So e chamado quando o pattern REALMENTE tem nota
+   * naquele step, ou seja: so quando da buraco de verdade.
+   */
+  private avisarCanalSemBuffer(channel: number, canal: AudioChannel): void {
+    const chave = `${channel}:${canal.midiPath || canal.fileName}`;
+    if (this.canaisSemBufferAvisados.has(chave)) return;
+    this.canaisSemBufferAvisados.add(chave);
+    console.warn(
+      `[GDrums] canal ${channel} tocou SEM buffer (${canal.fileName || canal.midiPath}): ` +
+      'buraco audivel, o sample nao estava carregado'
+    );
+  }
+
+  /** Canais que ja tocaram sem buffer nesta sessao (diagnostico em campo). */
+  canaisSemBuffer(): string[] {
+    return [...this.canaisSemBufferAvisados];
   }
 
   // ─── Método legado para compatibilidade (usado no test mode, cymbal, etc) ──

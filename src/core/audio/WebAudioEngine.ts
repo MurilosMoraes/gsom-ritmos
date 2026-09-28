@@ -43,6 +43,10 @@ export class WebAudioEngine implements IAudioEngine {
     return this.inner.loadAudioFromBase64(base64);
   }
 
+  temNoCache(path: string): boolean {
+    return this.inner.temNoCache(path);
+  }
+
   playSound(buffer: AudioBuffer, time: number, volume: number = 1.0): void {
     this.inner.playSound(buffer, time, volume);
   }

@@ -1,6 +1,6 @@
 // Gerenciamento de arquivos (salvar/carregar projetos)
 
-import { MAX_CHANNELS, type SavedProject, type SavedVariation, type SavedPattern, type AudioFileData, type PatternType } from '../types';
+import { MAX_CHANNELS, type SavedProject, type SavedVariation, type SavedPattern, type AudioFileData, type AudioChannel, type PatternType } from '../types';
 import type { StateManager } from '../core/StateManager';
 import type { IAudioEngine } from '../core/audio/IAudioEngine';
 import { arrayBufferToBase64, expandPattern, expandVolumes, expandOffsets, normalizeMidiPath } from '../utils/helpers';
@@ -72,6 +72,57 @@ export class FileManager {
     };
   }
 
+  /**
+   * Enfileira a carga dos samples de um conjunto de canais, SEM esperar.
+   *
+   * Antes cada canal era um `await` em serie. Um ritmo tem ate 8 variacoes
+   * x 12 canais (medido: 11.964 canais nos 180 ritmos, ~66 por ritmo), e na
+   * primeira carga de uma maquina com cache frio isso levava SEGUNDOS.
+   * Nesse intervalo o pattern ja estava no state, o hasRhythmLoaded() do
+   * main ja dizia "sim", e todo canal ainda sem buffer virava BURACO
+   * audivel no lugar do som (relato de 27/09/2026 num MacBook M1: so prato
+   * e chimbal soavam, porque sao os dois pre-aquecidos fora daqui).
+   *
+   * Agora tudo dispara junto e quem chama espera o conjunto. A deduplicacao
+   * em voo do AudioManager garante que o mesmo arquivo pedido por varias
+   * variacoes seja baixado e decodificado UMA vez.
+   *
+   * O catch por canal fica: um sample que falha nao pode derrubar o ritmo
+   * inteiro. O que mudou e que o AudioManager agora tenta de novo antes de
+   * desistir, e avisa se o canal chegar a tocar sem buffer.
+   */
+  private enfileirarCanais(
+    tarefas: Promise<void>[],
+    canais: AudioChannel[],
+    audioFiles: AudioFileData[] | undefined,
+    rotulo: string
+  ): void {
+    if (!audioFiles) return;
+    for (let i = 0; i < audioFiles.length && i < MAX_CHANNELS; i++) {
+      const audioFile = audioFiles[i];
+      if (!audioFile || !canais[i]) continue;
+      if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) continue;
+
+      const midiPath = normalizeMidiPath(audioFile.midiPath || '');
+      canais[i].midiPath = midiPath;
+      canais[i].fileName = audioFile.fileName;
+      if (!midiPath && !audioFile.audioData) continue;
+
+      tarefas.push((async () => {
+        try {
+          canais[i].buffer = midiPath
+            ? await this.audioManager.loadAudioFromPath(midiPath)
+            : await this.audioManager.loadAudioFromBase64(audioFile.audioData);
+        } catch (error) {
+          console.error(
+            `[GDrums] sample nao carregou: ${rotulo} canal ${i} ` +
+            `(${audioFile.fileName || midiPath})`, error
+          );
+        }
+      })());
+    }
+  }
+
   async saveProject(): Promise<void> {
     const project = this.buildProjectSnapshot();
     const json = JSON.stringify(project, null, 2);
@@ -80,6 +131,9 @@ export class FileManager {
 
   async loadProject(data: SavedProject): Promise<void> {
     const state = this.stateManager.getState();
+    // Fila unica de cargas de sample deste projeto. Tudo dispara junto e a
+    // espera acontece de uma vez, no fim (ver enfileirarCanais).
+    const tarefas: Promise<void>[] = [];
 
     this.stateManager.setTempo(data.tempo || 80);
     this.stateManager.setRhythmGain(data.gain ?? 1);
@@ -113,29 +167,9 @@ export class FileManager {
             speed: variation.speed || 1
           };
 
-          // Carregar áudios da variação
-          for (let i = 0; i < variation.audioFiles.length && i < MAX_CHANNELS; i++) {
-            const audioFile = variation.audioFiles[i];
-            if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
-              continue;
-            }
-
-            const midiPath = normalizeMidiPath(audioFile.midiPath || '');
-            state.variations.main[v].channels[i].midiPath = midiPath;
-            state.variations.main[v].channels[i].fileName = audioFile.fileName;
-
-            try {
-              if (midiPath) {
-                const buffer = await this.audioManager.loadAudioFromPath(midiPath);
-                state.variations.main[v].channels[i].buffer = buffer;
-              } else if (audioFile.audioData) {
-                const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
-                state.variations.main[v].channels[i].buffer = buffer;
-              }
-            } catch (error) {
-              console.error(`Erro ao carregar áudio para main variação ${v} canal ${i}:`, error);
-            }
-          }
+          this.enfileirarCanais(
+            tarefas, state.variations.main[v].channels, variation.audioFiles, `main[${v}]`
+          );
         }
       }
 
@@ -153,29 +187,9 @@ export class FileManager {
             speed: variation.speed || 1
           };
 
-          // Carregar áudios da variação
-          for (let i = 0; i < variation.audioFiles.length && i < MAX_CHANNELS; i++) {
-            const audioFile = variation.audioFiles[i];
-            if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
-              continue;
-            }
-
-            const midiPath = normalizeMidiPath(audioFile.midiPath || '');
-            state.variations.fill[v].channels[i].midiPath = midiPath;
-            state.variations.fill[v].channels[i].fileName = audioFile.fileName;
-
-            try {
-              if (midiPath) {
-                const buffer = await this.audioManager.loadAudioFromPath(midiPath);
-                state.variations.fill[v].channels[i].buffer = buffer;
-              } else if (audioFile.audioData) {
-                const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
-                state.variations.fill[v].channels[i].buffer = buffer;
-              }
-            } catch (error) {
-              console.error(`Erro ao carregar áudio para fill variação ${v} canal ${i}:`, error);
-            }
-          }
+          this.enfileirarCanais(
+            tarefas, state.variations.fill[v].channels, variation.audioFiles, `fill[${v}]`
+          );
         }
       }
 
@@ -193,29 +207,9 @@ export class FileManager {
             speed: variation.speed || 1
           };
 
-          // Carregar áudios da variação
-          for (let i = 0; i < variation.audioFiles.length && i < MAX_CHANNELS; i++) {
-            const audioFile = variation.audioFiles[i];
-            if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
-              continue;
-            }
-
-            const midiPath = normalizeMidiPath(audioFile.midiPath || '');
-            state.variations.end[v].channels[i].midiPath = midiPath;
-            state.variations.end[v].channels[i].fileName = audioFile.fileName;
-
-            try {
-              if (midiPath) {
-                const buffer = await this.audioManager.loadAudioFromPath(midiPath);
-                state.variations.end[v].channels[i].buffer = buffer;
-              } else if (audioFile.audioData) {
-                const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
-                state.variations.end[v].channels[i].buffer = buffer;
-              }
-            } catch (error) {
-              console.error(`Erro ao carregar áudio para end variação ${v} canal ${i}:`, error);
-            }
-          }
+          this.enfileirarCanais(
+            tarefas, state.variations.end[v].channels, variation.audioFiles, `end[${v}]`
+          );
         }
       }
 
@@ -235,57 +229,47 @@ export class FileManager {
             speed: variation.speed || 1
           };
 
-          for (let i = 0; i < variation.audioFiles.length && i < MAX_CHANNELS; i++) {
-            const audioFile = variation.audioFiles[i];
-            if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
-              continue;
-            }
-
-            const midiPath = normalizeMidiPath(audioFile.midiPath || '');
-            state.variations.intro[v].channels[i].midiPath = midiPath;
-            state.variations.intro[v].channels[i].fileName = audioFile.fileName;
-
-            try {
-              if (midiPath) {
-                const buffer = await this.audioManager.loadAudioFromPath(midiPath);
-                state.variations.intro[v].channels[i].buffer = buffer;
-              } else if (audioFile.audioData) {
-                const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
-                state.variations.intro[v].channels[i].buffer = buffer;
-              }
-            } catch {
-              // Áudio intro indisponível — silenciosamente ignora
-            }
-          }
+          this.enfileirarCanais(
+            tarefas, state.variations.intro[v].channels, variation.audioFiles, `intro[${v}]`
+          );
         }
       }
 
-      // Carregar sons de início e retorno
+      // Carregar sons de início e retorno (prato do fill) — junto com o resto
       if (data.fillStartSound) {
         state.fillStartSound.fileName = data.fillStartSound.fileName;
         state.fillStartSound.midiPath = data.fillStartSound.midiPath;
-        if (data.fillStartSound.midiPath) {
-          try {
-            const buffer = await this.audioManager.loadAudioFromPath(data.fillStartSound.midiPath);
-            state.fillStartSound.buffer = buffer;
-          } catch (error) {
-            console.error('Erro ao carregar som de início:', error);
-          }
+        const caminho = data.fillStartSound.midiPath;
+        if (caminho) {
+          tarefas.push((async () => {
+            try {
+              state.fillStartSound.buffer = await this.audioManager.loadAudioFromPath(caminho);
+            } catch (error) {
+              console.error('[GDrums] sample nao carregou: som de início do fill', error);
+            }
+          })());
         }
       }
 
       if (data.fillReturnSound) {
         state.fillReturnSound.fileName = data.fillReturnSound.fileName;
         state.fillReturnSound.midiPath = data.fillReturnSound.midiPath;
-        if (data.fillReturnSound.midiPath) {
-          try {
-            const buffer = await this.audioManager.loadAudioFromPath(data.fillReturnSound.midiPath);
-            state.fillReturnSound.buffer = buffer;
-          } catch (error) {
-            console.error('Erro ao carregar som de retorno:', error);
-          }
+        const caminho = data.fillReturnSound.midiPath;
+        if (caminho) {
+          tarefas.push((async () => {
+            try {
+              state.fillReturnSound.buffer = await this.audioManager.loadAudioFromPath(caminho);
+            } catch (error) {
+              console.error('[GDrums] sample nao carregou: som de retorno do fill', error);
+            }
+          })());
         }
       }
+
+      // ⚠️ A ESPERA MORA AQUI. Quem chama loadProject tem que receber o
+      // ritmo PRONTO pra tocar: e nessa garantia que o main.ts se apoia pra
+      // nao soltar o play com canal sem buffer.
+      await Promise.all(tarefas);
     } else {
       // Formato legado - carregar padrões únicos
       if (data.patterns?.main) {
@@ -312,36 +296,19 @@ export class FileManager {
       // Carregar áudio
       if (data.audioFiles) {
         const patterns: PatternType[] = ['main', 'fill', 'end', 'intro'];
-
         for (const patternType of patterns) {
-          const audioFiles = data.audioFiles[patternType];
-          if (audioFiles && audioFiles.length > 0) {
-            for (let i = 0; i < audioFiles.length && i < MAX_CHANNELS; i++) {
-              const audioFile = audioFiles[i];
-
-              if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
-                continue;
-              }
-
-              const midiPath = normalizeMidiPath(audioFile.midiPath || '');
-              state.channels[patternType][i].midiPath = midiPath;
-              state.channels[patternType][i].fileName = audioFile.fileName;
-
-              try {
-                if (midiPath) {
-                  const buffer = await this.audioManager.loadAudioFromPath(midiPath);
-                  state.channels[patternType][i].buffer = buffer;
-                } else if (audioFile.audioData) {
-                  const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
-                  state.channels[patternType][i].buffer = buffer;
-                }
-              } catch (error) {
-                console.error(`Erro ao carregar áudio para ${patternType} canal ${i}:`, error);
-              }
-            }
-          }
+          this.enfileirarCanais(
+            tarefas, state.channels[patternType], data.audioFiles[patternType], patternType
+          );
         }
       }
+
+      // ⚠️ ESPERAR AQUI E OBRIGATORIO, nao e so questao de garantia: logo
+      // abaixo as variacoes sao montadas COPIANDO o canal por valor
+      // (`state.channels.main.map(ch => ({ ...ch }))`). Copiar antes do
+      // buffer chegar congelaria buffer null na copia, pra sempre, e o
+      // ritmo legado tocaria mudo mesmo depois de tudo carregado.
+      await Promise.all(tarefas);
 
       // Criar variações a partir dos padrões únicos
       for (let v = 0; v < 3; v++) {
@@ -465,31 +432,11 @@ export class FileManager {
       state.volumes[patternType] = expandVolumes(data.volumes);
     }
 
-    // Carregar áudio
+    // Carregar áudio (em paralelo, igual ao loadProject)
     if (data.audioFiles && data.audioFiles.length > 0) {
-      for (let i = 0; i < data.audioFiles.length && i < MAX_CHANNELS; i++) {
-        const audioFile = data.audioFiles[i];
-
-        if (!audioFile.fileName && !audioFile.midiPath && !audioFile.audioData) {
-          continue;
-        }
-
-        const midiPath = normalizeMidiPath(audioFile.midiPath || '');
-        state.channels[patternType][i].midiPath = midiPath;
-        state.channels[patternType][i].fileName = audioFile.fileName;
-
-        try {
-          if (midiPath) {
-            const buffer = await this.audioManager.loadAudioFromPath(midiPath);
-            state.channels[patternType][i].buffer = buffer;
-          } else if (audioFile.audioData) {
-            const buffer = await this.audioManager.loadAudioFromBase64(audioFile.audioData);
-            state.channels[patternType][i].buffer = buffer;
-          }
-        } catch (error) {
-          console.error(`Erro ao carregar áudio para canal ${i}:`, error);
-        }
-      }
+      const tarefas: Promise<void>[] = [];
+      this.enfileirarCanais(tarefas, state.channels[patternType], data.audioFiles, patternType);
+      await Promise.all(tarefas);
     }
 
     // Definir como padrão de edição

@@ -31,6 +31,10 @@ export interface IAudioEngine {
   /** Carrega de base64 (formato exportado de projetos antigos). */
   loadAudioFromBase64(base64: string): Promise<AudioBuffer>;
 
+  /** Esse sample ja esta decodificado e pronto? Opcional: engine que nao
+   *  souber responder simplesmente nao implementa (quem chama trata). */
+  temNoCache?(path: string): boolean;
+
   // ─── Reprodução ────────────────────────────────────────────────────────
   /** Toca sample one-shot no tempo agendado. Usado pra prato/intro/etc. */
   playSound(buffer: AudioBuffer, time: number, volume?: number): void;

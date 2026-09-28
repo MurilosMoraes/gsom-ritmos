@@ -950,6 +950,9 @@ class RhythmSequencer {
         this.cymbalBuffer = buffer;
       }).catch(() => {});
 
+      // Pré-aquecer o RESTO dos samples em segundo plano (ver método).
+      void this.preAquecerSamples();
+
       // What's New — mostra novidades 1x por versão
       setTimeout(() => this.showWhatsNew(), 1500);
 
@@ -6649,7 +6652,38 @@ class RhythmSequencer {
     this.uiManager.updateStatusUI(activePattern);
     this.uiManager.updatePerformanceGrid();
 
-    this.scheduler.start(latencyCompensation);
+    // ─── CORRIDA CARREGAR x TOCAR ─── nao mexer sem ler isto ───────────
+    //
+    // O state recebe o PATTERN do ritmo antes dos SAMPLES: o FileManager
+    // monta os canais com buffer null e enche depois, e o hasRhythmLoaded()
+    // (que olha so o pattern) ja responde "sim" nessa janela. Soltar o
+    // scheduler aqui fazia o AudioManager pular EM SILENCIO todo canal sem
+    // buffer, e o cliente ouvia buraco no lugar do som.
+    //
+    // Relato de 27/09/2026, MacBook M1: soavam apenas prato e chimbal, que
+    // sao exatamente os dois samples pre-aquecidos fora da carga do ritmo.
+    // Aparecia em maquina nova porque com cache frio a janela vira segundos
+    // (69 samples, 64 deles WAV 24 bits, e em Apple Silicon o AudioContext
+    // abre em 48kHz enquanto todo sample e 44.1kHz, entao tudo e reamostrado).
+    //
+    // ⚠️ REGRA DO iOS INTACTA: o resume() do AudioContext ja aconteceu
+    // SINCRONO na primeira linha deste metodo, dentro do gesto do usuario.
+    // Aqui adiamos APENAS o start do scheduler. NUNCA mova o resume() pra
+    // dentro deste then: o audio do iOS morre, e o pedal com ele.
+    //
+    // Com latencyCompensation > 0 nao esperamos: esse e o caminho de entrar
+    // CRAVADO no downbeat (scheduleRhythmEntryAt), onde atrasar o start
+    // desalinha o ritmo da voz, que no palco e pior que o buraco.
+    const carga = latencyCompensation > 0 ? null : this.cargaDeRitmo;
+    if (!carga) {
+      this.scheduler.start(latencyCompensation);
+    } else {
+      const teto = new Promise<void>((r) => { window.setTimeout(r, this.ESPERA_MAX_CARGA_MS); });
+      void Promise.race([carga, teto]).then(() => {
+        // Pode ter parado no meio da espera (stop, pedal, troca de ritmo).
+        if (this.stateManager.isPlaying()) this.scheduler.start(latencyCompensation);
+      });
+    }
 
     // Detectar modo silencioso no iOS (chave lateral)
     if (!this.silentModeChecked && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
@@ -6680,6 +6714,61 @@ class RhythmSequencer {
 
     // Gatilho de conversão: marca início do play
     this.conversionManager.onPlayStart();
+  }
+
+  /**
+   * Pré-aquece TODOS os samples em segundo plano.
+   *
+   * Carregar ritmo só é rápido quando o sample já está DECODIFICADO no cache
+   * do AudioManager. Em máquina nova (cache HTTP frio) a primeira carga leva
+   * segundos, e era nessa janela que dava buraco no lugar do som. O service
+   * worker já guarda esses arquivos; isto só os traz pro cache de
+   * AudioBuffer, que é o que o play realmente usa.
+   *
+   * Conservador de propósito:
+   * - só começa depois do boot, pra não competir com o primeiro ritmo;
+   * - 4 por vez, pra não segurar rede nem decoder;
+   * - pula o que já está no cache;
+   * - nunca lança: falhar aqui não pode atrapalhar nada, o caminho normal
+   *   de carga do ritmo continua valendo igual.
+   *
+   * Não muda o que soa. Muda só QUANDO o sample fica pronto.
+   */
+  private async preAquecerSamples(): Promise<void> {
+    const ESPERA_INICIAL_MS = 4000;
+    const POR_VEZ = 4;
+    try {
+      await new Promise<void>((r) => { window.setTimeout(r, ESPERA_INICIAL_MS); });
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+      const resposta = await fetch('/midi/manifest.json');
+      if (!resposta.ok) return;
+      const manifest = await resposta.json();
+      const arquivos: string[] = Array.isArray(manifest?.files) ? manifest.files : [];
+
+      const fila = arquivos
+        .map((f) => `/midi/${f}`)
+        .filter((caminho) => !this.audioManager.temNoCache?.(caminho));
+      if (fila.length === 0) return;
+
+      let proximo = 0;
+      const trabalhar = async (): Promise<void> => {
+        while (proximo < fila.length) {
+          const caminho = fila[proximo++];
+          try {
+            await this.audioManager.loadAudioFromPath(caminho);
+          } catch {
+            // Sample que não veio agora será tentado de novo na carga do
+            // ritmo que precisar dele. Aqui é só adiantamento.
+          }
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(POR_VEZ, fila.length) }, () => trabalhar())
+      );
+    } catch {
+      // Pré-aquecimento é luxo: qualquer problema, segue a vida.
+    }
   }
 
   private async startBackgroundAudioService(): Promise<void> {
@@ -10403,6 +10492,12 @@ class RhythmSequencer {
   }
 
   private isLoadingRhythm = false;
+  /** Carga de ritmo em andamento (null = nada carregando). O play espera
+   *  isto antes de soltar o scheduler — ver comentario em play(). */
+  private cargaDeRitmo: Promise<void> | null = null;
+  /** Teto de espera do play pela carga. Musico no palco prefere entrar
+   *  atrasado a nao entrar: se a carga travar, toca com o que tiver. */
+  private readonly ESPERA_MAX_CARGA_MS = 2000;
 
   private showRhythmLoader(name: string): HTMLElement {
     const loader = document.createElement('div');
@@ -10430,6 +10525,11 @@ class RhythmSequencer {
   private async loadRhythm(name: string, path: string, opts?: { silent?: boolean }): Promise<void> {
     if (this.isLoadingRhythm) return;
     this.isLoadingRhythm = true;
+
+    // Publica a carga pra quem precisa esperar (play). Resolve no finally,
+    // inclusive quando a carga falha: o play nao pode ficar preso por erro.
+    let concluirCarga: () => void = () => {};
+    this.cargaDeRitmo = new Promise<void>((resolve) => { concluirCarga = resolve; });
 
     // No avanço automático do repertório (AUTO) NÃO mostramos o loader:
     // ele "pisca" na tela a cada troca. silent = troca limpa e instantânea.
@@ -10505,6 +10605,8 @@ class RhythmSequencer {
       this.uiManager.showAlert(t('main.alert.rhythmLoadFailedNamed', { name }));
     } finally {
       this.isLoadingRhythm = false;
+      this.cargaDeRitmo = null;
+      concluirCarga();
       this.hideRhythmLoader();
     }
   }
