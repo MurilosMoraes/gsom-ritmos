@@ -313,11 +313,33 @@ export class AudioManager {
     for (let tentativa = 0; tentativa < 2; tentativa++) {
       try {
         const response = await fetch(path);
-        if (!response.ok) throw new Error(`HTTP ${response.status} em ${path}`);
         const arrayBuffer = await response.arrayBuffer();
-        const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
-        this.bufferCache.set(cacheKey, buffer);
-        return buffer;
+
+        // ⚠️ NUNCA rejeitar so pelo status HTTP.
+        //
+        // A primeira versao desta correcao fazia `if (!response.ok) throw`, e
+        // isso deixou o app MUDO no iPhone. No WebView do Capacitor o sample
+        // vem do bundle por um scheme proprio, e ali o status nao e um 200
+        // confiavel mesmo com o arquivo INTEIRO no corpo da resposta.
+        // Rejeitar pelo status derrubava TODOS os samples de uma vez.
+        //
+        // Nenhum outro fetch de arquivo local do app checa `ok`
+        // (loadProjectFromPath, OfflineDownloader, os manifests): essa aposta
+        // nunca foi segura aqui, e eu fui o primeiro a fazer ela.
+        //
+        // Quem decide e o decodeAudioData, que e o unico que sabe se veio
+        // audio de verdade. O status entra so pra MELHORAR a mensagem de erro
+        // quando o decode falha, que era o objetivo original: separar 404 de
+        // arquivo corrompido.
+        try {
+          const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+          this.bufferCache.set(cacheKey, buffer);
+          return buffer;
+        } catch (erroDecode) {
+          throw response.status >= 400
+            ? new Error(`HTTP ${response.status} em ${path}`)
+            : erroDecode;
+        }
       } catch (e) {
         ultimoErro = e;
         if (tentativa === 0) await new Promise((r) => setTimeout(r, 250));

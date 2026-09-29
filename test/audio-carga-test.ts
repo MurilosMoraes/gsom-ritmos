@@ -79,13 +79,18 @@ function ctxFalso() {
       numberOfChannels: ch, length: len, sampleRate: rate, duration: len / rate,
       getChannelData: () => new Float32Array(len),
     }),
-    decodeAudioData: async () => bufferFalso(),
+    // Realista: HTML de pagina de erro NAO decodifica como audio. O fetch
+    // falso devolve 8 bytes pra erro e 64 pra arquivo bom.
+    decodeAudioData: async (ab: ArrayBuffer) => {
+      if (ab.byteLength <= 8) throw new Error('Unable to decode audio data');
+      return bufferFalso();
+    },
     resume() {}, suspend() {},
   } as unknown as AudioContext;
 }
 
 // ─── fetch falso controlável ───────────────────────────────────────────
-interface Plano { ok?: boolean; status?: number; explode?: number; }
+interface Plano { ok?: boolean; status?: number; explode?: number; corpoBom?: boolean; }
 let pedidos: string[] = [];
 let planos: Record<string, Plano> = {};
 const instalarFetch = () => {
@@ -98,7 +103,9 @@ const instalarFetch = () => {
       throw new Error('rede caiu');
     }
     if (plano.ok === false) {
-      return { ok: false, status: plano.status ?? 404, arrayBuffer: async () => new ArrayBuffer(8) };
+      // corpoBom = status esquisito mas ARQUIVO INTEIRO no corpo (caso Capacitor)
+      const bytes = plano.corpoBom ? 64 : 8;
+      return { ok: false, status: plano.status ?? 404, arrayBuffer: async () => new ArrayBuffer(bytes) };
     }
     return { ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(64) };
   };
@@ -149,6 +156,24 @@ console.log('\n── AudioManager: carregar sample sem falhar calado ──');
   });
   await t('404 tenta 2 vezes antes de desistir', () => {
     eq(pedidos.filter(u => u === '/midi/fantasma.wav').length, 2);
+  });
+}
+{
+  // ⚠️ A REGRESSAO QUE DEIXOU O IPHONE MUDO (28/09/2026).
+  // A 1a versao desta correcao fazia `if (!response.ok) throw`. No WebView do
+  // Capacitor o sample vem do bundle por um scheme proprio e o status NAO e um
+  // 200 confiavel, mesmo com o arquivo inteiro no corpo. Resultado: todos os
+  // samples eram rejeitados de uma vez e o app ficava sem som nenhum.
+  planos = { '/midi/bundle.wav': { ok: false, status: 0, corpoBom: true } }; instalarFetch();
+  const am = new AudioManager(ctxFalso());
+  await t('status esquisito mas arquivo inteiro no corpo: TEM que tocar', () => {
+    return am.loadAudioFromPath('/midi/bundle.wav').then((b) => {
+      verdade(!!b, 'o sample do bundle tem que carregar');
+      verdade(am.temNoCache('/midi/bundle.wav'), 'e tem que ficar em cache');
+    });
+  });
+  await t('nao gasta retry a toa quando o arquivo veio certo', () => {
+    eq(pedidos.length, 1);
   });
 }
 {
@@ -374,8 +399,19 @@ await t('⚠️ REGRA DO iOS: resume() é SÍNCRONO e vem ANTES da espera', () =
 await t('entrar cravado no downbeat NÃO é adiado (compensação de latência)', () => {
   // scheduleRhythmEntryAt chama play(comp) pra entrar exato no tempo da
   // voz. Atrasar esse start desalinha o ritmo no palco, pior que o buraco.
-  verdade(corpoPlay.includes('latencyCompensation > 0 ? null : this.cargaDeRitmo'),
+  verdade(corpoPlay.includes('latencyCompensation > 0 || !audioPronto'),
     'o caminho de compensação precisa seguir sem espera');
+});
+
+await t('⚠️ audio ainda TRAVADO: nao adia, sai dentro do gesto (iPhone mudo)', () => {
+  // O primeiro play do iOS e o caminho do destrave. Adiar o scheduler ali
+  // tira o start do buffer de dentro do gesto. Enquanto o contexto nao
+  // estiver 'running', o play tem que seguir igual ao de sempre.
+  verdade(corpoPlay.includes("this.audioManager.getState() === 'running'"),
+    'play() precisa checar se o audio ja destravou antes de adiar');
+  const iEstado = corpoPlay.indexOf("getState() === 'running'");
+  const iEspera = corpoPlay.indexOf('Promise.race');
+  verdade(iEstado >= 0 && iEstado < iEspera, 'a checagem tem que vir ANTES da espera');
 });
 
 await t('loadRhythm libera a espera SEMPRE, inclusive quando falha', () => {

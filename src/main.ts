@@ -6674,7 +6674,11 @@ class RhythmSequencer {
     // Com latencyCompensation > 0 nao esperamos: esse e o caminho de entrar
     // CRAVADO no downbeat (scheduleRhythmEntryAt), onde atrasar o start
     // desalinha o ritmo da voz, que no palco e pior que o buraco.
-    const carga = latencyCompensation > 0 ? null : this.cargaDeRitmo;
+    // E se o audio ainda NAO estiver destravado, tambem nao espera: o
+    // primeiro play do iOS e o caminho sagrado do destrave e tem que seguir
+    // identico ao de sempre, com o scheduler saindo DENTRO do gesto.
+    const audioPronto = this.audioManager.getState() === 'running';
+    const carga = (latencyCompensation > 0 || !audioPronto) ? null : this.cargaDeRitmo;
     if (!carga) {
       this.scheduler.start(latencyCompensation);
     } else {
