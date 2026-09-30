@@ -104,22 +104,65 @@ export function openPlayStore(): void {
     }, 800);
     return;
   }
-  openExternal(PLAY_STORE_URL);
+  abrirForaDoApp(PLAY_STORE_URL);
 }
 
 /**
  * Abre uma URL externamente (fora do app).
- * - App nativo: abre no navegador do sistema (Chrome/Safari).
- * - Web: navega na mesma aba (comportamento padrão).
+ *
+ * ⚠️ NO ANDROID ISTO NÃO SAI DO APP, e nunca saiu. O `_system` é convenção
+ * do Cordova: o Capacitor não conhece esse alvo (não há nada de `_system`
+ * no código nativo dele, nem `onCreateWindow` no BridgeWebChromeClient).
+ * Então `window.open` só navega a própria janela, cai no `launchIntent` do
+ * Bridge.java e, como o capacitor.config tem `allowNavigation: ['*']`, a
+ * máscara casa com QUALQUER host, o retorno é `false` e o WebView carrega
+ * tudo dentro de si.
+ *
+ * Mantido assim de propósito: é este o caminho que o `gotoPlans` usa pro
+ * checkout do Android, que hoje abre dentro do app e FUNCIONA. Trocar o
+ * mecanismo aqui mudaria o fluxo de pagamento inteiro (o retorno da
+ * InfinitePay passaria a depender do App Link trazer o app de volta), e
+ * isso é decisão separada, com risco de receita. Quem precisa REALMENTE
+ * sair do app usa `abrirForaDoApp` logo abaixo.
  */
 export function openExternal(url: string): void {
   if (isNativeApp()) {
-    // _system abre no browser externo (Capacitor encaminha pro OS).
-    // _blank também funciona mas às vezes abre in-app.
     window.open(url, '_system');
   } else {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
+}
+
+/**
+ * Abre uma URL FORA do app de verdade, entregando pro sistema operacional.
+ *
+ * Existe porque o `openExternal` não consegue sair da janela no Android (ver
+ * o comentário dele). O sintoma em campo era tela de erro: o link do grupo
+ * de suporte redireciona pra `whatsapp://`, o WebView tentava renderizar
+ * esse esquema e o cliente via `net::ERR_UNKNOWN_URL_SCHEME` no lugar do
+ * atendimento. Mesma coisa com a vitrine da comunidade, que abria presa
+ * dentro do app em vez de virar app nativo.
+ *
+ * O AppLauncher dispara um ACTION_VIEW de verdade, então quem escolhe o
+ * destino é o sistema: WhatsApp, Play Store, Chrome, o que couber.
+ *
+ * Nunca lança e nunca deixa o cliente na mão: se o plugin faltar (build
+ * antiga) ou falhar, cai no comportamento antigo.
+ */
+export function abrirForaDoApp(url: string): void {
+  if (!isNativeApp()) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  void (async () => {
+    try {
+      const { AppLauncher } = await import('@capacitor/app-launcher');
+      await AppLauncher.openUrl({ url });
+    } catch {
+      // Plugin ausente ou recusado pelo SO: melhor abrir de algum jeito.
+      try { window.open(url, '_system'); } catch { /* desisto em silêncio */ }
+    }
+  })();
 }
 
 /**

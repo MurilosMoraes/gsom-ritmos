@@ -4,7 +4,7 @@ import { authService } from './AuthService';
 import { supabase } from './supabase';
 import { AttributionService } from '../native/AttributionService';
 import { loginSchema, zodErrorsToFieldMap } from './schemas';
-import { isNativeApp, openExternal, internalNav, appHome } from '../native/Platform';
+import { isNativeApp, internalNav, appHome } from '../native/Platform';
 import { setupPasswordToggle } from '../utils/passwordToggle';
 import { OfflineCache } from '../native/OfflineCache';
 import { t, hydrate } from '../i18n';

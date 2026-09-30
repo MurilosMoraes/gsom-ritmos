@@ -39,7 +39,7 @@ import { StatusBarService } from './native/StatusBarService';
 import { AttributionService } from './native/AttributionService';
 // PushService removido — push agora é gerenciado pelo OneSignalService
 // (tanto web quanto Capacitor nativo via onesignal-cordova-plugin).
-import { isNativeApp, openExternal, internalNav, isAndroidWeb, openPlayStore, isIOSNative, APP_STORE_URL, appHome, gotoPlans } from './native/Platform';
+import { isNativeApp, abrirForaDoApp, internalNav, isAndroidWeb, openPlayStore, isIOSNative, APP_STORE_URL, appHome, gotoPlans } from './native/Platform';
 import { limparServiceWorkerNoNativo } from './native/swGuard';
 import { NowPlayingService } from './native/NowPlayingService';
 import { DebugOverlay } from './native/DebugOverlay';
@@ -4134,14 +4134,17 @@ class RhythmSequencer {
     // Chrome e Samsung Internet entendem. Na janela do app dava
     // ERR_UNKNOWN_URL_SCHEME e a pessoa via tela de erro em vez do ritmo.
     //
-    // openExternal e o mesmo caminho que o pagamento no Android ja usa.
+    // abrirForaDoApp entrega a URL pro SISTEMA (ACTION_VIEW). O
+    // openExternal daqui NAO servia: no Android ele nao sai da janela,
+    // entao o link do grupo caia em whatsapp:// dentro do WebView e dava
+    // ERR_UNKNOWN_URL_SCHEME.
     // Na web nao muda nada: continua abrindo em aba nova.
     document.querySelectorAll<HTMLAnchorElement>('a[data-abrir-fora]').forEach(a => {
       a.addEventListener('click', (e) => {
         const url = a.getAttribute('href');
         if (!url || !isNativeApp()) return;   // web segue o comportamento normal
         e.preventDefault();
-        openExternal(url);
+        abrirForaDoApp(url);
       });
     });
 
@@ -4173,7 +4176,7 @@ class RhythmSequencer {
       const hdrApp = document.getElementById('hdrAppStoreBtn');
       if (hdrApp) {
         hdrApp.style.display = '';
-        hdrApp.addEventListener('click', () => openExternal(APP_STORE_URL));
+        hdrApp.addEventListener('click', () => abrirForaDoApp(APP_STORE_URL));
       }
     }
 
@@ -5486,7 +5489,7 @@ class RhythmSequencer {
       );
       overlay.querySelector('#chocoOpt1')!.addEventListener('click', () => renderPasso(1));
       overlay.querySelector('#chocoOpt2')!.addEventListener('click', () => renderPasso(2));
-      overlay.querySelector('#chocoVideo')!.addEventListener('click', () => { openExternal(VIDEO_URL); });
+      overlay.querySelector('#chocoVideo')!.addEventListener('click', () => { abrirForaDoApp(VIDEO_URL); });
       overlay.querySelector('#chocoCfgClose')!.addEventListener('click', close);
     };
 
@@ -5526,7 +5529,7 @@ class RhythmSequencer {
         `${n === 1 ? passos1 : passos2}${btnVoltar}${btnFechar}`,
       );
       // Só existe na opção 2 — por isso o optional chaining.
-      overlay.querySelector('#chocoCfgOpen')?.addEventListener('click', () => { openExternal(CFG_URL); });
+      overlay.querySelector('#chocoCfgOpen')?.addEventListener('click', () => { abrirForaDoApp(CFG_URL); });
       overlay.querySelector('#chocoBack')!.addEventListener('click', renderEscolha);
       overlay.querySelector('#chocoCfgClose')!.addEventListener('click', close);
     };
