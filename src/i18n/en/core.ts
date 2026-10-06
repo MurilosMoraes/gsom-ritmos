@@ -35,7 +35,7 @@ export const core: Record<string, string> = {
   'core.download.notFound': 'Link not found',
   'core.download.notFoundSub': 'This link does not exist or was turned off.',
   'core.download.goSite': 'Go to the website',
-  'core.links.bio': 'Your whole band on your phone. <br/>180+ rhythms, Bluetooth pedal, made for playing live.',
+  'core.links.bio': 'Your whole band on your phone. <br/>185+ rhythms, Bluetooth pedal, made for playing live.',
   'core.links.loading': 'Loading…',
   'core.links.empty': 'We could not load the links right now.',
   'core.links.footer': 'For the honor and glory of God',

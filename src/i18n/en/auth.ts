@@ -76,7 +76,7 @@ export const auth: Record<string, string> = {
   'auth.register.checkEmailResending': 'Resending...',
   'auth.register.checkEmailBackToLogin': 'Back to sign in',
   'auth.register.welcomeBadge': '✓ 48 hours free, no card required',
-  'auth.register.welcomeSub': 'Now <strong>download the app</strong> to play with everything: Bluetooth pedal, 180+ rhythms, and your setlist on stage.',
+  'auth.register.welcomeSub': 'Now <strong>download the app</strong> to play with everything: Bluetooth pedal, 185+ rhythms, and your setlist on stage.',
   'auth.register.continueInBrowserBtn': 'Continue in the browser for now',
   'auth.register.appStoreLabel': '<small>Download on the</small>App Store',
   'auth.register.playStoreLabel': '<small>Get it on</small>Google Play',

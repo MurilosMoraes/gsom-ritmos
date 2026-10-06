@@ -160,7 +160,7 @@ npm run copy:www       # rm -rf www && mkdir -p www && cp -r dist/* www/
 ├── public/                       ← assets estáticos servidos pelo Vite
 │   ├── midi/                     ← 43 samples WAV/MP3 (bumbo, caixa, chimbal, ride, toms, zabumbas, triângulos, congas, blocos, pratos)
 │   │   └── manifest.json         ← lista simples {files: [...]}
-│   ├── rhythm/                   ← 180 ritmos em JSON + manifest
+│   ├── rhythm/                   ← 185 ritmos em JSON + manifest
 │   │   └── manifest.json         ← {version: 27, rhythms: [...], categories: {Brasileiro, Pop/Rock, Gaúcho, Gospel, Reggae}}
 │   └── img/                      ← logo.png, app-img.png, icon-192/512 (PWA)
 ├── *.html                        ← 12 entry points do Vite (vite.config.ts → rollupOptions.input)
@@ -526,7 +526,7 @@ Todas moram em `src/auth/plansRouting.ts` (funções puras) e são cobertas por 
 
 ## 8. Formato de dados dos ritmos
 
-### `public/rhythm/manifest.json` (v52, 180 ritmos)
+### `public/rhythm/manifest.json` (v53, 185 ritmos)
 ```json
 {
   "version": 27,

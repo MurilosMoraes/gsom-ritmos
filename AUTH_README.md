@@ -227,7 +227,7 @@ Login → Dispositivo Não Autorizado → Erro/Contato Suporte
 
 ### Profissional
 - R$ 49/mês
-- 180+ ritmos
+- 185+ ritmos
 - Editor completo
 - Exportação MIDI ilimitada
 - Suporte prioritário

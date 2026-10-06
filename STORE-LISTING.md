@@ -49,7 +49,7 @@ eletronica,pedal,metronomo,vaneira,sertanejo,gospel,forro,playback,acompanhament
 
 ### Texto promocional (Apple, até 170)
 ```
-180 ritmos de bateria com viradas, intro e final. Controle tudo com pedal Bluetooth e toque ao vivo sem baterista. Funciona offline.
+185 ritmos de bateria com viradas, intro e final. Controle tudo com pedal Bluetooth e toque ao vivo sem baterista. Funciona offline.
 ```
 
 ### Descrição completa (Play e Apple, até 4000)
@@ -113,7 +113,7 @@ caja,electronica,metronomo,pedal,cumbia,bachata,salsa,cristiana,alabanza,drum,pe
 
 ### Texto promocional (Apple, hasta 170)
 ```
-180 ritmos de batería con redobles, intro y final. Controla todo con un pedal Bluetooth y toca en vivo sin baterista. Funciona sin conexión.
+185 ritmos de batería con redobles, intro y final. Controla todo con un pedal Bluetooth y toca en vivo sin baterista. Funciona sin conexión.
 ```
 
 ### Descripción completa (Play y Apple, hasta 4000)
@@ -177,7 +177,7 @@ machine,beats,backing track,metronome,pedal,percussion,worship,latin,groove,prac
 
 ### Promotional text (Apple, up to 170)
 ```
-180 drum rhythms with fills, intros and endings. Control everything with a Bluetooth pedal and play live without a drummer. Works offline.
+185 drum rhythms with fills, intros and endings. Control everything with a Bluetooth pedal and play live without a drummer. Works offline.
 ```
 
 ### Full description (Play and Apple, up to 4000)
@@ -275,7 +275,7 @@ caja,electronica,metronomo,pedal,rumba,flamenco,iglesia,alabanza,pista,percusion
 
 ### Texto promocional (Apple, hasta 170)
 ```
-180 ritmos de batería con redobles, intro y final. Controla todo con un pedal Bluetooth y toca en directo sin baterista. Funciona sin conexión.
+185 ritmos de batería con redobles, intro y final. Controla todo con un pedal Bluetooth y toca en directo sin baterista. Funciona sin conexión.
 ```
 
 ---
@@ -301,7 +301,7 @@ machine,beats,backing,metronome,pedal,percussion,worship,busking,groove,practice
 
 ### Promotional text (Apple, up to 170)
 ```
-180 drum rhythms with fills, intros and endings. Control everything with a Bluetooth pedal and play live without a drummer. Works offline.
+185 drum rhythms with fills, intros and endings. Control everything with a Bluetooth pedal and play live without a drummer. Works offline.
 ```
 
 ---
@@ -327,5 +327,5 @@ pedaleira,metronomo,playback,acompanhamento,ensaio,igreja,pimba,baiao,pop,rock,p
 
 ### Texto promocional (Apple, até 170)
 ```
-180 ritmos de bateria com viradas, intro e final. Controle tudo com pedal Bluetooth e toque ao vivo sem baterista. Funciona sem internet.
+185 ritmos de bateria com viradas, intro e final. Controle tudo com pedal Bluetooth e toque ao vivo sem baterista. Funciona sem internet.
 ```
