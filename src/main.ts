@@ -53,6 +53,7 @@ import { LIFETIME_PLANS } from './auth/planOffer';
 import { clearPendingNext, deviceStore, type ProfileLike } from './auth/plansRouting';
 import { PaymentWatcher, shouldSilenceRenewalNag, markAwaitingPayment, type PendingTx } from './auth/paymentSync';
 import { bootIntencao } from './native/bootIntencao';
+import { guardarIntencao, limparIntencao } from './native/deepLinkIntent';
 import { escolherVariante, textosDaVariante, destinoDaVariante, botaoDaVariante, eOferta, type Variante, type EstadoAbertura } from './ui/aberturaIos';
 
 /** Teclas de um modelo de pedal (ver PEDAL_STORE_KEY). */
@@ -497,6 +498,22 @@ class RhythmSequencer {
     // Sincrono de proposito. Era um import() dinamico, e numa abertura
     // fria a promessa resolvia DEPOIS de o boot ja ter redirecionado.
     bootIntencao();
+
+    // Link da comunidade (?c=) ou de compartilhar (?s=): guarda a intencao
+    // ANTES do checkAccess, que manda pro login sem levar a query junto.
+    //
+    // Sem isto, quem abre o link deslogado perde a musica: cai no login e,
+    // depois de entrar, chega numa home limpa, sem codigo nenhum. Acontece
+    // na web e tambem quando a vitrine da comunidade abre dentro do app,
+    // onde a sessao do site nao e a mesma do app.
+    //
+    // A intencao e consumida no handleShareImport, nao aqui — se limpasse
+    // agora, o redirect pro login levaria junto o motivo da abertura.
+    try {
+      if (readCommunityCodeFromPath() || readShareCodeFromPath()) {
+        guardarIntencao(localStorage, window.location.pathname + window.location.search, 'link');
+      }
+    } catch { /* storage bloqueado: segue sem guardar */ }
 
     // Inicializar UI
     this.init();
@@ -7438,6 +7455,11 @@ class RhythmSequencer {
   }
 
   private async handleShareImport(): Promise<void> {
+    // Chegou aqui = o codigo foi lido nesta pagina, com acesso liberado.
+    // A intencao guardada no boot ja cumpriu o papel dela (sobreviver ao
+    // redirect do login) e sai de cena, senao reabriria o import sozinha.
+    try { limparIntencao(localStorage); } catch { /* noop */ }
+
     // Link da COMUNIDADE (?c=CÓDIGO): traz a receita e remonta localmente.
     const communityCode = readCommunityCodeFromPath();
     if (communityCode) {

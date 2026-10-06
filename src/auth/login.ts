@@ -10,6 +10,7 @@ import { OfflineCache } from '../native/OfflineCache';
 import { t, hydrate } from '../i18n';
 import { injectLanguagePill } from '../i18n/selector';
 import { bootIntencao } from '../native/bootIntencao';
+import { lerIntencao } from '../native/deepLinkIntent';
 import {
   sanitizeNext, nextForPlatform, savePendingNext, peekPendingNext, clearPendingNext,
   deviceStore, tabStore, canAutoBounce, markAutoBounce,
@@ -918,6 +919,18 @@ class LoginPage {
     } catch { /* oferta é opcional — login segue normal */ }
   }
 
+  /** Veio clicando em "baixar" na comunidade (?c=) ou num link de
+   *  compartilhar (?s=) e caiu aqui por nao ter sessao? Depois de entrar,
+   *  volta pro codigo em vez da home limpa — senao a musica se perde no
+   *  caminho e a pessoa nao entende por que nao importou. */
+  private destinoDeImportacao(): string | null {
+    try {
+      const i = lerIntencao(localStorage);
+      if (!i) return null;
+      return /[?&][cs]=/.test(i.destino) ? i.destino : null;
+    } catch { return null; }
+  }
+
   private async getDestination(): Promise<string> {
     // Veio de uma página de compra (renovar, upgrade, retorno do
     // pagamento): volta pra ela, seja qual for o status. A tela de planos
@@ -937,7 +950,7 @@ class LoginPage {
       const status = profile?.subscription_status;
       if ((status === 'active' || status === 'trial') && profile?.subscription_expires_at) {
         if (new Date(profile.subscription_expires_at) > new Date()) {
-          return appHome();
+          return this.destinoDeImportacao() ?? appHome();
         }
       }
       return '/plans';

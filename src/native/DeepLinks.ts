@@ -182,7 +182,19 @@ let listening = false;
  * No web não faz nada (deep link só existe no Capacitor).
  */
 export async function initDeepLinks(): Promise<void> {
-  if (!isNativeApp()) return;
+  // Na web nao existe deep link do sistema, mas a INTENCAO guardada vale
+  // igual: e ela que faz o link da comunidade (?c=) sobreviver ao desvio
+  // pro login. Sem isto, quem entra pelo navegador perde o codigo.
+  //
+  // Nas telas de autenticacao nao se aplica nada: dali a intencao ainda
+  // NAO pode ser atendida (e justamente a falta de sessao que trouxe a
+  // pessoa pra ca), e navegar agora criaria um vai-e-vem com o login. Quem
+  // leva de volta pro codigo depois de entrar e o getDestination.
+  if (!isNativeApp()) {
+    const autenticacao = /^\/(login|register|completar-cadastro)(\.html)?$/i;
+    if (!autenticacao.test(window.location.pathname)) aplicarIntencaoPendente();
+    return;
+  }
 
   if (!listening) {
     listening = true;
