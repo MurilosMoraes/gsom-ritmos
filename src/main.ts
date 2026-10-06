@@ -111,6 +111,7 @@ class RhythmSequencer {
    *  suspend→resume religa; pendente até o próximo foreground/play. */
   private iosAudioKickPending = false;
   private iosWatchdogLastCt = -1;
+  private iosWatchdogLastAt = 0;
   private iosLastKickAt = 0;
   private rearmUnlockListeners: () => void = () => {};
 
@@ -425,10 +426,25 @@ class RhythmSequencer {
         const ctx = this.audioContext;
         if ((ctx.state as string) !== 'running') { this.iosWatchdogLastCt = -1; return; }
         const ct = ctx.currentTime;
-        const frozen = this.iosWatchdogLastCt >= 0 && ct === this.iosWatchdogLastCt;
+        const agora = performance.now();
+        // Só é congelamento se o relógio REAL andou e o do áudio não.
+        //
+        // Sem esta conferência, uma travada da tela virava falso positivo: o
+        // setInterval acumula as chamadas atrasadas e dispara duas coladas,
+        // no mesmo milissegundo. As duas leem o MESMO currentTime — claro,
+        // nao passou tempo entre elas — e o vigia concluia "render morto" e
+        // chutava o audio. O chute e suspend→resume, ou seja, exatamente o
+        // tranco de minimizar o app e voltar. Aparecia ao abrir e ao fechar o
+        // modal do disquete, o mais pesado do app (desfoque de 22px animado).
+        //
+        // Render morto de verdade continua pego: la o tempo real passa e o
+        // do audio fica parado, que e o sinal legitimo.
+        const tempoRealAndou = this.iosWatchdogLastAt > 0 && (agora - this.iosWatchdogLastAt) >= 400;
+        const frozen = this.iosWatchdogLastCt >= 0 && ct === this.iosWatchdogLastCt && tempoRealAndou;
         this.iosWatchdogLastCt = ct;
+        this.iosWatchdogLastAt = agora;
         if (!frozen) return;
-        const now = performance.now();
+        const now = agora;
         if (now - this.iosLastKickAt < 3000) return;
         this.iosLastKickAt = now;
         console.warn('[GDrums] render de áudio congelado (state running) — kick automático');
