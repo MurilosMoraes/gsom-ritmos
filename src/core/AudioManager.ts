@@ -50,6 +50,20 @@ export class AudioManager {
   private cargasEmVoo = new Map<string, Promise<AudioBuffer>>();
   // Canais que tocaram sem buffer (avisa 1x cada, nao inunda o console).
   private canaisSemBufferAvisados = new Set<string>();
+
+  // Teto por amostra. Sem isto, um fetch ou um decodeAudioData que nunca
+  // responde segura a carga do ritmo PRA SEMPRE, e o cliente fica preso na
+  // tela de loading (relato de 08/10/2026). Nem fetch nem decodeAudioData
+  // tem timeout proprio.
+  private readonly LIMITE_SAMPLE_MS = 12000;
+  // Vagas de carga simultanea. A carga passou a ser paralela e um ritmo
+  // chega a pedir dezenas de amostras de uma vez; somado ao pre-aquecimento
+  // isso estoura o pool de conexoes do navegador e, no WebKit, decode
+  // concorrente demais trava. 6 mantem quase toda a velocidade (medido:
+  // 102ms em serie -> ~30ms) sem a fila gigante.
+  private readonly MAX_SIMULTANEOS = 6;
+  private emAndamento = 0;
+  private fila: Array<() => void> = [];
   // Master node — DynamicsCompressor previne clipping na soma de canais.
   // Sem isso, masterVolume * stepVolume * múltiplos canais podia somar > 1.0
   // → clipping digital → harmônicos altos = clique perceptual aleatório.
@@ -308,12 +322,65 @@ export class AudioManager {
     }
   }
 
+  /** Pega uma vaga de carga. Espera se as MAX_SIMULTANEOS estiverem ocupadas. */
+  private async pegarVaga(): Promise<void> {
+    if (this.emAndamento < this.MAX_SIMULTANEOS) { this.emAndamento++; return; }
+    await new Promise<void>((libera) => this.fila.push(libera));
+    this.emAndamento++;
+  }
+
+  private devolverVaga(): void {
+    this.emAndamento--;
+    const proximo = this.fila.shift();
+    if (proximo) proximo();
+  }
+
+  /**
+   * Corre a tarefa contra o relogio. Rejeita se estourar.
+   *
+   * Existe porque nem `fetch` nem `decodeAudioData` tem limite proprio: os
+   * dois podem simplesmente nunca responder (rede pendurada, WebKit
+   * engasgado com decode concorrente) e ai NADA desperta a carga.
+   */
+  private async comLimite<T>(tarefa: Promise<T>, oque: string): Promise<T> {
+    let id: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        tarefa,
+        new Promise<never>((_, rejeita) => {
+          id = setTimeout(
+            () => rejeita(new Error(`tempo esgotado (${this.LIMITE_SAMPLE_MS}ms): ${oque}`)),
+            this.LIMITE_SAMPLE_MS
+          );
+        }),
+      ]);
+    } finally {
+      if (id !== undefined) clearTimeout(id);
+    }
+  }
+
   private async buscarEDecodificar(path: string, cacheKey: string): Promise<AudioBuffer> {
+    await this.pegarVaga();
+    try {
+      return await this.tentarCarregar(path, cacheKey);
+    } finally {
+      this.devolverVaga();
+    }
+  }
+
+  private async tentarCarregar(path: string, cacheKey: string): Promise<AudioBuffer> {
     let ultimoErro: unknown = null;
     for (let tentativa = 0; tentativa < 2; tentativa++) {
+      // Aborta a requisicao de verdade quando estoura o tempo, senao ela
+      // fica segurando uma conexao do pool mesmo depois de desistirmos.
+      const abortar = typeof AbortController === 'function' ? new AbortController() : null;
+      const corta = setTimeout(() => { try { abortar?.abort(); } catch { /* ok */ } }, this.LIMITE_SAMPLE_MS);
       try {
-        const response = await fetch(path);
-        const arrayBuffer = await response.arrayBuffer();
+        const response = await this.comLimite(
+          fetch(path, abortar ? { signal: abortar.signal } : undefined),
+          `baixar ${path}`
+        );
+        const arrayBuffer = await this.comLimite(response.arrayBuffer(), `ler ${path}`);
 
         // ⚠️ NUNCA rejeitar so pelo status HTTP.
         //
@@ -332,7 +399,10 @@ export class AudioManager {
         // quando o decode falha, que era o objetivo original: separar 404 de
         // arquivo corrompido.
         try {
-          const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+          const buffer = await this.comLimite(
+            this.audioContext.decodeAudioData(arrayBuffer),
+            `decodificar ${path}`
+          );
           this.bufferCache.set(cacheKey, buffer);
           return buffer;
         } catch (erroDecode) {
@@ -343,6 +413,8 @@ export class AudioManager {
       } catch (e) {
         ultimoErro = e;
         if (tentativa === 0) await new Promise((r) => setTimeout(r, 250));
+      } finally {
+        clearTimeout(corta);
       }
     }
     throw ultimoErro instanceof Error ? ultimoErro : new Error(String(ultimoErro));

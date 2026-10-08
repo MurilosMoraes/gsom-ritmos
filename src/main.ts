@@ -6776,7 +6776,10 @@ class RhythmSequencer {
    */
   private async preAquecerSamples(): Promise<void> {
     const ESPERA_INICIAL_MS = 4000;
-    const POR_VEZ = 4;
+    // 2, nao 4: o pool de conexoes do navegador e pequeno (~6 por host) e
+    // quem tem que chegar primeiro e o ritmo que o cliente pediu, nunca o
+    // adiantamento. O AudioManager tambem limita as vagas globalmente.
+    const POR_VEZ = 2;
     try {
       await new Promise<void>((r) => { window.setTimeout(r, ESPERA_INICIAL_MS); });
       if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
@@ -6794,6 +6797,12 @@ class RhythmSequencer {
       let proximo = 0;
       const trabalhar = async (): Promise<void> => {
         while (proximo < fila.length) {
+          // Carga de ritmo em andamento tem PREFERENCIA: o adiantamento
+          // para e espera. Sem isto ele competia por conexao justamente no
+          // pior momento, o cliente olhando a tela de loading.
+          while (this.isLoadingRhythm) {
+            await new Promise<void>((r) => { window.setTimeout(r, 500); });
+          }
           const caminho = fila[proximo++];
           try {
             await this.audioManager.loadAudioFromPath(caminho);
@@ -10543,6 +10552,10 @@ class RhythmSequencer {
   /** Teto de espera do play pela carga. Musico no palco prefere entrar
    *  atrasado a nao entrar: se a carga travar, toca com o que tiver. */
   private readonly ESPERA_MAX_CARGA_MS = 2000;
+  /** Teto absoluto da tela de loading do ritmo. Maior que os tetos de
+   *  dentro (12s por amostra, 15s pelo lote) de proposito: so dispara se
+   *  algo que eu nao previ pendurar. */
+  private readonly LIMITE_CARGA_RITMO_MS = 25000;
 
   private showRhythmLoader(name: string): HTMLElement {
     const loader = document.createElement('div');
@@ -10575,6 +10588,28 @@ class RhythmSequencer {
     // inclusive quando a carga falha: o play nao pode ficar preso por erro.
     let concluirCarga: () => void = () => {};
     this.cargaDeRitmo = new Promise<void>((resolve) => { concluirCarga = resolve; });
+
+    // ─── CINTO DE SEGURANCA DA TELA DE LOADING ───────────────────────
+    //
+    // Relato de 08/10/2026: cliente preso na tela de loading do ritmo. A
+    // tela so some no `finally` daqui, e o `isLoadingRhythm` so volta pra
+    // false no mesmo lugar — entao um unico await pendurado la dentro
+    // travava TUDO, inclusive trocar de ritmo, porque o guard la em cima
+    // passava a recusar toda carga nova.
+    //
+    // Os tetos do FileManager e do AudioManager cobrem os elos conhecidos.
+    // Este aqui cobre o que eu nao previ: estourou, libera a tela de
+    // qualquer jeito. Soltar o guard e seguro mesmo com a carga velha
+    // rolando: uma carga nova REATRIBUI state.variations, e as tarefas
+    // atrasadas passam a escrever em objetos orfaos, sem efeito.
+    const liberarTela = window.setTimeout(() => {
+      if (!this.isLoadingRhythm) return;
+      console.warn('[GDrums] carga do ritmo passou do tempo; liberando a tela');
+      this.isLoadingRhythm = false;
+      this.cargaDeRitmo = null;
+      concluirCarga();
+      this.hideRhythmLoader();
+    }, this.LIMITE_CARGA_RITMO_MS);
 
     // No avanço automático do repertório (AUTO) NÃO mostramos o loader:
     // ele "pisca" na tela a cada troca. silent = troca limpa e instantânea.
@@ -10649,6 +10684,7 @@ class RhythmSequencer {
       console.error(`Error loading rhythm ${name}:`, error);
       this.uiManager.showAlert(t('main.alert.rhythmLoadFailedNamed', { name }));
     } finally {
+      window.clearTimeout(liberarTela);
       this.isLoadingRhythm = false;
       this.cargaDeRitmo = null;
       concluirCarga();

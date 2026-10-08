@@ -196,6 +196,59 @@ console.log('\n── AudioManager: carregar sample sem falhar calado ──');
   });
 }
 
+console.log('\n── NADA pode pendurar a carga (cliente preso no loading) ──');
+{
+  // Relato de 08/10/2026. Nem fetch nem decodeAudioData tem limite proprio:
+  // se um deles nunca responde, o Promise.all nunca desperta, o `finally` do
+  // loadRhythm nunca roda, a tela de loading nunca some E o isLoadingRhythm
+  // fica ligado, recusando ate a troca de ritmo. Trava total.
+  planos = {}; instalarFetch();
+  const pendurado = new Promise<never>(() => { /* nunca resolve, de proposito */ });
+  (globalThis as any).fetch = async () => pendurado;
+  const am = new AudioManager(ctxFalso());
+  (am as any).LIMITE_SAMPLE_MS = 60;   // o teste nao vai esperar 12s
+
+  await t('fetch que nunca responde REJEITA por tempo, nao pendura', async () => {
+    const inicio = Date.now();
+    let erro = '';
+    try { await am.loadAudioFromPath('/midi/buraco.wav'); }
+    catch (e) { erro = (e as Error).message; }
+    const gasto = Date.now() - inicio;
+    verdade(/tempo esgotado/.test(erro), `devia estourar por tempo, veio: ${erro}`);
+    verdade(gasto < 2000, `demorou ${gasto}ms: nao desistiu`);
+  });
+}
+{
+  planos = {}; instalarFetch();
+  const am = new AudioManager(ctxFalso());
+  (am as any).LIMITE_SAMPLE_MS = 60;
+  // decode que nunca responde (WebKit engasgado com decode concorrente)
+  (am as any).audioContext.decodeAudioData = () => new Promise(() => {});
+  await t('decodeAudioData que nunca responde tambem desiste', async () => {
+    let erro = '';
+    try { await am.loadAudioFromPath('/midi/trava.wav'); }
+    catch (e) { erro = (e as Error).message; }
+    verdade(/tempo esgotado/.test(erro), `devia estourar por tempo, veio: ${erro}`);
+  });
+}
+{
+  // Vagas limitadas: um ritmo pede dezenas de amostras de uma vez e o pool
+  // de conexoes do navegador e pequeno.
+  let emVoo = 0, pico = 0;
+  (globalThis as any).fetch = async () => {
+    emVoo++; pico = Math.max(pico, emVoo);
+    await new Promise((r) => setTimeout(r, 15));
+    emVoo--;
+    return { ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(64) };
+  };
+  const am = new AudioManager(ctxFalso());
+  await t('nunca passa de 6 cargas simultaneas', async () => {
+    await Promise.all(Array.from({ length: 30 }, (_, i) => am.loadAudioFromPath(`/midi/s${i}.wav`)));
+    eq(pico <= 6, true, `pico de ${pico} cargas ao mesmo tempo`);
+    verdade(pico > 1, 'mas tem que ser paralelo de verdade');
+  });
+}
+
 console.log('\n── AudioManager: canal sem buffer para de sumir calado ──');
 {
   planos = {}; instalarFetch();
@@ -368,6 +421,34 @@ function canaisSemBufferDoState(sm: StateManager): string[] {
   });
 }
 
+{
+  // O teto do lote: uma amostra pendurada nao pode segurar o ritmo inteiro.
+  (FileManager as any).LIMITE_LOTE_MS = 120;
+  const sm = new StateManager();
+  const engine = {
+    ...motorFalso(5).engine,
+    async loadAudioFromPath(path: string) {
+      if (path === '/midi/ride.wav') return new Promise<AudioBuffer>(() => {});  // pendura
+      await new Promise((r) => setTimeout(r, 5));
+      return bufferFalso();
+    },
+  } as unknown as IAudioEngine;
+  const fm = new FileManager(sm, engine);
+
+  await t('amostra pendurada NAO prende o loadProject (tela nao trava)', async () => {
+    const inicio = Date.now();
+    await fm.loadProject(projetoCompleto());
+    const gasto = Date.now() - inicio;
+    verdade(gasto < 3000, `loadProject demorou ${gasto}ms: voltou a pendurar`);
+  });
+
+  await t('e o que carregou continua valendo (so o pendurado falta)', () => {
+    const fora = canaisSemBufferDoState(sm);
+    verdade(fora.length > 0, 'o ride deveria constar como sem buffer');
+    verdade(fora.every((l) => l.includes('ride.wav')), `so o ride devia faltar: ${JSON.stringify(fora)}`);
+  });
+}
+
 console.log('\n── main.ts: a trava do play (guardas de fonte) ──');
 
 const mainSrc = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf-8');
@@ -412,6 +493,22 @@ await t('⚠️ audio ainda TRAVADO: nao adia, sai dentro do gesto (iPhone mudo)
   const iEstado = corpoPlay.indexOf("getState() === 'running'");
   const iEspera = corpoPlay.indexOf('Promise.race');
   verdade(iEstado >= 0 && iEstado < iEspera, 'a checagem tem que vir ANTES da espera');
+});
+
+await t('⚠️ a tela de loading tem cinto de seguranca (preso no ritmo)', () => {
+  const i = mainSrc.indexOf('private async loadRhythm(');
+  const corpo = mainSrc.slice(i, mainSrc.indexOf('\n  // ─── Duplicate from Rhythm', i));
+  verdade(corpo.includes('LIMITE_CARGA_RITMO_MS'), 'loadRhythm perdeu o teto da tela');
+  verdade(corpo.includes('this.isLoadingRhythm = false;\n      this.cargaDeRitmo = null;'),
+    'o cinto tem que soltar o guard, senao nao da nem pra trocar de ritmo');
+  verdade(corpo.includes('window.clearTimeout(liberarTela)'), 'o finally tem que cancelar o cinto');
+});
+
+await t('pre-aquecimento cede a vez pra carga do ritmo', () => {
+  const i = mainSrc.indexOf('private async preAquecerSamples(');
+  const corpo = mainSrc.slice(i, mainSrc.indexOf('\n  private ', i + 10));
+  verdade(corpo.includes('while (this.isLoadingRhythm)'),
+    'o adiantamento nao pode competir por conexao com o ritmo pedido');
 });
 
 await t('loadRhythm libera a espera SEMPRE, inclusive quando falha', () => {

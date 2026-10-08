@@ -73,6 +73,44 @@ export class FileManager {
   }
 
   /**
+   * Espera o lote de samples, mas COM TETO.
+   *
+   * O `Promise.all` cru nunca desperta se uma unica tarefa nao resolver, e
+   * quem chama (loadRhythm) so esconde a tela de loading no `finally`. Era
+   * assim que o cliente ficava preso na tela do ritmo pra sempre, sem nem
+   * conseguir trocar de ritmo: o guard `isLoadingRhythm` tambem continuava
+   * ligado e recusava qualquer carga nova.
+   *
+   * Estourado o teto a gente SEGUE (resolve, nao rejeita). As tarefas que
+   * faltam continuam vivas e escrevem o buffer no canal quando chegarem,
+   * porque mexem no objeto que ja esta no state. O pior caso vira "o ritmo
+   * entra e alguns sons aparecem com atraso", nao "o app congelou". E o
+   * AudioManager avisa se algum canal chegar a tocar sem buffer.
+   */
+  private static readonly LIMITE_LOTE_MS = 15000;
+
+  private async esperarLote(tarefas: Promise<void>[]): Promise<void> {
+    if (tarefas.length === 0) return;
+    let id: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        Promise.all(tarefas).then(() => undefined),
+        new Promise<void>((resolve) => {
+          id = setTimeout(() => {
+            console.warn(
+              `[GDrums] carga de samples passou de ${FileManager.LIMITE_LOTE_MS}ms; ` +
+              'seguindo sem esperar o resto'
+            );
+            resolve();
+          }, FileManager.LIMITE_LOTE_MS);
+        }),
+      ]);
+    } finally {
+      if (id !== undefined) clearTimeout(id);
+    }
+  }
+
+  /**
    * Enfileira a carga dos samples de um conjunto de canais, SEM esperar.
    *
    * Antes cada canal era um `await` em serie. Um ritmo tem ate 8 variacoes
@@ -269,7 +307,7 @@ export class FileManager {
       // ⚠️ A ESPERA MORA AQUI. Quem chama loadProject tem que receber o
       // ritmo PRONTO pra tocar: e nessa garantia que o main.ts se apoia pra
       // nao soltar o play com canal sem buffer.
-      await Promise.all(tarefas);
+      await this.esperarLote(tarefas);
     } else {
       // Formato legado - carregar padrões únicos
       if (data.patterns?.main) {
@@ -308,7 +346,12 @@ export class FileManager {
       // (`state.channels.main.map(ch => ({ ...ch }))`). Copiar antes do
       // buffer chegar congelaria buffer null na copia, pra sempre, e o
       // ritmo legado tocaria mudo mesmo depois de tudo carregado.
-      await Promise.all(tarefas);
+      //
+      // Aqui o teto do esperarLote TEM preco: se estourar, a copia leva
+      // buffer null e esses canais ficam mudos ate recarregar o ritmo. E o
+      // mal menor, porque a alternativa e o app travar. Formato legado e
+      // raro (projeto salvo antigo), entao o estrago fica contido.
+      await this.esperarLote(tarefas);
 
       // Criar variações a partir dos padrões únicos
       for (let v = 0; v < 3; v++) {
@@ -352,8 +395,20 @@ export class FileManager {
   }
 
   async loadProjectFromPath(filePath: string): Promise<void> {
-    const response = await fetch(filePath);
-    const text = await response.text();
+    // Teto tambem aqui: este fetch busca o JSON do ritmo e tambem nao tinha
+    // limite nenhum. Se ele pendurar, nem o teto do lote de samples salva,
+    // porque a carga nem chega la: o cliente fica na tela de loading com a
+    // tela de ritmo vazia atras.
+    const abortar = typeof AbortController === 'function' ? new AbortController() : null;
+    const corta = setTimeout(() => { try { abortar?.abort(); } catch { /* ok */ } }, 12000);
+    let response: Response;
+    let text: string;
+    try {
+      response = await fetch(filePath, abortar ? { signal: abortar.signal } : undefined);
+      text = await response.text();
+    } finally {
+      clearTimeout(corta);
+    }
     const data = JSON.parse(text);
 
     if (data.patterns || data.variations) {
@@ -436,7 +491,7 @@ export class FileManager {
     if (data.audioFiles && data.audioFiles.length > 0) {
       const tarefas: Promise<void>[] = [];
       this.enfileirarCanais(tarefas, state.channels[patternType], data.audioFiles, patternType);
-      await Promise.all(tarefas);
+      await this.esperarLote(tarefas);
     }
 
     // Definir como padrão de edição
